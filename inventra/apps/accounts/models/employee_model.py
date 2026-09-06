@@ -23,7 +23,7 @@ class Employee(BaseModel):
         blank=True, related_name='fired_employees'
     )
     permissions = models.ManyToManyField(
-        Permission, blank=True, related_name='employees'
+        'permissions.Permission', blank=True, related_name='employees'
     )
 
     class Meta:

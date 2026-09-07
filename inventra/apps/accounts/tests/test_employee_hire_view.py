@@ -4,8 +4,7 @@ accepted permission_ids, but the view never passed them through to
 EmployeeService.hire()) -- api/v1/accounts/views/employee_views.py.
 """
 import pytest
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+from apps.permissions.models import Permission
 from rest_framework.test import APIClient
 
 from apps.accounts.models import Employee
@@ -23,13 +22,9 @@ def api_client():
 
 @pytest.fixture
 def some_permission():
-    content_type = ContentType.objects.get_for_model(Employee)
-    permission, _ = Permission.objects.get_or_create(
-        codename="do_the_thing",
-        content_type=content_type,
-        defaults={"name": "Can do the thing"},
+    return Permission.objects.create(
+        category="accounts", codename="do_the_thing", name="Can do the thing"
     )
-    return permission
 
 
 def test_hire_actually_grants_the_requested_permissions(

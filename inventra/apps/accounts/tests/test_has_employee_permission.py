@@ -12,11 +12,9 @@ from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 from rest_framework.views import APIView
 
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+from apps.permissions.models import Permission
 
 from api.permissions import HasEmployeePermission
-from apps.accounts.models import Employee
 from tests.factories import StaffFactory, TenantFactory, EmployeeFactory
 
 pytestmark = pytest.mark.django_db
@@ -27,13 +25,9 @@ factory = APIRequestFactory()
 
 @pytest.fixture
 def some_permission():
-    content_type = ContentType.objects.get_for_model(Employee)
-    permission, _ = Permission.objects.get_or_create(
-        codename="do_the_thing",
-        content_type=content_type,
-        defaults={"name": "Can do the thing"},
+    return Permission.objects.create(
+        category="accounts", codename="do_the_thing", name="Can do the thing"
     )
-    return permission
 
 
 class _SinglePermissionView(APIView):

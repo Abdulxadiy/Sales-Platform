@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apps.accounts.models.employee_model import Employee
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
+from apps.permissions.models import Permission
 
 User = get_user_model()
 

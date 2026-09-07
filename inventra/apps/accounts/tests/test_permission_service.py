@@ -3,10 +3,8 @@ Tests for apps/accounts/services/permission_service.py -- the
 Employee.permissions-backed action-permission check.
 """
 import pytest
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+from apps.permissions.models import Permission
 
-from apps.accounts.models import Employee
 from apps.accounts.services.permission_service import PermissionService
 from tests.factories import PlatformAdminFactory, OwnerFactory, StaffFactory, TenantFactory, EmployeeFactory
 
@@ -15,16 +13,9 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def some_permission():
-    """A real Permission row to grant/check against -- reuses the
-    Employee model's own content type since it always exists."""
-    content_type = ContentType.objects.get_for_model(Employee)
-    permission, _ = Permission.objects.get_or_create(
-        codename="do_the_thing",
-        content_type=content_type,
-        defaults={"name": "Can do the thing"},
+    return Permission.objects.create(
+        category="accounts", codename="do_the_thing", name="Can do the thing"
     )
-    return permission
-
 
 CODENAME = "accounts.do_the_thing"
 

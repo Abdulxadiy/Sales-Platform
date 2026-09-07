@@ -1,5 +1,4 @@
-﻿from django.contrib.auth.models import Permission
-from django.contrib.auth import get_user_model
+﻿from django.contrib.auth import get_user_model
 from apps.core.models import BaseModel
 from django.db import models
 

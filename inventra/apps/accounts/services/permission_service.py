@@ -48,15 +48,15 @@ class PermissionService:
             # customer, or anything else with no employment concept
             return False
 
-        app_label, _, short_codename = codename.partition(".")
+        category, _, short_codename = codename.partition(".")
         if not short_codename:
             raise ValueError(
-                f"codename must be 'app_label.codename', got: {codename!r}"
+                f"codename must be 'category.codename', got: {codename!r}"
             )
 
         return Employee.objects.filter(
             user=user,
             is_active=True,
-            permissions__content_type__app_label=app_label,
+            permissions__category=category,
             permissions__codename=short_codename,
         ).exists()

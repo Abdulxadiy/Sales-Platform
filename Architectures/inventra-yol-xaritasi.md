@@ -246,7 +246,7 @@ Bu butun bosqich **customer**ga tegishli edi. Customer Inventra'dan chiqarilgani
 
 - [x] ~~Register / login request-otp va verify-otp~~ → Shop'ga
 - [x] ~~`customer_login_throttle`~~ → Shop'ga
-- [ ] **Yangi vazifa:** Inventra'dan `register.py`, customer `login.py` qismi, `customer_login_throttle.py`, tegishli testlarni olib tashlash
+- [x] **Yangi vazifa:** Inventra'dan `register.py`, customer `login.py` qismi, `customer_login_throttle.py`, tegishli testlarni olib tashlash ✅
 
 **Inventra'da qoladigan qism** (bu — customer emas, staff/owner 2FA'si uchun, alohida band sifatida pastga, 6-bosqichga ko'chirildi):
 - [x] `TelegramContact` (`phone_number` unique, `chat_id`)

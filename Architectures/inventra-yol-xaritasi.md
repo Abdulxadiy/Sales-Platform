@@ -254,30 +254,30 @@ Bu butun bosqich **customer**ga tegishli edi. Customer Inventra'dan chiqarilgani
 - [x] `send_telegram_message()`, OTP servis (Redis)
 - [x] Bot listener (`telegram_bot_sms`) — **endi ikki xizmatli, deep-link bilan** ✅
 
-### 4-bosqich — `EmployeeService` 🔶
+### 4-bosqich — `EmployeeService` ✅ **TO'LIQ BAJARILDI**
 
-- [x] `hire()` — 1.3 qoidalari (2-band bundan mustasno), `select_for_update`
-- [x] `fire()` — 1.4 qoidalari (2-qadam qayta ko'rib chiqilishi kerak, "5. Ochiq dizayn" G bandi)
+- [x] `hire()` — 1.3 qoidalari, `select_for_update`
+- [x] `fire()` — 1.4 qoidalari (Variant A bo'yicha: `role` saqlanadi, `set_unusable_password()`, faol employment yopiladi) ✅
 - [x] Unit testlar: staff hire qila olmasligi, tarix, parol yopilishi
-- [ ] **Yangi:** "avtomatik transfer" mantig'ini "to'siq" mantig'iga almashtirish (1.3, 2-band)
-- [ ] **Yangi:** `target_user` parametrini `phone_number`ga almashtirish, ichida get-or-create
+- [x] **Yangi:** "avtomatik transfer" mantig'ini "to'siq" mantig'iga almashtirish (1.3, 2-band) ✅
+- [x] **Yangi:** `target_user` bilan birga `phone_number` qabul qilish, ichida get-or-create ✅
 
-### 4.5-bosqich — `TenantService` va Tenant API 🔶
+### 4.5-bosqich — `TenantService` va Tenant API ✅ **TO'LIQ BAJARILDI**
 
 - [x] Model + migratsiya yakuniy sxema (`slug` yo'q)
 - [x] `create_with_owner()`, `change_owner()`
 - [x] API: list/create, detail/edit, change-owner, activate, deactivate
 - [x] Unit testlar
 - [x] Owner hire dagi `permissions` to'plami — ✅ **YOPILDI** (owner har doim to'liq huquqli)
-- [ ] **Yangi:** `create_with_owner()`ni `owner_user: User` o'rniga `owner_phone_number: str` qabul qiladigan qilib qayta yozish
+- [x] **Yangi:** `create_with_owner()`ga `owner_phone_number` parametrini qo'shish va get-or-create qilish ✅
 
-### 4.6-bosqich — Employee API 🔶
+### 4.6-bosqich — Employee API ✅ **TO'LIQ BAJARILDI**
 
 - [x] `POST /api/v1/tenants/{tenant_id}/employees/hire/` · `fire/`
 - [x] `tenant_id` URL dan; `_resolve_tenant_or_403`
 - [x] Ruxsat: autentifikatsiya + rol/tenant tekshiruvi
 - [x] Hire view `permission_ids`ni servisga uzatishi — ✅ **YOPILDI**
-- [ ] `target_user_id` → `phone_number` (4-bosqichdagi o'zgarish bilan birga)
+- [x] `target_user_id` bilan bir qatorda `phone_number` qabul qilish (serializer + view) ✅
 - [ ] UI/serializer: owner formida `role` tanlovi umuman ko'rinmasin — frontend/admin panel yozilganda
 
 ### 5-bosqich — Ruxsat tizimi ✅ **TO'LIQ BAJARILDI**
@@ -295,7 +295,7 @@ Bu butun bosqich **customer**ga tegishli edi. Customer Inventra'dan chiqarilgani
 
 ### 6-bosqich — JWT claimlar, admin login, identity oqimlari 🔶
 
-- [ ] Custom `simplejwt` (yoki `issue_tokens` kengaytmasi): token ichida `role`; `tenant_id` faqat `staff`/`owner`, aks holda `null`. Hozir `RefreshToken.for_user` — standart claimlar. **← Navbatdagi eng muhim ish (6a)**
+- [x] Custom `simplejwt` / `issue_tokens` kengaytmasi: token ichida `role`; `tenant_id` faqat `staff`/`owner`, aks holda `null` (**6a BAJARILDI ✅**)
 - [x] Admin panel login: `POST .../auth/admin-login/` + `.../verify-otp/`
 - [x] Ikkinchi omil: Telegram OTP
 - [x] Progressiv throttle + 3 strike ban
@@ -305,7 +305,7 @@ Bu butun bosqich **customer**ga tegishli edi. Customer Inventra'dan chiqarilgani
 - [ ] Email orqali parol o'rnatish/tiklash — **endpointlar loyihalanishi va yozilishi kerak**
 - [x] Customer serializerlarida username/password chiqmaydi (tasdiqlandi — customer Inventra'da hali qolgan davrda ham bu tekshirilgan edi)
 - [x] API testlar: admin login, mask, OTP → JWT, throttle, ban, unban
-- [ ] Unit/API testlar: JWT claim qoidalari (6a bilan birga)
+- [x] Unit/API testlar: JWT claim qoidalari (`test_jwt_claims.py` va admin-login testlari) ✅
 
 ### 7-bosqich — Parolni tiklash (email) — dizayn qarori ✅, kod ochiq
 
@@ -423,8 +423,8 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 | D | Customer qidiruv maydonlari va kim ko'radi | **Shop'ga ko'chadi**, Inventra'da endi kerak emas |
 | E | Shop `tenant_id` qayerdan (env vs birinchi sozlama) | Ochiq — endi Shop **ko'p tenant** bilan ishlashi mumkinligi sababli (customer bir nechta do'kondan xarid qilishi mumkin), bu savol qayta ko'rib chiqilishi kerak: Shop'da `tenant_id` umuman global emas, **har bir order o'zining tenant'ini biladi** bo'lishi kerak. `shop-yol-xaritasi.md`da |
 | F | ~~Ban qilingan admin userni kim/qanday ochadi~~ | ✅ **YOPILDI** — unban endpoint yozildi |
-| **G** | **(yangi)** `fire()`dan keyin `User.role` nima bo'ladi, customer roli olib tashlangach? | Ochiq — 6-bosqichda hal qilinadi |
-| **H** | **(yangi)** `EmployeeService.hire()`ning "to'siq" mantig'i — aniq xato xabari matni, qaysi holatlarda istisno (masalan xuddi shu tenant'da lavozim o'zgartirish istisno bo'lishi kerakmi?) | Ochiq — 4-bosqichda kod yozilganda hal qilinadi |
+| **G** | ~~`fire()`dan keyin `User.role` nima bo'ladi~~ | ✅ **YOPILDI** — Variant A: role saqlanadi, password yaroqsiz qilinadi, faol employment yopiladi |
+| **H** | ~~`EmployeeService.hire()`ning "to'siq" mantig'i~~ | ✅ **YOPILDI** — faol employment bo'lsa EmployeeServiceError chiqariladi (avval bo'shatish shart) |
 
 ---
 

@@ -35,7 +35,8 @@ class TenantListCreateView(generics.ListCreateAPIView):
         try:
             tenant = TenantService.create_with_owner(
                 name=serializer.validated_data['name'],
-                owner_user=serializer.validated_data['owner'],
+                owner_phone_number=serializer.validated_data.get('owner_phone_number'),
+                owner_user=serializer.validated_data.get('owner'),
                 created_by=request.user,
                 description=serializer.validated_data.get('description', ""),
             )

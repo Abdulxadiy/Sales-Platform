@@ -10,14 +10,22 @@ User = get_user_model()
 class TenantCreateSerializer(serializers.ModelSerializer):
     """Validate input for creating a tenant with its owner."""
 
+    owner_phone_number = serializers.CharField(max_length=20, required=False, write_only=True)
     owner_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source='owner', write_only=True
+        queryset=User.objects.all(), source='owner', required=False, write_only=True
     )
 
     class Meta:
         model = Tenant
-        fields = ["id", "name", "owner_id", "description", "is_active", "created_at"]
+        fields = ["id", "name", "owner_phone_number", "owner_id", "description", "is_active", "created_at"]
         read_only_fields = ["id", "is_active", "created_at"]
+
+    def validate(self, attrs):
+        if not attrs.get("owner_phone_number") and not attrs.get("owner"):
+            raise serializers.ValidationError(
+                "Either owner_phone_number or owner_id must be provided."
+            )
+        return attrs
 
 
 class TenantAdminSerializer(serializers.ModelSerializer):

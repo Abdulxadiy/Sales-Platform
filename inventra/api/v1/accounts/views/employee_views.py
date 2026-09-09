@@ -38,7 +38,8 @@ class EmployeeHireView(APIView):
 
         try:
             employee = EmployeeService.hire(
-                target_user=serializer.validated_data['target_user'],
+                target_user=serializer.validated_data.get('target_user'),
+                phone_number=serializer.validated_data.get('phone_number'),
                 tenant=tenant,
                 hired_by=request.user,
                 position=serializer.validated_data.get('position', ''),

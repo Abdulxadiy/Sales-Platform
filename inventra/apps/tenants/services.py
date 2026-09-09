@@ -19,24 +19,31 @@ class TenantService:
     def create_with_owner(
             *,
             name: str,
-            owner_user: User,
             created_by: User,
+            owner_phone_number: str = None,
+            owner_user: User = None,
             description: str = ""
     ) -> Tenant:
         """
-        Create a new Tenant with owner_user as its owner, and open the
-        matching 'Owner' Employee record in one atomic operation.
+        Create a new Tenant with an owner, and open the matching 'Owner'
+        Employee record in one atomic operation.
 
-        Only platform_admin may call this. Rejected upfront if owner_user
-        is already an owner elsewhere or is a platform_admin themselves.
-        :param name:
-        :param owner_user:
-        :param created_by:
-        :param description:
-        :return Tenant:
+        Only platform_admin may call this.
+        Accepts either `owner_phone_number` (preferred per updated roadmap:
+        gets or creates the User record automatically) or `owner_user` (for backward
+        compatibility with existing callers/tests).
+        Rejected upfront if owner is already an owner elsewhere or is platform_admin.
         """
         if created_by.role != "platform_admin":
             raise TenantServiceError("Only platform_admin may create tenants.")
+
+        if owner_phone_number:
+            owner_user, _ = User.objects.get_or_create(
+                phone_number=owner_phone_number,
+                defaults={"role": "owner", "profile_completed": False}
+            )
+        elif owner_user is None:
+            raise TenantServiceError("Either owner_phone_number or owner_user must be provided.")
 
         if owner_user.role == "platform_admin":
             raise TenantServiceError("A platform_admin cannot be assigned as a tenant owner.")
@@ -58,7 +65,7 @@ class TenantService:
                 target_user=owner_user,
                 tenant=tenant,
                 hired_by=created_by,
-                position="owner",
+                position="Owner",
                 role="owner",
             )
         except EmployeeServiceError as exc:

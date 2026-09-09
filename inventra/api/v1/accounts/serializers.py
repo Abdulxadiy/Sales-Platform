@@ -26,14 +26,22 @@ class CompleteProfileSerializer(serializers.Serializer):
 class EmployeeHireSerializer(serializers.Serializer):
     """Validates input for hiring a new staff member."""
 
+    phone_number = serializers.CharField(max_length=20, required=False)
     target_user_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source="target_user"
+        queryset=User.objects.all(), source="target_user", required=False
     )
-    position =serializers.CharField(required=False, allow_blank=True, default="")
+    position = serializers.CharField(required=False, allow_blank=True, default="")
     permission_ids = serializers.PrimaryKeyRelatedField(
         queryset=Permission.objects.all(), many=True, required=False, source="permissions"
     )
     role = serializers.CharField(read_only=True, default="staff")
+
+    def validate(self, attrs):
+        if not attrs.get("phone_number") and not attrs.get("target_user"):
+            raise serializers.ValidationError(
+                "Either phone_number or target_user_id must be provided."
+            )
+        return attrs
 
 
 class EmployeeFireSerializer(serializers.Serializer):

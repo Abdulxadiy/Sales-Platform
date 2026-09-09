@@ -77,6 +77,21 @@ class TestHirePermissions:
         target.refresh_from_db()
         assert target.role == "staff"
 
+    def test_owner_can_hire_staff_with_phone_number(self, owner, tenant):
+        """Owner hires a new staff member by providing only their phone number."""
+        phone = "+998905554433"
+        employee = EmployeeService.hire(
+            phone_number=phone, tenant=tenant, hired_by=owner, role="staff", position="Salesperson"
+        )
+        assert employee.tenant_id == tenant.id
+        assert employee.position == "Salesperson"
+        assert employee.is_active is True
+
+        user = employee.user
+        assert user.phone_number == phone
+        assert user.role == "staff"
+        assert user.tenant_id == tenant.id
+
     def test_staff_cannot_hire_staff(self, tenant):
         # staff has no hiring authority at all, regardless of tenant.
         acting_staff = StaffFactory(tenant=tenant)
@@ -119,81 +134,58 @@ class TestHirePermissions:
             )
 
 
-class TestHireAutoTransfer:
-    """target_user already has an active Employee elsewhere -> hire() must
-    auto-fire the old one before creating the new one, so the "one active
-    Employee per user" DB constraint (unique_employment_per_user) is
-    never violated.
+class TestHireActiveEmploymentBlocking:
+    """target_user already has an active Employee -> hire() must raise
+    EmployeeServiceError instead of auto-firing. The user must be explicitly
+    fired before they can be hired elsewhere.
     """
 
-    def test_platform_admin_transfers_staff_across_tenants(self, platform_admin):
-        # This is the intended tenant-transfer flow: platform_admin moves
-        # a staff member from old_tenant to new_tenant in a single hire()
-        # call. Internally hire() detects the existing active employment
-        # and calls fire() on it automatically before creating the new one.
+    def test_hire_raises_if_user_already_has_active_employment(self, platform_admin):
+        """Platform admin cannot hire a user who already has an active Employee record."""
         old_tenant = TenantFactory()
         new_tenant = TenantFactory()
         target = StaffFactory(tenant=old_tenant)
         old_employment = EmployeeFactory(user=target, tenant=old_tenant, is_active=True)
 
-        EmployeeService.hire(
-            target_user=target, tenant=new_tenant, hired_by=platform_admin, role="staff",
-        )
+        with pytest.raises(EmployeeServiceError) as exc_info:
+            EmployeeService.hire(
+                target_user=target, tenant=new_tenant, hired_by=platform_admin, role="staff",
+            )
 
-        # The old employment record must be deactivated (not deleted —
-        # it's kept as history per the architecture doc), and correctly
-        # attributed to whoever triggered the transfer.
+        assert "already has an active employment" in str(exc_info.value)
+
+        # Ensure old employment record is still active and untouched
         old_employment.refresh_from_db()
-        assert old_employment.is_active is False
-        assert old_employment.fired_by_id == platform_admin.id
+        assert old_employment.is_active is True
+        assert old_employment.tenant_id == old_tenant.id
 
+        # Target user tenant remains unchanged
         target.refresh_from_db()
-        assert target.tenant_id == new_tenant.id
-        # Exactly one active Employee row must exist for this user at
-        # any given time — this is the DB-level invariant hire() exists
-        # to preserve.
-        active_employments = Employee.objects.filter(user=target, is_active=True)
-        assert active_employments.count() == 1
-        assert active_employments.first().tenant_id == new_tenant.id
+        assert target.tenant_id == old_tenant.id
 
-    def test_owner_cannot_poach_staff_employed_at_another_tenant(self, owner, tenant):
-        """Documents current asymmetric behaviour: hire()'s internal auto-fire
-        call uses `hired_by` as the firing actor. When hired_by is an owner
-        (not platform_admin), _check_fire_permission requires
-        employee.tenant == fired_by.tenant, which fails for a different
-        tenant's employee -> the whole hire() call raises.
-
-        If this is NOT the intended behaviour, this test should be updated
-        once the design decision is made explicit (see roadmap doc)."""
+    def test_owner_cannot_hire_user_employed_at_another_tenant(self, owner, tenant):
+        """An owner cannot hire someone who is currently employed elsewhere."""
         other_tenant = TenantFactory()
         target = StaffFactory(tenant=other_tenant)
         EmployeeFactory(user=target, tenant=other_tenant, is_active=True)
 
-        with pytest.raises(PermissionDeniedError):
+        with pytest.raises(EmployeeServiceError):
             EmployeeService.hire(
                 target_user=target, tenant=tenant, hired_by=owner, role="staff",
             )
 
-    def test_hire_is_atomic_on_permission_failure(self, owner, tenant):
-        """If hire() raises, no Employee/User mutation should have happened
-        — this is what @transaction.atomic on hire() is supposed to
-        guarantee. We reuse the same "owner poaching cross-tenant staff"
-        scenario as above because it's a real failure path that happens
-        AFTER the auto-fire attempt has already started, which is exactly
-        the case where a rollback bug would be most likely to show up.
-        """
+    def test_hire_is_atomic_on_active_employment_failure(self, platform_admin):
+        """If hire() raises due to active employment, no mutation occurs."""
         other_tenant = TenantFactory()
+        new_tenant = TenantFactory()
         target = StaffFactory(tenant=other_tenant)
         EmployeeFactory(user=target, tenant=other_tenant, is_active=True)
 
-        with pytest.raises(PermissionDeniedError):
+        with pytest.raises(EmployeeServiceError):
             EmployeeService.hire(
-                target_user=target, tenant=tenant, hired_by=owner, role="staff",
+                target_user=target, tenant=new_tenant, hired_by=platform_admin, role="staff",
             )
 
-        # Nothing should have changed: target's tenant/role must still be
-        # what they were before the failed hire() call, and their
-        # original employment must still be active and untouched.
         target.refresh_from_db()
         assert target.tenant_id == other_tenant.id
         assert target.role == "staff"
@@ -221,11 +213,9 @@ class TestFire:
         assert employment.fired_at is not None
 
         target.refresh_from_db()
-        # fire() must demote the user back to customer and invalidate
-        # their password (customers never authenticate with a password —
-        # see UserFactory's password post_generation hook and
-        # EmployeeService.fire()'s set_unusable_password() call).
-        assert target.role == "customer"
+        # Under Variant A, the user's role is retained (not demoted to customer)
+        # while their password is set unusable to prevent any authentication.
+        assert target.role == "staff"
         assert target.has_usable_password() is False
 
     def test_owner_can_fire_own_staff(self, owner, tenant):
@@ -237,7 +227,8 @@ class TestFire:
         EmployeeService.fire(target_user=target, fired_by=owner)
 
         target.refresh_from_db()
-        assert target.role == "customer"
+        assert target.role == "staff"
+        assert target.has_usable_password() is False
 
     def test_owner_cannot_fire_staff_at_another_tenant(self, owner):
         # The owner-branch of _check_fire_permission requires

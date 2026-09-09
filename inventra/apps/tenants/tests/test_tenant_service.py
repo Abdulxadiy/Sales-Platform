@@ -48,7 +48,23 @@ class TestCreateWithOwner:
         # row exists".
         employment = Employee.objects.get(user=candidate, is_active=True)
         assert employment.tenant_id == tenant.id
-        assert employment.position == "owner"
+        assert employment.position == "Owner"
+
+    def test_platform_admin_creates_tenant_with_phone_number(self, platform_admin):
+        """Platform admin creates a tenant by providing only the owner's phone number."""
+        phone = "+998901234567"
+        tenant = TenantService.create_with_owner(
+            name="Bakery", owner_phone_number=phone, created_by=platform_admin,
+        )
+
+        owner_user = tenant.owner
+        assert owner_user.phone_number == phone
+        assert owner_user.role == "owner"
+        assert owner_user.tenant_id == tenant.id
+
+        employment = Employee.objects.get(user=owner_user, is_active=True)
+        assert employment.tenant_id == tenant.id
+        assert employment.position == "Owner"
 
     def test_non_platform_admin_cannot_create_tenant(self, owner):
         # Tenant creation is platform_admin-only — an existing owner has
@@ -126,11 +142,10 @@ class TestChangeOwner:
         assert updated.owner_id == new_owner_candidate.id
 
         old_owner.refresh_from_db()
-        # Old owner goes through the exact same fire() side effects as
-        # any other fired employee: demoted to customer, no active
-        # Employee record left behind.
-        assert old_owner.role == "customer"
+        # Under Variant A, the old owner's role is not demoted to customer;
+        # their active Employee record is deactivated and password invalidated.
         assert Employee.objects.filter(user=old_owner, is_active=True).count() == 0
+        assert old_owner.has_usable_password() is False
 
         new_owner_candidate.refresh_from_db()
         assert new_owner_candidate.role == "owner"

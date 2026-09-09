@@ -45,3 +45,23 @@ def test_hire_actually_grants_the_requested_permissions(
     assert response.status_code == 201
     employee = Employee.objects.get(user=target, is_active=True)
     assert list(employee.permissions.all()) == [some_permission]
+
+
+def test_hire_with_phone_number_via_api(api_client, tenant, owner):
+    """Staff can be hired by providing only phone_number to the API endpoint."""
+    api_client.force_authenticate(user=owner)
+    phone = "+998901112233"
+
+    response = api_client.post(
+        HIRE_URL.format(tenant_id=tenant.id),
+        {
+            "phone_number": phone,
+            "position": "Consultant",
+        },
+    )
+
+    assert response.status_code == 201
+    employee = Employee.objects.get(user__phone_number=phone, is_active=True)
+    assert employee.position == "Consultant"
+    assert employee.user.role == "staff"
+    assert employee.tenant_id == tenant.id

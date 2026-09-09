@@ -46,7 +46,8 @@ class EmployeeService:
     def hire(
         cls,
         *,
-        target_user: User,
+        target_user: User = None,
+        phone_number: str = None,
         tenant,
         hired_by: User,
         permissions=None,
@@ -54,18 +55,25 @@ class EmployeeService:
         role: str = "staff",
     ) -> Employee:
         """
-        Assign target_user to tenant with the given role, creating a new
-        active Employee record.
+        Assign target_user (or user identified/created by phone_number) to tenant
+        with the given role, creating a new active Employee record.
 
-        If target_user already has an active Employee record elsewhere
-        (a different tenant, or a previous role in this tenant), it is
-        automatically fired first — this is the expected tenant-transfer
-        / owner-reassignment flow, not an error.
-
-        Does NOT touch username/password: those are set by the user
-        themselves through a separate OTP-protected flow (see roadmap 1.6).
+        Per updated roadmap:
+        - Accepts either `phone_number` (preferred: gets or creates User record)
+          or `target_user` (for backward compatibility with existing tests/callers).
+        - If the user already has an active Employee record elsewhere or here,
+          hire is blocked with EmployeeServiceError (must be explicitly fired first).
+        - Does NOT touch username/password: password is set via email flow.
         """
         cls._check_hire_permission(hired_by, role)
+
+        if phone_number:
+            target_user, _ = User.objects.get_or_create(
+                phone_number=phone_number,
+                defaults={"role": role, "profile_completed": False}
+            )
+        elif target_user is None:
+            raise EmployeeServiceError("Either phone_number or target_user must be provided.")
 
         if target_user.role == "platform_admin":
             raise EmployeeServiceError("Cannot hire a platform_admin user.")
@@ -76,7 +84,9 @@ class EmployeeService:
             .first()
         )
         if existing_active:
-            cls.fire(target_user=target_user, fired_by=hired_by)
+            raise EmployeeServiceError(
+                "User already has an active employment. They must be fired from their current position before being hired."
+            )
 
         target_user.role = role
         target_user.tenant = tenant
@@ -99,12 +109,14 @@ class EmployeeService:
     @transaction.atomic
     def fire(*, target_user: User, fired_by: User) -> Employee:
         """
-        Deactivate target_user's current active Employee record and
-        demote them back to a customer.
+        Deactivate target_user's current active Employee record.
 
-        username and tenant are intentionally kept on the User record
-        for historical purposes. Password is invalidated since customers
-        never authenticate with a password.
+        Per Variant A:
+        - target_user.role is retained (not demoted to customer).
+        - target_user password is set unusable so they cannot log in.
+        - The Employee record is marked is_active=False with fired_at/fired_by.
+        - Because PermissionService only grants access to active Employee records,
+          the fired employee immediately loses all permissions across the system.
         """
         employee = (
             Employee.objects.select_for_update()
@@ -121,8 +133,7 @@ class EmployeeService:
         employee.fired_by = fired_by
         employee.save(update_fields=["is_active", "fired_at", "fired_by"])
 
-        target_user.role = "customer"
         target_user.set_unusable_password()
-        target_user.save(update_fields=["role", "password"])
+        target_user.save(update_fields=["password"])
 
         return employee

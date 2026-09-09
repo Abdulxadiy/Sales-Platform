@@ -152,6 +152,12 @@ class TestAdminLoginOTPStep:
         assert response.status_code == 200
         assert set(response.data.keys()) == {"access", "refresh"}
 
+        # Verify custom JWT claims in the issued access token
+        from rest_framework_simplejwt.tokens import AccessToken
+        token = AccessToken(response.data["access"])
+        assert token["role"] == "staff"
+        assert token["tenant_id"] == staff_with_credentials.tenant_id
+
         locked, _ = login_throttle.is_locked(staff_with_credentials.username)
         assert locked is False
 

@@ -7,10 +7,30 @@ from apps.tg_bot.services import send_telegram_message
 
 
 def issue_tokens(user):
+    """
+    Generate JWT access and refresh tokens with custom claims for the user.
+
+    Custom claims attached to both access and refresh tokens:
+    - role: The user's role string (e.g. 'staff', 'owner', 'platform_admin').
+    - tenant_id: The primary key of the tenant the user belongs to if the
+      role is 'staff' or 'owner'; None for 'platform_admin' (unscoped).
+    """
     refresh = RefreshToken.for_user(user)
+
+    tenant_id = user.tenant_id if user.role in ("staff", "owner") and user.tenant_id else None
+
+    # Attach custom claims to refresh token
+    refresh["role"] = user.role
+    refresh["tenant_id"] = tenant_id
+
+    # Attach custom claims to access token
+    access = refresh.access_token
+    access["role"] = user.role
+    access["tenant_id"] = tenant_id
+
     return {
-        'access': str(refresh.access_token),
-        'refresh': str(refresh),
+        "access": str(access),
+        "refresh": str(refresh),
     }
 
 def get_telegram_contact_or_error(phone_number):

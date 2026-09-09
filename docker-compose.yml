@@ -1,0 +1,106 @@
+# Sales-Platform/docker-compose.yml
+#
+# Bu fayl loyihaning ENG TEPA papkasida (Sales-Platform/) turadi,
+# ya'ni inventra/ va bot/ papkalari bilan bir darajada.
+#
+# Hozircha faqat kerakli qism: Redis + Inventra + bot.
+# Postgres va Shop keyinroq, loyiha shu qismga yetganda qo'shiladi.
+
+networks:
+  inventra_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  postgres_data:
+  inventra_venv:
+  bot_venv:
+
+services:
+
+  # -------------------------------------------------------------------
+  # POSTGRES — asosiy ma'lumotlar bazasi
+  # -------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - inventra_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Portni tashqariga chiqarish shart emas — faqat DBeaver/pgAdmin
+    # bilan to'g'ridan-to'g'ri ulanmoqchi bo'lsangiz oching:
+    # ports:
+    #   - "5432:5432"
+
+  # -------------------------------------------------------------------
+  # REDIS — OTP kodlarni saqlash uchun
+  # -------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - inventra_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # -------------------------------------------------------------------
+  # INVENTRA — Django/DRF asosiy backend
+  # -------------------------------------------------------------------
+  inventra:
+    build:
+      context: ./inventra
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./inventra/.env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./inventra:/app
+      - inventra_venv:/app/.venv
+    ports:
+      - "8000:8000"
+    networks:
+      - inventra_net
+
+  # -------------------------------------------------------------------
+  # BOT — aiogram orqali Telegram bilan ishlaydigan alohida servis
+  # -------------------------------------------------------------------
+  bot:
+    build:
+      context: ./telegram_bot_sms
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./telegram_bot_sms/.env
+    depends_on:
+      - inventra
+    volumes:
+      - ./telegram_bot_sms:/app
+      - bot_venv:/app/.venv
+    networks:
+      - inventra_net

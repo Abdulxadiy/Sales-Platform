@@ -19,7 +19,6 @@ edge case is deliberately left to shell/DB access for now, same as
 platform_admin creation itself (createsuperuser-only, see roadmap
 "5. Ochiq dizayn" F).
 """
-from apps.accounts.services import customer_login_throttle
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -47,7 +46,6 @@ class UnbanView(APIView):
         # staff/owner/platform_admin who was never throttled this way.
         if target_user.username:
             login_throttle.register_success(target_user.username)
-        customer_login_throttle.register_success(target_user.phone_number)
 
         return Response(
             {

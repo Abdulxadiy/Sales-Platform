@@ -6,16 +6,6 @@ from apps.permissions.models import Permission
 User = get_user_model()
 
 
-class PhoneNumberSerializer(serializers.Serializer):
-    """For Register and Login general serializer --> Only phone number will be asked"""
-    phone_number = serializers.CharField(max_length=20)
-
-
-class VerifyOTPSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(max_length=20)
-    verification_code = serializers.CharField(max_length=6, min_length=6)
-
-
 class CompleteProfileSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=100, required=False, allow_blank=True)

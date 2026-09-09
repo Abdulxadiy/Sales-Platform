@@ -1,0 +1,28 @@
+# bot/.dockerignore
+# Inventra'dagi bilan bir xil mantiq — faqat bot uchun kerakli qismlar.
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.uv_cache/
+
+.git/
+.gitignore
+.gitattributes
+
+.env
+.env.*
+!.env.example
+
+.vscode/
+../.idea/
+*.swp
+
+.DS_Store
+Thumbs.db
+
+Dockerfile
+.dockerignore

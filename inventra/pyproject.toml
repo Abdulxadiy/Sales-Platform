@@ -1,0 +1,27 @@
+[project]
+name = "inventra"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0.7",
+    "django-environ>=0.14.0",
+    "django-filter>=26.1",
+    "djangorestframework>=3.17.1",
+    "djangorestframework-simplejwt>=5.5.1",
+    "djangorestframework-stubs>=3.17.1",
+    "gevent>=26.8.0",
+    "gunicorn>=26.1.0",
+    "packaging>=26.3",
+    "psycopg2>=2.9.12",
+    "python-dotenv>=1.2.2",
+    "redis>=8.1.0",
+    "requests>=2.34.2",
+]
+
+[dependency-groups]
+dev = [
+    "factory-boy>=3.3.3",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
+]

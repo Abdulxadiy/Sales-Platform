@@ -21,6 +21,7 @@ class TenantService:
             name: str,
             created_by: User,
             owner_phone_number: str = None,
+            owner_email: str = None,
             owner_user: User = None,
             description: str = ""
     ) -> Tenant:
@@ -29,7 +30,7 @@ class TenantService:
         Employee record in one atomic operation.
 
         Only platform_admin may call this.
-        Accepts either `owner_phone_number` (preferred per updated roadmap:
+        Accepts `owner_phone_number` and optional `owner_email` (preferred:
         gets or creates the User record automatically) or `owner_user` (for backward
         compatibility with existing callers/tests).
         Rejected upfront if owner is already an owner elsewhere or is platform_admin.
@@ -38,12 +39,21 @@ class TenantService:
             raise TenantServiceError("Only platform_admin may create tenants.")
 
         if owner_phone_number:
-            owner_user, _ = User.objects.get_or_create(
+            defaults = {"role": "owner", "profile_completed": False}
+            if owner_email:
+                defaults["email"] = owner_email
+            owner_user, created = User.objects.get_or_create(
                 phone_number=owner_phone_number,
-                defaults={"role": "owner", "profile_completed": False}
+                defaults=defaults
             )
+            if not created and owner_email and not owner_user.email:
+                owner_user.email = owner_email
+                owner_user.save(update_fields=["email"])
         elif owner_user is None:
             raise TenantServiceError("Either owner_phone_number or owner_user must be provided.")
+        elif owner_email and not owner_user.email:
+            owner_user.email = owner_email
+            owner_user.save(update_fields=["email"])
 
         if owner_user.role == "platform_admin":
             raise TenantServiceError("A platform_admin cannot be assigned as a tenant owner.")

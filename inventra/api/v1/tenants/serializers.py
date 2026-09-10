@@ -11,13 +11,20 @@ class TenantCreateSerializer(serializers.ModelSerializer):
     """Validate input for creating a tenant with its owner."""
 
     owner_phone_number = serializers.CharField(max_length=20, required=False, write_only=True)
+    # Optional e-mail address for the owner.  When supplied the service will
+    # set it on the user record and send the first-login magic link to it.
+    owner_email = serializers.EmailField(required=False, allow_blank=True, write_only=True)
     owner_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), source='owner', required=False, write_only=True
     )
 
     class Meta:
         model = Tenant
-        fields = ["id", "name", "owner_phone_number", "owner_id", "description", "is_active", "created_at"]
+        fields = [
+            "id", "name",
+            "owner_phone_number", "owner_email", "owner_id",
+            "description", "is_active", "created_at",
+        ]
         read_only_fields = ["id", "is_active", "created_at"]
 
     def validate(self, attrs):

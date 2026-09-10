@@ -62,3 +62,6 @@ REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/0")
 # PBKDF2 and is fine here since these are throwaway test users that will
 # never exist outside a test run, never real production accounts.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# In-memory email backend for fast, isolated test verification via mail.outbox
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

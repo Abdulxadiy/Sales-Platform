@@ -145,3 +145,11 @@ SIMPLE_JWT = {
 INTERNAL_SERVICE_TOKEN = os.getenv("INTERNAL_SERVICE_TOKEN")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 REDIS_URL = os.getenv('REDIS_URL')
+
+# Email configuration
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@inventra.uz")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")

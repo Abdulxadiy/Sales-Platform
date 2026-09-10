@@ -48,6 +48,7 @@ class EmployeeService:
         *,
         target_user: User = None,
         phone_number: str = None,
+        email: str = None,
         tenant,
         hired_by: User,
         permissions=None,
@@ -61,6 +62,7 @@ class EmployeeService:
         Per updated roadmap:
         - Accepts either `phone_number` (preferred: gets or creates User record)
           or `target_user` (for backward compatibility with existing tests/callers).
+        - Optionally accepts `email` to associate with the user for invitation links.
         - If the user already has an active Employee record elsewhere or here,
           hire is blocked with EmployeeServiceError (must be explicitly fired first).
         - Does NOT touch username/password: password is set via email flow.
@@ -68,12 +70,21 @@ class EmployeeService:
         cls._check_hire_permission(hired_by, role)
 
         if phone_number:
-            target_user, _ = User.objects.get_or_create(
+            defaults = {"role": role, "profile_completed": False}
+            if email:
+                defaults["email"] = email
+            target_user, created = User.objects.get_or_create(
                 phone_number=phone_number,
-                defaults={"role": role, "profile_completed": False}
+                defaults=defaults,
             )
+            if not created and email and not target_user.email:
+                target_user.email = email
+                target_user.save(update_fields=["email"])
         elif target_user is None:
             raise EmployeeServiceError("Either phone_number or target_user must be provided.")
+        elif email and not target_user.email:
+            target_user.email = email
+            target_user.save(update_fields=["email"])
 
         if target_user.role == "platform_admin":
             raise EmployeeServiceError("Cannot hire a platform_admin user.")

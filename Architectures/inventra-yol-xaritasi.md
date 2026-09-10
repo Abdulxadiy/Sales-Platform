@@ -307,14 +307,20 @@ Bu butun bosqich **customer**ga tegishli edi. Customer Inventra'dan chiqarilgani
 - [x] API testlar: admin login, mask, OTP → JWT, throttle, ban, unban
 - [x] Unit/API testlar: JWT claim qoidalari (`test_jwt_claims.py` va admin-login testlari) ✅
 
-### 7-bosqich — Parolni tiklash (email) — dizayn qarori ✅, kod ochiq
+### 7-bosqich — Parolni tiklash / birinchi marta o'rnatish (email magic-link) ✅
 
-Admin panel foydalanuvchilari uchun; Telegram OTP'dan **mustaqil** (1.6 bilan bir xil mexanizm, "birinchi marta o'rnatish" va "tiklash" — bitta oqim).
+Admin panel foydalanuvchilari uchun; Telegram OTP'dan **mustaqil** (\"birinchi marta o'rnatish\" va \"tiklash\" — bitta oqim).
 
-- [ ] Email yuborish infratuzilmasi (`django.core.mail`, SMTP `.env`ga; dev'da console/file backend)
-- [ ] Email OTP/token-link reset flow
-- [ ] Faqat username+password ishlatadigan rollar (staff/owner/platform_admin)
-- [ ] Rate-limit va kod TTL (Redis, OTP dagi kabi g'oya)
+- [x] Email yuborish infratuzilmasi (`django.core.mail`, SMTP `.env`ga; dev/test'da `locmem` backend) ✅
+- [x] Bir martalik magic-link reset flow: `PasswordResetService` (Redis `pwd_reset:{token}`, TTL 24h, cooldown 60s) ✅
+- [x] Faqat username+password ishlatadigan rollar (staff/owner/platform_admin) himoyalangan ✅
+- [x] Rate-limit (cooldown) va token TTL (Redis, `pwd_reset_cooldown:{user_id}`) ✅
+- [x] `PasswordResetRequestView` + `PasswordResetConfirmView` — unauthenticated, `/api/v1/auth/password-reset/` ✅
+- [x] `PasswordResetRequestSerializer` + `PasswordResetConfirmSerializer` ✅
+- [x] `TenantCreateSerializer`: `owner_email` maydoni qo'shildi ✅
+- [x] `TenantListCreateView`: `owner_email` servisga uzatiladi ✅
+- [x] Unit va API testlar: `test_password_reset.py` (22 test) ✅
+
 
 ### 8-bosqich — Multi-tenancy ni yopish
 

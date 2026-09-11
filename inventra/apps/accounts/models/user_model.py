@@ -5,7 +5,6 @@ from ..managers import UserManager
 
 class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
-        ('customer', "Xaridor"),
         ('staff', "Sotuvchi"),
         ('owner', "Do'kon egasi"),
         ('platform_admin', "Platforma administratori"),
@@ -24,8 +23,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True, blank=True, related_name='users'
     )
     role = models.CharField(
-        max_length=20, choices=ROLE_CHOICES,
-        default='customer'
+        max_length=20, choices=ROLE_CHOICES
     )
 
     is_active = models.BooleanField(default=True)

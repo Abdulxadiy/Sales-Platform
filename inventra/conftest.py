@@ -87,6 +87,6 @@ def staff(db):
 
 @pytest.fixture
 def customer(db):
-    """A plain customer User — the default role new users get, and the
-    role EmployeeService.fire() demotes people back to."""
+    """A bare User with no active Employee record -- i.e. someone who
+    exists in the system but hasn't been hired into any tenant yet."""
     return UserFactory()

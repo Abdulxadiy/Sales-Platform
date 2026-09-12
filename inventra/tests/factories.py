@@ -17,13 +17,14 @@ from apps.tenants.models import Tenant
 
 
 class UserFactory(DjangoModelFactory):
-    """Base factory for a plain customer User.
+    """Base factory for a bare User row with no employment yet.
 
-    Role-specific factories below (PlatformAdminFactory, OwnerFactory,
-    StaffFactory) subclass this and only override `role` + `username`,
-    since `username` is null for customers (they only ever authenticate
-    via phone OTP — see architecture doc) but required-ish for the
-    username/password roles.
+    `customer` no longer exists as an Inventra role (it moved entirely
+    to the Shop microservice) -- this factory now represents "a person
+    who exists as a User but has no active Employee record", the
+    pre-hire state. Role-specific factories below (PlatformAdminFactory,
+    OwnerFactory, StaffFactory) subclass this and only override `role` +
+    `username`.
     """
 
     class Meta:
@@ -38,7 +39,7 @@ class UserFactory(DjangoModelFactory):
     # phone_number is unique=True on the model.
     phone_number = factory.Sequence(lambda n: f"+99890{n:07d}")
     username = None
-    role = "customer"
+    role = "staff"
     is_active = True
     is_phone_verified = True
     profile_completed = True

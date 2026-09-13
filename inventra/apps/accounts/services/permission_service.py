@@ -41,6 +41,18 @@ class PermissionService:
             e.g. "catalog.add_product" -- same format as the built-in
             user.has_perm().
         """
+        # Validate the codename format unconditionally, before any
+        # role/employment short-circuit. A malformed codename is a bug
+        # in the CALLER, not a fact about this particular user's
+        # permissions -- it must fail loudly the same way for every
+        # user, not silently resolve to False just because this
+        # particular user happened to lack active employment.
+        category, _, short_codename = codename.partition(".")
+        if not short_codename:
+            raise ValueError(
+                f"codename must be 'category.codename', got: {codename!r}"
+            )
+
         if user is None or not getattr(user, "is_authenticated", False):
             return False
 
@@ -64,12 +76,6 @@ class PermissionService:
 
         if user.role == "owner":
             return True
-
-        category, _, short_codename = codename.partition(".")
-        if not short_codename:
-            raise ValueError(
-                f"codename must be 'category.codename', got: {codename!r}"
-            )
 
         return Employee.objects.filter(
             user=user,

@@ -5,7 +5,9 @@ Covers
 - request_password_reset()
     * Valid e-mail → e-mail dispatched, Redis token stored.
     * Unknown e-mail → still returns (True, "sent") [enumeration-safe].
-    * Customer e-mail → treated as unknown (enumeration-safe).
+    * Fired / never-actually-hired staff-or-owner e-mail → treated as
+      unknown (enumeration-safe). 'customer' no longer exists as a
+      role, so the real boundary is active Employee status, not role.
     * Cooldown: second call within 60 s is rejected with "cooldown".
     * E-mail send failure → token cleaned up, returns (False, "email_send_failed").
 
@@ -28,7 +30,14 @@ from django.core import mail
 from unittest.mock import patch, MagicMock
 
 from apps.accounts.services import password_reset_service
-from tests.factories import StaffFactory, OwnerFactory, PlatformAdminFactory, UserFactory
+from tests.factories import (
+    StaffFactory,
+    OwnerFactory,
+    PlatformAdminFactory,
+    UserFactory,
+    EmployeeFactory,
+    TenantFactory,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -37,14 +46,22 @@ from tests.factories import StaffFactory, OwnerFactory, PlatformAdminFactory, Us
 
 @pytest.fixture
 def staff_with_email(db):
-    """A staff user who has an e-mail address set."""
-    return StaffFactory(email="alice@example.com")
+    """A staff user with an e-mail address AND an active Employee record --
+    password reset now requires active employment, not just the role."""
+    staff = StaffFactory(email="alice@example.com")
+    tenant = TenantFactory()
+    EmployeeFactory(user=staff, tenant=tenant, is_active=True)
+    return staff
 
 
 @pytest.fixture
 def owner_with_email(db):
-    """An owner user who has an e-mail address set."""
-    return OwnerFactory(email="bob@example.com")
+    """An owner user with an e-mail address AND an active Employee record --
+    password reset now requires active employment, not just the role."""
+    owner = OwnerFactory(email="bob@example.com")
+    tenant = TenantFactory(owner=owner)
+    EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
+    return owner
 
 
 # ---------------------------------------------------------------------------
@@ -86,12 +103,32 @@ class TestRequestPasswordReset:
         # No e-mail should have been dispatched.
         assert len(mail.outbox) == 0
 
-    def test_customer_email_treated_as_unknown(self, db):
-        """Accounts with role='customer' must not trigger an e-mail."""
-        # UserFactory defaults to role="customer"
-        UserFactory(email="customer@example.com")
+    def test_fired_employee_email_treated_as_unknown(self, staff_with_email):
+        """A fired staff/owner keeps their role on the User row for audit
+        purposes (EmployeeService.fire(), Variant A), but must not be able
+        to reset their password back into a usable state once their
+        Employee record is inactive -- 'customer' no longer exists as a
+        role (removed from ROLE_CHOICES), so this is the real modern
+        equivalent of the old "customer email is a no-op" guarantee."""
+        from apps.accounts.services.employee_service import EmployeeService
+
+        platform_admin = PlatformAdminFactory()
+        EmployeeService.fire(target_user=staff_with_email, fired_by=platform_admin)
+
         ok, reason = password_reset_service.request_password_reset(
-            email="customer@example.com"
+            email="alice@example.com"
+        )
+        assert ok is True
+        assert len(mail.outbox) == 0
+
+    def test_role_with_no_employee_record_at_all_treated_as_unknown(self):
+        """A staff/owner-role User with no Employee row at all (never
+        actually hired -- e.g. a half-finished hire()) must also be
+        denied, the same as a fired one."""
+        never_hired = UserFactory(role="staff", email="ghost-staff@example.com")
+
+        ok, reason = password_reset_service.request_password_reset(
+            email="ghost-staff@example.com"
         )
         assert ok is True
         assert len(mail.outbox) == 0

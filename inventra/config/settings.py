@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.tg_bot',
     'apps.permissions',
+    'apps.catalog'
 ]
 
 MIDDLEWARE = [

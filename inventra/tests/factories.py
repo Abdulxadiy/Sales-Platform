@@ -87,12 +87,21 @@ class StaffFactory(UserFactory):
     role = "staff"
     username = factory.Sequence(lambda n: f"staff{n}")
 
-
 class TenantFactory(DjangoModelFactory):
     """A Tenant row. `owner` defaults to a fresh OwnerFactory() instance
     if not overridden, so `TenantFactory()` alone is enough to get a
     fully valid tenant+owner pair for tests that don't care about the
-    owner's identity specifically."""
+    owner's identity specifically.
+
+    Also wires `owner.tenant` back to point at this tenant, mirroring
+    the side effect EmployeeService.hire() performs in production
+    (called from TenantService.create_with_owner()). Without this, a
+    plain `TenantFactory()` would leave `tenant.owner.tenant_id` as
+    None -- a half-wired User/Tenant pair that production code can
+    never actually produce (hire() always sets both sides together),
+    so a factory that skipped it would let tests pass or fail based on
+    an inconsistency that isn't reachable outside the test suite.
+    """
 
     class Meta:
         model = Tenant
@@ -101,6 +110,14 @@ class TenantFactory(DjangoModelFactory):
     description = ""
     is_active = True
     owner = factory.SubFactory(OwnerFactory)
+
+    @factory.post_generation
+    def _wire_owner_tenant(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if self.owner.tenant_id != self.id:
+            self.owner.tenant = self
+            self.owner.save(update_fields=["tenant"])
 
 
 class EmployeeFactory(DjangoModelFactory):

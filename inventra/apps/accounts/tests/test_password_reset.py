@@ -121,11 +121,14 @@ class TestRequestPasswordReset:
         assert ok is True
         assert len(mail.outbox) == 0
 
-    def test_role_with_no_employee_record_at_all_treated_as_unknown(self):
+    def test_role_with_no_employee_record_at_all_treated_as_unknown(self, db):
         """A staff/owner-role User with no Employee row at all (never
         actually hired -- e.g. a half-finished hire()) must also be
         denied, the same as a fired one."""
-        never_hired = UserFactory(role="staff", email="ghost-staff@example.com")
+
+        never_hired = UserFactory(
+            role="staff", email="ghost-staff@example.com")
+
 
         ok, reason = password_reset_service.request_password_reset(
             email="ghost-staff@example.com"

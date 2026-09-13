@@ -11,9 +11,11 @@ care about instead of repeating the full field list everywhere.
 """
 import factory
 from factory.django import DjangoModelFactory
+from decimal import Decimal
 
 from apps.accounts.models import User, Employee
 from apps.tenants.models import Tenant
+from apps.catalog.models import Category, Product, ProductVariant
 
 
 class UserFactory(DjangoModelFactory):
@@ -137,3 +139,57 @@ class EmployeeFactory(DjangoModelFactory):
     position = "Sales"
     is_active = True
     hired_by = factory.SubFactory(PlatformAdminFactory)
+
+
+class CategoryFactory(DjangoModelFactory):
+    """A top-level Category (no parent) by default. `kod` is a plain
+    sequence here for factory simplicity -- production code always
+    goes through CategoryService.create() for the real collision-safe
+    generation (see apps/catalog/services/category_service.py)."""
+
+    class Meta:
+        model = Category
+
+    tenant = factory.SubFactory(TenantFactory)
+    name = factory.Sequence(lambda n: f"Category {n}")
+    kod = factory.Sequence(lambda n: f"{n:02d}")
+    parent = None
+    is_active = True
+
+
+class ProductFactory(DjangoModelFactory):
+    """A Product with NO variants by default -- most tests that need a
+    sellable unit should use ProductVariantFactory instead (which
+    creates its own Product via SubFactory), since a real Product is
+    never valid without at least one variant. This factory exists for
+    tests that specifically exercise Product-only behaviour (e.g.
+    archiving cascades)."""
+
+    class Meta:
+        model = Product
+
+    tenant = factory.SelfAttribute("category.tenant")
+    category = factory.SubFactory(CategoryFactory)
+    name = factory.Sequence(lambda n: f"Product {n}")
+    is_active = True
+
+
+class ProductVariantFactory(DjangoModelFactory):
+    """A ProductVariant with its own freshly-created Product by default.
+    `sku` is a plain sequence here for factory simplicity -- production
+    code always goes through ProductService for the real collision-safe
+    generation."""
+
+    class Meta:
+        model = ProductVariant
+
+    tenant = factory.SelfAttribute("product.tenant")
+    product = factory.SubFactory(ProductFactory)
+    name = "Standart"
+    sku = factory.Sequence(lambda n: f"{n:06d}")
+    code = ""
+    unit = "dona"
+    price_partner = Decimal("8000.00")
+    price_min = Decimal("10000.00")
+    price_recommended = Decimal("12000.00")
+    is_active = True

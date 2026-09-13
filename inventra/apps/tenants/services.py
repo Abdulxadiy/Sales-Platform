@@ -91,8 +91,13 @@ class TenantService:
             changed_by: User,
     ) -> Tenant:
         """
-        Replace a tenant's owner. Fires the current owner (demoting them to customer,
-        per the standard fire() flow) and hires the new owner.
+        Replace a tenant's owner. Fires the current owner via the standard
+        fire() flow -- their Employee record is deactivated and their
+        password is set unusable, but User.role stays "owner" for audit
+        purposes (Variant A). This is safe: PermissionService requires an
+        ACTIVE Employee record for the owner role, so the former owner
+        loses all permissions immediately despite the retained role label.
+        Then hires the new owner.
         Only platform_admin may call this.
         :param tenant:
         :param new_owner:

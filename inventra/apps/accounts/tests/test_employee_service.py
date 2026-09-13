@@ -277,18 +277,22 @@ class TestFire:
             EmployeeService.fire(target_user=customer, fired_by=platform_admin)
 
     def test_fire_preserves_history_and_tenant_on_user(self, platform_admin, tenant):
-        """fired user keeps tenant/username on the User row for audit purposes
-        (per roadmap 1.4), only role + password are reset."""
+        """fired user keeps tenant/username/role on the User row for audit
+        purposes (Variant A) -- only the Employee record and password are
+        touched. User.role is never used for access control; PermissionService
+        and friends gate exclusively on Employee.is_active, so retaining the
+        stale role here cannot grant the fired user anything."""
         target = StaffFactory(tenant=tenant, username="old_staff")
         EmployeeFactory(user=target, tenant=tenant, is_active=True)
 
         EmployeeService.fire(target_user=target, fired_by=platform_admin)
 
         target.refresh_from_db()
-        # tenant_id and username are intentionally NOT cleared by fire()
-        # — they stay on the row so historical Employee records still
-        # resolve to a meaningful "who/where" even after the person is
-        # no longer active there.
+        # tenant_id, username, and role are intentionally NOT cleared by
+        # fire() -- they stay on the row so historical Employee records
+        # still resolve to a meaningful "who/where/what" even after the
+        # person is no longer active there.
         assert target.tenant_id == tenant.id
         assert target.username == "old_staff"
-        assert target.role == "customer"
+        assert target.role == "staff"
+        assert target.has_usable_password() is False

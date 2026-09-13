@@ -17,14 +17,17 @@ tenant's data.
 
 Role behavior:
 - platform_admin: always allowed, every permission, any tenant.
-- owner: always allowed, every permission -- but ONLY within their own
-  tenant (Tenant.owner is a OneToOneField, so an owner structurally
-  can't act on a different tenant's data once the tenant-scoping
-  permission class is combined in; this service doesn't need to know
-  which tenant).
+- owner: allowed, every permission, but ONLY while they hold an ACTIVE
+  Employee record -- and ONLY within their own tenant (Tenant.owner is
+  a OneToOneField, so an owner structurally can't act on a different
+  tenant's data once the tenant-scoping permission class is combined
+  in; this service doesn't need to know which tenant). A former owner
+  replaced via TenantService.change_owner() keeps role="owner" on the
+  User row for audit purposes (fire() Variant A), but their Employee
+  record is is_active=False, so they are correctly denied here.
 - staff: allowed only if their current ACTIVE Employee record has the
   requested Permission attached.
-- customer (or no active employment at all): never allowed.
+- customer, or anyone with no active employment at all: never allowed.
 """
 from apps.accounts.models import Employee
 
@@ -41,12 +44,26 @@ class PermissionService:
         if user is None or not getattr(user, "is_authenticated", False):
             return False
 
-        if user.role in ("platform_admin", "owner"):
+        if user.role == "platform_admin":
             return True
 
-        if user.role != "staff":
+        if user.role not in ("owner", "staff"):
             # customer, or anything else with no employment concept
             return False
+
+        # Both owner and staff gate on an ACTIVE Employee record. Role
+        # alone is not enough: fire() (Variant A) intentionally leaves
+        # User.role untouched for audit purposes, so a former owner
+        # replaced via TenantService.change_owner() would otherwise keep
+        # role="owner" -- and therefore full permissions -- forever.
+        has_active_employment = Employee.objects.filter(
+            user=user, is_active=True
+        ).exists()
+        if not has_active_employment:
+            return False
+
+        if user.role == "owner":
+            return True
 
         category, _, short_codename = codename.partition(".")
         if not short_codename:

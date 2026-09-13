@@ -27,6 +27,8 @@ class TestPlatformAdminAndOwner:
 
     def test_owner_always_allowed(self):
         owner = OwnerFactory()
+        tenant = TenantFactory(owner=owner)
+        EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
         assert PermissionService.has_permission(owner, CODENAME) is True
 
     def test_owner_allowed_even_with_no_matching_grant_anywhere(self, some_permission):
@@ -34,7 +36,31 @@ class TestPlatformAdminAndOwner:
         # confirms this isn't accidentally falling through to a real
         # grant lookup that happens to match.
         owner = OwnerFactory()
+        tenant = TenantFactory(owner=owner)
+        EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
         assert PermissionService.has_permission(owner, "accounts.nonexistent_codename") is True
+
+    def test_owner_without_active_employee_record_denied(self):
+        # A bare OwnerFactory() with no Employee row at all -- e.g. an
+        # owner whose tenant creation partially failed, or any state
+        # where role="owner" was set without a matching employment.
+        owner = OwnerFactory()
+        assert PermissionService.has_permission(owner, CODENAME) is False
+
+    def test_former_owner_denied_after_change_owner(self):
+        # Regression test: TenantService.change_owner() fires the old
+        # owner via EmployeeService.fire(), which (Variant A) leaves
+        # User.role == "owner" untouched for audit purposes. Before the
+        # fix, has_permission() short-circuited on role alone and kept
+        # granting the former owner full access forever. It must now
+        # check for an ACTIVE Employee record too.
+        old_owner = OwnerFactory()
+        tenant = TenantFactory(owner=old_owner)
+        EmployeeFactory(
+            user=old_owner, tenant=tenant, position="Owner", is_active=False
+        )
+        assert old_owner.role == "owner"
+        assert PermissionService.has_permission(old_owner, CODENAME) is False
 
 
 class TestStaff:

@@ -105,6 +105,7 @@ class TenantFactory(DjangoModelFactory):
 
     class Meta:
         model = Tenant
+        skip_postgeneration_save = True
 
     name = factory.Sequence(lambda n: f"Tenant {n}")
     description = ""
@@ -118,7 +119,6 @@ class TenantFactory(DjangoModelFactory):
         if self.owner.tenant_id != self.id:
             self.owner.tenant = self
             self.owner.save(update_fields=["tenant"])
-
 
 class EmployeeFactory(DjangoModelFactory):
     """An Employee row. Defaults to a staff member freshly hired by a

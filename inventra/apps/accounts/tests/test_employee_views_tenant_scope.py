@@ -37,12 +37,16 @@ class TestHireAuthority:
 
         assert response.status_code == 201
 
-    def test_owner_cannot_hire_into_a_tenant_they_do_not_own(self, api_client, owner, tenant):
-        # `tenant` belongs to a DIFFERENT owner (the `owner` fixture is
-        # a bare user with no tenant of its own) -- this must be a 403,
-        # not a 400/404, since the requester is authenticated fine but
-        # has no authority over this specific tenant.
-        api_client.force_authenticate(user=owner)
+    def test_owner_cannot_hire_into_a_tenant_they_do_not_own(self, api_client, tenant):
+        # `tenant` (from conftest.py) is owned by ITS OWN `owner` fixture
+        # instance. To test cross-tenant denial we need a genuinely
+        # DIFFERENT owner who has no relationship to `tenant` at all --
+        # reusing the `owner` fixture here would hand the tenant's actual
+        # owner right back (tenant's fixture depends on owner, and pytest
+        # caches fixtures per test), which is why this test previously
+        # asserted a real owner gets 403 on their own tenant and failed.
+        other_owner = OwnerFactory()
+        api_client.force_authenticate(user=other_owner)
         target = UserFactory()
 
         response = api_client.post(

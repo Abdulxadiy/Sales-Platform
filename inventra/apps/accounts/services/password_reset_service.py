@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
 
+from apps.accounts.models import Employee
 from apps.accounts.services import login_throttle
 
 User = get_user_model()
@@ -107,8 +108,28 @@ def request_password_reset(email: str) -> tuple[bool, str]:
 
     user = User.objects.filter(email__iexact=email).first()
 
-    # Generic success response to avoid leaking registered emails
+    # Generic success response to avoid leaking registered emails.
+    #
+    # `user.role not in (...)` is effectively a no-op now that 'customer'
+    # has been removed from ROLE_CHOICES: every real Inventra User has
+    # role in this tuple, so this branch only ever actually fires on
+    # `user is None`. Kept as an explicit guard anyway (fail-loud) in
+    # case ROLE_CHOICES grows a new non-employable role later.
+    #
+    # The real modern security boundary is active employment: a fired
+    # staff/owner keeps their role on the User row for audit purposes
+    # (EmployeeService.fire(), Variant A), but their Employee record is
+    # is_active=False. Letting them reset their password would hand a
+    # fired account a usable password again, so they're denied here the
+    # same way PermissionService denies them everywhere else.
+    # platform_admin is exempt: those accounts are never tracked via
+    # Employee records (created through the Django shell only).
     if user is None or user.role not in ("staff", "owner", "platform_admin"):
+        return True, "sent"
+
+    if user.role != "platform_admin" and not Employee.objects.filter(
+        user=user, is_active=True
+    ).exists():
         return True, "sent"
 
     if is_in_cooldown(user.id):

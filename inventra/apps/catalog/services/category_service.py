@@ -4,6 +4,7 @@ owner-driven editing, and archiving. The 2-level depth cap lives here
 9-bosqich."""
 
 from django.db import transaction
+
 from apps.catalog.models import Category
 
 

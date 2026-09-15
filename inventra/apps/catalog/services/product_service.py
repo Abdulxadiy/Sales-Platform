@@ -5,7 +5,9 @@ Architectures/inventra-yol-xaritasi.md, 9-bosqich, for the full
 design rationale."""
 
 from decimal import Decimal
+
 from django.db import transaction
+
 from apps.catalog.models import Product, ProductVariant
 
 

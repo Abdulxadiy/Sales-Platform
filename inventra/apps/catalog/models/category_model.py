@@ -1,7 +1,6 @@
 """Category model -- a 2-level (parent/child) product taxonomy per tenant."""
 
 from django.db import models
-
 from apps.core.models import BaseModel
 
 
@@ -20,13 +19,6 @@ class Category(BaseModel):
     """
 
     name = models.CharField(max_length=150)
-
-    # Owner-facing short code, e.g. "32". System-assigned (next free
-    # sequential number for this tenant) on creation, but freely
-    # editable afterwards -- CategoryService.create() is the only
-    # place that generates it; CategoryService.update() lets the owner
-    # override it. ProductVariant.code is built from this value, so
-    # owners may want a recognizable numbering scheme.
     kod = models.CharField(max_length=20)
 
     parent = models.ForeignKey(

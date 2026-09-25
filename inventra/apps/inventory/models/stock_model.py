@@ -12,7 +12,7 @@ from apps.core.models import BaseModel
 
 class Stock(BaseModel):
     product_variant = models.OneToOneField(
-        "catalogue.ProductVariant", on_delete=models.CASCADE, related_name="stock"
+        "catalog.ProductVariant", on_delete=models.CASCADE, related_name="stock"
     )
     quantity = models.DecimalField(max_digits=14, decimal_places=3, default=Decimal('0'))
     last_cost_price = models.DecimalField(
@@ -22,7 +22,7 @@ class Stock(BaseModel):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(quantity__gt=0), name="stock_quantity_never_negative"
+                condition=models.Q(quantity__gte=0), name="stock_quantity_never_negative"
             ),
         ]
 

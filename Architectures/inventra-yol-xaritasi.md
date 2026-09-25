@@ -61,6 +61,13 @@
 |**Media saqlash (9-bosqich)**|MinIO — o'z-o'zi joylashtiriladigan, S3-protokoliga mos, Docker Compose'ga konteyner sifatida qo'shiladi (12-bosqichga eslatma qo'yildi). ✅ Hozircha `catalog` lokal diskka yozadi (`MEDIA_ROOT`), `Pillow` qo'shildi|
 |**`catalog` routing (2026-09)**|`platform_admin` `catalog` endpointlariga **umuman kira olmaydi** (403) — owner/staff'ning kundalik ishi, `platform_admin` faqat owner'larni boshqaradi. Amalga oshirish: `CatalogAPIView` bazaviy klassi (`api/v1/catalog/views/_base.py`) buni aniq tekshiradi, chunki `PermissionService` platform_admin'ga boshqa xususiyatlar uchun har doim `True` qaytaradi|
 |**`EmployeeFactory` test-bugi (2026-09)**|`EmployeeFactory` `Employee` qatorini yaratardi-yu, `User.tenant`ni yangilamasdi (real `hire()` buni ham qiladi) — `TenantContextMixin`ga tayangan har qanday view uchun staff-testlar noto'g'ri 403 berardi. Tuzatildi: `sync_user_tenant` post_generation hook (`tests/factories.py`)|
+|**POS 1-narx galochkasi (`use_partner_price`) (9-bosqich)**|Sotuv sahifasida galochka yoqilganda barcha tovarlar faqat `price_partner` (1-narx) bo'yicha ko'rinadi va hisoblanadi. Kassir narxni erkin o'zgartira oladi. Chekda `is_partner_sale=True` va har bir tovar satrida sotilgan narx bilan o'sha paytdagi asl 1-narx audit uchun saqlanadi|
+|**Kontragentlar (`Counterparty`) (9-bosqich)**|1-narxda tovar oluvchilar ro'yxati (do'konlar, tanishlar, xodimlar). Ruxsati bor staff ham qo'sha oladi. Telefon raqami orqali tizimda foydalanuvchi va uning faol `Tenant`i avtomatik qidirilib bog'lanadi (`target_tenant` nullable). Agar tenanti bo'lsa — B2B tovar o'tkazish xabarnomasi o'sha tenantning **OWNER**iga boradi|
+|**B2B Do'konlararo tovar o'tkazish (9-bosqich)**|Tizimdagi boshqa do'konga tovar sotilganda: jo'natuvchi omboridan tovarlar o'sha zahoti chiqib ketadi (`direction='out'`). Qabul qiluvchi do'kon egasiga in-app va Telegram bot orqali bildirishnoma boradi. Statuslar: `pending` (kutilmoqda), `accepted` (qabul qilindi), `rejected` (rad etildi). 1 hafta javob berilmasa — avtomatik `rejected` bo'ladi|
+|**B2B Rad etilganda ombor xatti-harakati (9-bosqich)**|Qabul qiluvchi tovarlarni rad etsa (`rejected` yoki 1 hafta muddati o'tib ketganda), tovarlar jo'natuvchining omboriga **avtomatik qaytmaydi** — chunki tovarlar jismonan chiqarilgan. Faqat status `rejected` deb belgilanadi (kerak bo'lsa keyin jismoniy qaytarish alohida rasmiylashtiriladi)|
+|**B2B Qabul qilinganda katalog avto-yaratilishi (9-bosqich)**|Qabul qiluvchi do'konda tovar mavjud bo'lmasa, qabul qilish paytida uning katalogida `Category`, `Product`, `ProductVariant` avtomatik yaratiladi. Kirim tannarxi (`cost_price`) A do'kon sotgan 1-narx bo'ladi, sotish narxlarini B do'kon egasi keyin o'zi belgilaydi. **`SKU` qabul qiluvchining o'z tartibi bo'yicha yangi beriladi, `code` esa o'tmaydi (bo'sh qoladi — chunki narx hali belgilanmagan)**|
+|**Qarz / Nasiya va 10 mln ogohlantirish (9-bosqich)**|Kontragentlarga berilgan nasiya qarz sifatida hisoblanadi (`debt_balance`). Har safar qarz ko'payib, har 10 mln so'mlik chegaradan oshganda (10, 20, 30...) do'kon egasiga (owner) in-app va Telegram orqali ogohlantirish yuboriladi|
+
 
 ### 0.3. Hozirgi kod holati (2026-09, yangilangan)
 
@@ -80,22 +87,22 @@ Repo: `Sales-Platform/` — `Inventra/` (Django 6 + DRF), `telegram_bot_sms/` (a
 
 _(Eski customer OTP marshrutlari — `auth/register/*`, `auth/login/*` — **butunlay olib tashlangan**: `register.py`, customer `login.py` qismi, `customer_login_throttle.py` va ularning testlari (`test_login_views.py`, `test_customer_login_throttle.py`) endi repo'da yo'q, 2026-09.)_ | GET/POST | `tenants/` | faqat `platform_admin` | | GET/PATCH | `tenants/<pk>/` | rolga qarab serializer; staff PATCH 403 | | POST | `tenants/<pk>/change-owner/` | `platform_admin` | | POST | `tenants/<pk>/activate/` · `deactivate/` | owner (o'z) yoki `platform_admin` | | POST | `tenants/<tenant_id>/employees/hire/` · `fire/` | owner (o'z tenant) yoki `platform_admin`; **hire endi `permission_ids`ni servisga to'g'ri uzatadi ✅** |
 
-**Servislar:** `EmployeeService`, `TenantService`, `PermissionService` **✅ yangi**, `otp_services` (Redis TTL/cooldown/attempts), `login_throttle` (admin login), `customer_login_throttle` **(yangi, lekin Shop'ga ko'chirilishi rejalashtirilgan)**, `phone_utils.mask_phone_number`, `tg_bot.services.send_telegram_message`.
+**Servislar:** `EmployeeService`, `TenantService`, `PermissionService` **✅**, `StockService` **✅ yangi**, `CategoryService`/`ProductService` **✅**, `otp_services` (Redis TTL/cooldown/attempts), `login_throttle` (admin login), `phone_utils.mask_phone_number`, `tg_bot.services.send_telegram_message`.
 
-**Ruxsat qatlami:** `apps/permissions.Permission` (custom model, `category`+`codename`) ✅, `Employee.permissions` shu modelga M2M ✅, `PermissionService.has_permission(user, "category.codename")` ✅, `HasEmployeePermission` DRF klassi ✅ — **5-bosqich to'liq bajarildi**, va endi **`catalog` orqali real view'larga ham ulandi** (9-bosqich, 1-band — birinchi ishlatilishi).
+**Ruxsat qatlami:** `apps/permissions.Permission` (custom model, `category`+`codename`) ✅, `Employee.permissions` shu modelga M2M ✅, `PermissionService.has_permission(user, "category.codename")` ✅, `HasEmployeePermission` DRF klassi ✅ — **5-bosqich to'liq bajarildi**, va endi **`catalog` (8 ta) hamda `inventory` (3 ta) orqali real view'larga ham ulandi** (9-bosqich, 1-2 bandlar).
 
-**JWT:** `issue_tokens` — token ichida `role` va `tenant_id` claim **bor** (`tenant_id` faqat `staff`/`owner`da, aks holda `null`) — **6a ✅ YOPILDI**. _(Eslatma: bu qator avval eskirib qolgan edi — 6-bosqichning o'zida 6a allaqachon `[x]` edi, shu yerda yangilanmagan edi.)_
+**JWT:** `issue_tokens` — token ichida `role` va `tenant_id` claim **bor** (`tenant_id` faqat `staff`/`owner`da, aks holda `null`) — **6a ✅ YOPILDI**.
 
 **Hire API teshigi:** ✅ **YOPILDI** — `EmployeeHireView` endi `permission_ids`ni `EmployeeService.hire(..., permissions=)`ga uzatadi.
 
 **Hali yo'q / ochiq:**
 
-- `inventory`/`sales`/`payments`/`analytics` (9-bosqich, `catalog`dan keyingi qismlari) — kod yo'q
+- `sales`/`payments`/`analytics` (9-bosqich, `catalog` va `inventory`dan keyingi qismlari) — kod yo'q
 - Shop mikroservisining o'zi (hali loyihalanmoqda, `shop-yol-xaritasi.md`ga qarang)
 - Celery, nginx, MinIO (object storage — `catalog` hozircha lokal diskka yozadi, MinIO ulanganda faqat `STORAGES` o'zgaradi)
 - Django admin UI (`config/urls.py`da faqat `api/v1/`)
 
-**Testlar:** `EmployeeService`, `TenantService`, OTP Redis, admin-login (`test_admin_login_views.py`), unban (`test_unban_view.py`), `PermissionService`/`HasEmployeePermission`/hire-fix (`test_permission_service.py`, `test_has_employee_permission.py`, `test_employee_hire_view.py`), JWT claim (`test_jwt_claims.py`), parol tiklash (`test_password_reset.py`, 22+ test), tenant-kontekst izolatsiyasi (`test_employee_views_tenant_scope.py`, yangi — 8-bosqich). Eski customer login/throttle testlari (`test_login_views.py`, `test_customer_login_throttle.py`) — **butunlay olib tashlangan** (Shop'da qayta yoziladi).
+**Testlar:** `EmployeeService`, `TenantService`, OTP Redis, admin-login (`test_admin_login_views.py`), unban (`test_unban_view.py`), `PermissionService`/`HasEmployeePermission`/hire-fix, JWT claim (`test_jwt_claims.py`), parol tiklash (`test_password_reset.py`, 22+ test), tenant-kontekst izolatsiyasi (`test_employee_views_tenant_scope.py`), `catalog` testlari (31 test), `inventory` testlari (20 test) — **barchasi 155/155 o'tdi**. Eski customer login/throttle testlari — olib tashlangan.
 
 ---
 
@@ -192,6 +199,43 @@ O'chirish: hard-delete yo'q, `is_active=False`.
 - Hech kim (owner ham) boshqasining parolini to'g'ridan-to'g'ri qo'ya olmaydi
 - **Kirish** (allaqachon kodlangan, 6b): mavjud username+password + Telegram OTP. Bu — "birinchi marta qo'yish" emas, 2FA login
 - **Ochiq qoldi:** aniq endpointlar (`request-email-code`, `verify-and-set-password` kabi), email yuborish infratuzilmasi (`django.core.mail`, SMTP sozlamalari `.env`ga) — bular hali loyihalanmagan, keyingi ish
+
+### 1.7. Sotuv (POS), 1-narx (Partner price) va Galochka
+
+- **Galochka mantiqi (`use_partner_price`):**
+  - Galochka o'chiq paytda: mahsulot qidirilganda va ko'rsatilganda 2 ta narx ko'rinadi (`price_min` va `price_recommended`).
+  - Galochka yoqilgan paytda: barcha mahsulotlar qidiruvda ham, savatda ham **faqat 1-narx (`price_partner`)** bo'yicha ko'rinadi va hisob-kitob qilinadi.
+  - Kassir narxni qo'lda erkin o'zgartira oladi (yuqori yoki past qilib).
+  - **Audit:** Chekda (`Sale.is_partner_sale=True`), tovar satrida esa sotilgan amaldagi narx (`unit_price`) bilan birga tovarning o'sha paytdagi asl 1-narxi (`original_partner_price`) saqlanadi.
+
+### 1.8. Kontragentlar (`Counterparty`) va Do'konlararo B2B Tovar O'tkazish
+
+- **Kontragentlar ro'yxati:**
+  - `owner` va tegishli ruxsatga ega `staff` yangi kontragent qo'sha oladi.
+  - Ma'lumotlari: `name`, `phone_number`, `target_tenant` (nullable FK), `debt_balance`, `note`.
+  - **Avtomatik Tenant aniqlash:** Kontragent kiritilganda uning telefon raqami bo'yicha tizimda `User` va uning faol `Employee` yozuvi qidiriladi. Agar u biror do'konda ishlasa yoki do'kon egasi (`owner`) bo'lsa, o'sha do'kon `target_tenant` sifatida avtomatik bog'lanadi.
+- **B2B Sotuv / O'tkazish oqimi:**
+  - Agar tanlangan kontragentda `target_tenant` mavjud bo'lsa, bu sotuv **B2B transfer** sifatida ro'yxatga olinadi.
+  - **Ombor harakati:** Jo'natuvchi A do'kon omboridan tovarlar o'sha zahoti chiqariladi (`direction='out'`, `type='sotuv'`).
+  - **Bildirishnoma:** B do'kon egasiga (har doim **OWNER**ga, hatto kontragent xodim bo'lsa ham) tizim ichidagi bildirishnoma (in-app) va Telegram bot orqali havolali xabar yuboriladi: *"Sizga [A Do'kon] dan [Summa] so'mlik tovarlar yuborildi. Qabul qilasizmi?"*.
+  - **Statuslar:** `pending` (kutilmoqda) → `accepted` (qabul qilindi) / `rejected` (rad etildi).
+  - **1 haftalik avtomatik bekor bo'lish:** 7 kun davomida javob berilmasa, transfer avtomatik tarzda `rejected` deb belgilanadi.
+- **Qabul qilinganda katalog yaratilishi:**
+  - B do'kon qabul qilganda tovarlar uning omboriga `kirim` bo'ladi.
+  - Agar bu tovar B do'kon katalogida mavjud bo'lmasa, B do'konda avtomatik tarzda `Category`, `Product` va `ProductVariant` yaratiladi.
+  - **Tannarx:** A do'kon sotgan 1-narx B do'kon uchun kirim tannarxi (`cost_price` / `last_cost_price`) bo'ladi.
+  - **Sotish narxlari:** B do'kon egasi keyinchalik o'zi belgilashi uchun ochiq qoldiriladi.
+  - **`SKU` va `code` qoidalari:** B do'kon o'zining navbatdagi `SKU` tartibi bo'yicha yangi `sku` oladi (A do'konning SKUsi o'tmaydi). `code` esa umuman o'tmaydi (bo'sh qoladi), chunki B do'kon hali o'zining sotish narxini va kategoriya kodini tasdiqlamagan.
+- **Rad etilganda ombor xatti-harakati:**
+  - Agar B do'kon rad etsa yoki 1 hafta o'tib eskirsa, tovarlar A do'kon omboriga **avtomatik qaytmaydi**, chunki tovar allaqachon jismonan chiqarilgan. Tarixda shunchaki `rejected` bo'lib qoladi. (Zarurat tug'ilsa, jismonan qaytib kelgan tovarlar A do'konda alohida qaytarish hujjati orqali kirim qilinadi).
+
+### 1.9. Qarz (Nasiya) va 10 mln chegarasidagi ogohlantirishlar
+
+- B2B va tanishlarga qilingan sotuvlar ko'pincha **qarz (nasiya)** sifatida rasmiylashtiriladi.
+- Har bir sotuvda to'lov turi (`cash`, `card`, `debt`) belgilanadi. Nasiya bo'lganda kontragentning `debt_balance` maydoni oshadi.
+- **10 millionlik chegara ogohlantirishi:**
+  - Qarz miqdori har safar yangi 10 millionlik chegarani bosib o'tganda (10 mln, 20 mln, 30 mln va h.k.), do'kon egasiga (owner) in-app va Telegram orqali ogohlantirish yuboriladi: *"Diqqat! [Kontragent nomi] ning qarzi [Qarz miqdori] so'mga yetdi!"*.
+  - Bu xavfni o'z vaqtida nazorat qilish va hisob-kitobni talab qilish imkonini beradi.
 
 ---
 
@@ -385,11 +429,127 @@ Tartib:
     
     **Testlar** — `apps/catalog/tests/{test_category_service,test_product_service,test_catalog_api}.py`: kod/sku generatsiyasi, chuqurlik cheklovi, tenant izolatsiyasi, ruxsat tekshiruvi, platform_admin bloklanishi, kaskad arxivlash — **hammasi o'tdi**.
     
-    **Yo'lda topilgan va tuzatilgan test-infratuzilma xatosi:** `EmployeeFactory` `Employee` qatorini yaratardi, lekin `User.tenant`ni yangilamasdi (real `EmployeeService.hire()` buni ham qiladi) — natijada `TenantContextMixin`ga tayangan istalgan view uchun staff-testlar noto'g'ri 403 berardi. `EmployeeFactory`ga `sync_user_tenant` post_generation hook qo'shildi (`tests/factories.py`) — bu kelajakdagi barcha app'lar uchun ham amal qiladi.
+2. ✅ **`inventory` — TO'LIQ BAJARILDI (2026-09), 20/20 test o'tdi.**
+
+    **`Stock`** (`BaseModel`dan meros) — `apps/inventory/models/stock_model.py`:
+    - `product_variant` (OneToOneField `catalog.ProductVariant`, related_name="stock")
+    - `quantity` (DecimalField, max_digits=14, decimal_places=3, default=0, check constraint: `quantity >= 0`)
+    - `last_cost_price` (DecimalField, max_digits=12, decimal_places=2, null=True, blank=True) — oxirgi kirim narxi
+    - Lazily yaratiladi (`StockService` birinchi harakatda ochadi, katalogda yaratilmaydi)
+
+    **`StockMovement`** (`BaseModel`) — `apps/inventory/models/stock_movement_model.py`:
+    - `product_variant` (FK `catalog.ProductVariant`, on_delete=PROTECT)
+    - `type` (`kirim`, `sotuv`, `mijoz_qaytardi`, `yetkazib_beruvchiga_qaytarish`, `isrofgarchilik`, `tuzatish`)
+    - `direction` (`in`, `out`)
+    - `quantity` (DecimalField, check constraint: `quantity > 0`)
+    - `cost_price` (DecimalField, faqat kirim uchun)
+    - `note` (TextField, izoh)
+    - `created_by` (FK `accounts.User`, on_delete=PROTECT)
+    - Har doim audit saqlanadi, o'zgarmas (immutable)
+
+    **`StockService`** — `apps/inventory/services/stock_service.py`:
+    - `intake()` — kirim (tannarx bilan), oxirgi tannarxni yangilaydi
+    - `customer_return()` — mijoz qaytargan tovar (in)
+    - `supplier_return()` — ta'minotchiga qaytarish (out)
+    - `write_off()` — isrofgarchilik/yaroqsiz (out)
+    - `adjust()` — inventarizatsiya tuzatishi (in/out ixtiyoriy)
+    - Race-condition lardan himoya: `select_for_update()` va atomik tranzaksiya
+    - Salbiy qoldiqqa tushishga yo'l qo'yilmaydi (`StockServiceError`)
+
+    **Ruxsatlar** — `apps/permissions.Permission`ga data-migration orqali kiritildi (`0002_seed_permissions.py`):
+    - `view_stock` — qoldiq va harakatlar tarixini ko'rish
+    - `add_stock_intake` — kirim qilish (tannarx ko'ringani sababli alohida ruxsat)
+    - `adjust_stock` — tuzatish, qaytarish, isrofgarchilik
+
+    **API** — `api/v1/inventory/` (`serializers.py`, `urls.py`, `views/`):
+    - `GET /api/v1/inventory/stock/` — barcha variantlar qoldig'i
+    - `GET /api/v1/inventory/stock/<variant_id>/` — bitta variant qoldig'i (yo'q bo'lsa 0.000 qaytadi)
+    - `GET /api/v1/inventory/movements/` — harakatlar tarixi (`?product_variant_id=` filter bilan)
+    - `POST /api/v1/inventory/{intake,adjust,customer-return,supplier-return,write-off}/` — 5 ta harakat amali
+    - Baza: `InventoryAPIView` (`OwnerStaffOnlyAPIView`dan meros) — `platform_admin` bloklanadi
+    - Serializer darajasida Tenant Izolatsiyasi: `_BaseMovementInputSerializer` kiritilgan `product_variant` o'z tenantiga tegishli ekanligini tekshiradi
+
+    **Testlar** — `apps/inventory/tests/{test_stock_service,test_inventory_api}.py`:
+    - 20 ta test (intake, tannarx yangilanishi, salbiy qoldiq bloklanishi, ruxsatlar bo'linishi, serializer tenant izolatsiyasi, platform_admin bloklanishi) — barchasi o'tdi.
     
-2. [ ] `inventory` — `Stock`, `StockMovement` (har o'zgarish alohida audit qatori — do'konda **ichki sotilgan** tovar shu yerdan ayiriladi); **`cost_price` shu yerda loyihalanadi**
-    
-3. [ ] `sales` — Inventra ichidagi POS-sotuv: kunlik sotilgan tovarni ombordan ayirish, hisob-kitob. **`Order` (Shop'dan kelgan buyurtma) bilan aralashtirilmaydi** — ular butunlay boshqa oqim (`shop-yol-xaritasi.md`ga qarang)
+3. [ ] `sales` — Inventra ichidagi POS-sotuv, 1-narx galochkasi, Kontragentlar va Do'konlararo B2B tovar o'tkazish. **`Order` (Shop'dan kelgan xaridor buyurtmasi) bilan aralashtirilmaydi** — bu do'konning ichki kassa va B2B savdosi.
+
+    **Modellar:**
+    - **`Counterparty`** (`BaseModel`dan meros, `apps/sales/models/counterparty_model.py`):
+      - `name` (Char, ism yoki do'kon nomi)
+      - `phone_number` (Char, indekslangan)
+      - `target_tenant` (FK `tenants.Tenant`, nullable) — telefon raqami orqali tizimda topilgan do'kon
+      - `debt_balance` (DecimalField, max_digits=14, decimal_places=2, default=0) — joriy qarz
+      - `last_notified_debt_step` (IntegerField, default=0) — oxirgi marta 10 mlnlik ogohlantirish yuborilgan qadam (1=10mln, 2=20mln...)
+      - `note` (TextField, izoh)
+      - `is_active` (Boolean, arxivlash uchun)
+    - **`Sale`** (`BaseModel`, `apps/sales/models/sale_model.py`):
+      - `receipt_number` (Char, tenant ichida unikal, avtomatik `POS-YYYYMMDD-XXXX`)
+      - `sold_by` (FK `accounts.User`) — sotgan xodim/kassir
+      - `counterparty` (FK `Counterparty`, nullable) — agar ro'yxatdagi odamga sotilgan bo'lsa
+      - `is_partner_sale` (Boolean, default=False) — 1-narx galochkasi yoqilgan holda sotilgani
+      - `total_amount` (DecimalField, umumiy summa)
+      - `discount_amount` (DecimalField, default=0)
+      - `payment_type` (Choice: `cash`, `card`, `debt`, `mixed`)
+      - `status` (Choice: `completed`, `voided`, `b2b_pending`, `b2b_accepted`, `b2b_rejected`)
+      - `b2b_target_tenant` (FK `tenants.Tenant`, nullable) — B2B bo'lsa, qabul qiluvchi tenant
+      - `b2b_expires_at` (DateTimeField, nullable) — yaratilgandan 7 kun keyingi vaqt
+      - `voided_at`, `voided_by`, `void_reason` (sotuv bekor qilinganda audit uchun)
+    - **`SaleItem`** (`BaseModel`, `apps/sales/models/sale_item_model.py`):
+      - `sale` (FK `Sale`, related_name="items")
+      - `product_variant` (FK `catalog.ProductVariant`, on_delete=PROTECT)
+      - `quantity` (DecimalField, max_digits=14, decimal_places=3, check: > 0)
+      - `unit_price` (DecimalField, sotilgan amaldagi narx)
+      - `cost_price` (DecimalField, sotilgan paytdagi variant tannarxi — foydani hisoblash uchun)
+      - `original_partner_price` (DecimalField, null=True) — sotilgan paytdagi asl 1-narx
+      - `total_price` (DecimalField, quantity * unit_price)
+    - **`Notification`** (`BaseModel`, `apps/sales/models/notification_model.py`):
+      - `tenant` (FK `tenants.Tenant`) — qaysi do'konga tegishli
+      - `recipient` (FK `accounts.User`) — xabarnoma kimga
+      - `type` (Choice: `b2b_transfer_request`, `debt_threshold_warning`, `b2b_transfer_accepted`, `b2b_transfer_rejected`)
+      - `title`, `message`, `link` (batafsil ma'lumot havolasi)
+      - `is_read` (Boolean, default=False)
+
+    **Servislar:**
+    - **`SaleService`** (`apps/sales/services/sale_service.py`):
+      - `create_sale()`: savatdagi tovarlarni tekshiradi, ombordan tovarlarni chiqaradi (`StockService._apply_movement(type='sotuv', direction='out')`), to'lov turi `debt` bo'lsa `debt_balance`ni oshiradi va 10 mln chegarasini tekshiradi.
+      - B2B holatida (`counterparty.target_tenant` mavjud bo'lsa): status `b2b_pending` bo'ladi, 7 kunlik expiry qo'yiladi va qabul qiluvchi do'kon egasiga (owner) in-app + Telegram xabarnoma yuboriladi.
+      - `void_sale()`: sotuvni bekor qilish (faqat ruxsati bor xodim/owner), tovarlarni omborga qaytaradi (`StockService.customer_return()`), qarz bo'lsa kontragent balansidan chegiradi.
+    - **`B2BTransferService`** (`apps/sales/services/b2b_transfer_service.py`):
+      - `accept_transfer(sale_id, accepting_user)`: qabul qiluvchi do'kon owneri tasdiqlaydi. Tovar uning katalogida bo'lmasa avtomatik `Category`, `Product`, `ProductVariant` yaratiladi (yangi SKU bilan, kodsiz). Qabul qiluvchi do'kon omboriga `StockService.intake(cost_price=item.unit_price)` orqali kirim qilinadi. Status `b2b_accepted`ga aylanadi va A do'konga bildirishnoma boradi.
+      - `reject_transfer(sale_id, rejecting_user, reason)`: status `b2b_rejected`ga o'tadi. A do'kon omboriga tovarlar avtomatik qaytmaydi. A do'kon egasiga rad etilgani haqida bildirishnoma boradi.
+      - `auto_expire_transfers()`: 7 kundan oshgan kutilayotgan transferlarni avtomatik `b2b_rejected` qiladi (Celery yoki cron vazifasi).
+    - **`CounterpartyService`** (`apps/sales/services/counterparty_service.py`):
+      - Kontragent qo'shish / tahrirlash. Telefon raqami bo'yicha `User` → `Employee(is_active=True).tenant` yoki `Tenant(owner=user)` orqali `target_tenant`ni avtomatik topib biriktiradi.
+    - **`DebtService`** (`apps/sales/services/debt_service.py`):
+      - Qarz balansi hisobi. Qarz har 10 mln so'mdan oshganda (`debt_balance // 10_000_000 > last_notified_debt_step`) do'kon egasiga in-app va Telegram ogohlantirish yuborish.
+
+    **Ruxsatlar** (Data-migration orqali `apps.permissions.Permission`ga kiritiladi):
+    - `sales.view_sale` — sotuvlar va cheklar tarixini ko'rish
+    - `sales.add_sale` — yangi POS sotuv amalga oshirish
+    - `sales.void_sale` — sotuvni bekor qilish (odatiy sotuvchiga berilmasligi mumkin)
+    - `sales.manage_counterparty` — kontragentlar ro'yxatini boshqarish
+    - `sales.manage_b2b` — B2B tovar o'tkazmalarini qabul qilish yoki rad etish (faqat ownerga)
+
+    **API** — `api/v1/sales/`:
+    - `POST /api/v1/sales/` — yangi sotuv (POS kassa)
+    - `GET /api/v1/sales/` — sotuvlar ro'yxati (filtrlash: sana, kassir, kontragent, status)
+    - `GET /api/v1/sales/<id>/` — chek tafsilotlari
+    - `POST /api/v1/sales/<id>/void/` — chekni bekor qilish
+    - `GET/POST /api/v1/sales/counterparties/` — kontragentlar ro'yxati va qo'shish
+    - `GET /api/v1/sales/b2b/inbox/` — qabul qilinishi kutilayotgan B2B transferlar
+    - `POST /api/v1/sales/b2b/<sale_id>/accept/` — transferni qabul qilish
+    - `POST /api/v1/sales/b2b/<sale_id>/reject/` — transferni rad etish
+    - `GET /api/v1/sales/notifications/` — in-app bildirishnomalar ro'yxati
+    - `POST /api/v1/sales/notifications/<id>/read/` — o'qildi deb belgilash
+
+    **Testlar** — `apps/sales/tests/`:
+    - POS sotuvda ombordan tovar kamayishi
+    - 1-narx galochkasi bilan sotuv va chek auditi
+    - Nasiya sotuvda qarz hisoblanishi va 10 mln chegarasida notification ketishi
+    - B2B transferda qabul qiluvchi katalogida tovar avto-yaratilishi, kirim bo'lishi
+    - B2B transfer rad etilganda A do'kon omboriga tovar qaytmasligi
+    - 7 kunlik avto-bekor bo'lish testi
     
 4. [ ] `payments` — `Payment` (ichki POS-sotuv uchun)
     
@@ -485,15 +645,21 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 |F|~~Ban qilingan admin userni kim/qanday ochadi~~|✅ **YOPILDI** — unban endpoint yozildi|
 |**G**|~~`fire()`dan keyin `User.role` nima bo'ladi~~|✅ **YOPILDI** — Variant A: role saqlanadi, password yaroqsiz qilinadi, faol employment yopiladi|
 |**H**|~~`EmployeeService.hire()`ning "to'siq" mantig'i~~|✅ **YOPILDI** — faol employment bo'lsa EmployeeServiceError chiqariladi (avval bo'shatish shart)|
+|**I**|~~POS sotuv: 1-narx galochkasi, narxlar ko'rinishi va audit~~|✅ **YOPILDI** — `is_partner_sale`, `original_partner_price` bilan to'liq audit. Galochka yoqilganda barcha mahsulotlar faqat `price_partner` narxida ko'rinadi. Kassir narxni erkin o'zgartira oladi|
+|**J**|~~Kontragentlar ro'yxati (`Counterparty`): kim qo'sha oladi, maydonlar~~|✅ **YOPILDI** — ruxsati bor `staff` ham qo'sha oladi. `target_tenant` telefon raqami orqali avtomatik topiladi. Tenantga tegishlilik: faol `Employee(is_active=True).tenant` yoki `Tenant(owner=user)`|
+|**K**|~~B2B tovar o'tkazish: rad etilganda ombor taqdiri~~|✅ **YOPILDI** — jo'natuvchi omboridan tovar ZAHOT chiqariladi. Qabul qiluvchi rad etsa yoki 1 hafta muddati o'tsa, tovar A omboriga AVTOMATIK qaytmaydi — shunchaki `rejected` deb belgilanadi|
+|**L**|~~B2B qabul qilinganda B do'koniga katalog yaratilishi~~|✅ **YOPILDI** — avtomatik `Category`+`Product`+`ProductVariant` yaratiladi. `cost_price=A_dan_sotilgan_narx`, sotish narxlari B o'zi keyinchalik belgilaydi. SKU — B do'konning o'z tartibi (A SKUsi o'tmaydi), `code` bo'sh qoladi|
+|**M**|~~Nasiya qarz va 10 mln chegara ogohlantirishi~~|✅ **YOPILDI** — `debt_balance` ortib boradi. Har yangi 10 mln chegarasida (`debt_balance // 10_000_000 > last_notified_debt_step`) owner ga in-app + Telegram ogohlantirish yuboriladi|
+|**N**|~~Bildirishnoma (Notification) tizimi: in-app va Telegram~~|✅ **YOPILDI** — `Notification` modeli bor, in-app (tizim ichida ko'rish + `is_read`), Telegram bot orqali link bilan habar — ikkisi bir vaqtda. B2B kelganda, rad etilganda, qarz chegarasida|
 
 ---
 
 ## 6. Keyingi band (shu faylga qarab ishni oching)
 
-**6a, 8-bosqich, 9-bosqich/1 (`catalog`) — barchasi to'liq yopildi (135/135 test o'tdi, 2026-09). Endi navbat — `inventory`.**
+**6a, 8-bosqich, 9-bosqich/1 (`catalog`), 9-bosqich/2 (`inventory`) — barchasi to'liq yopildi (155/155 test o'tdi, 2026-09). Endi navbat — `9.3 sales` (POS, B2B, Kontragentlar, Qarz).**
 
 Ketma-ketlik (qolgani):
 
-`9.2 inventory (Stock/StockMovement — catalog'dan keyingi to'g'ridan-to'g'ri davomi, shu yerda cost_price ham hal qilinadi)` → `9.3 sales` → `9.4 payments` → `9.5 analytics` → `9.6 top-level services/ (StockService, PricingService)` → `Shop` (alohida, `shop-yol-xaritasi.md`) → `12-bosqich`ni to'ldirish (shop, celery-worker, nginx, **minio**) → Celery → frontend.
+`9.3 sales (POS-kassa, 1-narx galochkasi, Counterparty, B2B inter-tenant transfer, nasiya/qarz, Notification)` → `9.4 payments` → `9.5 analytics` → `9.6 top-level services/ (PricingService)` → `Shop` (alohida, `shop-yol-xaritasi.md`) → `12-bosqich`ni to'ldirish (shop, celery-worker, nginx, **minio**) → Celery → frontend.
 
-A—H bandlari (5-bo'lim) — barchasi yopilgan, blokirovka qilmaydi.
+A—N bandlari (5-bo'lim) — barchasi yopilgan, blokirovka qilmaydi.

@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.tg_bot',
     'apps.permissions',
-    'apps.catalog'
+    'apps.catalog',
+    'apps.inventory',
 ]
 
 MIDDLEWARE = [
@@ -154,3 +155,12 @@ EMAIL_BACKEND = os.getenv(
 )
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@inventra.uz")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+# Media (catalog product/variant images -- 9-bosqich).
+# MinIO isn't in docker-compose yet (12-bosqich, still open in the
+# roadmap) -- until then this uses Django's default local
+# FileSystemStorage. Switching to MinIO/S3 later is a STORAGES-only
+# change (django-storages' S3Boto3Storage), no model/migration change
+# needed on the catalog side.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"

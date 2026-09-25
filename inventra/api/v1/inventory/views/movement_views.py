@@ -44,7 +44,10 @@ class _BaseMovementCreateView(InventoryAPIView):
     service_method_name = None
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(
+            data=request.data,
+            context={"tenant": self.tenant, "request": request},
+        )
         serializer.is_valid(raise_exception=True)
 
         service_method = getattr(StockService, self.service_method_name)

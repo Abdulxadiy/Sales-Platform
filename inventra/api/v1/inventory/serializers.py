@@ -25,36 +25,49 @@ class StockMovementOutputSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class IntakeCreateSerializer(serializers.Serializer):
-    """POST body for StockService.intake() -- the only movement type
-    that requires cost_price."""
+class _BaseMovementInputSerializer(serializers.Serializer):
+    """Base validator for stock movements enforcing tenant isolation.
+
+    Ensures that the incoming product_variant strictly belongs to the acting
+    tenant passed in the serializer context.
+    """
 
     product_variant_id = serializers.PrimaryKeyRelatedField(
         queryset=ProductVariant.objects.all(), source="product_variant"
     )
+
+    def validate_product_variant_id(self, value):
+        """Validate that the variant belongs to the acting tenant."""
+        tenant = self.context.get("tenant")
+        if tenant and value.tenant_id != tenant.id:
+            raise serializers.ValidationError(
+                "Product variant does not belong to your tenant."
+            )
+        return value
+
+
+class IntakeCreateSerializer(_BaseMovementInputSerializer):
+    """POST body for StockService.intake() -- the only movement type
+    that requires cost_price."""
+
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     cost_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class SimpleMovementCreateSerializer(serializers.Serializer):
+class SimpleMovementCreateSerializer(_BaseMovementInputSerializer):
     """POST body shared by customer_return / supplier_return / write_off
     -- no cost_price, direction is fixed by the endpoint itself."""
 
-    product_variant_id = serializers.PrimaryKeyRelatedField(
-        queryset=ProductVariant.objects.all(), source="product_variant"
-    )
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class AdjustCreateSerializer(serializers.Serializer):
+class AdjustCreateSerializer(_BaseMovementInputSerializer):
     """POST body for StockService.adjust() -- the one type where the
     caller must say which way the correction goes."""
 
-    product_variant_id = serializers.PrimaryKeyRelatedField(
-        queryset=ProductVariant.objects.all(), source="product_variant"
-    )
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     direction = serializers.ChoiceField(choices=StockMovement.DIRECTION_CHOICES)
     note = serializers.CharField(required=False, allow_blank=True, default="")
+

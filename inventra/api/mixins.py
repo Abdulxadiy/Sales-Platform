@@ -21,6 +21,7 @@ Design background (see Architectures/inventra-yol-xaritasi.md, 8-bosqich):
 
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.views import APIView
 
 from apps.tenants.models import Tenant
 
@@ -107,3 +108,33 @@ class TenantContextMixin:
         behalf is allowed, regardless of who is asking."""
         if tenant is not None and not tenant.is_active:
             raise PermissionDenied("This tenant is deactivated.")
+
+
+class OwnerStaffOnlyAPIView(TenantContextMixin, APIView):
+    """
+    Shared base for endpoints that are owner/staff territory ONLY --
+    platform_admin has no legitimate reason to manage a tenant's
+    day-to-day business data (confirmed 2026-09 for `catalog`; reused
+    as-is for `inventory` and every future business app, rather than
+    re-deriving this check per app).
+
+    `PermissionService.has_permission()` grants platform_admin every
+    permission unconditionally, by design, for OTHER features -- so
+    `HasEmployeePermission` alone would let platform_admin through
+    here too. `self.tenant` is also `None` for platform_admin
+    (`TenantContextMixin` only populates it for staff/owner), which
+    would otherwise surface as a confusing empty queryset on GET and a
+    crash on POST (tenant=None is not a valid FK value). This class
+    closes both gaps with one explicit, loud check.
+
+    Originally written as `catalog`'s private `CatalogAPIView` -- moved
+    here once `inventory` needed the exact same behaviour, rather than
+    duplicating it a second time.
+    """
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if self.tenant is None:
+            raise PermissionDenied(
+                "this resource is only accessible to a tenant's own owner/staff."
+            )

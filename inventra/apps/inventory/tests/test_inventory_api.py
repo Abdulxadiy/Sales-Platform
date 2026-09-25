@@ -114,6 +114,21 @@ class TestTenantIsolation:
             "product_variant_id": foreign_variant.id, "quantity": "1", "cost_price": "1",
         })
         assert response.status_code == 400
+        # Validates that tenant isolation is caught at the serializer level.
+        assert "product_variant_id" in response.data
+        assert "Product variant does not belong to your tenant." in str(response.data["product_variant_id"])
+
+    def test_write_off_into_another_tenants_variant_is_rejected_at_serializer(self, api_client, staff_with_full_inventory_access):
+        foreign_variant = ProductVariantFactory()
+        api_client.force_authenticate(user=staff_with_full_inventory_access)
+
+        response = api_client.post(WRITE_OFF_URL, {
+            "product_variant_id": foreign_variant.id, "quantity": "1",
+        })
+        assert response.status_code == 400
+        assert "product_variant_id" in response.data
+        assert "Product variant does not belong to your tenant." in str(response.data["product_variant_id"])
+
 
 
 class TestStockDetailForAFreshVariant:

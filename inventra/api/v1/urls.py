@@ -5,4 +5,5 @@ urlpatterns = [
     path('', include('api.v1.tg_bot.urls')),
     path("tenants/", include('api.v1.tenants.urls')),
     path("catalog/", include('api.v1.catalog.urls')),
+    path("inventory/", include('api.v1.inventory.urls')),
 ]

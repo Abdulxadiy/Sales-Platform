@@ -84,3 +84,7 @@ class ProductVariant(BaseModel):
 
     def __str__(self):
         return f"{self.product.name} ({self.name})"
+
+    @property
+    def currency(self) -> str:
+        return self.product.category.currency

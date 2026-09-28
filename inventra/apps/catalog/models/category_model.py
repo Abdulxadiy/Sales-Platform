@@ -29,6 +29,19 @@ class Category(BaseModel):
         related_name="subcategories",
     )
 
+    CURRENCY_UZS = "UZS"
+    CURRENCY_USD = "USD"
+    CURRENCY_CHOICES = [
+        (CURRENCY_UZS, "UZS"),
+        (CURRENCY_USD, "USD"),
+    ]
+
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        default=CURRENCY_UZS,
+        help_text="Kategoriya valyutasi (UZS yoki USD)",
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

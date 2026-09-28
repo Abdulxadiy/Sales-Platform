@@ -39,6 +39,14 @@ class StockMovement(BaseModel):
 
     note = models.TextField(blank=True)
 
+    sale = models.ForeignKey(
+        "sales.Sale",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="stock_movements",
+    )
+
     created_by = models.ForeignKey(
         "accounts.User", on_delete=models.PROTECT, related_name="stock_movements"
     )

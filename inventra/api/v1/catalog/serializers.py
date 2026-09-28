@@ -6,7 +6,7 @@ from apps.catalog.models import Category, Product, ProductVariant
 class CategoryOutputSerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ["id", "name", "kod", "parent", "is_active"]
+        fields = ["id", "name", "kod", "parent", "currency", "is_active"]
         read_only_fields = fields
 
 
@@ -17,6 +17,9 @@ class CategoryCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=150)
     parent_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(), source="parent", required=False, allow_null=True
+    )
+    currency = serializers.ChoiceField(
+        choices=Category.CURRENCY_CHOICES, default=Category.CURRENCY_UZS, required=False
     )
 
 
@@ -32,14 +35,15 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
     # Falls back to the parent Product's image when this variant has
     # none of its own -- see ProductVariant.image docstring.
     image = serializers.SerializerMethodField()
+    currency = serializers.CharField(read_only=True)
 
     class Meta:
         model = ProductVariant
         fields = [
             "id", "product", "name", "sku", "code", "barcode", "image", "unit",
-            "price_partner", "price_min", "price_recommended", "is_active",
+            "currency", "price_partner", "price_min", "price_recommended", "is_active",
         ]
-        read_only_fields = ["id", "product", "sku", "is_active"]
+        read_only_fields = ["id", "product", "sku", "is_active", "currency"]
 
     def get_image(self, obj):
         image = obj.image or obj.product.image

@@ -46,6 +46,23 @@ class TestCategoryCreate:
         with pytest.raises(CategoryServiceError):
             CategoryService.create(tenant=tenant, name="X", parent=other_tenants_category)
 
+    def test_category_currency_defaults_to_uzs(self, tenant):
+        cat = CategoryService.create(tenant=tenant, name="Oziq-ovqat")
+        assert cat.currency == "UZS"
+
+    def test_category_currency_usd_creation(self, tenant):
+        cat = CategoryService.create(tenant=tenant, name="Elektronika", currency="USD")
+        assert cat.currency == "USD"
+
+    def test_subcategory_inherits_parent_currency(self, tenant):
+        parent_usd = CategoryService.create(tenant=tenant, name="Texnika", currency="USD")
+        sub = CategoryService.create(tenant=tenant, name="Telefonlar", parent=parent_usd)
+        assert sub.currency == "USD"
+
+    def test_invalid_currency_is_rejected(self, tenant):
+        with pytest.raises(CategoryServiceError, match="currency must be 'UZS' or 'USD'"):
+            CategoryService.create(tenant=tenant, name="X", currency="EUR")
+
 
 class TestCategoryUpdate:
     def test_owner_can_change_kod(self, tenant):

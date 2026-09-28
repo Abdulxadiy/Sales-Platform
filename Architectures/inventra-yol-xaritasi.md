@@ -61,12 +61,16 @@
 |**Media saqlash (9-bosqich)**|MinIO — o'z-o'zi joylashtiriladigan, S3-protokoliga mos, Docker Compose'ga konteyner sifatida qo'shiladi (12-bosqichga eslatma qo'yildi). ✅ Hozircha `catalog` lokal diskka yozadi (`MEDIA_ROOT`), `Pillow` qo'shildi|
 |**`catalog` routing (2026-09)**|`platform_admin` `catalog` endpointlariga **umuman kira olmaydi** (403) — owner/staff'ning kundalik ishi, `platform_admin` faqat owner'larni boshqaradi. Amalga oshirish: `CatalogAPIView` bazaviy klassi (`api/v1/catalog/views/_base.py`) buni aniq tekshiradi, chunki `PermissionService` platform_admin'ga boshqa xususiyatlar uchun har doim `True` qaytaradi|
 |**`EmployeeFactory` test-bugi (2026-09)**|`EmployeeFactory` `Employee` qatorini yaratardi-yu, `User.tenant`ni yangilamasdi (real `hire()` buni ham qiladi) — `TenantContextMixin`ga tayangan har qanday view uchun staff-testlar noto'g'ri 403 berardi. Tuzatildi: `sync_user_tenant` post_generation hook (`tests/factories.py`)|
-|**POS 1-narx galochkasi (`use_partner_price`) (9-bosqich)**|Sotuv sahifasida galochka yoqilganda barcha tovarlar faqat `price_partner` (1-narx) bo'yicha ko'rinadi va hisoblanadi. Kassir narxni erkin o'zgartira oladi. Chekda `is_partner_sale=True` va har bir tovar satrida sotilgan narx bilan o'sha paytdagi asl 1-narx audit uchun saqlanadi|
-|**Kontragentlar (`Counterparty`) (9-bosqich)**|1-narxda tovar oluvchilar ro'yxati (do'konlar, tanishlar, xodimlar). Ruxsati bor staff ham qo'sha oladi. Telefon raqami orqali tizimda foydalanuvchi va uning faol `Tenant`i avtomatik qidirilib bog'lanadi (`target_tenant` nullable). Agar tenanti bo'lsa — B2B tovar o'tkazish xabarnomasi o'sha tenantning **OWNER**iga boradi|
-|**B2B Do'konlararo tovar o'tkazish (9-bosqich)**|Tizimdagi boshqa do'konga tovar sotilganda: jo'natuvchi omboridan tovarlar o'sha zahoti chiqib ketadi (`direction='out'`). Qabul qiluvchi do'kon egasiga in-app va Telegram bot orqali bildirishnoma boradi. Statuslar: `pending` (kutilmoqda), `accepted` (qabul qilindi), `rejected` (rad etildi). 1 hafta javob berilmasa — avtomatik `rejected` bo'ladi|
-|**B2B Rad etilganda ombor xatti-harakati (9-bosqich)**|Qabul qiluvchi tovarlarni rad etsa (`rejected` yoki 1 hafta muddati o'tib ketganda), tovarlar jo'natuvchining omboriga **avtomatik qaytmaydi** — chunki tovarlar jismonan chiqarilgan. Faqat status `rejected` deb belgilanadi (kerak bo'lsa keyin jismoniy qaytarish alohida rasmiylashtiriladi)|
-|**B2B Qabul qilinganda katalog avto-yaratilishi (9-bosqich)**|Qabul qiluvchi do'konda tovar mavjud bo'lmasa, qabul qilish paytida uning katalogida `Category`, `Product`, `ProductVariant` avtomatik yaratiladi. Kirim tannarxi (`cost_price`) A do'kon sotgan 1-narx bo'ladi, sotish narxlarini B do'kon egasi keyin o'zi belgilaydi. **`SKU` qabul qiluvchining o'z tartibi bo'yicha yangi beriladi, `code` esa o'tmaydi (bo'sh qoladi — chunki narx hali belgilanmagan)**|
-|**Qarz / Nasiya va 10 mln ogohlantirish (9-bosqich)**|Kontragentlarga berilgan nasiya qarz sifatida hisoblanadi (`debt_balance`). Har safar qarz ko'payib, har 10 mln so'mlik chegaradan oshganda (10, 20, 30...) do'kon egasiga (owner) in-app va Telegram orqali ogohlantirish yuboriladi|
+|**POS 1-narx galochkasi (`use_partner_price`) (9-bosqich)**|Sotuv sahifasida galochka yoqilganda barcha tovarlar faqat `price_partner` (1-narx) bo'yicha ko'rinadi va hisoblanadi. Agar tovarning 1-narxi belgilanmagan (bo'sh yoki 0) bo'lsa, sotish bloklanadi va to'ldirish talab qilinadi. Kassir narxni erkin o'zgartira oladi. Chekda `is_partner_sale=True` va har bir tovar satrida sotilgan narx bilan o'sha paytdagi asl 1-narx audit uchun saqlanadi|
+|**Kontragentlar (`Counterparty`) (9-bosqich)**|1-narxda tovar oluvchilar ro'yxati (do'konlar, tanishlar, xodimlar). Ruxsati bor staff ham qo'sha oladi. Telefon raqami orqali tizimda foydalanuvchi va uning faol `Tenant`i avtomatik qidirilib bog'lanadi (`target_tenant` nullable). Agar tenanti bo'lsa — B2B tovar o'tkazish xabarnomasi o'sha tenantning **OWNER**iga boradi. O'chirib bo'lmaydi, faqat arxivlanadi (`is_active=False`)|
+|**B2B Do'konlararo tovar o'tkazish (9-bosqich)**|Tizimdagi boshqa do'konga tovar sotilganda: jo'natuvchi omboridan tovarlar o'sha zahoti chiqib ketadi (`direction='out'`). Qabul qiluvchi do'kon egasiga in-app va Telegram bot orqali bildirishnoma boradi. Statuslar: `pending`, `accepted`, `partially_accepted`, `rejected`. 1 hafta javob berilmasa — avtomatik `rejected` bo'ladi|
+|**B2B Rad etilganda ombor xatti-harakati (9-bosqich)**|Qabul qiluvchi tovarlarni rad etsa yoki qisman qabul qilsa, rad etilgan tovarlar A omboriga avtomatik qaytmaydi va qarz avtomatik kamaymaydi. Sababi bilan A ga bildirishnoma boradi. Faqat A do'koni rad etilgan tovarlarni ko'rib chiqib, o'zi "Void" qilgandagina tovar A omboriga qaytadi va B ning qarzi kamayadi|
+|**B2B Qabul qilinganda katalogga biriktirish (9-bosqich)**|B qabul qilayotganda tovar qaysi kategoriyaga qo'shilishini o'zi tanlaydi (valyuta mos bo'lishi shart) yoki agar o'zida bu tovar mavjud bo'lsa, mavjud variantga biriktirib qoldiqni oshiradi. Tannarx: A do'kon sotgan 1-narx. B ning sotuv narxi: default `0` (B keyin o'zi narx qo'yadi)|
+|**Qarz / Nasiya (UZS va USD mustaqil balansi) (9-bosqich)**|`debt_balance_uzs` va `debt_balance_usd` alohida yuritiladi (ishorali: musbat = qarz, manfiy = mijoz haqqi). Yangi qarz olinganda mavjud haqqidan avtomatik ushlab qolinadi. Ogohlantirish: har 10 mln UZS va har 1 000 USD oshganda owner'ga ogohlantirish. Qarz to'langanda qadamlar (`step`) orqaga qaytadi|
+|**Qarz to'lovlari (`DebtPayment`) auditi (9-bosqich)**|Qarz to'lovlarini faqat `owner` va `platform_admin` kiritishi mumkin. Baza yozuvi o'chirilmaydi. Xato bo'lsa, sababi bilan teskari korrektirovka yozuvi kiritiladi (`is_correction=True`). Ruxsatli staff tarixni ko'ra oladi|
+|**Universal Bekor qilish (Void) va Qisman qaytarish (9-bosqich)**|Har qanday sotuv 1 hafta (7 kun) ichida bekor qilinishi mumkin (izoh majburiy). B accept qilgan B2B sotuvni A void qila olmaydi. Xohlasa butun chek, xohlasa alohida tovar va uning ma'lum miqdori (qisman) qaytariladi (`partially_voided` / `voided`). Qaytarilgan qism bo'yicha qarz kamayadi va tovar omborga qaytadi|
+|**Valyuta tizimi: UZS va USD (9-bosqich)**|Asosiy `Category` yaratilishida valyuta (`UZS` yoki `USD`) belgilanadi. Subkategoriya ota kategoriyaning valyutasini meros oladi. Savatda aralash tovarlar bo'lsa, backend bitta tranzaksiyada 2 ta alohida chek yaratadi (`UZS` va `USD`). Owner do'kon uchun ichki dollar kursini (`Tenant.usd_rate`) belgilaydi (katalogda ko'rgazmali hisoblash uchun)|
+|**Ombor harakati va Chek auditi (9-bosqich)**|`StockMovement` modeli `Sale` chekiga to'g'ridan-to'g'ri bog'lanadi (`sale` FK)|
 
 
 ### 0.3. Hozirgi kod holati (2026-09, yangilangan)
@@ -205,37 +209,71 @@ O'chirish: hard-delete yo'q, `is_active=False`.
 - **Galochka mantiqi (`use_partner_price`):**
   - Galochka o'chiq paytda: mahsulot qidirilganda va ko'rsatilganda 2 ta narx ko'rinadi (`price_min` va `price_recommended`).
   - Galochka yoqilgan paytda: barcha mahsulotlar qidiruvda ham, savatda ham **faqat 1-narx (`price_partner`)** bo'yicha ko'rinadi va hisob-kitob qilinadi.
+  - **1-narx bo'sh yoki 0 bo'lsa:** agar savatdagi tovarning `price_partner` qiymati bo'sh yoki 0 bo'lsa, tizim sotishga yo'l qo'ymaydi va xatolik beradi (`"1-narx to'ldirilishi majburiy"`).
   - Kassir narxni qo'lda erkin o'zgartira oladi (yuqori yoki past qilib).
+  - **Tannarxdan past narxda sotilsa:** bloklanmaydi, faqat ogohlantirish qaytariladi (*"Siz tovarni juda arzon narxda sotuv qilyapsiz, bunga ishonchingiz komilmi?"*).
   - **Audit:** Chekda (`Sale.is_partner_sale=True`), tovar satrida esa sotilgan amaldagi narx (`unit_price`) bilan birga tovarning o'sha paytdagi asl 1-narxi (`original_partner_price`) saqlanadi.
+  - **Chekdagi qatorlar soni:** Bitta chekda ko'pi bilan 100 ta tovar qatori bo'lishi mumkin.
+  - **Deadlock himoyasi:** Ombordan tovarlar yechilayotganda `Stock` yozuvlari `product_variant_id` bo'yicha o'sish tartibida qulflanadi (`select_for_update()`). Birortasida qoldiq yetmasa, butun sotuv bekor bo'ladi (`transaction.atomic`).
 
 ### 1.8. Kontragentlar (`Counterparty`) va Do'konlararo B2B Tovar O'tkazish
 
 - **Kontragentlar ro'yxati:**
   - `owner` va tegishli ruxsatga ega `staff` yangi kontragent qo'sha oladi.
-  - Ma'lumotlari: `name`, `phone_number`, `target_tenant` (nullable FK), `debt_balance`, `note`.
+  - Ma'lumotlari: `name`, `phone_number`, `target_tenant` (nullable FK), `debt_balance_uzs`, `debt_balance_usd`, `note`, `is_active`.
+  - **O'chirish taqiqlanadi:** Tarix va qarz mavjudligi sababli kontragent o'chirilmaydi, faqat arxivlanadi (`is_active=False`).
   - **Avtomatik Tenant aniqlash:** Kontragent kiritilganda uning telefon raqami bo'yicha tizimda `User` va uning faol `Employee` yozuvi qidiriladi. Agar u biror do'konda ishlasa yoki do'kon egasi (`owner`) bo'lsa, o'sha do'kon `target_tenant` sifatida avtomatik bog'lanadi.
 - **B2B Sotuv / O'tkazish oqimi:**
   - Agar tanlangan kontragentda `target_tenant` mavjud bo'lsa, bu sotuv **B2B transfer** sifatida ro'yxatga olinadi.
   - **Ombor harakati:** Jo'natuvchi A do'kon omboridan tovarlar o'sha zahoti chiqariladi (`direction='out'`, `type='sotuv'`).
-  - **Bildirishnoma:** B do'kon egasiga (har doim **OWNER**ga, hatto kontragent xodim bo'lsa ham) tizim ichidagi bildirishnoma (in-app) va Telegram bot orqali havolali xabar yuboriladi: *"Sizga [A Do'kon] dan [Summa] so'mlik tovarlar yuborildi. Qabul qilasizmi?"*.
-  - **Statuslar:** `pending` (kutilmoqda) → `accepted` (qabul qilindi) / `rejected` (rad etildi).
-  - **1 haftalik avtomatik bekor bo'lish:** 7 kun davomida javob berilmasa, transfer avtomatik tarzda `rejected` deb belgilanadi.
-- **Qabul qilinganda katalog yaratilishi:**
-  - B do'kon qabul qilganda tovarlar uning omboriga `kirim` bo'ladi.
-  - Agar bu tovar B do'kon katalogida mavjud bo'lmasa, B do'konda avtomatik tarzda `Category`, `Product` va `ProductVariant` yaratiladi.
-  - **Tannarx:** A do'kon sotgan 1-narx B do'kon uchun kirim tannarxi (`cost_price` / `last_cost_price`) bo'ladi.
-  - **Sotish narxlari:** B do'kon egasi keyinchalik o'zi belgilashi uchun ochiq qoldiriladi.
-  - **`SKU` va `code` qoidalari:** B do'kon o'zining navbatdagi `SKU` tartibi bo'yicha yangi `sku` oladi (A do'konning SKUsi o'tmaydi). `code` esa umuman o'tmaydi (bo'sh qoladi), chunki B do'kon hali o'zining sotish narxini va kategoriya kodini tasdiqlamagan.
-- **Rad etilganda ombor xatti-harakati:**
-  - Agar B do'kon rad etsa yoki 1 hafta o'tib eskirsa, tovarlar A do'kon omboriga **avtomatik qaytmaydi**, chunki tovar allaqachon jismonan chiqarilgan. Tarixda shunchaki `rejected` bo'lib qoladi. (Zarurat tug'ilsa, jismonan qaytib kelgan tovarlar A do'konda alohida qaytarish hujjati orqali kirim qilinadi).
+  - **Bildirishnoma:** B do'kon egasiga (har doim **OWNER**ga, hatto kontragent xodim bo'lsa ham) tizim ichidagi bildirishnoma (in-app) va Telegram bot orqali havolali xabar yuboriladi: *"Sizga [A Do'kon] dan tovarlar yuborildi. Qabul qilasizmi?"*.
+  - **Statuslar:** `b2b_pending` (kutilmoqda) → `b2b_accepted` (to'liq qabul qilindi) / `b2b_partially_accepted` (qisman qabul qilindi) / `b2b_rejected` (rad etildi).
+  - **1 haftalik avtomatik bekor bo'lish:** 7 kun davomida javob berilmasa, transfer avtomatik tarzda `b2b_rejected` deb belgilanadi.
+- **Qabul qilinganda katalogga biriktirish (B tanlovi):**
+  - B qabul qilish paytida tovar o'zining qaysi kategoriyasiga qo'shilishini **o'zi tanlaydi** (tovarning valyutasi bilan kategoriya valyutasi mos kelishi shart).
+  - Agar B do'konda bu tovar allaqachon mavjud bo'lsa — B uni mavjud variantga biriktirib, faqat ombordagi qoldiqni oshirishi mumkin (dublikat tovar yaratilmaydi).
+  - **Tannarx:** A do'kon sotgan narx B do'kon uchun kirim tannarxi (`cost_price` / `last_cost_price`) bo'ladi.
+  - **Sotish narxlari:** Default `0` (B do'kon egasi A ning ustamasini ko'rmaydi, keyin o'zi sotuv narxini belgilaydi).
+  - **`SKU` va `code`:** B do'kon o'zining navbatdagi SKU tartibi bo'yicha yangi `sku` oladi, `code` esa bo'sh qoladi.
+- **Rad etilganda yoki qisman qabul qilinganda ombor xatti-harakati:**
+  - B tovarlarni to'liq yoki qisman rad etsa, rad etish sababi A do'konga bildirishnoma orqali yuboriladi.
+  - Rad etilgan tovarlar A do'kon omboriga **avtomatik qaytmaydi** va B ning qarzi avtomatik kamaymaydi (chunki tovarlar jismonan yo'lda).
+  - A do'kon rad etilgan tovarlarni qaytarib olgach, tizimda "Qaytarib olish (Void)" tugmasini bosadi — shundagina tovarlar A omboriga kirim bo'ladi va B ning qarzi kamayadi.
 
-### 1.9. Qarz (Nasiya) va 10 mln chegarasidagi ogohlantirishlar
+### 1.9. Qarz (Nasiya), "Haqq" (Kredit balans) va Ogohlantirishlar
 
-- B2B va tanishlarga qilingan sotuvlar ko'pincha **qarz (nasiya)** sifatida rasmiylashtiriladi.
-- Har bir sotuvda to'lov turi (`cash`, `card`, `debt`) belgilanadi. Nasiya bo'lganda kontragentning `debt_balance` maydoni oshadi.
-- **10 millionlik chegara ogohlantirishi:**
-  - Qarz miqdori har safar yangi 10 millionlik chegarani bosib o'tganda (10 mln, 20 mln, 30 mln va h.k.), do'kon egasiga (owner) in-app va Telegram orqali ogohlantirish yuboriladi: *"Diqqat! [Kontragent nomi] ning qarzi [Qarz miqdori] so'mga yetdi!"*.
-  - Bu xavfni o'z vaqtida nazorat qilish va hisob-kitobni talab qilish imkonini beradi.
+- Kontragentlarda ikki valyutada alohida balans yuritiladi: `debt_balance_uzs` va `debt_balance_usd`.
+- **Ishorali balans (Signed):**
+  - Musbat (`+`) = mijoz do'kondan qarzdor.
+  - Manfiy (`-`) = do'kon mijozdan qarzdor (mijozning haqqi bor).
+  - Agar mijozning haqqi bo'lsa va u yana qarzga tovar olsa, yangi qarzdan mavjud haqqi avtomatik chegirib qolinadi.
+- **Chegara ogohlantirishlari:**
+  - So'mda: har **10 million so'm** oshganda (10 mln, 20 mln, 30 mln...) do'kon egasiga (owner) in-app va Telegram orqali ogohlantirish yuboriladi (`last_notified_debt_step_uzs`).
+  - Dollarda: har **1 000 USD** oshganda (1000, 2000, 3000...) ogohlantirish yuboriladi (`last_notified_debt_step_usd`).
+  - Qarz to'langanda yoki kamayganda tegishli `step` qiymati orqaga qaytariladi, toki keyingi safar chegara oshganda yana ogohlantirish borsin.
+
+### 1.10. Valyuta Tizimi (UZS va USD)
+
+- **Kategoriya darajasidagi valyuta:** Asosiy `Category` yaratilishida uning valyutasi (`UZS` yoki `USD`) belgilanadi.
+- **Meros olish:** Barcha subkategoriyalar va ulardagi mahsulot variantlari ota kategoriyaning valyutasini to'liq meros oladi va o'zgartirib bo'lmaydi.
+- **Savatdagi aralash tovarlar:** Agar xaridor bitta savatda ham UZS, ham USD tovarlarni olsa, backend bitta atomik tranzaksiya ichida avtomatik **2 ta alohida chek** (`Sale`) yaratadi: bittasi UZS, ikkinchisi USD cheki.
+- **Do'konning ichki dollar kursi:** Do'kon egasi (owner) o'z do'koni uchun ichki dollar kursini (`Tenant.usd_rate`, masalan: `12 800`) kiritib qo'yadi. Bu kurs tovarlar ro'yxatida "Barchasini dollarda ko'rsatish" tugmasi yoqilganda so'mdagi tovarlarni ko'rgazmali hisoblash uchun xizmat qiladi.
+
+### 1.11. Universal Bekor Qilish (Void) va Qisman Qaytarish
+
+- **1 haftalik muddat:** Har qanday sotuv (oddiy mijozga, tanishga yoki B2B) sotuv sanasidan boshlab **qat'iy 1 hafta (7 kun)** ichida bekor qilinishi mumkin.
+- **Majburiy izoh:** Bekor qilishda `void_reason` kiritilishi shart.
+- **B2B to'siq:** Agar B do'kon B2B o'tkazmani `accept` qilib bo'lgan bo'lsa, A do'kon uni void qila olmaydi (tenant izolatsiyasi qoidasi).
+- **Qisman va miqdor bo'yicha qaytarish:** Butun chekni bekor qilish shart emas; chek ichidagi alohida tovar yoki tovarning ma'lum miqdori (masalan, 10 donadan 3 tasi) qaytarilishi mumkin.
+- Chek statusi `partially_voided` bo'ladi, barcha qatorlar to'liq bekor bo'lgandagina `voided` bo'ladi.
+- Qaytarilgan tovarlar omborga qaytadi (`StockService.customer_return()`), agar qarzga olingan bo'lsa, qaytarilgan qism summasi qarzdan chegiriladi. Barcha void harakatlari `SaleVoidLog` jadvalida saqlanadi.
+
+### 1.12. Qarz To'lovlari (`DebtPayment`) Auditi
+
+- Qarz to'lovlarini faqat `owner` va `platform_admin` kiritishi mumkin (staff kiritolmaydi).
+- Qarz to'lovi yozuvini bazadan o'chirib bo'lmaydi.
+- Agar xato summa kiritilgan bo'lsa, "Tuzatish" orqali majburiy izoh bilan teskari korrektirovka yozuvi kiritiladi (`is_correction=True`), bu balansni to'g'rilaydi va to'liq audit tarixini saqlaydi.
+- Ruxsati bor `staff` to'lovlar tarixini ko'rishi mumkin.
 
 ---
 
@@ -479,50 +517,74 @@ Tartib:
       - `name` (Char, ism yoki do'kon nomi)
       - `phone_number` (Char, indekslangan)
       - `target_tenant` (FK `tenants.Tenant`, nullable) — telefon raqami orqali tizimda topilgan do'kon
-      - `debt_balance` (DecimalField, max_digits=14, decimal_places=2, default=0) — joriy qarz
-      - `last_notified_debt_step` (IntegerField, default=0) — oxirgi marta 10 mlnlik ogohlantirish yuborilgan qadam (1=10mln, 2=20mln...)
+      - `debt_balance_uzs` (DecimalField, max_digits=14, decimal_places=2, default=0) — so'mdagi qarz (signed)
+      - `debt_balance_usd` (DecimalField, max_digits=14, decimal_places=2, default=0) — dollardagi qarz (signed)
+      - `last_notified_debt_step_uzs` (IntegerField, default=0) — 10 mlnlik qadam (1=10mln, 2=20mln...)
+      - `last_notified_debt_step_usd` (IntegerField, default=0) — 1 000$lik qadam (1=1000$, 2=2000$...)
       - `note` (TextField, izoh)
-      - `is_active` (Boolean, arxivlash uchun)
+      - `is_active` (Boolean, arxivlash uchun, o'chirish taqiqlanadi)
+    - **`DebtPayment`** (`BaseModel`, `apps/sales/models/debt_payment_model.py`):
+      - `counterparty` (FK `Counterparty`, related_name="payments")
+      - `amount` (DecimalField, max_digits=14, decimal_places=2, check: > 0)
+      - `currency` (Choice: `UZS`, `USD`)
+      - `paid_at` (DateTimeField, auto_now_add=True)
+      - `recorded_by` (FK `accounts.User`) — faqat `owner` va `platform_admin`
+      - `is_correction` (Boolean, default=False) — xatoni tuzatish (korrektirovka) yozuvi
+      - `note` (TextField, agar `is_correction=True` bo'lsa majburiy)
     - **`Sale`** (`BaseModel`, `apps/sales/models/sale_model.py`):
       - `receipt_number` (Char, tenant ichida unikal, avtomatik `POS-YYYYMMDD-XXXX`)
       - `sold_by` (FK `accounts.User`) — sotgan xodim/kassir
-      - `counterparty` (FK `Counterparty`, nullable) — agar ro'yxatdagi odamga sotilgan bo'lsa
+      - `counterparty` (FK `Counterparty`, nullable) — agar ro'yxatdagi odamga sotilgan bo'lsa (qarz va B2B da majburiy)
+      - `currency` (Choice: `UZS`, `USD`) — bitta chek faqat bitta valyutada
       - `is_partner_sale` (Boolean, default=False) — 1-narx galochkasi yoqilgan holda sotilgani
       - `total_amount` (DecimalField, umumiy summa)
-      - `discount_amount` (DecimalField, default=0)
-      - `payment_type` (Choice: `cash`, `card`, `debt`, `mixed`)
-      - `status` (Choice: `completed`, `voided`, `b2b_pending`, `b2b_accepted`, `b2b_rejected`)
+      - `payment_type` (Choice: `cash`, `card`, `debt`)
+      - `status` (Choice: `completed`, `partially_voided`, `voided`, `b2b_pending`, `b2b_partially_accepted`, `b2b_accepted`, `b2b_rejected`)
       - `b2b_target_tenant` (FK `tenants.Tenant`, nullable) — B2B bo'lsa, qabul qiluvchi tenant
       - `b2b_expires_at` (DateTimeField, nullable) — yaratilgandan 7 kun keyingi vaqt
+      - `b2b_reject_reason` (TextField, blank=True) — B rad etganda ko'rsatilgan sabab
       - `voided_at`, `voided_by`, `void_reason` (sotuv bekor qilinganda audit uchun)
+      - `idempotency_key` (CharField, max_length=64, blank=True, null=True, db_index=True)
     - **`SaleItem`** (`BaseModel`, `apps/sales/models/sale_item_model.py`):
       - `sale` (FK `Sale`, related_name="items")
       - `product_variant` (FK `catalog.ProductVariant`, on_delete=PROTECT)
       - `quantity` (DecimalField, max_digits=14, decimal_places=3, check: > 0)
       - `unit_price` (DecimalField, sotilgan amaldagi narx)
-      - `cost_price` (DecimalField, sotilgan paytdagi variant tannarxi — foydani hisoblash uchun)
+      - `cost_price` (DecimalField, sotilgan paytdagi variant tannarxi)
       - `original_partner_price` (DecimalField, null=True) — sotilgan paytdagi asl 1-narx
       - `total_price` (DecimalField, quantity * unit_price)
+      - `status` (Choice: `active`, `partially_voided`, `voided`, `b2b_accepted`, `b2b_rejected`, default=`active`)
+      - `voided_quantity` (DecimalField, default=0)
+      - `b2b_accepted_quantity` (DecimalField, default=0)
+      - `b2b_rejected_quantity` (DecimalField, default=0)
+    - **`SaleVoidLog`** (`BaseModel`, `apps/sales/models/sale_void_log_model.py`):
+      - `sale_item` (FK `SaleItem`, related_name="void_logs")
+      - `quantity` (DecimalField, bekor qilingan miqdor)
+      - `reason` (TextField, majburiy izoh)
+      - `voided_by` (FK `accounts.User`)
+      - `voided_at` (DateTimeField, auto_now_add=True)
     - **`Notification`** (`BaseModel`, `apps/sales/models/notification_model.py`):
       - `tenant` (FK `tenants.Tenant`) — qaysi do'konga tegishli
-      - `recipient` (FK `accounts.User`) — xabarnoma kimga
-      - `type` (Choice: `b2b_transfer_request`, `debt_threshold_warning`, `b2b_transfer_accepted`, `b2b_transfer_rejected`)
+      - `recipient` (FK `accounts.User`) — xabarnoma kimga (do'kon egasi)
+      - `type` (Choice: `b2b_transfer_request`, `debt_threshold_warning`, `b2b_transfer_accepted`, `b2b_transfer_partially_accepted`, `b2b_transfer_rejected`, `b2b_transfer_cancelled`)
       - `title`, `message`, `link` (batafsil ma'lumot havolasi)
       - `is_read` (Boolean, default=False)
 
     **Servislar:**
     - **`SaleService`** (`apps/sales/services/sale_service.py`):
-      - `create_sale()`: savatdagi tovarlarni tekshiradi, ombordan tovarlarni chiqaradi (`StockService._apply_movement(type='sotuv', direction='out')`), to'lov turi `debt` bo'lsa `debt_balance`ni oshiradi va 10 mln chegarasini tekshiradi.
-      - B2B holatida (`counterparty.target_tenant` mavjud bo'lsa): status `b2b_pending` bo'ladi, 7 kunlik expiry qo'yiladi va qabul qiluvchi do'kon egasiga (owner) in-app + Telegram xabarnoma yuboriladi.
-      - `void_sale()`: sotuvni bekor qilish (faqat ruxsati bor xodim/owner), tovarlarni omborga qaytaradi (`StockService.customer_return()`), qarz bo'lsa kontragent balansidan chegiradi.
+      - `create_sale()`: savatdagi tovarlarni valyuta bo'yicha guruhlaydi (aralash bo'lsa 2 ta alohida `Sale` yaratadi), `price_partner` bo'sh/0 bo'lsa xato beradi, deadlock oldini olish uchun variantlarni `id` bo'yicha qulflaydi (`select_for_update()`), ombordan chiqaradi (`StockService._apply_movement(type='sotuv', direction='out', sale=sale)`), to'lov turi `debt` bo'lsa kontragent balansini oshiradi va ogohlantirish chegarasini tekshiradi.
+      - B2B holatida (`counterparty.target_tenant` mavjud bo'lsa): status `b2b_pending`, 7 kunlik expiry, qabul qiluvchi do'kon egasiga (owner) in-app + Telegram xabarnoma yuboriladi.
+    - **`VoidService`** (`apps/sales/services/void_service.py`):
+      - `void_sale()` / `void_sale_item()`: 1 haftalik muddat tekshiruvi, majburiy izoh, `b2b_accepted` bo'lsa bloklash, tovarlarni omborga qaytarish (`StockService.customer_return(sale=sale)`), qarz bo'lsa kontragent balansidan chegirish va `SaleVoidLog` yaratish.
     - **`B2BTransferService`** (`apps/sales/services/b2b_transfer_service.py`):
-      - `accept_transfer(sale_id, accepting_user)`: qabul qiluvchi do'kon owneri tasdiqlaydi. Tovar uning katalogida bo'lmasa avtomatik `Category`, `Product`, `ProductVariant` yaratiladi (yangi SKU bilan, kodsiz). Qabul qiluvchi do'kon omboriga `StockService.intake(cost_price=item.unit_price)` orqali kirim qilinadi. Status `b2b_accepted`ga aylanadi va A do'konga bildirishnoma boradi.
-      - `reject_transfer(sale_id, rejecting_user, reason)`: status `b2b_rejected`ga o'tadi. A do'kon omboriga tovarlar avtomatik qaytmaydi. A do'kon egasiga rad etilgani haqida bildirishnoma boradi.
-      - `auto_expire_transfers()`: 7 kundan oshgan kutilayotgan transferlarni avtomatik `b2b_rejected` qiladi (Celery yoki cron vazifasi).
+      - `accept_transfer(sale_id, accepting_user, items_data)`: to'liq yoki qisman qabul qilish. B har bir tovar uchun qabul miqdorini va qaysi kategoriyaga qo'shilishini (yoki mavjud variantga biriktirishni) tanlaydi. Qabul qilingan qism B omboriga kirim bo'ladi. Chek statusi `b2b_accepted` yoki `b2b_partially_accepted` bo'ladi.
+      - `reject_transfer(sale_id, rejecting_user, reason)`: status `b2b_rejected`ga o'tadi. Tovarlar A omboriga avtomatik qaytmaydi; A do'konga rad etish sababi bilan bildirishnoma boradi. A do'kon rad etilgan tovarlarni qaytarib olish uchun o'zi `void` qiladi.
+      - `auto_expire_transfers()`: 7 kundan oshgan kutilayotgan transferlarni avtomatik `b2b_rejected` qiladi.
     - **`CounterpartyService`** (`apps/sales/services/counterparty_service.py`):
-      - Kontragent qo'shish / tahrirlash. Telefon raqami bo'yicha `User` → `Employee(is_active=True).tenant` yoki `Tenant(owner=user)` orqali `target_tenant`ni avtomatik topib biriktiradi.
+      - Kontragent qo'shish / tahrirlash / arxivlash. Telefon raqami bo'yicha `User` → `Employee(is_active=True).tenant` yoki `Tenant(owner=user)` orqali `target_tenant`ni avtomatik topib biriktiradi.
     - **`DebtService`** (`apps/sales/services/debt_service.py`):
-      - Qarz balansi hisobi. Qarz har 10 mln so'mdan oshganda (`debt_balance // 10_000_000 > last_notified_debt_step`) do'kon egasiga in-app va Telegram ogohlantirish yuborish.
+      - `record_payment()`: Qarz to'lash (faqat `owner`/`platform_admin`). Ortiqcha to'lansa "haqq"ga o'tadi. Xato bo'lsa `is_correction=True` bilan teskari yozuv kiritiladi.
+      - Qarz har 10 mln UZS yoki har 1 000 USD oshganda ogohlantirish yuboriladi; qarz kamayganda qadam (`step`) orqaga qaytariladi.
 
     **Ruxsatlar** (Data-migration orqali `apps.permissions.Permission`ga kiritiladi):
     - `sales.view_sale` — sotuvlar va cheklar tarixini ko'rish
@@ -530,16 +592,20 @@ Tartib:
     - `sales.void_sale` — sotuvni bekor qilish (odatiy sotuvchiga berilmasligi mumkin)
     - `sales.manage_counterparty` — kontragentlar ro'yxatini boshqarish
     - `sales.manage_b2b` — B2B tovar o'tkazmalarini qabul qilish yoki rad etish (faqat ownerga)
+    - `sales.record_debt_payment` — qarz to'lovlarini kiritish va tuzatish (faqat owner/platform_admin)
 
     **API** — `api/v1/sales/`:
-    - `POST /api/v1/sales/` — yangi sotuv (POS kassa)
-    - `GET /api/v1/sales/` — sotuvlar ro'yxati (filtrlash: sana, kassir, kontragent, status)
+    - `POST /api/v1/sales/` — yangi sotuv (POS kassa, aralash valyutani avto-ajratish)
+    - `GET /api/v1/sales/` — sotuvlar ro'yxati (filtrlash: sana, kassir, kontragent, status, currency)
     - `GET /api/v1/sales/<id>/` — chek tafsilotlari
-    - `POST /api/v1/sales/<id>/void/` — chekni bekor qilish
+    - `POST /api/v1/sales/<id>/void/` — butun chekni bekor qilish
+    - `POST /api/v1/sales/items/<item_id>/void/` — chekdagi bitta tovarni/miqdorni bekor qilish
     - `GET/POST /api/v1/sales/counterparties/` — kontragentlar ro'yxati va qo'shish
+    - `GET/POST /api/v1/sales/counterparties/<id>/payments/` — qarz to'lovlari tarixi va to'lov kiritish
+    - `POST /api/v1/sales/counterparties/payments/<payment_id>/correct/` — to'lovni tuzatish (korrektirovka)
     - `GET /api/v1/sales/b2b/inbox/` — qabul qilinishi kutilayotgan B2B transferlar
-    - `POST /api/v1/sales/b2b/<sale_id>/accept/` — transferni qabul qilish
-    - `POST /api/v1/sales/b2b/<sale_id>/reject/` — transferni rad etish
+    - `POST /api/v1/sales/b2b/<sale_id>/accept/` — transferni qabul qilish (to'liq/qisman, kategoriya tanlovi bilan)
+    - `POST /api/v1/sales/b2b/<sale_id>/reject/` — transferni rad etish (sababi bilan)
     - `GET /api/v1/sales/notifications/` — in-app bildirishnomalar ro'yxati
     - `POST /api/v1/sales/notifications/<id>/read/` — o'qildi deb belgilash
 
@@ -645,12 +711,16 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 |F|~~Ban qilingan admin userni kim/qanday ochadi~~|✅ **YOPILDI** — unban endpoint yozildi|
 |**G**|~~`fire()`dan keyin `User.role` nima bo'ladi~~|✅ **YOPILDI** — Variant A: role saqlanadi, password yaroqsiz qilinadi, faol employment yopiladi|
 |**H**|~~`EmployeeService.hire()`ning "to'siq" mantig'i~~|✅ **YOPILDI** — faol employment bo'lsa EmployeeServiceError chiqariladi (avval bo'shatish shart)|
-|**I**|~~POS sotuv: 1-narx galochkasi, narxlar ko'rinishi va audit~~|✅ **YOPILDI** — `is_partner_sale`, `original_partner_price` bilan to'liq audit. Galochka yoqilganda barcha mahsulotlar faqat `price_partner` narxida ko'rinadi. Kassir narxni erkin o'zgartira oladi|
-|**J**|~~Kontragentlar ro'yxati (`Counterparty`): kim qo'sha oladi, maydonlar~~|✅ **YOPILDI** — ruxsati bor `staff` ham qo'sha oladi. `target_tenant` telefon raqami orqali avtomatik topiladi. Tenantga tegishlilik: faol `Employee(is_active=True).tenant` yoki `Tenant(owner=user)`|
-|**K**|~~B2B tovar o'tkazish: rad etilganda ombor taqdiri~~|✅ **YOPILDI** — jo'natuvchi omboridan tovar ZAHOT chiqariladi. Qabul qiluvchi rad etsa yoki 1 hafta muddati o'tsa, tovar A omboriga AVTOMATIK qaytmaydi — shunchaki `rejected` deb belgilanadi|
-|**L**|~~B2B qabul qilinganda B do'koniga katalog yaratilishi~~|✅ **YOPILDI** — avtomatik `Category`+`Product`+`ProductVariant` yaratiladi. `cost_price=A_dan_sotilgan_narx`, sotish narxlari B o'zi keyinchalik belgilaydi. SKU — B do'konning o'z tartibi (A SKUsi o'tmaydi), `code` bo'sh qoladi|
-|**M**|~~Nasiya qarz va 10 mln chegara ogohlantirishi~~|✅ **YOPILDI** — `debt_balance` ortib boradi. Har yangi 10 mln chegarasida (`debt_balance // 10_000_000 > last_notified_debt_step`) owner ga in-app + Telegram ogohlantirish yuboriladi|
-|**N**|~~Bildirishnoma (Notification) tizimi: in-app va Telegram~~|✅ **YOPILDI** — `Notification` modeli bor, in-app (tizim ichida ko'rish + `is_read`), Telegram bot orqali link bilan habar — ikkisi bir vaqtda. B2B kelganda, rad etilganda, qarz chegarasida|
+|**I**|~~POS sotuv: 1-narx galochkasi, narxlar ko'rinishi va audit~~|✅ **YOPILDI** — `is_partner_sale`, `original_partner_price` bilan to'liq audit. Galochka yoqilganda barcha mahsulotlar faqat `price_partner` narxida ko'rinadi. 1-narx bo'sh yoki 0 bo'lsa sotuv bloklanadi. Kassir narxni erkin o'zgartira oladi. Tannarxdan past sotilsa ogohlantirish beriladi|
+|**J**|~~Kontragentlar ro'yxati (`Counterparty`): kim qo'sha oladi, maydonlar~~|✅ **YOPILDI** — ruxsati bor `staff` ham qo'sha oladi. `target_tenant` telefon raqami orqali avtomatik topiladi. O'chirish taqiqlanadi (arxivlanadi). UZS va USD qarz balanslari alohida yuritiladi|
+|**K**|~~B2B tovar o'tkazish: rad etilganda ombor taqdiri~~|✅ **YOPILDI** — jo'natuvchi omboridan tovar ZAHOT chiqariladi. Qabul qiluvchi rad etsa yoki qisman qabul qilsa, rad etilgan tovarlar A omboriga AVTOMATIK qaytmaydi va qarz kamaymaydi. Faqat A do'koni rad etilgan tovarlarni tekshirib, o'zi "Void" qilgandagina tovar A omboriga qaytadi va qarz kamayadi|
+|**L**|~~B2B qabul qilinganda katalogga biriktirish~~|✅ **YOPILDI** — B qabul qilish paytida tovar o'zining qaysi kategoriyasiga qo'shilishini o'zi tanlaydi (valyuta mos bo'lishi shart) yoki mavjud tovar variantiga biriktirib qoldiqni oshiradi. `cost_price=A_dan_sotilgan_narx`, sotish narxi default 0 bo'ladi|
+|**M**|~~Nasiya qarz va chegara ogohlantirishlari~~|✅ **YOPILDI** — `debt_balance_uzs` va `debt_balance_usd` alohida yuritiladi (ishorali: musbat = qarz, manfiy = haqqi). Chegara: har 10 mln UZS va har 1 000 USD oshganda owner'ga ogohlantirish. Qarz to'langanda qadam orqaga qaytadi|
+|**N**|~~Bildirishnoma (Notification) tizimi: in-app va Telegram~~|✅ **YOPILDI** — `Notification` modeli bor, in-app va Telegram bot orqali link bilan xabar — ikkisi bir vaqtda. B2B kelganda, rad etilganda, qisman qabul qilinganda, bekor qilinganda va qarz chegarasida|
+|**O**|~~Valyuta tizimi: UZS va USD~~|✅ **YOPILDI** — `Category.currency` ('UZS'/'USD'), subkategoriya meros oladi. Savatda aralash tovarlar bo'lsa, backend bitta tranzaksiyada 2 ta alohida chek yaratadi (`UZS` va `USD`). Do'kon ichki kursi `Tenant.usd_rate` faqat ko'rgazmali hisoblash uchun|
+|**P**|~~Universal bekor qilish (Void) va qisman qaytarish~~|✅ **YOPILDI** — 1 hafta ichida, majburiy izoh bilan, butun chek yoki alohida tovar va uning ma'lum miqdori qaytariladi. B accept qilgan B2B sotuvni A void qila olmaydi. `SaleVoidLog` jadvali bilan to'liq audit|
+|**Q**|~~Qarz to'lovlari (`DebtPayment`) auditi~~|✅ **YOPILDI** — faqat `owner` va `platform_admin` to'lov kiritadi. O'chirish taqiqlanadi. Xato bo'lsa, majburiy izoh bilan teskari korrektirovka yozuvi kiritiladi (`is_correction=True`)|
+|**R**|~~Ombor harakati va Chek auditi~~|✅ **YOPILDI** — `StockMovement` modeli `Sale` chekiga to'g'ridan-to'g'ri bog'lanadi (`sale` FK)|
 
 ---
 

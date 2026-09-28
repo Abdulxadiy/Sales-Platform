@@ -1,0 +1,330 @@
+from decimal import Decimal
+import pytest
+from rest_framework.test import APIClient
+
+from apps.catalog.models import Category, Product, ProductVariant
+from apps.inventory.services import StockService
+from apps.permissions.models import Permission
+from apps.sales.models import Sale, SaleItem, Counterparty, Notification
+from tests.factories import (
+    TenantFactory,
+    OwnerFactory,
+    StaffFactory,
+    EmployeeFactory,
+    CategoryFactory,
+    ProductFactory,
+    ProductVariantFactory,
+    CounterpartyFactory,
+)
+
+pytestmark = pytest.mark.django_db
+
+SALES_URL = "/api/v1/sales/"
+COUNTERPARTIES_URL = "/api/v1/sales/counterparties/"
+NOTIFICATIONS_URL = "/api/v1/sales/notifications/"
+B2B_INBOX_URL = "/api/v1/sales/b2b/inbox/"
+
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+
+def create_tenant_with_owner(platform_admin):
+    owner_user = OwnerFactory()
+    t = TenantFactory(owner=owner_user)
+    owner_user.tenant = t
+    owner_user.save(update_fields=["tenant"])
+    EmployeeFactory(
+        user=owner_user,
+        tenant=t,
+        is_active=True,
+        position="Owner",
+        hired_by=platform_admin,
+    )
+    return t, owner_user
+
+
+@pytest.fixture
+def staff_with_sales_permission(tenant):
+    user = StaffFactory()
+    employee = EmployeeFactory(user=user, tenant=tenant, is_active=True)
+    employee.permissions.set(Permission.objects.filter(category="sales"))
+    return user
+
+
+@pytest.fixture
+def staff_with_view_only(tenant):
+    user = StaffFactory()
+    employee = EmployeeFactory(user=user, tenant=tenant, is_active=True)
+    employee.permissions.add(Permission.objects.get(category="sales", codename="view_sale"))
+    return user
+
+
+@pytest.fixture
+def stocked_variant(tenant, owner):
+    cat = CategoryFactory(tenant=tenant, currency="UZS")
+    prod = ProductFactory(tenant=tenant, category=cat)
+    var = ProductVariantFactory(
+        tenant=tenant,
+        product=prod,
+        price_partner=Decimal("8000.00"),
+        price_min=Decimal("10000.00"),
+        price_recommended=Decimal("12000.00"),
+    )
+    StockService.intake(
+        tenant=tenant,
+        product_variant=var,
+        quantity=Decimal("50.000"),
+        cost_price=Decimal("7000.00"),
+        created_by=owner,
+    )
+    return var
+
+
+class TestPlatformAdminIsBlocked:
+    def test_platform_admin_cannot_list_sales(self, api_client, platform_admin):
+        api_client.force_authenticate(user=platform_admin)
+        response = api_client.get(SALES_URL)
+        assert response.status_code == 403
+
+    def test_platform_admin_cannot_create_sale(self, api_client, platform_admin):
+        api_client.force_authenticate(user=platform_admin)
+        response = api_client.post(SALES_URL, {"items": []})
+        assert response.status_code == 403
+
+    def test_platform_admin_cannot_list_counterparties(self, api_client, platform_admin):
+        api_client.force_authenticate(user=platform_admin)
+        response = api_client.get(COUNTERPARTIES_URL)
+        assert response.status_code == 403
+
+
+class TestPermissionEnforcement:
+    def test_staff_with_no_permission_is_denied(self, api_client, tenant):
+        user = StaffFactory()
+        EmployeeFactory(user=user, tenant=tenant, is_active=True)
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get(SALES_URL)
+        assert response.status_code == 403
+
+    def test_view_permission_does_not_grant_create(self, api_client, staff_with_view_only, stocked_variant):
+        api_client.force_authenticate(user=staff_with_view_only)
+
+        get_res = api_client.get(SALES_URL)
+        assert get_res.status_code == 200
+
+        post_res = api_client.post(SALES_URL, {
+            "items": [{"product_variant_id": stocked_variant.id, "quantity": "1"}],
+        }, format="json")
+        assert post_res.status_code == 403
+
+    def test_owner_bypasses_permissions(self, api_client, owner, tenant, stocked_variant):
+        api_client.force_authenticate(user=owner)
+        res = api_client.post(SALES_URL, {
+            "items": [{"product_variant_id": stocked_variant.id, "quantity": "1"}],
+        }, format="json")
+        assert res.status_code == 201
+
+
+class TestTenantIsolation:
+    def test_owner_cannot_see_other_tenant_sales(self, api_client, owner, tenant, stocked_variant, platform_admin):
+        other_tenant, other_owner = create_tenant_with_owner(platform_admin)
+        other_cat = CategoryFactory(tenant=other_tenant)
+        other_prod = ProductFactory(tenant=other_tenant, category=other_cat)
+        other_var = ProductVariantFactory(tenant=other_tenant, product=other_prod)
+        StockService.intake(
+            tenant=other_tenant,
+            product_variant=other_var,
+            quantity=Decimal("10"),
+            cost_price=Decimal("5000"),
+            created_by=other_owner,
+        )
+
+        # Create sale in other tenant
+        api_client.force_authenticate(user=other_owner)
+        other_res = api_client.post(SALES_URL, {
+            "items": [{"product_variant_id": other_var.id, "quantity": "1"}],
+        }, format="json")
+        assert other_res.status_code == 201
+        other_sale_id = other_res.data[0]["id"]
+
+        # Authenticate as first tenant owner
+        api_client.force_authenticate(user=owner)
+        list_res = api_client.get(SALES_URL)
+        sale_ids = [s["id"] for s in list_res.data]
+        assert other_sale_id not in sale_ids
+
+        # Direct ID fetch returns 404
+        detail_res = api_client.get(f"{SALES_URL}{other_sale_id}/")
+        assert detail_res.status_code == 404
+
+
+class TestSaleEndpoints:
+    def test_create_sale_flow(self, api_client, staff_with_sales_permission, stocked_variant):
+        api_client.force_authenticate(user=staff_with_sales_permission)
+
+        response = api_client.post(SALES_URL, {
+            "items": [
+                {
+                    "product_variant_id": stocked_variant.id,
+                    "quantity": "2",
+                    "unit_price": "12000.00",
+                }
+            ],
+            "payment_type": "cash",
+        }, format="json")
+
+        assert response.status_code == 201
+        assert len(response.data) == 1
+        sale_data = response.data[0]
+        assert sale_data["currency"] == "UZS"
+        assert sale_data["total_amount"] == "24000.00"
+        assert len(sale_data["items"]) == 1
+
+    def test_void_sale_endpoint(self, api_client, staff_with_sales_permission, stocked_variant):
+        api_client.force_authenticate(user=staff_with_sales_permission)
+
+        res = api_client.post(SALES_URL, {
+            "items": [{"product_variant_id": stocked_variant.id, "quantity": "2"}],
+        }, format="json")
+        sale_id = res.data[0]["id"]
+
+        void_res = api_client.post(f"{SALES_URL}{sale_id}/void/", {
+            "reason": "Mijoz xato mahsulot olgan",
+        }, format="json")
+
+        assert void_res.status_code == 200
+        assert void_res.data["status"] == "voided"
+        assert void_res.data["void_reason"] == "Mijoz xato mahsulot olgan"
+
+
+class TestCounterpartyEndpoints:
+    def test_counterparty_crud(self, api_client, staff_with_sales_permission, tenant):
+        api_client.force_authenticate(user=staff_with_sales_permission)
+
+        # Create
+        create_res = api_client.post(COUNTERPARTIES_URL, {
+            "name": "Vali",
+            "phone_number": "+998901239988",
+            "note": "Xaridlar uchun",
+        }, format="json")
+        assert create_res.status_code == 201
+        cp_id = create_res.data["id"]
+
+        # List
+        list_res = api_client.get(COUNTERPARTIES_URL)
+        assert list_res.status_code == 200
+        assert any(c["id"] == cp_id for c in list_res.data)
+
+        # Detail
+        detail_res = api_client.get(f"{COUNTERPARTIES_URL}{cp_id}/")
+        assert detail_res.status_code == 200
+        assert detail_res.data["name"] == "Vali"
+
+        # Update
+        patch_res = api_client.patch(f"{COUNTERPARTIES_URL}{cp_id}/", {
+            "name": "Valijon",
+        }, format="json")
+        assert patch_res.status_code == 200
+        assert patch_res.data["name"] == "Valijon"
+
+        # Archive
+        del_res = api_client.delete(f"{COUNTERPARTIES_URL}{cp_id}/")
+        assert del_res.status_code == 200
+        cp = Counterparty.objects.get(pk=cp_id)
+        assert cp.is_active is False
+
+
+class TestDebtPaymentEndpoints:
+    def test_owner_can_record_payment(self, api_client, owner, tenant):
+        cp = CounterpartyFactory(tenant=tenant, debt_balance_uzs=Decimal("100000.00"))
+        api_client.force_authenticate(user=owner)
+
+        res = api_client.post(f"{COUNTERPARTIES_URL}{cp.id}/payments/", {
+            "amount": "40000.00",
+            "currency": "UZS",
+            "note": "Qarz qisman to'landi",
+        }, format="json")
+
+        assert res.status_code == 201
+        assert res.data["amount"] == "40000.00"
+        cp.refresh_from_db()
+        assert cp.debt_balance_uzs == Decimal("60000.00")
+
+    def test_correction_endpoint(self, api_client, owner, tenant):
+        cp = CounterpartyFactory(tenant=tenant, debt_balance_uzs=Decimal("50000.00"))
+        api_client.force_authenticate(user=owner)
+
+        res = api_client.post(f"{COUNTERPARTIES_URL}{cp.id}/payments/correct/", {
+            "amount": "-10000.00",
+            "currency": "UZS",
+            "note": "Noto'g'ri ortiqcha to'lov bekor qilindi",
+        }, format="json")
+
+        assert res.status_code == 201
+        assert res.data["is_correction"] is True
+        cp.refresh_from_db()
+        assert cp.debt_balance_uzs == Decimal("60000.00")
+
+
+class TestB2BEndpoints:
+    def test_b2b_inbox_and_accept_flow(self, api_client, tenant, owner, stocked_variant, platform_admin):
+        b_tenant, b_owner = create_tenant_with_owner(platform_admin)
+        cat_b = CategoryFactory(tenant=b_tenant, currency="UZS")
+
+        cp = CounterpartyFactory(tenant=tenant, target_tenant=b_tenant)
+
+        # Create B2B sale from Tenant A
+        api_client.force_authenticate(user=owner)
+        sale_res = api_client.post(SALES_URL, {
+            "items": [{"product_variant_id": stocked_variant.id, "quantity": "5", "unit_price": "12000.00"}],
+            "payment_type": "debt",
+            "counterparty_id": cp.id,
+        }, format="json")
+        assert sale_res.status_code == 201
+        b2b_sale_id = sale_res.data[0]["id"]
+        sale_item_id = sale_res.data[0]["items"][0]["id"]
+
+        # Tenant B checks inbox
+        api_client.force_authenticate(user=b_owner)
+        inbox_res = api_client.get(B2B_INBOX_URL)
+        assert inbox_res.status_code == 200
+        assert any(s["id"] == b2b_sale_id for s in inbox_res.data)
+
+        # Tenant B accepts
+        accept_res = api_client.post(f"/api/v1/sales/b2b/{b2b_sale_id}/accept/", {
+            "items": [
+                {
+                    "sale_item_id": sale_item_id,
+                    "accepted_quantity": "5.000",
+                    "target_category_id": cat_b.id,
+                }
+            ],
+        }, format="json")
+
+        assert accept_res.status_code == 200
+        assert accept_res.data["status"] == "b2b_accepted"
+
+
+class TestNotificationEndpoints:
+    def test_list_and_read_notifications(self, api_client, owner, tenant):
+        notif = Notification.objects.create(
+            tenant=tenant,
+            recipient=owner,
+            type=Notification.TYPE_DEBT_WARNING,
+            title="Qarz ogohlantirish",
+            message="Test xabarnoma",
+        )
+
+        api_client.force_authenticate(user=owner)
+        list_res = api_client.get(NOTIFICATIONS_URL)
+        assert list_res.status_code == 200
+        assert len(list_res.data) == 1
+        assert list_res.data[0]["is_read"] is False
+
+        # Mark read
+        read_res = api_client.post(f"{NOTIFICATIONS_URL}{notif.id}/read/")
+        assert read_res.status_code == 200
+        notif.refresh_from_db()
+        assert notif.is_read is True

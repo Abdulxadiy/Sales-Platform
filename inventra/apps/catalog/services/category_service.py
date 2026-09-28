@@ -38,11 +38,13 @@ class CategoryService:
 
     @classmethod
     @transaction.atomic
-    def create(cls, *, tenant, name: str, parent: Category = None) -> Category:
+    def create(
+        cls, *, tenant, name: str, parent: Category = None, currency: str = "UZS"
+    ) -> Category:
         """
         Create a Category. `kod` is always system-assigned (see
         _next_kod) -- the owner may only change it afterwards, via
-        update().
+        update(). Subcategories automatically inherit the parent's currency.
         """
         if parent is not None:
             if parent.tenant_id != tenant.id:
@@ -52,9 +54,14 @@ class CategoryService:
                     "Categories are limited to 2 levels -- the chosen parent is "
                     "already a subcategory."
                 )
+            currency = parent.currency
+        elif currency not in ("UZS", "USD"):
+            raise CategoryServiceError("currency must be 'UZS' or 'USD'.")
 
         kod = cls._next_kod(tenant)
-        return Category.objects.create(tenant=tenant, name=name, kod=kod, parent=parent)
+        return Category.objects.create(
+            tenant=tenant, name=name, kod=kod, parent=parent, currency=currency
+        )
 
     @staticmethod
     @transaction.atomic

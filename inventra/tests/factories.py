@@ -16,6 +16,7 @@ from decimal import Decimal
 from apps.accounts.models import User, Employee
 from apps.tenants.models import Tenant
 from apps.catalog.models import Category, Product, ProductVariant
+from apps.sales.models import Counterparty, Sale, SaleItem, DebtPayment
 
 
 class UserFactory(DjangoModelFactory):
@@ -212,3 +213,61 @@ class ProductVariantFactory(DjangoModelFactory):
     price_min = Decimal("10000.00")
     price_recommended = Decimal("12000.00")
     is_active = True
+
+
+class CounterpartyFactory(DjangoModelFactory):
+    class Meta:
+        model = Counterparty
+
+    tenant = factory.SubFactory(TenantFactory)
+    name = factory.Sequence(lambda n: f"Client {n}")
+    phone_number = factory.Sequence(lambda n: f"+99893{n:07d}")
+    target_tenant = None
+    debt_balance_uzs = Decimal("0.00")
+    debt_balance_usd = Decimal("0.00")
+    last_notified_debt_step_uzs = 0
+    last_notified_debt_step_usd = 0
+    note = ""
+    is_active = True
+
+
+class SaleFactory(DjangoModelFactory):
+    class Meta:
+        model = Sale
+
+    tenant = factory.SubFactory(TenantFactory)
+    receipt_number = factory.Sequence(lambda n: f"REC-{n:06d}")
+    sold_by = factory.SubFactory(StaffFactory)
+    counterparty = None
+    currency = Sale.CURRENCY_UZS
+    is_partner_sale = False
+    total_amount = Decimal("0.00")
+    payment_type = Sale.PAYMENT_CASH
+    status = Sale.STATUS_COMPLETED
+
+
+class SaleItemFactory(DjangoModelFactory):
+    class Meta:
+        model = SaleItem
+
+    tenant = factory.SelfAttribute("sale.tenant")
+    sale = factory.SubFactory(SaleFactory)
+    product_variant = factory.SubFactory(ProductVariantFactory)
+    quantity = Decimal("1.000")
+    unit_price = Decimal("10000.00")
+    cost_price = Decimal("8000.00")
+    total_price = Decimal("10000.00")
+    status = SaleItem.STATUS_ACTIVE
+
+
+class DebtPaymentFactory(DjangoModelFactory):
+    class Meta:
+        model = DebtPayment
+
+    tenant = factory.SelfAttribute("counterparty.tenant")
+    counterparty = factory.SubFactory(CounterpartyFactory)
+    amount = Decimal("50000.00")
+    currency = DebtPayment.CURRENCY_UZS
+    recorded_by = factory.SubFactory(OwnerFactory)
+    is_correction = False
+    note = ""

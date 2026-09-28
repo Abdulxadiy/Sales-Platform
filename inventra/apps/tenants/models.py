@@ -8,6 +8,12 @@ class Tenant(models.Model):
     owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name="owned_tenant")
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    usd_rate = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=12800.00,
+        help_text="Ichki dollar kursi (ko'rgazmali hisoblash uchun)",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

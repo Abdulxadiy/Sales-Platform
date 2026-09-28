@@ -38,7 +38,7 @@ class StockService:
     @transaction.atomic
     def _apply_movement(
             cls, *, tenant, product_variant, type: str, quantity: Decimal,
-            direction: str, created_by, cost_price: Decimal=None, note: str="") -> StockMovement:
+            direction: str, created_by, cost_price: Decimal=None, note: str="", sale=None) -> StockMovement:
         if product_variant.tenant_id != tenant.id:
             raise StockServiceError("product_variant must belong to the same tenant.")
         if quantity <= 0:
@@ -67,6 +67,7 @@ class StockService:
             quantity=quantity,
             cost_price=cost_price if type == StockMovement.TYPE_KIRIM else None,
             note=note,
+            sale=sale,
             created_by=created_by,
         )
     # -- Public, explicit-verb API -- one method per real-world action,
@@ -74,7 +75,7 @@ class StockService:
     # "record_movement(type=...)" entry point. --
 
     @classmethod
-    def  intake(cls, *, tenant, product_variant, quantity, cost_price, created_by, note="") -> StockMovement:
+    def  intake(cls, *, tenant, product_variant, quantity, cost_price, created_by, note="", sale=None) -> StockMovement:
         """A purchase/restock -- the only movement type that carries a
         cost_price, and the only one gated by `add_stock_intake` rather
         than `adjust_stock` (see api/v1/inventory/views)."""
@@ -83,14 +84,14 @@ class StockService:
         return cls._apply_movement(
             tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_KIRIM,
             quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_KIRIM],
-            created_by=created_by, cost_price=cost_price, note=note,
+            created_by=created_by, cost_price=cost_price, note=note, sale=sale,
         )
     @classmethod
-    def customer_return(cls, *, tenant, product_variant, quantity, created_by, note="") -> StockMovement:
+    def customer_return(cls, *, tenant, product_variant, quantity, created_by, note="", sale=None) -> StockMovement:
         return cls._apply_movement(
             tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_MIJOZ_QAYTARDI,
             quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_MIJOZ_QAYTARDI],
-            created_by=created_by, note=note,
+            created_by=created_by, note=note, sale=sale,
         )
 
     @classmethod

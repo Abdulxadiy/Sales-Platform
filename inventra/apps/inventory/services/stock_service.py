@@ -107,11 +107,28 @@ class StockService:
     def write_off(cls, *, tenant, product_variant, quantity, created_by, note="") -> StockMovement:
         """Spoilage/damage/expiry -- goods that leave the shop without
         being sold or returned anywhere."""
-        return cls._apply_movement(
+        movement = cls._apply_movement(
             tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_ISROFGARCHILIK,
             quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_ISROFGARCHILIK],
             created_by=created_by, note=note,
         )
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.STOCK_ADJUSTMENT,
+            actor=created_by,
+            tenant=tenant,
+            target_model="StockMovement",
+            target_id=str(movement.id),
+            changes={
+                "product_variant_id": product_variant.id,
+                "type": StockMovement.TYPE_ISROFGARCHILIK,
+                "quantity": str(quantity),
+                "note": note,
+            },
+            description=f"Stock write-off (spoilage): {quantity} for variant {product_variant.id}",
+        )
+        return movement
 
     @classmethod
     def adjust(cls, *, tenant, product_variant, quantity, direction, created_by, note="") -> StockMovement:
@@ -119,10 +136,28 @@ class StockService:
         direction; the caller (a stocktake) says which way it goes."""
         if direction not in (StockMovement.DIRECTION_IN, StockMovement.DIRECTION_OUT):
             raise StockServiceError("direction must be 'in' or 'out' for an adjustment.")
-        return cls._apply_movement(
+        movement = cls._apply_movement(
             tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_TUZATISH,
             quantity=quantity, direction=direction, created_by=created_by, note=note,
         )
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.STOCK_ADJUSTMENT,
+            actor=created_by,
+            tenant=tenant,
+            target_model="StockMovement",
+            target_id=str(movement.id),
+            changes={
+                "product_variant_id": product_variant.id,
+                "type": StockMovement.TYPE_TUZATISH,
+                "direction": direction,
+                "quantity": str(quantity),
+                "note": note,
+            },
+            description=f"Stock adjustment ({direction}): {quantity} for variant {product_variant.id}",
+        )
+        return movement
 
     # `sell()` is deliberately not implemented yet -- that's the `sales`
     # app's job once it exists (9-bosqich, band 3). It will call

@@ -133,4 +133,16 @@ class TenantService:
 
         tenant.owner = new_owner
         tenant.save(update_fields=["owner"])
+
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.OWNER_TRANSFER,
+            actor=changed_by,
+            tenant=tenant,
+            target_model="Tenant",
+            target_id=str(tenant.id),
+            changes={"owner_id": {"old": old_owner.id, "new": new_owner.id}},
+            description=f"Tenant '{tenant.name}' owner changed from {old_owner.id} to {new_owner.id} by {changed_by.id}",
+        )
         return tenant

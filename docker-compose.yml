@@ -8,6 +8,7 @@ volumes:
   redis_data:
   postgres_data:
   minio_data:
+  static_data:
   inventra_venv:
   bot_venv:
 
@@ -27,6 +28,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     networks:
       - inventra_net
     healthcheck:
@@ -92,8 +94,9 @@ services:
     volumes:
       - ./inventra:/app
       - inventra_venv:/app/.venv
-    ports:
-      - "8000:8000"
+      - static_data:/app/staticfiles
+    expose:
+      - "8000"
     networks:
       - inventra_net
 
@@ -168,5 +171,21 @@ services:
     volumes:
       - ./telegram_bot_sms:/app
       - bot_venv:/app/.venv
+    networks:
+      - inventra_net
+
+  # -------------------------------------------------------------------
+  # NGINX — Teskari proksi (Reverse Proxy) & Static/Media server
+  # -------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_data:/var/www/static:ro
+    depends_on:
+      - inventra
     networks:
       - inventra_net

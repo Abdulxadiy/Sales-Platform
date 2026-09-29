@@ -551,24 +551,24 @@ Har app: model → service → `api/v1/<app>/` → ruxsat + tenant scope → tes
 - [x] Bir xil xato tanasi: `{"error": {"code": "...", "message": "...", "details": ...}}`
 - [x] Pagination (`StandardResultsSetPagination`, page_size=20, max=100), `django-filter`
 
-### 11-bosqich — Shop bilan integratsiya (Inventra tarafi)
+### 11-bosqich — Shop bilan integratsiya (Inventra tarafi) — ✅ TO'LIQ BAJARILDI (v0.9.3)
 
 Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xaritasi.md`da. Bu yerda faqat Inventra tomonidan taqdim etiladigan qism:
 
-- [ ] Shop uchun internal endpoint(lar): mahsulot/narx ma'lumotini berish, buyurtma kelganda ombordan kamaytirish/zahiralash
-- [ ] Service-to-service token (mavjud `IsInternalService` qayta ishlatiladi)
-- [ ] Telegram bot marshrutlash — ✅ tayyor (`?start=shop`)
+- [x] Shop uchun internal endpoint(lar): mahsulot/narx ma'lumotini berish (`GET /api/v1/internal/shop/tenants/{tenant_id}/products/`), buyurtma kelganda ombordan kamaytirish/zahiralash (`POST /api/v1/internal/shop/tenants/{tenant_id}/order-deduct/`)
+- [x] Service-to-service token (mavjud `IsInternalService` qayta ishlatiladi)
+- [x] Telegram bot marshrutlash — ✅ tayyor (`?start=shop`)
 
-### 12-bosqich — Docker Compose va deploy
+### 12-bosqich — Docker Compose va deploy — ✅ TO'LIQ BAJARILDI (v0.9.4)
 
 - [x] Redis + Postgres + Inventra + bot (qisman, bot yangilandi)
-- [ ] `shop`, `celery-worker`, `nginx`
-- [ ] **`minio`** — mahsulot rasmlari uchun object storage, `django-storages` orqali ulanadi (9-bosqich muhokamasida kelishildi, 2026-09) — YANGI
-- [ ] Shop uchun alohida Postgres baza (compose'ga qo'shiladi)
-- [ ] Ichki servislar faqat `inventra_net`; tashqariga faqat nginx
-- [ ] `.env` bilan sirlarni boshqarish (`SHOP_INTERNAL_URL` qo'shildi, bot'ga)
-- [ ] `DEBUG`ni haqiqiy `bool`
-- [ ] Gunicorn / production sozlamalarini yakunlash
+- [x] `shop_db` tayyorgarligi (`init-db.sql`), `celery_worker`, `celery_beat`, `nginx`
+- [x] **`minio`** — mahsulot rasmlari uchun object storage, `django-storages` orqali ulanadi (9-bosqich muhokamasida kelishildi, 2026-09) — YANGI
+- [x] Shop uchun alohida Postgres baza (`init-db.sql` orqali `shop_db` avto-yaratiladi)
+- [x] Ichki servislar faqat `inventra_net`; tashqariga faqat nginx (port 80:80)
+- [x] `.env` bilan sirlarni boshqarish (`SHOP_INTERNAL_URL` qo'shildi, bot'ga)
+- [x] `DEBUG`ni haqiqiy `bool`
+- [x] Gunicorn / production sozlamalarini yakunlash, statik fayllar pipeline'i (`collectstatic`)
 
 ### 13-bosqich — Celery — ✅ TO'LIQ BAJARILDI
 

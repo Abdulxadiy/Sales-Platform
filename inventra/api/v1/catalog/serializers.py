@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.catalog.models import Category, Product, ProductVariant
+from apps.catalog.models import Category, Product, ProductVariant, ProductImage
 
 
 class CategoryOutputSerializer(serializers.ModelSerializer):
@@ -82,14 +82,30 @@ class ProductVariantUpdateSerializer(serializers.Serializer):
     price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImage
+        fields = ["id", "image", "image_url", "order", "created_at"]
+        read_only_fields = ["id", "image_url", "created_at"]
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+
+
 class ProductOutputSerializer(serializers.ModelSerializer):
     variants = ProductVariantOutputSerializer(many=True, read_only=True)
+    gallery_images = ProductImageSerializer(many=True, read_only=True)
     image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ["id", "name", "category", "image", "is_active", "variants"]
-        read_only_fields = ["id", "is_active", "variants"]
+        fields = ["id", "name", "category", "image", "gallery_images", "is_active", "variants"]
+        read_only_fields = ["id", "is_active", "variants", "gallery_images"]
 
     def get_image(self, obj):
         if not obj.image:

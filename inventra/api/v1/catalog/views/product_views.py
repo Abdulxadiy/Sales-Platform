@@ -12,6 +12,7 @@ from api.v1.catalog.serializers import (
     ProductVariantOutputSerializer,
     ProductVariantCreateSerializer,
     ProductVariantUpdateSerializer,
+    ProductImageSerializer,
 )
 from ._base import CatalogAPIView
 
@@ -156,3 +157,48 @@ class ProductVariantArchiveView(CatalogAPIView):
         variant.is_active = False
         variant.save(update_fields=["is_active"])
         return Response(ProductVariantOutputSerializer(variant, context={"request": request}).data)
+
+
+class ProductImageUploadView(CatalogAPIView):
+    """POST /api/v1/catalog/products/{pk}/images/ -- uploads an image (up to 3 max)."""
+    permission_classes = [HasEmployeePermission]
+    required_permission = "catalog.change_product"
+
+    def post(self, request, pk):
+        product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
+        image_file = request.FILES.get("image")
+        if not image_file:
+            return Response(
+                {"error": {"code": "image_required", "message": "'image' fayli talab qilinadi."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            order = int(request.data.get("order", 0))
+        except (ValueError, TypeError):
+            order = 0
+
+        try:
+            prod_image = ProductService.add_image(product=product, image_file=image_file, order=order)
+            return Response(ProductImageSerializer(prod_image, context={"request": request}).data, status=status.HTTP_201_CREATED)
+        except Exception as exc:
+            return Response(
+                {"error": {"code": "image_error", "message": str(exc)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class ProductImageDeleteView(CatalogAPIView):
+    """DELETE /api/v1/catalog/products/{pk}/images/{image_id}/ -- deletes a gallery image."""
+    permission_classes = [HasEmployeePermission]
+    required_permission = "catalog.change_product"
+
+    def delete(self, request, pk, image_id):
+        product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
+        try:
+            ProductService.remove_image(product=product, image_id=image_id)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProductServiceError as exc:
+            return Response(
+                {"error": {"code": "not_found", "message": str(exc)}},
+                status=status.HTTP_404_NOT_FOUND,
+            )

@@ -13,9 +13,14 @@ class IsInternalService(BasePermission):
     def has_permission(self, request, view):
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Internal '):
-            return False
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Internal service token talab qilinadi.")
         token = auth_header.split('Internal ')[1].strip()
-        return secrets.compare_digest(token, settings.INTERNAL_SERVICE_TOKEN)
+        expected = getattr(settings, 'INTERNAL_SERVICE_TOKEN', '') or ''
+        if not expected or not secrets.compare_digest(token, expected):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Yaroqsiz internal service token.")
+        return True
 
 
 class IsPlatformAdmin(BasePermission):

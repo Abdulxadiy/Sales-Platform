@@ -85,6 +85,22 @@ class VoidService:
                 link="/sales/b2b/inbox/",
             )
 
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.VOID_SALE,
+            actor=user,
+            tenant=sale.tenant,
+            target_model="Sale",
+            target_id=str(sale.id),
+            changes={
+                "status": {"old": "completed", "new": Sale.STATUS_VOIDED},
+                "total_amount": str(sale.total_amount),
+                "reason": reason,
+            },
+            description=f"Sale {sale.receipt_number} voided: {reason}",
+        )
+
         return sale
 
     @classmethod
@@ -152,4 +168,21 @@ class VoidService:
             sale.status = Sale.STATUS_PARTIALLY_VOIDED
 
         sale.save(update_fields=['status', 'voided_at', 'voided_by', 'void_reason'])
+
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.VOID_SALE,
+            actor=user,
+            tenant=sale.tenant,
+            target_model="SaleItem",
+            target_id=str(sale_item.id),
+            changes={
+                "sale_id": str(sale.id),
+                "quantity": str(quantity),
+                "reason": reason,
+            },
+            description=f"Sale item {sale_item.id} from {sale.receipt_number} voided ({quantity} qty): {reason}",
+        )
+
         return sale_item

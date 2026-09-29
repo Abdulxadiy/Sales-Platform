@@ -22,11 +22,13 @@ def issue_tokens(user):
     # Attach custom claims to refresh token
     refresh["role"] = user.role
     refresh["tenant_id"] = tenant_id
+    refresh["token_version"] = getattr(user, "token_version", 1)
 
     # Attach custom claims to access token
     access = refresh.access_token
     access["role"] = user.role
     access["tenant_id"] = tenant_id
+    access["token_version"] = getattr(user, "token_version", 1)
 
     return {
         "access": str(access),

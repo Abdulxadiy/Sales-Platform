@@ -114,6 +114,18 @@ class EmployeeService:
         if permissions:
             employee.permissions.set(permissions)
 
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.EMPLOYEE_HIRE,
+            actor=hired_by,
+            tenant=tenant,
+            target_model="Employee",
+            target_id=str(employee.id),
+            changes={"role": role, "position": position, "user_id": target_user.id},
+            description=f"Employee {getattr(target_user, 'phone_number', '') or target_user.id} hired by {getattr(hired_by, 'phone_number', '') or hired_by.id}",
+        )
+
         return employee
 
     @staticmethod
@@ -143,8 +155,20 @@ class EmployeeService:
         employee.fired_at = timezone.now()
         employee.fired_by = fired_by
         employee.save(update_fields=["is_active", "fired_at", "fired_by"])
-
         target_user.set_unusable_password()
-        target_user.save(update_fields=["password"])
+        target_user.token_version = getattr(target_user, "token_version", 1) + 1
+        target_user.save(update_fields=["password", "token_version"])
+
+        from apps.core.models import AuditAction
+        from apps.core.services.audit_service import AuditService
+        AuditService.log(
+            action=AuditAction.EMPLOYEE_FIRE,
+            actor=fired_by,
+            tenant=employee.tenant,
+            target_model="Employee",
+            target_id=str(employee.id),
+            changes={"is_active": {"old": True, "new": False}},
+            description=f"Employee {getattr(target_user, 'phone_number', '') or target_user.id} fired by {getattr(fired_by, 'phone_number', '') or fired_by.id}",
+        )
 
         return employee

@@ -1,4 +1,4 @@
-﻿from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from ..managers import UserManager
 
@@ -30,6 +30,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_phone_verified = models.BooleanField(default=False)
     profile_completed = models.BooleanField(default=False)
+    token_version = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = UserManager()

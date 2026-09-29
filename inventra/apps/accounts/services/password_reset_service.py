@@ -177,7 +177,20 @@ def confirm_password_reset(
         user.username = cleaned_username
 
     user.set_password(new_password)
+    user.token_version = getattr(user, "token_version", 1) + 1
     user.save()
+
+    from apps.core.models import AuditAction
+    from apps.core.services.audit_service import AuditService
+    AuditService.log(
+        action=AuditAction.PASSWORD_RESET,
+        actor=user,
+        tenant=getattr(user, "tenant", None),
+        target_model="User",
+        target_id=str(user.id),
+        changes={"token_version": user.token_version},
+        description=f"Password reset for user {user.phone_number or user.username or user.id}",
+    )
 
     # Clear throttle lock if user was previously banned/throttled on login
     if user.username:

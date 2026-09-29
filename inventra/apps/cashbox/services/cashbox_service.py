@@ -214,6 +214,28 @@ class CashboxService:
             CashIncome.objects.filter(tenant=tenant, shift_report__isnull=True).update(shift_report=report)
             CashExpense.objects.filter(tenant=tenant, shift_report__isnull=True).update(shift_report=report)
 
+            if has_discrepancy:
+                from apps.core.models import AuditAction
+                from apps.core.services.audit_service import AuditService
+                AuditService.log(
+                    action=AuditAction.CASH_DISCREPANCY,
+                    actor=user,
+                    tenant=tenant,
+                    target_model="DailyCashReport",
+                    target_id=str(report.id),
+                    changes={
+                        "expected_uzs": str(expected_uzs),
+                        "actual_uzs": str(actual_cash_uzs),
+                        "discrepancy_uzs": str(discrepancy_uzs),
+                        "expected_usd": str(expected_usd),
+                        "actual_usd": str(actual_cash_usd),
+                        "discrepancy_usd": str(discrepancy_usd),
+                        "reason": final_reason,
+                    },
+                    description=f"Cash discrepancy on shift close: UZS {discrepancy_uzs}, USD {discrepancy_usd}. Reason: {final_reason}",
+                )
+
+
             # Send Notification to owner
             owner = tenant.owner
             report_msg = cls.format_daily_telegram_report(report)

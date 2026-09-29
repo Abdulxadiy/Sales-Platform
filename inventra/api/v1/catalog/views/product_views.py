@@ -153,11 +153,35 @@ class ProductVariantDetailView(CatalogAPIView):
         if "barcode" in data:
             # Never persist "" for "no barcode" -- see ProductVariant.barcode.
             data["barcode"] = data["barcode"] or None
+
+        price_fields = ("price_partner", "price_min", "price_recommended")
+        old_prices = {f: getattr(variant, f) for f in price_fields}
+
         for field, value in data.items():
             setattr(variant, field, value)
         variant.save()
 
+        price_changes = {}
+        for f in price_fields:
+            if f in data and old_prices[f] != getattr(variant, f):
+                price_changes[f] = {"old": str(old_prices[f]), "new": str(getattr(variant, f))}
+
+        if price_changes:
+            from apps.core.models import AuditAction
+            from apps.core.services.audit_service import AuditService
+            AuditService.log(
+                action=AuditAction.PRICE_CHANGE,
+                actor=request.user,
+                tenant=self.tenant,
+                target_model="ProductVariant",
+                target_id=str(variant.id),
+                changes=price_changes,
+                description=f"Prices changed for variant '{variant.name}'",
+                request=request,
+            )
+
         return Response(ProductVariantOutputSerializer(variant, context={"request": request}).data)
+
 
 
 class ProductVariantArchiveView(CatalogAPIView):

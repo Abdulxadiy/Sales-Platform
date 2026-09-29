@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'django_filters',
+    'drf_spectacular',
 
     'apps.core',
     'apps.tenants',
@@ -146,6 +147,15 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Inventra Sales Platform API',
+    'DESCRIPTION': "Inventra savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari.",
+    'VERSION': '0.9.2',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 SIMPLE_JWT = {

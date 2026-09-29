@@ -38,3 +38,20 @@ class Product(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class ProductImage(BaseModel):
+    """
+    Mahsulotga biriktirilgan qo'shimcha rasmlar (bitta mahsulotga 3 tagacha rasm).
+    """
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="gallery_images"
+    )
+    image = models.ImageField(upload_to="catalog/products/gallery/")
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+    def __str__(self):
+        return f"{self.product.name} - Rasm #{self.id}"

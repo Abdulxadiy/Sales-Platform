@@ -8,7 +8,8 @@ from decimal import Decimal
 
 from django.db import transaction
 
-from apps.catalog.models import Product, ProductVariant
+from apps.catalog.models import Product, ProductVariant, ProductImage
+from apps.core.utils.image_optimizer import optimize_image
 
 
 class ProductServiceError(Exception):
@@ -139,3 +140,27 @@ class ProductService:
         product.save(update_fields=["is_active"])
         product.variants.update(is_active=False)
         return product
+
+    @classmethod
+    @transaction.atomic
+    def add_image(cls, *, product: Product, image_file, order: int = 0) -> ProductImage:
+        """Add a gallery image to a product (maximum 3 images allowed per product)."""
+        current_count = ProductImage.objects.filter(product=product).count()
+        if current_count >= 3:
+            raise ProductServiceError("Bitta mahsulotga maksimal 3 tagacha rasm yuklash mumkin.")
+
+        optimized = optimize_image(image_file)
+        return ProductImage.objects.create(
+            tenant=product.tenant,
+            product=product,
+            image=optimized,
+            order=order,
+        )
+
+    @classmethod
+    @transaction.atomic
+    def remove_image(cls, *, product: Product, image_id: int):
+        """Remove a gallery image from a product."""
+        deleted, _ = ProductImage.objects.filter(product=product, id=image_id).delete()
+        if not deleted:
+            raise ProductServiceError("Rasm topilmadi.")

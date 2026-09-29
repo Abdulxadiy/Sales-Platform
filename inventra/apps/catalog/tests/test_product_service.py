@@ -124,3 +124,51 @@ class TestProductArchive:
         assert product.is_active is False
         assert v1.is_active is False
         assert v2.is_active is False
+
+import io
+from PIL import Image
+from django.core.files.uploadedfile import SimpleUploadedFile
+from apps.catalog.models import ProductImage
+from apps.core.utils.image_optimizer import optimize_image
+
+
+class TestProductGalleryImages:
+    def _create_sample_image(self, width=2000, height=2000):
+        buffer = io.BytesIO()
+        img = Image.new("RGB", (width, height), color="red")
+        img.save(buffer, format="JPEG")
+        buffer.seek(0)
+        return SimpleUploadedFile("test.jpg", buffer.getvalue(), content_type="image/jpeg")
+
+    def test_image_optimizer_resizes_down_to_max_1600(self):
+        sample = self._create_sample_image(2400, 1800)
+        optimized = optimize_image(sample)
+        img = Image.open(optimized)
+        assert img.width <= 1600 and img.height <= 1600
+        assert img.format == "WEBP"
+
+    def test_product_allows_up_to_3_images(self, tenant):
+        category = CategoryFactory(tenant=tenant)
+        product = ProductService.create(
+            tenant=tenant,
+            name="Telefon",
+            category=category,
+            price_partner=Decimal("100"),
+            price_min=Decimal("120"),
+            price_recommended=Decimal("150"),
+        )
+
+        img1 = ProductService.add_image(product=product, image_file=self._create_sample_image())
+        img2 = ProductService.add_image(product=product, image_file=self._create_sample_image())
+        img3 = ProductService.add_image(product=product, image_file=self._create_sample_image())
+        assert product.gallery_images.count() == 3
+
+        # 4th image must be rejected
+        with pytest.raises(ProductServiceError, match="maksimal 3 tagacha"):
+            ProductService.add_image(product=product, image_file=self._create_sample_image())
+
+        # Remove image and add again
+        ProductService.remove_image(product=product, image_id=img1.id)
+        assert product.gallery_images.count() == 2
+        ProductService.add_image(product=product, image_file=self._create_sample_image())
+        assert product.gallery_images.count() == 3

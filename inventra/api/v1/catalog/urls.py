@@ -1,8 +1,3 @@
-"""URL routes for the catalog API. Flat (not nested under tenants/<id>/)
-on purpose -- see api/v1/catalog/views/_base.py: catalog is owner/staff
-territory only, tenant always comes from the authenticated user via
-TenantContextMixin, never from the URL."""
-
 from django.urls import path
 
 from .views import (
@@ -15,6 +10,8 @@ from .views import (
     ProductVariantCreateView,
     ProductVariantDetailView,
     ProductVariantArchiveView,
+    ProductImageUploadView,
+    ProductImageDeleteView,
 )
 
 urlpatterns = [
@@ -25,6 +22,8 @@ urlpatterns = [
     path("products/", ProductListCreateView.as_view(), name="product-list-create"),
     path("products/<int:pk>/", ProductDetailView.as_view(), name="product-detail"),
     path("products/<int:pk>/archive/", ProductArchiveView.as_view(), name="product-archive"),
+    path("products/<int:pk>/images/", ProductImageUploadView.as_view(), name="product-image-upload"),
+    path("products/<int:pk>/images/<int:image_id>/", ProductImageDeleteView.as_view(), name="product-image-delete"),
     path("products/<int:product_id>/variants/", ProductVariantCreateView.as_view(), name="product-variant-create"),
 
     path("variants/<int:pk>/", ProductVariantDetailView.as_view(), name="product-variant-detail"),

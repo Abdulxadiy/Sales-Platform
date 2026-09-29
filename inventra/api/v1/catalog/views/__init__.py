@@ -6,4 +6,6 @@ from .product_views import (
     ProductVariantCreateView,
     ProductVariantDetailView,
     ProductVariantArchiveView,
+    ProductImageUploadView,
+    ProductImageDeleteView,
 )

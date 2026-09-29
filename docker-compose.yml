@@ -86,6 +86,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
     depends_on:
       redis:
         condition: service_healthy
@@ -108,13 +109,15 @@ services:
       context: ./inventra
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: uv run celery -A config worker -l info
+    command: celery -A config worker -l info
     env_file:
       - ./inventra/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      C_FORCE_ROOT: "true"
     depends_on:
       redis:
         condition: service_healthy
@@ -136,13 +139,15 @@ services:
       context: ./inventra
       dockerfile: Dockerfile
     restart: unless-stopped
-    command: uv run celery -A config beat -l info
+    command: celery -A config beat -l info
     env_file:
       - ./inventra/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      C_FORCE_ROOT: "true"
     depends_on:
       redis:
         condition: service_healthy

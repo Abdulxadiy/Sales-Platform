@@ -3,6 +3,7 @@ from .product_views import (
     ProductListCreateView,
     ProductDetailView,
     ProductArchiveView,
+    ProductVariantListView,
     ProductVariantCreateView,
     ProductVariantDetailView,
     ProductVariantArchiveView,

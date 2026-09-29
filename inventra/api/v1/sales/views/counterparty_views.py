@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -33,6 +34,16 @@ class CounterpartyListCreateView(SalesAPIView):
         qs = Counterparty.objects.filter(tenant=self.tenant)
         if active_only:
             qs = qs.filter(is_active=True)
+
+        search = request.query_params.get('search')
+        if search:
+            search = search.strip()
+            qs = qs.filter(Q(name__icontains=search) | Q(phone_number__icontains=search))
+
+        has_debt = request.query_params.get('has_debt')
+        if has_debt and has_debt.lower() in ('true', '1'):
+            qs = qs.filter(Q(debt_balance_uzs__gt=0) | Q(debt_balance_usd__gt=0))
+
         return Response(CounterpartyOutputSerializer(qs, many=True).data)
 
     def post(self, request):

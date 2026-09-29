@@ -22,6 +22,17 @@ class CategoryListCreateView(CatalogAPIView):
 
     def get(self, request):
         categories = Category.objects.filter(tenant=self.tenant, is_active=True)
+        search = request.query_params.get("search")
+        if search:
+            categories = categories.filter(name__icontains=search.strip())
+        currency = request.query_params.get("currency")
+        if currency:
+            categories = categories.filter(currency=currency.upper())
+        parent = request.query_params.get("parent")
+        if parent == "null" or parent == "none" or parent == "0":
+            categories = categories.filter(parent__isnull=True)
+        elif parent:
+            categories = categories.filter(parent_id=parent)
         return Response(CategoryOutputSerializer(categories, many=True).data)
 
     def post(self, request):

@@ -58,7 +58,7 @@ services:
   # MINIO — S3 mos media server (rasmlar va fayllar)
   # -------------------------------------------------------------------
   minio:
-    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    image: cgr.dev/chainguard/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -178,7 +178,7 @@ services:
   # NGINX — Teskari proksi (Reverse Proxy) & Static/Media server
   # -------------------------------------------------------------------
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:alpine
     restart: unless-stopped
     ports:
       - "80:80"

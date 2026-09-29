@@ -32,18 +32,26 @@ class CategoryUpdateSerializer(serializers.Serializer):
 
 
 class ProductVariantOutputSerializer(serializers.ModelSerializer):
-    # Falls back to the parent Product's image when this variant has
-    # none of its own -- see ProductVariant.image docstring.
     image = serializers.SerializerMethodField()
     currency = serializers.CharField(read_only=True)
+    product_name = serializers.CharField(source="product.name", read_only=True)
+    category_id = serializers.IntegerField(source="product.category_id", read_only=True)
+    category_name = serializers.CharField(source="product.category.name", read_only=True)
+    stock_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
         fields = [
-            "id", "product", "name", "sku", "code", "barcode", "image", "unit",
-            "currency", "price_partner", "price_min", "price_recommended", "is_active",
+            "id", "product", "product_name", "category_id", "category_name",
+            "name", "sku", "code", "barcode", "image", "unit",
+            "currency", "price_partner", "price_min", "price_recommended",
+            "stock_quantity", "is_active",
         ]
-        read_only_fields = ["id", "product", "sku", "is_active", "currency"]
+        read_only_fields = ["id", "product", "sku", "is_active", "currency", "stock_quantity"]
+
+    def get_stock_quantity(self, obj):
+        stock = getattr(obj, "stock", None)
+        return str(stock.quantity) if stock else "0.000"
 
     def get_image(self, obj):
         image = obj.image or obj.product.image

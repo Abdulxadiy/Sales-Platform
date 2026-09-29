@@ -1,3 +1,5 @@
+from decimal import Decimal
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -26,9 +28,27 @@ class ProductListCreateView(CatalogAPIView):
     permission_map = {"GET": "catalog.view_product", "POST": "catalog.add_product"}
 
     def get(self, request):
-        products = Product.objects.filter(tenant=self.tenant, is_active=True).prefetch_related("variants")
+        qs = (
+            Product.objects.filter(tenant=self.tenant, is_active=True)
+            .select_related("category")
+            .prefetch_related("variants", "gallery_images")
+        )
+        search = request.query_params.get("search")
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(variants__name__icontains=search)
+                | Q(variants__sku__icontains=search)
+                | Q(variants__barcode__icontains=search)
+            ).distinct()
+
+        category_id = request.query_params.get("category")
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+
         return Response(
-            ProductOutputSerializer(products, many=True, context={"request": request}).data
+            ProductOutputSerializer(qs, many=True, context={"request": request}).data
         )
 
     def post(self, request):
@@ -202,3 +222,77 @@ class ProductImageDeleteView(CatalogAPIView):
                 {"error": {"code": "not_found", "message": str(exc)}},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+class ProductVariantListView(CatalogAPIView):
+    """
+    GET /api/v1/catalog/variants/
+    POS va savdo uchun tovar variantlarini qidirish va filterlash.
+    Filtrlar:
+      - search: nomi, mahsulot nomi, sku, code, barcode bo'yicha qidiruv
+      - barcode: shtrix-kod bo'yicha aniq qidiruv
+      - sku: SKU bo'yicha qidiruv
+      - category: kategoriya ID si
+      - currency: UZS / USD
+      - min_price, max_price: narxlar oralig'i (price_min bo'yicha)
+      - in_stock: true bo'lsa faqat omborda mavjud tovarlar (quantity > 0)
+    """
+    permission_classes = [HasEmployeePermission]
+    required_permission = "catalog.view_product"
+
+    def get(self, request):
+        qs = (
+            ProductVariant.objects.filter(
+                tenant=self.tenant, is_active=True, product__is_active=True
+            )
+            .select_related("product", "product__category", "stock")
+        )
+
+        search = request.query_params.get("search")
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(product__name__icontains=search)
+                | Q(sku__icontains=search)
+                | Q(code__icontains=search)
+                | Q(barcode__icontains=search)
+            )
+
+        barcode = request.query_params.get("barcode")
+        if barcode:
+            qs = qs.filter(barcode=barcode.strip())
+
+        sku = request.query_params.get("sku")
+        if sku:
+            qs = qs.filter(sku__iexact=sku.strip())
+
+        category_id = request.query_params.get("category")
+        if category_id:
+            qs = qs.filter(product__category_id=category_id)
+
+        currency = request.query_params.get("currency")
+        if currency:
+            qs = qs.filter(product__category__currency=currency.upper())
+
+        min_price = request.query_params.get("min_price")
+        if min_price:
+            try:
+                qs = qs.filter(price_min__gte=Decimal(min_price))
+            except Exception:
+                pass
+
+        max_price = request.query_params.get("max_price")
+        if max_price:
+            try:
+                qs = qs.filter(price_min__lte=Decimal(max_price))
+            except Exception:
+                pass
+
+        in_stock = request.query_params.get("in_stock")
+        if in_stock and in_stock.lower() in ("true", "1"):
+            qs = qs.filter(stock__quantity__gt=Decimal("0.000"))
+
+        return Response(
+            ProductVariantOutputSerializer(qs, many=True, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )

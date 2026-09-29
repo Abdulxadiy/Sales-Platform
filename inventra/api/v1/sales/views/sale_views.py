@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -39,6 +40,23 @@ class SaleListCreateView(SalesAPIView):
         payment_type = request.query_params.get('payment_type')
         if payment_type:
             qs = qs.filter(payment_type=payment_type)
+
+        search = request.query_params.get('search')
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(receipt_number__icontains=search)
+                | Q(counterparty__name__icontains=search)
+                | Q(counterparty__phone_number__icontains=search)
+            )
+
+        date_from = request.query_params.get('date_from')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+
+        date_to = request.query_params.get('date_to')
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
 
         return Response(SaleOutputSerializer(qs, many=True).data)
 

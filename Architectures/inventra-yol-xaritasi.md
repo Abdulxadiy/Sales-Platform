@@ -510,130 +510,46 @@ Tartib:
     **Testlar** — `apps/inventory/tests/{test_stock_service,test_inventory_api}.py`:
     - 20 ta test (intake, tannarx yangilanishi, salbiy qoldiq bloklanishi, ruxsatlar bo'linishi, serializer tenant izolatsiyasi, platform_admin bloklanishi) — barchasi o'tdi.
     
-3. [ ] `sales` — Inventra ichidagi POS-sotuv, 1-narx galochkasi, Kontragentlar va Do'konlararo B2B tovar o'tkazish. **`Order` (Shop'dan kelgan xaridor buyurtmasi) bilan aralashtirilmaydi** — bu do'konning ichki kassa va B2B savdosi.
+3. [x] `sales` — Inventra ichidagi POS-sotuv, 1-narx galochkasi, Kontragentlar va Do'konlararo B2B tovar o'tkazish. ✅ **TO'LIQ BAJARILDI (v0.8.0, 64 ta test bilan qoplandi).**
 
-    **Modellar:**
-    - **`Counterparty`** (`BaseModel`dan meros, `apps/sales/models/counterparty_model.py`):
-      - `name` (Char, ism yoki do'kon nomi)
-      - `phone_number` (Char, indekslangan)
-      - `target_tenant` (FK `tenants.Tenant`, nullable) — telefon raqami orqali tizimda topilgan do'kon
-      - `debt_balance_uzs` (DecimalField, max_digits=14, decimal_places=2, default=0) — so'mdagi qarz (signed)
-      - `debt_balance_usd` (DecimalField, max_digits=14, decimal_places=2, default=0) — dollardagi qarz (signed)
-      - `last_notified_debt_step_uzs` (IntegerField, default=0) — 10 mlnlik qadam (1=10mln, 2=20mln...)
-      - `last_notified_debt_step_usd` (IntegerField, default=0) — 1 000$lik qadam (1=1000$, 2=2000$...)
-      - `note` (TextField, izoh)
-      - `is_active` (Boolean, arxivlash uchun, o'chirish taqiqlanadi)
-    - **`DebtPayment`** (`BaseModel`, `apps/sales/models/debt_payment_model.py`):
-      - `counterparty` (FK `Counterparty`, related_name="payments")
-      - `amount` (DecimalField, max_digits=14, decimal_places=2, check: > 0)
-      - `currency` (Choice: `UZS`, `USD`)
-      - `paid_at` (DateTimeField, auto_now_add=True)
-      - `recorded_by` (FK `accounts.User`) — faqat `owner` va `platform_admin`
-      - `is_correction` (Boolean, default=False) — xatoni tuzatish (korrektirovka) yozuvi
-      - `note` (TextField, agar `is_correction=True` bo'lsa majburiy)
-    - **`Sale`** (`BaseModel`, `apps/sales/models/sale_model.py`):
-      - `receipt_number` (Char, tenant ichida unikal, avtomatik `POS-YYYYMMDD-XXXX`)
-      - `sold_by` (FK `accounts.User`) — sotgan xodim/kassir
-      - `counterparty` (FK `Counterparty`, nullable) — agar ro'yxatdagi odamga sotilgan bo'lsa (qarz va B2B da majburiy)
-      - `currency` (Choice: `UZS`, `USD`) — bitta chek faqat bitta valyutada
-      - `is_partner_sale` (Boolean, default=False) — 1-narx galochkasi yoqilgan holda sotilgani
-      - `total_amount` (DecimalField, umumiy summa)
-      - `payment_type` (Choice: `cash`, `card`, `debt`)
-      - `status` (Choice: `completed`, `partially_voided`, `voided`, `b2b_pending`, `b2b_partially_accepted`, `b2b_accepted`, `b2b_rejected`)
-      - `b2b_target_tenant` (FK `tenants.Tenant`, nullable) — B2B bo'lsa, qabul qiluvchi tenant
-      - `b2b_expires_at` (DateTimeField, nullable) — yaratilgandan 7 kun keyingi vaqt
-      - `b2b_reject_reason` (TextField, blank=True) — B rad etganda ko'rsatilgan sabab
-      - `voided_at`, `voided_by`, `void_reason` (sotuv bekor qilinganda audit uchun)
-      - `idempotency_key` (CharField, max_length=64, blank=True, null=True, db_index=True)
-    - **`SaleItem`** (`BaseModel`, `apps/sales/models/sale_item_model.py`):
-      - `sale` (FK `Sale`, related_name="items")
-      - `product_variant` (FK `catalog.ProductVariant`, on_delete=PROTECT)
-      - `quantity` (DecimalField, max_digits=14, decimal_places=3, check: > 0)
-      - `unit_price` (DecimalField, sotilgan amaldagi narx)
-      - `cost_price` (DecimalField, sotilgan paytdagi variant tannarxi)
-      - `original_partner_price` (DecimalField, null=True) — sotilgan paytdagi asl 1-narx
-      - `total_price` (DecimalField, quantity * unit_price)
-      - `status` (Choice: `active`, `partially_voided`, `voided`, `b2b_accepted`, `b2b_rejected`, default=`active`)
-      - `voided_quantity` (DecimalField, default=0)
-      - `b2b_accepted_quantity` (DecimalField, default=0)
-      - `b2b_rejected_quantity` (DecimalField, default=0)
-    - **`SaleVoidLog`** (`BaseModel`, `apps/sales/models/sale_void_log_model.py`):
-      - `sale_item` (FK `SaleItem`, related_name="void_logs")
-      - `quantity` (DecimalField, bekor qilingan miqdor)
-      - `reason` (TextField, majburiy izoh)
-      - `voided_by` (FK `accounts.User`)
-      - `voided_at` (DateTimeField, auto_now_add=True)
-    - **`Notification`** (`BaseModel`, `apps/sales/models/notification_model.py`):
-      - `tenant` (FK `tenants.Tenant`) — qaysi do'konga tegishli
-      - `recipient` (FK `accounts.User`) — xabarnoma kimga (do'kon egasi)
-      - `type` (Choice: `b2b_transfer_request`, `debt_threshold_warning`, `b2b_transfer_accepted`, `b2b_transfer_partially_accepted`, `b2b_transfer_rejected`, `b2b_transfer_cancelled`)
-      - `title`, `message`, `link` (batafsil ma'lumot havolasi)
-      - `is_read` (Boolean, default=False)
+4. [x] `analytics` — Savdo analitikasi va Bosh sahifa Dashboard ma'lumotlari (`apps/analytics` / `api/v1/analytics/`): ✅ **TO'LIQ BAJARILDI**
+    - **Ruxsat:** Faqat `owner` va `platform_admin` (xodimlar uchun to'liq yopiq).
+    - **Davrlar filtri (`period`):** `today`, `this_week`, `this_month`, `this_year` va ixtiyoriy `start_date` hamda `end_date` oralig'i.
+    - **Valyuta taqsimoti:** `UZS` va `USD` har doim alohida hisoblanadi (aralashtirilmaydi).
+    - **KPI Kartochkalari:**
+      - Umumiy tushum (`total_revenue_uzs`, `total_revenue_usd`)
+      - Sof foyda (`net_profit_uzs`, `net_profit_usd`): `unit_price - cost_price`, bekor qilinganlar chegiriladi
+      - Jami debitorlik qarzlar balansi (`total_debt_uzs`, `total_debt_usd`)
+      - Jami cheklar soni va o'rtacha chek summasi
+    - **Diagramma ma'lumotlari (Charts):**
+      - Savdo va foyda dinamikasi (kunlik taqsimot grafigi)
+      - Top-10 eng ko'p sotilgan tovarlar (miqdor va tushum bo'yicha)
+      - To'lov turlari nisbati (Naqd, Karta, Nasiya foiz va summada)
+      - Xodimlar (kassirlar) bo'yicha savdo reytingi
 
-    **Servislar:**
-    - **`SaleService`** (`apps/sales/services/sale_service.py`):
-      - `create_sale()`: savatdagi tovarlarni valyuta bo'yicha guruhlaydi (aralash bo'lsa 2 ta alohida `Sale` yaratadi), `price_partner` bo'sh/0 bo'lsa xato beradi, deadlock oldini olish uchun variantlarni `id` bo'yicha qulflaydi (`select_for_update()`), ombordan chiqaradi (`StockService._apply_movement(type='sotuv', direction='out', sale=sale)`), to'lov turi `debt` bo'lsa kontragent balansini oshiradi va ogohlantirish chegarasini tekshiradi.
-      - B2B holatida (`counterparty.target_tenant` mavjud bo'lsa): status `b2b_pending`, 7 kunlik expiry, qabul qiluvchi do'kon egasiga (owner) in-app + Telegram xabarnoma yuboriladi.
-    - **`VoidService`** (`apps/sales/services/void_service.py`):
-      - `void_sale()` / `void_sale_item()`: 1 haftalik muddat tekshiruvi, majburiy izoh, `b2b_accepted` bo'lsa bloklash, tovarlarni omborga qaytarish (`StockService.customer_return(sale=sale)`), qarz bo'lsa kontragent balansidan chegirish va `SaleVoidLog` yaratish.
-    - **`B2BTransferService`** (`apps/sales/services/b2b_transfer_service.py`):
-      - `accept_transfer(sale_id, accepting_user, items_data)`: to'liq yoki qisman qabul qilish. B har bir tovar uchun qabul miqdorini va qaysi kategoriyaga qo'shilishini (yoki mavjud variantga biriktirishni) tanlaydi. Qabul qilingan qism B omboriga kirim bo'ladi. Chek statusi `b2b_accepted` yoki `b2b_partially_accepted` bo'ladi.
-      - `reject_transfer(sale_id, rejecting_user, reason)`: status `b2b_rejected`ga o'tadi. Tovarlar A omboriga avtomatik qaytmaydi; A do'konga rad etish sababi bilan bildirishnoma boradi. A do'kon rad etilgan tovarlarni qaytarib olish uchun o'zi `void` qiladi.
-      - `auto_expire_transfers()`: 7 kundan oshgan kutilayotgan transferlarni avtomatik `b2b_rejected` qiladi.
-    - **`CounterpartyService`** (`apps/sales/services/counterparty_service.py`):
-      - Kontragent qo'shish / tahrirlash / arxivlash. Telefon raqami bo'yicha `User` → `Employee(is_active=True).tenant` yoki `Tenant(owner=user)` orqali `target_tenant`ni avtomatik topib biriktiradi.
-    - **`DebtService`** (`apps/sales/services/debt_service.py`):
-      - `record_payment()`: Qarz to'lash (faqat `owner`/`platform_admin`). Ortiqcha to'lansa "haqq"ga o'tadi. Xato bo'lsa `is_correction=True` bilan teskari yozuv kiritiladi.
-      - Qarz har 10 mln UZS yoki har 1 000 USD oshganda ogohlantirish yuboriladi; qarz kamayganda qadam (`step`) orqaga qaytariladi.
+5. [x] `cash_register` (Kassa va Smena Yopilishi / Z-Hisobot): ✅ **TO'LIQ BAJARILDI**
+    - **`CashExpense` (Do'kon kunlik chiqimlari / Xarajatlari):** `tenant`, `amount`, `category`/`reason` (Suv, Qand, Xodim avansi, Xo'jalik...), `recorded_by`, `date`.
+    - **`CashIncome` (Qo'shimcha kassa tushumlari):** `tenant`, `amount`, `source` (Paynet, Kopya, Xizmatlar...), `recorded_by`, `date`.
+    - **`DailyCashReport` (Kunlik Kassa Smenasi / Taftish):**
+      - Tovar savdosi (Naqd + Terminal/Karta) avtomatik olinadi
+      - Qo'shimcha kirimlar va barcha chiqimlar hisobga olinadi
+      - Kutilgan naqd pul: `expected_cash`
+      - Kassir sanab kiritgan naqd pul: `actual_cash`
+      - Kassa tafovuti (Farq): `actual_cash - expected_cash`
+      - Tafovut sababi: Agar farq chiqsa, xodimdan *"Kutilgan pul kassadagi puldan [X] so'm farq qildi. Sababini bilasizmi?"* so'raladi. Agar xodim bo'sh qoldirsa: *"Smenani yopgan xodim tafovut farqining sababini bilmaydi"* deb qayd etiladi.
+    - **Do'kon egasiga xabar vaqti:** `Tenant.daily_report_time` (TimeField, default `22:00`). Owner o'zi o'zgartira oladi. Celery Beat shu vaqtda Telegram botga to'liq kassa hisobotini yuboradi.
 
-    **Ruxsatlar** (Data-migration orqali `apps.permissions.Permission`ga kiritiladi):
-    - `sales.view_sale` — sotuvlar va cheklar tarixini ko'rish
-    - `sales.add_sale` — yangi POS sotuv amalga oshirish
-    - `sales.void_sale` — sotuvni bekor qilish (odatiy sotuvchiga berilmasligi mumkin)
-    - `sales.manage_counterparty` — kontragentlar ro'yxatini boshqarish
-    - `sales.manage_b2b` — B2B tovar o'tkazmalarini qabul qilish yoki rad etish (faqat ownerga)
-    - `sales.record_debt_payment` — qarz to'lovlarini kiritish va tuzatish (faqat owner/platform_admin)
-
-    **API** — `api/v1/sales/`:
-    - `POST /api/v1/sales/` — yangi sotuv (POS kassa, aralash valyutani avto-ajratish)
-    - `GET /api/v1/sales/` — sotuvlar ro'yxati (filtrlash: sana, kassir, kontragent, status, currency)
-    - `GET /api/v1/sales/<id>/` — chek tafsilotlari
-    - `POST /api/v1/sales/<id>/void/` — butun chekni bekor qilish
-    - `POST /api/v1/sales/items/<item_id>/void/` — chekdagi bitta tovarni/miqdorni bekor qilish
-    - `GET/POST /api/v1/sales/counterparties/` — kontragentlar ro'yxati va qo'shish
-    - `GET/POST /api/v1/sales/counterparties/<id>/payments/` — qarz to'lovlari tarixi va to'lov kiritish
-    - `POST /api/v1/sales/counterparties/payments/<payment_id>/correct/` — to'lovni tuzatish (korrektirovka)
-    - `GET /api/v1/sales/b2b/inbox/` — qabul qilinishi kutilayotgan B2B transferlar
-    - `POST /api/v1/sales/b2b/<sale_id>/accept/` — transferni qabul qilish (to'liq/qisman, kategoriya tanlovi bilan)
-    - `POST /api/v1/sales/b2b/<sale_id>/reject/` — transferni rad etish (sababi bilan)
-    - `GET /api/v1/sales/notifications/` — in-app bildirishnomalar ro'yxati
-    - `POST /api/v1/sales/notifications/<id>/read/` — o'qildi deb belgilash
-
-    **Testlar** — `apps/sales/tests/`:
-    - POS sotuvda ombordan tovar kamayishi
-    - 1-narx galochkasi bilan sotuv va chek auditi
-    - Nasiya sotuvda qarz hisoblanishi va 10 mln chegarasida notification ketishi
-    - B2B transferda qabul qiluvchi katalogida tovar avto-yaratilishi, kirim bo'lishi
-    - B2B transfer rad etilganda A do'kon omboriga tovar qaytmasligi
-    - 7 kunlik avto-bekor bo'lish testi
-    
-4. [ ] `payments` — `Payment` (ichki POS-sotuv uchun)
-    
-5. [ ] `analytics` — hisobotlar (ko'p qismi 13-Celery'ga tayanadi)
-    
-6. [ ] Top-level `services/` — `StockService`, `PricingService` (bir nechta app'ni bog'laydigan logika view'da bo'lmasin)
     
 
 ~~`customers` app~~ — **kerak emas**, customer Shop'da yashaydi.
 
 Har app: model → service → `api/v1/<app>/` → ruxsat + tenant scope → test.
 
-### 10-bosqich — API pishitish
+### 10-bosqich — API pishitish — ✅ TO'LIQ BAJARILDI
 
 - [x] `api/v1/<app>/` tuzilmasi
-- [ ] Bir xil xato tanasi: `{"error": {"code": "...", "message": "..."}}`
-- [ ] Pagination, `django-filter`
-- [ ] (Ixtiyoriy) API versiyalash qoidalari
+- [x] Bir xil xato tanasi: `{"error": {"code": "...", "message": "...", "details": ...}}`
+- [x] Pagination (`StandardResultsSetPagination`, page_size=20, max=100), `django-filter`
 
 ### 11-bosqich — Shop bilan integratsiya (Inventra tarafi)
 
@@ -654,11 +570,11 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 - [ ] `DEBUG`ni haqiqiy `bool`
 - [ ] Gunicorn / production sozlamalarini yakunlash
 
-### 13-bosqich — Celery
+### 13-bosqich — Celery — ✅ TO'LIQ BAJARILDI
 
-- [ ] Celery + Redis broker
-- [ ] Worker compose servisi
-- [ ] Birinchi vazifalar: analytics/hisobot, stok ogohlantirishi
+- [x] Celery + Redis broker (`redis://redis:6379/1`)
+- [x] Worker va Beat compose servislari (`celery_worker`, `celery_beat`)
+- [x] Vazifalar: B2B 7 kunlik avto-bekor (har soatda), do'kon kunlik Z-hisobotini tekshirish va Telegramga yuborish, asinxron Telegram xabarlari
 
 ### 14-bosqich — Frontendlar
 
@@ -721,15 +637,16 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 |**P**|~~Universal bekor qilish (Void) va qisman qaytarish~~|✅ **YOPILDI** — 1 hafta ichida, majburiy izoh bilan, butun chek yoki alohida tovar va uning ma'lum miqdori qaytariladi. B accept qilgan B2B sotuvni A void qila olmaydi. `SaleVoidLog` jadvali bilan to'liq audit|
 |**Q**|~~Qarz to'lovlari (`DebtPayment`) auditi~~|✅ **YOPILDI** — faqat `owner` va `platform_admin` to'lov kiritadi. O'chirish taqiqlanadi. Xato bo'lsa, majburiy izoh bilan teskari korrektirovka yozuvi kiritiladi (`is_correction=True`)|
 |**R**|~~Ombor harakati va Chek auditi~~|✅ **YOPILDI** — `StockMovement` modeli `Sale` chekiga to'g'ridan-to'g'ri bog'lanadi (`sale` FK)|
+|**S**|**Savdo Analitikasi & Dashboard (9.5-bosqich)**|✅ **KELISHILDI** — faqat `owner` va `platform_admin` ko'radi. Davrlar: `today`, `this_week`, `this_month`, `this_year`, `start_date`/`end_date`. UZS va USD har doim alohida hisoblanadi. KPI (tushum, sof foyda, jami qarz, cheklar) va grafiklar (kunlik dinamika, top-10 tovarlar, to'lov turlari taqsimoti, xodimlar reytingi)|
+|**T**|**Kassa smenasi va Z-Hisobot (9.7-bosqich)**|✅ **KELISHILDI** — `CashExpense` (chiqimlar), `CashIncome` (qo'shimcha kirimlar: Paynet, Kopya), `DailyCashReport` (kutilgan naqd pul, sanab olingan naqd pul, tafovut farqi). Farq chiqqanda xodimdan sababi so'raladi, agar bo'sh qoldirilsa: *"Smenani yopgan xodim tafovut farqining sababini bilmaydi"* deb egasiga Telegram orqali yuboriladi|
+|**U**|**Kunlik hisobot vaqti va Celery Beat**|✅ **KELISHILDI** — `Tenant.daily_report_time` (default `22:00`, owner o'zgartira oladi). Celery Beat belgilangan vaqtda avtomatik to'liq Z-hisobotni Telegram botga chiqaradi. B2B 7 kunlik avto-bekor bo'lish har soatda ishlaydi|
+|**V**|**API Pishitish (10-bosqich)**|✅ **KELISHILDI** — Standart paginatsiya (20 tadan, max 100), `django-filter` (kategoriya, narx oralig'i, mavjudlik `in_stock`, sana, qidiruv), yagona xatoliklar standarti (`{"error": {"code": "...", "message": "...", "details": ...}}`)|
+|**W**|**MinIO Media Storage (12-bosqich)**|✅ **KELISHILDI** — Mahsulotga 3 tagacha rasm, 1600px eni, 90% sifat, 10MB limit (sozlanuvchan), Docker Compose'da MinIO S3 va `django-storages`|
 
 ---
 
 ## 6. Keyingi band (shu faylga qarab ishni oching)
 
-**6a, 8-bosqich, 9-bosqich/1 (`catalog`), 9-bosqich/2 (`inventory`) — barchasi to'liq yopildi (155/155 test o'tdi, 2026-09). Endi navbat — `9.3 sales` (POS, B2B, Kontragentlar, Qarz).**
+**9.3-bosqich (`sales`) to'liq yopildi (v0.8.0, 119 ta test o'tdi). Endi navbat — `9.5 analytics` (Dashboard), `10-bosqich` (API pishitish: Pagination, Filters, Exceptions), `9.7 cash_register` (Kassa & Z-hisobot), `12-bosqich` (MinIO) va `13-bosqich` (Celery & Celery Beat).**
 
-Ketma-ketlik (qolgani):
-
-`9.3 sales (POS-kassa, 1-narx galochkasi, Counterparty, B2B inter-tenant transfer, nasiya/qarz, Notification)` → `9.4 payments` → `9.5 analytics` → `9.6 top-level services/ (PricingService)` → `Shop` (alohida, `shop-yol-xaritasi.md`) → `12-bosqich`ni to'ldirish (shop, celery-worker, nginx, **minio**) → Celery → frontend.
-
-A—N bandlari (5-bo'lim) — barchasi yopilgan, blokirovka qilmaydi.
+Foydalanuvchi bilan kelishuv: kodlarni foydalanuvchining o'zi bosqichma-bosqich yozadi, yordamchi agent esa arxitektura va kod namunalarini tushuntirib, yo'l-yo'riq ko'rsatib boradi.

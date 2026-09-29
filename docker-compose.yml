@@ -1,10 +1,4 @@
 # Sales-Platform/docker-compose.yml
-#
-# Bu fayl loyihaning ENG TEPA papkasida (Sales-Platform/) turadi,
-# ya'ni inventra/ va bot/ papkalari bilan bir darajada.
-#
-# Hozircha faqat kerakli qism: Redis + Inventra + bot.
-# Postgres va Shop keyinroq, loyiha shu qismga yetganda qo'shiladi.
 
 networks:
   inventra_net:
@@ -13,6 +7,7 @@ networks:
 volumes:
   redis_data:
   postgres_data:
+  minio_data:
   inventra_venv:
   bot_venv:
 
@@ -39,13 +34,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    # Portni tashqariga chiqarish shart emas — faqat DBeaver/pgAdmin
-    # bilan to'g'ridan-to'g'ri ulanmoqchi bo'lsangiz oching:
-    # ports:
-    #   - "5432:5432"
 
   # -------------------------------------------------------------------
-  # REDIS — OTP kodlarni saqlash uchun
+  # REDIS — Kesh, OTP va Celery Broker
   # -------------------------------------------------------------------
   redis:
     image: redis:7-alpine
@@ -62,6 +53,24 @@ services:
       retries: 10
 
   # -------------------------------------------------------------------
+  # MINIO — S3 mos media server (rasmlar va fayllar)
+  # -------------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-05-10T01-41-38Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-inventra_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_secret_2026}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - inventra_net
+
+  # -------------------------------------------------------------------
   # INVENTRA — Django/DRF asosiy backend
   # -------------------------------------------------------------------
   inventra:
@@ -74,6 +83,7 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/1
     depends_on:
       redis:
         condition: service_healthy
@@ -88,7 +98,63 @@ services:
       - inventra_net
 
   # -------------------------------------------------------------------
-  # BOT — aiogram orqali Telegram bilan ishlaydigan alohida servis
+  # CELERY WORKER — fonga olingan vazifalar ijrochisi
+  # -------------------------------------------------------------------
+  celery_worker:
+    build:
+      context: ./inventra
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: uv run celery -A config worker -l info
+    env_file:
+      - ./inventra/.env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      inventra:
+        condition: service_started
+    volumes:
+      - ./inventra:/app
+      - inventra_venv:/app/.venv
+    networks:
+      - inventra_net
+
+  # -------------------------------------------------------------------
+  # CELERY BEAT — davriy rejali vazifalar (Cron)
+  # -------------------------------------------------------------------
+  celery_beat:
+    build:
+      context: ./inventra
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: uv run celery -A config beat -l info
+    env_file:
+      - ./inventra/.env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/1
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      inventra:
+        condition: service_started
+    volumes:
+      - ./inventra:/app
+      - inventra_venv:/app/.venv
+    networks:
+      - inventra_net
+
+  # -------------------------------------------------------------------
+  # BOT — aiogram orqali Telegram bilan ishlaydigan servis
   # -------------------------------------------------------------------
   bot:
     build:

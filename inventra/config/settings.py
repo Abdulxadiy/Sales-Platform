@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
 
     'rest_framework',
+    'django_filters',
 
     'apps.core',
     'apps.tenants',
@@ -52,6 +53,8 @@ INSTALLED_APPS = [
     'apps.catalog',
     'apps.inventory',
     'apps.sales',
+    'apps.analytics',
+    'apps.cashbox',
 ]
 
 MIDDLEWARE = [
@@ -136,6 +139,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.StandardResultsSetPagination',
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
 }
 
 SIMPLE_JWT = {
@@ -165,3 +175,30 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 # needed on the catalog side.
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Celery settings
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+
+# MinIO / S3 media settings
+USE_MINIO = os.environ.get('USE_MINIO', 'False').lower() in ('true', '1')
+if USE_MINIO:
+    AWS_ACCESS_KEY_ID = os.environ.get('MINIO_ROOT_USER', 'inventra_minio')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('MINIO_ROOT_PASSWORD', 'minio_secret_2026')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('MINIO_BUCKET_NAME', 'inventra-media')
+    AWS_S3_ENDPOINT_URL = os.environ.get('MINIO_ENDPOINT', 'http://minio:9000')
+    AWS_S3_FILE_OVERWRITE = False
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }

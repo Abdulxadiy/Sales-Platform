@@ -1,0 +1,43 @@
+name: Daily Automated Activity
+
+on:
+  schedule:
+    # Har kuni Toshkent vaqti bilan soat 20:00 da (UTC 15:00)
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    inputs:
+      commits_count:
+        description: 'Nechta commit yaratish kerak? (standart: 1)'
+        required: false
+        default: '1'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Perform automated commit(s)
+        run: |
+          git config --global user.name "Abdulxadiy"
+          git config --global user.email "abdulhadiabdurahimov4@gmail.com"
+          
+          COUNT="${{ github.event.inputs.commits_count }}"
+          if [ -z "$COUNT" ]; then
+            COUNT=1
+          fi
+          echo "Jami yaratiladigan commitlar soni: $COUNT"
+          
+          for i in $(seq 1 $COUNT); do
+            TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%SZ")
+            echo "Activity ping [$i/$COUNT]: $TIMESTAMP" >> .github/activity.log
+            git add .github/activity.log
+            git commit -m "chore(activity): automated daily activity ping ($TIMESTAMP) [skip ci]"
+          done
+          
+          git push origin main

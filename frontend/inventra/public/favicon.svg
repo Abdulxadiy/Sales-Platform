@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" fill="none">
+  <defs>
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="45%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#B45309" stop-opacity="0.12" />
+    </linearGradient>
+    <linearGradient id="iGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="30%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+    <filter id="amberGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Base (Round Corner dark icon background) -->
+  <rect width="160" height="160" rx="36" fill="#0C0A09" />
+  <rect width="158" height="158" x="1" y="1" rx="35" stroke="#F59E0B" stroke-opacity="0.25" stroke-width="2" />
+
+  <g filter="url(#amberGlow)" transform="translate(16, 10) scale(0.8)">
+    <!-- TOP TIER MODULE -->
+    <g id="topTier">
+      <polygon points="70,26 116,50 70,74 24,50" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="3" stroke-linejoin="round" />
+      <polygon points="70,35 104,52 70,70 36,52" fill="#F59E0B" fill-opacity="0.15" stroke="#FBBF24" stroke-width="1.5" />
+      <polygon points="24,50 24,60 70,84 70,74" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="2.5" />
+      <polygon points="116,50 116,60 70,84 70,74" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="2.5" />
+    </g>
+
+    <!-- MIDDLE TIER MODULE -->
+    <g id="midTier">
+      <polygon points="70,68 116,92 70,116 24,92" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="3" stroke-linejoin="round" />
+      <polygon points="70,77 104,94 70,112 36,94" fill="#F59E0B" fill-opacity="0.15" stroke="#FBBF24" stroke-width="1.5" />
+      <polygon points="24,92 24,102 70,126 70,116" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="2.5" />
+      <polygon points="116,92 116,102 70,126 70,116" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="2.5" />
+    </g>
+
+    <!-- BOTTOM TIER MODULE -->
+    <g id="botTier">
+      <polygon points="70,110 116,134 70,158 24,134" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="3" stroke-linejoin="round" />
+      <polygon points="70,119 104,136 70,154 36,136" fill="#F59E0B" fill-opacity="0.15" stroke="#FBBF24" stroke-width="1.5" />
+      <polygon points="24,134 24,144 70,168 70,158" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="2.5" />
+      <polygon points="116,134 116,144 70,168 70,158" fill="url(#amberFill)" stroke="url(#amberGrad)" stroke-width="2.5" />
+    </g>
+
+    <!-- DIAGONAL 'I' MONOGRAM PILLAR -->
+    <g id="monogramI">
+      <polygon points="75,32 89,32 67,152 53,152" fill="url(#iGrad)" stroke="#F59E0B" stroke-width="1" />
+      <line x1="82" y1="36" x2="60" y2="148" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+    </g>
+  </g>
+</svg>

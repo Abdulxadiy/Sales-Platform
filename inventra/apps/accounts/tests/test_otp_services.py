@@ -80,11 +80,14 @@ def test_verify_code_is_single_use():
     # must now fail as if it never existed.
     code = otp.generate_code()
     otp.store_code(PHONE, code)
+    assert otp.is_in_cooldown(PHONE) is True
 
     first = otp.verify_code(PHONE, code)
-    second = otp.verify_code(PHONE, code)
-
     assert first[0] is True
+    # Cooldown must be cleared so the user isn't locked out if they log out
+    assert otp.is_in_cooldown(PHONE) is False
+
+    second = otp.verify_code(PHONE, code)
     assert second[0] is False
     assert second[1] == "Expired"
 
@@ -144,9 +147,9 @@ def test_discard_code_clears_everything():
 
 @pytest.mark.slow
 def test_code_expires_after_ttl(monkeypatch):
-    """Uses a monkeypatched short TTL instead of sleeping the real 300s."""
+    """Uses a monkeypatched short TTL instead of sleeping the real 180s."""
     # Patching the module-level OTP_TTL_SECONDS constant (rather than
-    # sleeping for the real 5-minute TTL) keeps this test fast while
+    # sleeping for the real 3-minute TTL) keeps this test fast while
     # still exercising real Redis expiry behaviour end-to-end. Marked
     # @pytest.mark.slow purely because it's the one test in this file
     # that still needs a real (short) sleep to let Redis's own TTL timer

@@ -4,7 +4,7 @@ from django.conf import settings
 
 redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
 
-OTP_TTL_SECONDS = 300  # The code is valid for only 5 minutes
+OTP_TTL_SECONDS = 180  # The code is valid for only 3 minutes
 MAX_ATTEMPTS = 5       # Number of incorrect attempts
 COOLDOWN_SECONDS = 60  # Waiting time to request an OTP again to a number
 
@@ -26,6 +26,11 @@ def generate_code() -> str:
 
 def is_in_cooldown(phone_number: str) -> bool:
     return redis_client.exists(_cooldown_key(phone_number)) == 1
+
+def get_cooldown_remaining(phone_number: str) -> int:
+    """Returns the remaining seconds in cooldown, or 0 if not in cooldown."""
+    ttl = redis_client.ttl(_cooldown_key(phone_number))
+    return max(ttl, 0) if ttl and ttl > 0 else 0
 
 def store_code(phone_number: str, code: str) -> None:
     redis_client.set(_otp_key(phone_number), code, ex=OTP_TTL_SECONDS)
@@ -60,7 +65,10 @@ def verify_code(phone_number: str, code: str) -> tuple[bool, str]:
     if stored_code != code:
         return False, 'Invalid code'
 
-    # We should delete the code after verify because one code for only one time
+    # We should delete the code after verify because one code for only one time.
+    # Also delete the cooldown key: once the user has successfully completed login,
+    # the OTP cycle is finished and they shouldn't be blocked from immediate re-login.
     redis_client.delete(_otp_key(phone_number))
+    redis_client.delete(_cooldown_key(phone_number))
     redis_client.delete(attempts_key)
     return True, ''

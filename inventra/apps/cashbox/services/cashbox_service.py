@@ -262,22 +262,34 @@ class CashboxService:
                 )
 
 
-            # Send Notification to owner (web interface)
-            owner = tenant.owner
-            notif_msg = cls.format_daily_report_message(report)
-            Notification.objects.create(
-                tenant=tenant,
-                recipient=owner,
-                type="daily_z_report",
-                title=f"Kunlik Z-Hisobot (#{report.id})",
-                message=notif_msg,
-            )
+            # Send Notification to owner (web interface) if enabled
+            if getattr(tenant, "notify_web_reports", True):
+                owner = tenant.owner
+                notif_msg = cls.format_daily_report_message(report)
+                Notification.objects.create(
+                    tenant=tenant,
+                    recipient=owner,
+                    type="daily_z_report",
+                    title=f"Kunlik Z-Hisobot (#{report.id})",
+                    message=notif_msg,
+                )
 
-            # Send Telegram if owner has linked telegram (concise Telegram message)
-            contact = TelegramContact.objects.filter(phone_number=owner.phone_number).first()
-            if contact:
-                telegram_msg = cls.format_daily_telegram_report(report)
-                send_telegram_message(contact.chat_id, telegram_msg)
+            # Send Telegram if enabled and configured
+            shift_target = getattr(tenant, "shift_report_target", "both")
+            if shift_target != "none":
+                dest_chat_ids = set()
+                if shift_target in ("personal", "both"):
+                    contact = TelegramContact.objects.filter(phone_number=owner.phone_number).first()
+                    if contact and contact.chat_id:
+                        dest_chat_ids.add(contact.chat_id)
+                if shift_target in ("group", "both"):
+                    if getattr(tenant, "telegram_group_id", "") and tenant.telegram_group_id.strip():
+                        dest_chat_ids.add(tenant.telegram_group_id.strip())
+
+                if dest_chat_ids:
+                    telegram_msg = cls.format_daily_telegram_report(report)
+                    for c_id in dest_chat_ids:
+                        send_telegram_message(c_id, telegram_msg)
 
             return report
 

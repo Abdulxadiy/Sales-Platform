@@ -23,9 +23,23 @@ def send_daily_report_for_tenant_task(tenant_id: int):
         return False
 
     owner = tenant.owner
-    contact = TelegramContact.objects.filter(phone_number=owner.phone_number).first()
-    if not contact:
-        logger.info(f"No Telegram contact found for tenant {tenant.name} owner ({owner.phone_number}).")
+    target = getattr(tenant, "daily_report_target", Tenant.TARGET_BOTH)
+    if target == Tenant.TARGET_NONE:
+        logger.info(f"Daily report is disabled for tenant {tenant.name}.")
+        return False
+
+    dest_chat_ids = set()
+    if target in (Tenant.TARGET_PERSONAL, Tenant.TARGET_BOTH):
+        contact = TelegramContact.objects.filter(phone_number=owner.phone_number).first()
+        if contact and contact.chat_id:
+            dest_chat_ids.add(contact.chat_id)
+
+    if target in (Tenant.TARGET_GROUP, Tenant.TARGET_BOTH):
+        if tenant.telegram_group_id and tenant.telegram_group_id.strip():
+            dest_chat_ids.add(tenant.telegram_group_id.strip())
+
+    if not dest_chat_ids:
+        logger.info(f"No Telegram destinations found for tenant {tenant.name} (target={target}).")
         return False
 
     status = CashboxService.get_current_shift_status(tenant)
@@ -106,7 +120,8 @@ def send_daily_report_for_tenant_task(tenant_id: int):
         "ℹ️ _Xodimlar smenani yopgach, yakuniy tafovut bilan to'liq Z-hisobot yuboriladi._",
     ])
     message_text = "\n".join(lines)
-    send_async_telegram_message_task.delay(contact.chat_id, message_text)
+    for chat_id in dest_chat_ids:
+        send_async_telegram_message_task.delay(chat_id, message_text)
     return True
 
 

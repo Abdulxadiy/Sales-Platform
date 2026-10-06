@@ -66,6 +66,29 @@ class TestCreateWithOwner:
         assert employment.tenant_id == tenant.id
         assert employment.position == "Owner"
 
+    def test_platform_admin_creates_tenant_with_email_dispatches_setup_link(self, platform_admin, mocker=None):
+        """Creating a tenant with owner_email automatically dispatches password setup link."""
+        from django.core import mail
+        phone = "+998907654321"
+        email = "bakery_owner@example.com"
+
+        tenant = TenantService.create_with_owner(
+            name="Sweet Bakery",
+            owner_phone_number=phone,
+            owner_email=email,
+            created_by=platform_admin,
+        )
+
+        owner_user = tenant.owner
+        assert owner_user.email == email
+        assert owner_user.phone_number == phone
+
+        # Verify that an email was placed in the outbox (locmem / console backend)
+        assert len(mail.outbox) >= 1
+        sent_email = mail.outbox[-1]
+        assert email in sent_email.to
+        assert "setup-account?token=" in sent_email.body
+
     def test_non_platform_admin_cannot_create_tenant(self, owner):
         # Tenant creation is platform_admin-only — an existing owner has
         # no authority to spin up additional tenants for other people.

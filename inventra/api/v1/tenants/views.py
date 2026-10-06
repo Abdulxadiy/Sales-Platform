@@ -1,9 +1,13 @@
 """View for tenant creation and management."""
 
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+User = get_user_model()
 
 from api.permissions import IsPlatformAdmin, IsTenantMember, IsTenantOwnerOrPlatformAdmin
 from apps.tenants.models import Tenant
@@ -22,6 +26,7 @@ class TenantListCreateView(generics.ListCreateAPIView):
     GET /api/v1/tenants/ -- list all tenants (platform_admin only).
     POST /api/v1/tenants/ -- create a new tenant with its owner (platform_admin only).
     """
+    queryset = Tenant.objects.all().select_related('owner').order_by('-id')
     serializer_class = TenantCreateSerializer
     permission_classes = [IsPlatformAdmin]
 
@@ -46,10 +51,11 @@ class TenantListCreateView(generics.ListCreateAPIView):
         return Response(TenantAdminSerializer(tenant).data, status=status.HTTP_201_CREATED)
 
 
-class TenantDetailView(generics.RetrieveUpdateAPIView):
+class TenantDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET/PATCH /api/v1/tenants/<tenant_pk>/ -- view or edit a single tenant.
+    GET/PATCH/DELETE /api/v1/tenants/<tenant_pk>/ -- view, edit, or delete a single tenant.
     Access and edit rights depend on the requesting user's role.
+    DELETE is strictly restricted to platform_admin.
     """
 
     queryset = Tenant.objects.all()
@@ -71,6 +77,17 @@ class TenantDetailView(generics.RetrieveUpdateAPIView):
             )
         return super().update(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        if request.user.role != "platform_admin":
+            return Response(
+                {"detail": "Faqat platform_admin do‘konni (tenant) butunlay o‘chira oladi."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance = self.get_object()
+        with transaction.atomic():
+            self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class TenantChangeOwnerView(APIView):
     """POST /api/v1/tenants/<tenant_pk>/change-owner/ -- platform_admin only."""
@@ -82,10 +99,29 @@ class TenantChangeOwnerView(APIView):
         serializer = TenantChangeOwnerSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        new_owner = serializer.validated_data.get('new_owner_id')
+        new_phone = serializer.validated_data.get('new_owner_phone_number')
+        new_email = serializer.validated_data.get('new_owner_email')
+
+        if new_phone:
+            defaults = {"role": "owner", "profile_completed": False}
+            if new_email:
+                defaults["email"] = new_email
+            new_owner, created = User.objects.get_or_create(
+                phone_number=new_phone,
+                defaults=defaults
+            )
+            if not created and new_email and new_owner.email != new_email:
+                new_owner.email = new_email
+                new_owner.save(update_fields=["email"])
+        elif new_owner and new_email and new_owner.email != new_email:
+            new_owner.email = new_email
+            new_owner.save(update_fields=["email"])
+
         try:
             TenantService.change_owner(
                 tenant=tenant,
-                new_owner=serializer.validated_data['new_owner_id'],
+                new_owner=new_owner,
                 changed_by=request.user,
             )
         except TenantServiceError as exc:

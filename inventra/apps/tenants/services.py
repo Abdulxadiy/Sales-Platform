@@ -80,6 +80,19 @@ class TenantService:
             )
         except EmployeeServiceError as exc:
             raise TenantServiceError(str(exc)) from exc
+
+        # Automatically send account setup / password reset email to the owner
+        if owner_user.email:
+            from apps.accounts.services.password_reset_service import request_password_reset
+            import logging
+            _logger = logging.getLogger(__name__)
+            try:
+                ok, reason = request_password_reset(owner_user.email)
+                if not ok:
+                    _logger.warning("Failed to dispatch password setup email to %s: %s", owner_user.email, reason)
+            except Exception as exc:
+                _logger.error("Error sending password setup email to %s: %s", owner_user.email, exc)
+
         return tenant
 
     @staticmethod
@@ -118,7 +131,8 @@ class TenantService:
                 fired_by=changed_by,
             )
         except EmployeeServiceError as exc:
-            raise TenantServiceError(str(exc)) from exc
+            if "No active Employee record found" not in str(exc):
+                raise TenantServiceError(str(exc)) from exc
 
         try:
             EmployeeService.hire(
@@ -145,4 +159,17 @@ class TenantService:
             changes={"owner_id": {"old": old_owner.id, "new": new_owner.id}},
             description=f"Tenant '{tenant.name}' owner changed from {old_owner.id} to {new_owner.id} by {changed_by.id}",
         )
+
+        # Automatically send account setup / password reset email to the new owner
+        if new_owner.email:
+            from apps.accounts.services.password_reset_service import request_password_reset
+            import logging
+            _logger = logging.getLogger(__name__)
+            try:
+                ok, reason = request_password_reset(new_owner.email)
+                if not ok:
+                    _logger.warning("Failed to dispatch password setup email to %s: %s", new_owner.email, reason)
+            except Exception as exc:
+                _logger.error("Error sending password setup email to %s: %s", new_owner.email, exc)
+
         return tenant

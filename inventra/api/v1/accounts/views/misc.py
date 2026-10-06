@@ -23,12 +23,14 @@ def issue_tokens(user):
     refresh["role"] = user.role
     refresh["tenant_id"] = tenant_id
     refresh["token_version"] = getattr(user, "token_version", 1)
+    refresh["terms_accepted"] = getattr(user, "terms_accepted", False)
 
     # Attach custom claims to access token
     access = refresh.access_token
     access["role"] = user.role
     access["tenant_id"] = tenant_id
     access["token_version"] = getattr(user, "token_version", 1)
+    access["terms_accepted"] = getattr(user, "terms_accepted", False)
 
     return {
         "access": str(access),
@@ -44,13 +46,21 @@ def get_telegram_contact_or_error(phone_number):
         contact = TelegramContact.objects.get(phone_number=phone_number)
     except TelegramContact.DoesNotExist:
         return None, Response(
-            {'error': 'telegram_contact_not_found'},
+            {
+                'error': 'telegram_contact_not_found',
+                'detail': "Telefon raqamingiz Telegram botga ulanmagan. Iltimos, Telegramda @inventraa_bot botiga kirib, /start bosing va telefon raqamingizni ulang.",
+            },
             status=status.HTTP_404_NOT_FOUND,
         )
 
     if otp_services.is_in_cooldown(phone_number):
+        remaining = otp_services.get_cooldown_remaining(phone_number)
         return None, Response(
-            {'error': 'cooldown'},
+            {
+                'error': 'cooldown',
+                'detail': f"Tasdiqlash kodi yaqinda yuborilgan. Yangi kod so'rash uchun {remaining} soniya kuting.",
+                'retry_after_seconds': remaining,
+            },
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     return contact, None
@@ -59,14 +69,25 @@ def send_otp_or_error(phone_number, contact):
     code = otp_services.generate_code()
     otp_services.store_code(phone_number, code)
 
+    otp_message = (
+        "🔐 *INVENTRA PRO* | *Tasdiqlash Kodi*\n\n"
+        f"Sizning bir martalik kirish kodingiz:\n"
+        f"👉 `{code}`  _(nusxalash uchun ustiga bosing)_\n\n"
+        "⏱ _Kod faqat 3 daqiqa amal qiladi._\n"
+        "🔒 _Xavfsizlik uchun kodni begonalarga bermang!_"
+    )
+
     sent = send_telegram_message(
         contact.chat_id,
-        f"Sizning tasdiqlash kodingiz: {code}\nKod faqat 5 daqiqa amal qiladi!",
+        otp_message,
     )
     if not sent:
         otp_services.discard_code(phone_number)
         return Response(
-            {'error': 'telegram_send_failed'},
+            {
+                'error': 'telegram_send_failed',
+                'detail': "Telegram bot orqali tasdiqlash kodini yuborib bo‘lmadi. Iltimos, Telegramda @inventraa_bot ga kirib, /start bosing va telefon raqamingizni yangilang.",
+            },
             status=status.HTTP_502_BAD_GATEWAY,
         )
     return None

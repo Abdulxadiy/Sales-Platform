@@ -30,40 +30,105 @@ from rest_framework.views import APIView
 from api.v1.accounts.serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    ChangePasswordWithOldSerializer,
 )
-from apps.accounts.services import password_reset_service
+from apps.accounts.services import password_reset_service, login_throttle
+from apps.accounts.services.phone_utils import mask_phone_number
+from api.v1.accounts.views.misc import (
+    get_telegram_contact_or_error,
+    send_otp_or_error,
+)
 
-__all__ = ["PasswordResetRequestView", "PasswordResetConfirmView"]
+__all__ = ["PasswordResetRequestView", "PasswordResetConfirmView", "ChangePasswordWithOldView"]
 
 
 class PasswordResetRequestView(APIView):
     """POST /api/v1/auth/password-reset/request/
 
-    Accept an e-mail address and dispatch a magic-link e-mail to that address
-    if a staff/owner/platform_admin account with that e-mail exists.
+    Accept a login (username, phone, or email) and dispatch a magic-link
+    email to the associated email address if the account exists.
 
-    The response is always HTTP 200 regardless of whether the address was found
-    in the database — this prevents user-enumeration attacks.
+    Returns the masked email (e.g. ab***ov@gmail.com) without exposing
+    the full address.
     """
 
     permission_classes = [AllowAny]
-    # Light throttle should be applied here via a throttle_classes setting or
-    # a dedicated middleware layer — left to the infrastructure team.
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # The service always returns (True, "sent") or (False, <reason>).
-        # We deliberately swallow the internal reason and always return 200.
-        password_reset_service.request_password_reset(
-            email=serializer.validated_data["email"]
+        identifier = serializer.validated_data.get("identifier") or serializer.validated_data.get("email") or ""
+        ok, reason, email_hint = password_reset_service.request_password_reset_with_hint(
+            identifier=identifier
         )
 
+        if reason == "no_email":
+            return Response(
+                {
+                    "detail": "Ushbu hisobga email manzili biriktirilmagan. Parolni eski parol orqali yangilashingiz mumkin.",
+                    "has_email": False,
+                    "email_hint": None,
+                },
+                status=status.HTTP_200_OK,
+            )
+
         return Response(
-            {"detail": "If that e-mail address is registered, a reset link has been sent."},
+            {
+                "detail": (
+                    f"Parolni tiklash havolasi emailingizga ({email_hint}) yuborildi."
+                    if email_hint
+                    else "Agar kiritilgan login bo‘yicha hisob va unga biriktirilgan email mavjud bo‘lsa, tiklash havolasi yuborildi."
+                ),
+                "has_email": bool(email_hint),
+                "email_hint": email_hint,
+            },
             status=status.HTTP_200_OK,
         )
+
+
+class ChangePasswordWithOldView(APIView):
+    """POST /api/v1/auth/password-reset/change-with-old/
+
+    Allows resetting password using old/current password when email is inaccessible.
+    Protected against brute-force attacks via login_throttle.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ChangePasswordWithOldSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        login = serializer.validated_data["login"]
+        old_password = serializer.validated_data["old_password"]
+        new_password = serializer.validated_data["new_password"]
+
+        locked, remaining = login_throttle.is_locked(login)
+        if locked:
+            return Response(
+                {
+                    "detail": (
+                        "Ushbu hisobga kirish urinishlari ko‘payib ketgani sababli "
+                        f"vaqtincha bloklandi. Iltimos, {remaining} soniyadan keyin qayta urinib ko‘ring."
+                    ),
+                    "retry_after_seconds": remaining,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        ok, msg, user = password_reset_service.change_password_with_old(
+            login=login,
+            old_password=old_password,
+            new_password=new_password,
+        )
+
+        if not ok:
+            login_throttle.register_failure(login)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        login_throttle.register_success(login)
+        return Response({"detail": msg}, status=status.HTTP_200_OK)
 
 
 class PasswordResetConfirmView(APIView):
@@ -88,7 +153,7 @@ class PasswordResetConfirmView(APIView):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        ok, reason, _user = password_reset_service.confirm_password_reset(
+        ok, reason, user = password_reset_service.confirm_password_reset(
             token=serializer.validated_data["token"],
             new_password=serializer.validated_data["new_password"],
             username=serializer.validated_data.get("username", ""),
@@ -97,7 +162,21 @@ class PasswordResetConfirmView(APIView):
         if not ok:
             return Response({"detail": reason}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Trigger 2FA Telegram OTP right after password setup
+        contact, _err = get_telegram_contact_or_error(user.phone_number)
+        otp_sent = False
+        if contact:
+            send_err = send_otp_or_error(user.phone_number, contact)
+            otp_sent = (send_err is None)
+
         return Response(
-            {"detail": "Password set successfully. You can now log in."},
+            {
+                "detail": "Password set successfully. Verification code sent to Telegram.",
+                "username": user.username or user.phone_number,
+                "phone_number": user.phone_number,
+                "phone_hint": mask_phone_number(user.phone_number),
+                "telegram_linked": contact is not None,
+                "otp_sent": otp_sent,
+            },
             status=status.HTTP_200_OK,
         )

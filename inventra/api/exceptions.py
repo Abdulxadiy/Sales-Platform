@@ -23,6 +23,23 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
     if response is None:
+        from apps.inventory.services.stock_service import StockServiceError
+        from apps.sales.services.sale_service import SaleServiceError
+        from apps.sales.services.void_service import VoidServiceError
+        if isinstance(exc, (StockServiceError, SaleServiceError, VoidServiceError)):
+            from rest_framework.response import Response
+            from rest_framework import status
+            return Response(
+                {
+                    "error": {
+                        "code": "business_logic_error",
+                        "message": str(exc),
+                        "details": None,
+                    },
+                    "detail": str(exc),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         # Standard Python exceptions (like ImproperlyConfigured) should bubble up
         # to allow Django's default handler or pytest.raises to catch them.
         return None

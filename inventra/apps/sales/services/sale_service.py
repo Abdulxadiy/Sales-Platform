@@ -5,12 +5,16 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.catalog.models import ProductVariant
-from apps.inventory.services import StockService
+from apps.inventory.services import StockService, StockServiceError
 from apps.sales.models import Sale, SaleItem, Counterparty, Notification
 from apps.sales.services.debt_service import DebtService
 
 
 class SaleServiceError(Exception):
+    pass
+
+
+class InsufficientStockError(SaleServiceError, StockServiceError):
     pass
 
 
@@ -137,16 +141,32 @@ class SaleService:
                 line_total = qty * price
 
                 # Reduce stock & link to sale
-                movement = StockService._apply_movement(
-                    tenant=tenant,
-                    product_variant=variant,
-                    type='sotuv',
-                    direction='out',
-                    quantity=qty,
-                    created_by=user,
-                    sale=sale,
-                    note=f"Sotuv cheki: {receipt_number}",
-                )
+                try:
+                    movement = StockService._apply_movement(
+                        tenant=tenant,
+                        product_variant=variant,
+                        type='sotuv',
+                        direction='out',
+                        quantity=qty,
+                        created_by=user,
+                        sale=sale,
+                        note=f"Sotuv cheki: {receipt_number}",
+                    )
+                except StockServiceError as err:
+                    stock_qty = Decimal('0')
+                    try:
+                        from apps.inventory.models import Stock
+                        st = Stock.objects.filter(tenant=tenant, product_variant=variant).first()
+                        if st:
+                            stock_qty = st.quantity
+                    except Exception:
+                        pass
+                    product_label = variant.product.name
+                    if variant.name and variant.name.lower() != 'standart' and variant.name != variant.product.name:
+                        product_label = f"{variant.product.name} ({variant.name})"
+                    raise InsufficientStockError(
+                        f"Omborda yetarli mahsulot qoldig'i yo'q: {product_label}. Omborda mavjud: {stock_qty}, so'ralgan: {qty}. (Not enough stock)"
+                    ) from err
 
                 cost_price = variant.stock.last_cost_price or Decimal('0.00')
 

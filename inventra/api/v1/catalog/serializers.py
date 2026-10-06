@@ -11,10 +11,11 @@ class CategoryOutputSerializer(serializers.ModelSerializer):
 
 
 class CategoryCreateSerializer(serializers.Serializer):
-    """Validates input for creating a Category. `kod` is never accepted
-    here -- it's always system-assigned (see CategoryService.create())."""
+    """Validates input for creating a Category. `kod` can be optionally
+    provided by caller or system-assigned (see CategoryService.create())."""
 
     name = serializers.CharField(max_length=150)
+    kod = serializers.CharField(max_length=20, required=False, allow_blank=True)
     parent_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(), source="parent", required=False, allow_null=True
     )
@@ -24,11 +25,26 @@ class CategoryCreateSerializer(serializers.Serializer):
 
 
 class CategoryUpdateSerializer(serializers.Serializer):
-    """Validates input for editing a Category. Both fields optional --
-    a PATCH may touch either or both."""
+    """Validates input for editing a Category. All fields optional."""
 
     name = serializers.CharField(max_length=150, required=False)
     kod = serializers.CharField(max_length=20, required=False)
+    parent_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source="parent", required=False, allow_null=True
+    )
+    clear_parent = serializers.BooleanField(required=False, default=False)
+    currency = serializers.ChoiceField(
+        choices=Category.CURRENCY_CHOICES, required=False
+    )
+
+
+def _clean_media_url(url: str, request=None) -> str:
+    if not url:
+        return None
+    res = request.build_absolute_uri(url) if request else url
+    if res.startswith("http://nginx/") or res.startswith("http://inventra/"):
+        return "/" + "/".join(res.split("/")[3:])
+    return res
 
 
 class ProductVariantOutputSerializer(serializers.ModelSerializer):
@@ -57,15 +73,15 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
         image = obj.image or obj.product.image
         if not image:
             return None
-        request = self.context.get("request")
-        url = image.url
-        return request.build_absolute_uri(url) if request else url
+        return _clean_media_url(image.url, self.context.get("request"))
+
 
 
 class ProductVariantCreateSerializer(serializers.Serializer):
     """Validates input for adding a variant to an existing Product."""
 
     name = serializers.CharField(max_length=150)
+    code = serializers.CharField(max_length=64, required=False, allow_blank=True)
     unit = serializers.ChoiceField(choices=ProductVariant.UNIT_CHOICES, default="dona")
     barcode = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
     image = serializers.ImageField(required=False, allow_null=True)
@@ -101,8 +117,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         if not obj.image:
             return None
-        request = self.context.get("request")
-        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return _clean_media_url(obj.image.url, self.context.get("request"))
 
 
 class ProductOutputSerializer(serializers.ModelSerializer):
@@ -118,8 +133,7 @@ class ProductOutputSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if not obj.image:
             return None
-        request = self.context.get("request")
-        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+        return _clean_media_url(obj.image.url, self.context.get("request"))
 
 
 class ProductCreateSerializer(serializers.Serializer):
@@ -133,17 +147,26 @@ class ProductCreateSerializer(serializers.Serializer):
     image = serializers.ImageField(required=False, allow_null=True)
     unit = serializers.ChoiceField(choices=ProductVariant.UNIT_CHOICES, default="dona")
     variant_name = serializers.CharField(max_length=150, required=False, default="Standart")
+    code = serializers.CharField(max_length=64, required=False, allow_blank=True)
     price_partner = serializers.DecimalField(max_digits=12, decimal_places=2)
     price_min = serializers.DecimalField(max_digits=12, decimal_places=2)
     price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2)
 
 
 class ProductUpdateSerializer(serializers.Serializer):
-    """Validates input for editing a Product's own fields (not its
-    variants -- see ProductVariantUpdateSerializer for those)."""
+    """Validates input for editing a Product and optionally its variant fields."""
 
     name = serializers.CharField(max_length=200, required=False)
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(), source="category", required=False
     )
     image = serializers.ImageField(required=False, allow_null=True)
+
+    # Optional variant convenience fields
+    variant_id = serializers.IntegerField(required=False)
+    unit = serializers.ChoiceField(choices=ProductVariant.UNIT_CHOICES, required=False)
+    code = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    barcode = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
+    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)

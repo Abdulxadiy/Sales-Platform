@@ -47,10 +47,10 @@ class ProductService:
         may freely overwrite the resulting `code` afterwards (see
         ProductVariant.code docstring), including the price segment.
         """
-        thousands = int(price_min // Decimal("1000"))
+        price_segment = int(price_min) if getattr(category, "currency", "UZS") == "USD" else int(price_min // Decimal("1000"))
         if category.parent_id is not None:
-            return f"{category.parent.kod}/{category.kod}/{thousands}"
-        return f"{category.kod}/{thousands}"
+            return f"{category.parent.kod}/{category.kod}/{price_segment}"
+        return f"{category.kod}/{price_segment}"
 
     @classmethod
     @transaction.atomic
@@ -66,6 +66,7 @@ class ProductService:
         unit: str = "dona",
         image=None,
         variant_name: str = "Standart",
+        code: str = None,
     ) -> Product:
         """
         Create a Product together with its mandatory first
@@ -79,12 +80,13 @@ class ProductService:
         product = Product.objects.create(
             tenant=tenant, name=name, category=category, image=image
         )
+        variant_code = code.strip() if code and code.strip() else cls._build_code(category, price_min)
         ProductVariant.objects.create(
             tenant=tenant,
             product=product,
             name=variant_name,
             sku=cls._next_sku(tenant),
-            code=cls._build_code(category, price_min),
+            code=variant_code,
             unit=unit,
             price_partner=price_partner,
             price_min=price_min,
@@ -105,6 +107,7 @@ class ProductService:
         unit: str = "dona",
         barcode: str = None,
         image=None,
+        code: str = None,
     ) -> ProductVariant:
         """Add an additional variant to an existing Product (e.g. a new
         size/colour of an already-created item)."""
@@ -114,12 +117,13 @@ class ProductService:
                 f"'{name}' already exists as a variant of this product."
             )
 
+        variant_code = code.strip() if code and code.strip() else cls._build_code(product.category, price_min)
         return ProductVariant.objects.create(
             tenant=product.tenant,
             product=product,
             name=name,
             sku=cls._next_sku(product.tenant),
-            code=cls._build_code(product.category, price_min),
+            code=variant_code,
             unit=unit,
             # Stored as None, never "" -- the partial unique constraint
             # on barcode only ever compares real, non-null values.
@@ -140,6 +144,55 @@ class ProductService:
         product.save(update_fields=["is_active"])
         product.variants.update(is_active=False)
         return product
+
+    @classmethod
+    @transaction.atomic
+    def delete(cls, product: Product) -> bool:
+        """
+        Delete a Product safely.
+        - If any variant has sales or stock movement history,
+          hard delete is blocked to preserve financial and accounting audit trails.
+          Automatically cascades to archive the Product and all variants.
+        - If no sales or stock history exists (freshly created or never traded),
+          performs clean hard delete from the database.
+        Returns True.
+        """
+        has_sales = product.variants.filter(sale_items__isnull=False).exists()
+        has_stock_moves = product.variants.filter(stock_movements__isnull=False).exists()
+
+        if has_sales or has_stock_moves:
+            cls.archive(product)
+            return True
+
+        # Clean hard delete (cascades to variants, stock, images)
+        product.delete()
+        return True
+
+    @classmethod
+    @transaction.atomic
+    def delete_variant(cls, variant: ProductVariant) -> bool:
+        """
+        Delete a ProductVariant safely.
+        - If it's the last active variant of the product, deletes/archives the product.
+        - If other active variants exist:
+            - If this variant has sales or stock movements, archives it (is_active=False).
+            - Otherwise hard deletes it.
+        Returns True.
+        """
+        product = variant.product
+        remaining_variants = product.variants.filter(is_active=True).exclude(pk=variant.pk)
+        if not remaining_variants.exists():
+            return cls.delete(product)
+
+        has_sales = variant.sale_items.exists()
+        has_stock_moves = variant.stock_movements.exists()
+
+        if has_sales or has_stock_moves:
+            variant.is_active = False
+            variant.save(update_fields=["is_active"])
+        else:
+            variant.delete()
+        return True
 
     @classmethod
     @transaction.atomic

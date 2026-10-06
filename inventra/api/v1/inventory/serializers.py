@@ -7,20 +7,39 @@ from apps.inventory.models import Stock, StockMovement
 
 
 class StockOutputSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
+    variant_name = serializers.CharField(source="product_variant.name", read_only=True)
+    sku = serializers.CharField(source="product_variant.sku", read_only=True)
+    code = serializers.CharField(source="product_variant.code", read_only=True)
+    barcode = serializers.CharField(source="product_variant.barcode", read_only=True)
+    category_id = serializers.IntegerField(source="product_variant.product.category_id", read_only=True)
+    category_name = serializers.CharField(source="product_variant.product.category.name", read_only=True)
+    unit = serializers.CharField(source="product_variant.unit", read_only=True)
+    currency = serializers.CharField(source="product_variant.currency", read_only=True)
+
     class Meta:
         model = Stock
-        fields = ["id", "product_variant", "quantity", "last_cost_price"]
+        fields = [
+            "id", "product_variant", "quantity", "last_cost_price",
+            "product_name", "variant_name", "sku", "code", "barcode",
+            "category_id", "category_name", "unit", "currency",
+        ]
         read_only_fields = fields
 
 
 class StockMovementOutputSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
+    variant_name = serializers.CharField(source="product_variant.name", read_only=True)
+    code = serializers.CharField(source="product_variant.code", read_only=True)
+    unit = serializers.CharField(source="product_variant.unit", read_only=True)
+    currency = serializers.CharField(source="product_variant.currency", read_only=True)
 
     class Meta:
         model = StockMovement
         fields = [
-            "id", "product_variant", "type", "direction", "quantity",
-            "cost_price", "note", "created_by", "created_by_name", "created_at",
+            "id", "product_variant", "product_name", "variant_name", "code", "unit", "currency",
+            "type", "direction", "quantity", "cost_price", "note", "created_by", "created_by_name", "created_at",
         ]
         read_only_fields = fields
 

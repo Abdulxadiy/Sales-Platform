@@ -37,19 +37,26 @@ class ShopProductVariantSerializer(serializers.ModelSerializer):
         stock = getattr(obj, "stock", None)
         return str(stock.quantity) if stock else "0.000"
 
+    def _clean_url(self, url):
+        if not url:
+            return None
+        request = self.context.get("request")
+        res = request.build_absolute_uri(url) if request else url
+        if res.startswith("http://nginx/") or res.startswith("http://inventra/"):
+            return "/" + "/".join(res.split("/")[3:])
+        return res
+
     def get_image_url(self, obj):
         image = obj.image or obj.product.image
         if not image:
             return None
-        request = self.context.get("request")
-        return request.build_absolute_uri(image.url) if request else image.url
+        return self._clean_url(image.url)
 
     def get_gallery_images(self, obj):
-        request = self.context.get("request")
         urls = []
         for g in obj.product.gallery_images.all():
             if g.image:
-                urls.append(request.build_absolute_uri(g.image.url) if request else g.image.url)
+                urls.append(self._clean_url(g.image.url))
         return urls
 
 

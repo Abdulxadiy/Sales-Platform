@@ -262,26 +262,31 @@ class CashboxService:
                 )
 
 
-            # Send Notification to owner
+            # Send Notification to owner (web interface)
             owner = tenant.owner
-            report_msg = cls.format_daily_telegram_report(report)
+            notif_msg = cls.format_daily_report_message(report)
             Notification.objects.create(
                 tenant=tenant,
                 recipient=owner,
                 type="daily_z_report",
                 title=f"Kunlik Z-Hisobot (#{report.id})",
-                message=report_msg,
+                message=notif_msg,
             )
 
-            # Send Telegram if owner has linked telegram
+            # Send Telegram if owner has linked telegram (concise Telegram message)
             contact = TelegramContact.objects.filter(phone_number=owner.phone_number).first()
             if contact:
-                send_telegram_message(contact.chat_id, report_msg)
+                telegram_msg = cls.format_daily_telegram_report(report)
+                send_telegram_message(contact.chat_id, telegram_msg)
 
             return report
 
     @classmethod
-    def format_daily_telegram_report(cls, report: DailyCashReport) -> str:
+    def format_daily_report_message(cls, report: DailyCashReport) -> str:
+        """
+        To'liq Z-Hisobot formati: veb-interfeys va ichki bildirishnomalar uchun.
+        Barcha bandlar (Naqd, Karta, Nasiya, Qo'shimcha kirim va Chiqimlar) to'liq saqlanadi.
+        """
         name_parts = [report.closed_by.first_name, report.closed_by.last_name]
         seller_name = " ".join(p for p in name_parts if p).strip() or report.closed_by.username or report.closed_by.phone_number
 
@@ -357,6 +362,125 @@ class CashboxService:
                 lines.append(f"   • *{exp.category}:* `-{Decimal(str(exp.amount)):,.2f} {exp.currency}`{note_part}")
         else:
             lines.append(f"📤 *Xarajatlar:* `0.00 UZS` | `$0.00`")
+
+        if report.staff_notes:
+            lines.extend([
+                "",
+                f"📝 *Xodim qo'shimchasi:* {report.staff_notes}",
+            ])
+
+        return "\n".join(lines)
+
+    @classmethod
+    def format_daily_telegram_report(cls, report: DailyCashReport) -> str:
+        name_parts = [report.closed_by.first_name, report.closed_by.last_name]
+        seller_name = " ".join(p for p in name_parts if p).strip() or report.closed_by.username or report.closed_by.phone_number
+
+        def _fmt_usd(val):
+            v = Decimal(str(val or 0))
+            if v < 0:
+                return f"-${abs(v):,.2f}"
+            return f"${v:,.2f}"
+
+        def _fmt_uzs(val):
+            v = Decimal(str(val or 0))
+            if v < 0:
+                return f"-{abs(v):,.2f} UZS"
+            return f"{v:,.2f} UZS"
+
+        def _fmt_line_amounts(val_uzs, val_usd, prefix=""):
+            v_uzs = Decimal(str(val_uzs or 0))
+            v_usd = Decimal(str(val_usd or 0))
+            parts = []
+            if v_uzs != 0:
+                uzs_text = f"{v_uzs:,.2f} UZS" if v_uzs >= 0 else f"-{abs(v_uzs):,.2f} UZS"
+                if prefix and v_uzs > 0:
+                    uzs_text = f"{prefix}{uzs_text}"
+                parts.append(uzs_text)
+            if v_usd != 0:
+                usd_text = f"${v_usd:,.2f}" if v_usd >= 0 else f"-${abs(v_usd):,.2f}"
+                if prefix and v_usd > 0:
+                    usd_text = f"{prefix}{usd_text}"
+                parts.append(usd_text)
+            if not parts:
+                return "0.00 UZS"
+            return " | ".join(parts)
+
+        has_diff = report.discrepancy_uzs != 0 or report.discrepancy_usd != 0
+
+        lines = [
+            "📊 *KUNLIK Z-HISOBOT (SMENA YOPILDI)*",
+            f"🏢 *Do'kon:* {report.tenant.name}",
+            f"📅 *Sana:* {report.date} | {report.closed_at.strftime('%H:%M')}",
+            f"👤 *Smenani yopdi:* {seller_name}",
+            "",
+            "💵 *KASSA NAQD PULI:*",
+            f"• Kutilgan: `{_fmt_line_amounts(report.expected_cash_uzs, report.expected_cash_usd)}`",
+            f"• Haqiqiy: `{_fmt_line_amounts(report.actual_cash_uzs, report.actual_cash_usd)}`",
+        ]
+
+        if not has_diff:
+            lines.append("• Tafovut: `0.00 UZS`")
+            lines.append("✅ *Tafovut holati:* Tafovut mavjud emas (Kassa to'liq)")
+        else:
+            diff_parts = []
+            if report.discrepancy_uzs != 0:
+                diff_parts.append(_fmt_uzs(report.discrepancy_uzs))
+            if report.discrepancy_usd != 0:
+                diff_parts.append(_fmt_usd(report.discrepancy_usd))
+            diff_str = " | ".join(f"`{p}`" for p in diff_parts)
+            is_kamomad = (report.discrepancy_uzs < 0 or report.discrepancy_usd < 0)
+            status_text = "Kamomad aniqlandi" if is_kamomad else "Ortiqchalik aniqlandi"
+            lines.append(f"• Tafovut: {diff_str} ({'Kamomad' if is_kamomad else 'Ortiqcha'})")
+            lines.append(f"⚠️ *Tafovut holati:* {status_text}")
+            if report.discrepancy_reason:
+                lines.append(f"⚠️ *Tafovut izohi:* {report.discrepancy_reason}")
+
+        # SAVDOLAR: Faqat o'sha kuni amalga oshirilgan (mavjud / > 0) to'lov turlari
+        sales_lines = []
+        c_uzs = Decimal(str(report.total_sale_cash_uzs or 0))
+        c_usd = Decimal(str(report.total_sale_cash_usd or 0))
+        if c_uzs != 0 or c_usd != 0:
+            sales_lines.append(f"• Naqd: `{_fmt_line_amounts(c_uzs, c_usd)}`")
+
+        card_uzs = Decimal(str(report.total_sale_card_uzs or 0))
+        card_usd = Decimal(str(report.total_sale_card_usd or 0))
+        if card_uzs != 0 or card_usd != 0:
+            sales_lines.append(f"• Karta: `{_fmt_line_amounts(card_uzs, card_usd)}`")
+
+        debt_uzs = Decimal(str(report.total_sale_debt_uzs or 0))
+        debt_usd = Decimal(str(report.total_sale_debt_usd or 0))
+        if debt_uzs != 0 or debt_usd != 0:
+            sales_lines.append(f"• Nasiya: `{_fmt_line_amounts(debt_uzs, debt_usd)}`")
+
+        if not sales_lines:
+            sales_lines.append("• Savdolar mavjud emas (0.00 UZS)")
+
+        lines.append("")
+        lines.append("📈 *SAVDOLAR:*")
+        lines.extend(sales_lines)
+
+        # Qo'shimcha kirimlar tafsiloti (faqat mavjud bo'lsa)
+        incomes = list(report.incomes.all().order_by("created_at"))
+        has_incomes = len(incomes) > 0 or Decimal(str(report.total_extra_income_uzs or 0)) != 0 or Decimal(str(report.total_extra_income_usd or 0)) != 0
+        if has_incomes:
+            lines.append("")
+            lines.append(f"📥 *QO'SHIMCHA KIRIMLAR:* `{_fmt_line_amounts(report.total_extra_income_uzs, report.total_extra_income_usd, prefix='+')}`")
+            for inc in incomes:
+                note_part = f" — _{inc.note}_" if inc.note else ""
+                lines.append(f"   • *{inc.source}:* `+{Decimal(str(inc.amount)):,.2f} {inc.currency}`{note_part}")
+
+        # Chiqimlar / Xarajatlar tafsiloti (faqat mavjud bo'lsa)
+        expenses = list(report.expenses.all().order_by("created_at"))
+        has_expenses = len(expenses) > 0 or Decimal(str(report.total_expenses_uzs or 0)) != 0 or Decimal(str(report.total_expenses_usd or 0)) != 0
+        if has_expenses:
+            lines.append("")
+            total_exp_uzs = -abs(Decimal(str(report.total_expenses_uzs or 0)))
+            total_exp_usd = -abs(Decimal(str(report.total_expenses_usd or 0))) if Decimal(str(report.total_expenses_usd or 0)) != 0 else Decimal(0)
+            lines.append(f"📤 *XARAJATLAR / CHIQIMLAR:* `{_fmt_line_amounts(total_exp_uzs, total_exp_usd)}`")
+            for exp in expenses:
+                note_part = f" — _{exp.note}_" if exp.note else ""
+                lines.append(f"   • *{exp.category}:* `-{Decimal(str(exp.amount)):,.2f} {exp.currency}`{note_part}")
 
         if report.staff_notes:
             lines.extend([

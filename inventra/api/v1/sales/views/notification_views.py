@@ -21,6 +21,31 @@ class NotificationListView(TenantContextMixin, APIView):
             qs = Notification.objects.filter(tenant=self.tenant, recipient=request.user)
         return Response(NotificationOutputSerializer(qs, many=True).data)
 
+    def delete(self, request):
+        """Clear all notifications for the current user."""
+        if request.user.role == 'platform_admin':
+            Notification.objects.filter(recipient=request.user).delete()
+        else:
+            if not self.tenant:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            Notification.objects.filter(tenant=self.tenant, recipient=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NotificationDetailView(TenantContextMixin, APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        """Delete an individual notification."""
+        if request.user.role == 'platform_admin':
+            notif = get_object_or_404(Notification, pk=pk, recipient=request.user)
+        else:
+            if not self.tenant:
+                return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_403_FORBIDDEN)
+            notif = get_object_or_404(Notification, pk=pk, tenant=self.tenant, recipient=request.user)
+        notif.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class NotificationReadView(TenantContextMixin, APIView):
     permission_classes = [IsAuthenticated]

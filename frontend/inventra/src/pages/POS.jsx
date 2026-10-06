@@ -108,15 +108,17 @@ export default function POS() {
           v.sku?.toLowerCase() === searchQuery.trim().toLowerCase()
       );
       if (exactMatch) {
-        addToCart(exactMatch);
-        setSearchQuery('');
-        loadVariants(selectedCategory, '');
-        toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
+        if (addToCart(exactMatch)) {
+          setSearchQuery('');
+          loadVariants(selectedCategory, '');
+          toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
+        }
       } else if (variants.length === 1) {
-        addToCart(variants[0]);
-        setSearchQuery('');
-        loadVariants(selectedCategory, '');
-        toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
+        if (addToCart(variants[0])) {
+          setSearchQuery('');
+          loadVariants(selectedCategory, '');
+          toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
+        }
       }
     }
   };
@@ -144,18 +146,31 @@ export default function POS() {
   };
 
   const addToCart = (variant) => {
+    const available = Number(variant.stock_quantity ?? 0);
+    if (available <= 0) {
+      toast.warning(`"${variant.product_name || variant.name || 'Ushbu tovar'}" bazada tugagan! (Ombordagi qoldiq: 0)`);
+      return false;
+    }
     const initialPrice = getDefaultPrice(variant, isPartnerSale);
+    let success = true;
     setCart((prev) => {
       const existing = prev.find((item) => item.variant.id === variant.id);
       if (existing) {
+        const currentQty = Number(existing.quantity) || 0;
+        if (currentQty + 1 > available) {
+          toast.warning(`"${variant.product_name || variant.name || 'Tovar'}" omborda faqat ${available} ta mavjud!`);
+          success = false;
+          return prev;
+        }
         return prev.map((item) =>
           item.variant.id === variant.id
-            ? { ...item, quantity: (Number(item.quantity) || 0) + 1 }
+            ? { ...item, quantity: currentQty + 1 }
             : item
         );
       }
       return [...prev, { variant, quantity: 1, customPrice: initialPrice }];
     });
+    return success;
   };
 
   const updateQuantity = (variantId, delta) => {
@@ -165,6 +180,11 @@ export default function POS() {
           if (item.variant.id === variantId) {
             const currentQty = Number(item.quantity) || 0;
             const newQty = currentQty + delta;
+            const available = Number(item.variant.stock_quantity ?? 0);
+            if (delta > 0 && available > 0 && newQty > available) {
+              toast.warning(`Omborda faqat ${available} ta mavjud!`);
+              return item;
+            }
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
           return item;
@@ -177,6 +197,13 @@ export default function POS() {
     setCart((prev) =>
       prev.map((item) => {
         if (item.variant.id === variantId) {
+          const available = Number(item.variant.stock_quantity ?? 0);
+          if (newQty !== '' && !isNaN(newQty)) {
+            const num = Number(newQty);
+            if (num > available && available > 0) {
+              toast.warning(`Omborda faqat ${available} ta mavjud!`);
+            }
+          }
           return { ...item, quantity: newQty };
         }
         return item;
@@ -247,11 +274,31 @@ export default function POS() {
   const changeDueUZS = Math.max(0, parseFloat(paidAmountUZS || 0) - cartTotalUZS);
   const changeDueUSD = Math.max(0, parseFloat(paidAmountUSD || 0) - cartTotalUSD);
 
+  const hasStockError = cart.some((item) => {
+    const available = Number(item.variant.stock_quantity ?? 0);
+    const qty = Number(item.quantity) || 0;
+    return available <= 0 || qty > available;
+  });
+
   // Open Checkout
   const handleOpenCheckout = async () => {
     if (cart.length === 0) {
       toast.warning('Savat bo‘sh, tovar tanlang');
       return;
+    }
+
+    // Check each cart item against stock
+    for (const item of cart) {
+      const available = Number(item.variant.stock_quantity ?? 0);
+      const qty = Number(item.quantity) || 0;
+      if (available <= 0) {
+        toast.error(`"${item.variant.product_name || item.variant.name || 'Tovar'}" bazada tugagan (qoldiq: 0). Sotuv qilish uchun savatdan o‘chiring.`);
+        return;
+      }
+      if (qty > available) {
+        toast.error(`"${item.variant.product_name || item.variant.name || 'Tovar'}" uchun omborda yetarli qoldiq yo‘q (Mavjud: ${available}, Savatda: ${qty}).`);
+        return;
+      }
     }
 
     try {
@@ -271,6 +318,20 @@ export default function POS() {
     if (paymentMethod === 'DEBT' && !selectedCounterparty) {
       toast.warning('Nasiya uchun kontragent (mijoz)ni tanlash majburiy');
       return;
+    }
+
+    // Stock check before submitting
+    for (const item of cart) {
+      const available = Number(item.variant.stock_quantity ?? 0);
+      const qty = Number(item.quantity) || 0;
+      if (available <= 0) {
+        toast.error(`"${item.variant.product_name || item.variant.name || 'Tovar'}" bazada tugagan (qoldiq: 0).`);
+        return;
+      }
+      if (qty > available) {
+        toast.error(`"${item.variant.product_name || item.variant.name || 'Tovar'}" uchun omborda yetarli qoldiq yo‘q (Mavjud: ${available}, Savatda: ${qty}).`);
+        return;
+      }
     }
 
     setSubmittingSale(true);
@@ -443,13 +504,15 @@ export default function POS() {
                 <div
                   key={v.id}
                   onClick={() => addToCart(v)}
-                  className="glass-card interactive"
+                  className={`glass-card ${inStock ? 'interactive' : ''}`}
                   style={{
                     padding: 14,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    cursor: 'pointer',
+                    cursor: inStock ? 'pointer' : 'not-allowed',
+                    opacity: inStock ? 1 : 0.55,
+                    filter: inStock ? 'none' : 'grayscale(0.35)',
                     position: 'relative',
                     userSelect: 'none',
                   }}
@@ -625,6 +688,9 @@ export default function POS() {
               }
               const isBelowMin = !!priceWarning;
               const isUSD = item.variant.currency === 'USD';
+              const availableStock = Number(item.variant.stock_quantity ?? 0);
+              const isOutOfStock = availableStock <= 0;
+              const isOverStock = Number(item.quantity) > availableStock;
 
               return (
                 <div
@@ -632,8 +698,12 @@ export default function POS() {
                   style={{
                     padding: 12,
                     borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: isBelowMin ? '1px solid var(--accent-amber)' : '1px solid var(--border-subtle)',
+                    background: (isOutOfStock || isOverStock) ? 'rgba(239, 68, 68, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+                    border: (isOutOfStock || isOverStock)
+                      ? '1px solid var(--accent-rose)'
+                      : isBelowMin
+                      ? '1px solid var(--accent-amber)'
+                      : '1px solid var(--border-subtle)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 8,
@@ -653,6 +723,15 @@ export default function POS() {
                           <span>Min: {formatPrice(minPrice, item.variant.currency)}</span>
                         )}
                         <span>Tavsiya: {formatPrice(item.variant.price_recommended, item.variant.currency)}</span>
+                        {isOutOfStock ? (
+                          <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>
+                            ⚠️ Omborda tugagan (0 ta)
+                          </span>
+                        ) : isOverStock ? (
+                          <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>
+                            ⚠️ Omborda faqat {availableStock} ta
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -694,8 +773,12 @@ export default function POS() {
                           }
                         }}
                         onBlur={() => {
+                          const available = Number(item.variant.stock_quantity ?? 0);
                           if (!item.quantity || Number(item.quantity) <= 0) {
                             updateItemQuantity(item.variant.id, 1);
+                          } else if (available > 0 && Number(item.quantity) > available) {
+                            updateItemQuantity(item.variant.id, available);
+                            toast.warning(`"${item.variant.product_name || item.variant.name}" omborda faqat ${available} ta mavjud!`);
                           }
                         }}
                         title="Soni (qo‘lda kiritish mumkin)"
@@ -818,20 +901,42 @@ export default function POS() {
             </span>
           </div>
 
+          {hasStockError && (
+            <div
+              style={{
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid var(--accent-rose)',
+                color: 'var(--accent-rose)',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 12,
+                fontWeight: 600,
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              ⚠️ Savatda omborda qolmagan yoki yetarli bo‘lmagan tovarlar bor!
+            </div>
+          )}
+
           <button
             onClick={handleOpenCheckout}
-            disabled={cart.length === 0}
+            disabled={cart.length === 0 || hasStockError}
             style={{
               width: '100%',
               padding: '14px',
               borderRadius: 'var(--radius-sm)',
               border: 'none',
-              background: cart.length > 0 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'rgba(255,255,255,0.06)',
-              color: cart.length > 0 ? '#fff' : 'var(--text-muted)',
+              background: cart.length > 0 && !hasStockError
+                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                : 'rgba(255,255,255,0.06)',
+              color: cart.length > 0 && !hasStockError ? '#fff' : 'var(--text-muted)',
               fontSize: 16,
               fontWeight: 700,
-              cursor: cart.length > 0 ? 'pointer' : 'not-allowed',
-              boxShadow: cart.length > 0 ? 'var(--shadow-glow-emerald)' : 'none',
+              cursor: cart.length > 0 && !hasStockError ? 'pointer' : 'not-allowed',
+              boxShadow: cart.length > 0 && !hasStockError ? 'var(--shadow-glow-emerald)' : 'none',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

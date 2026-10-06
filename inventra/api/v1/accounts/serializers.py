@@ -11,6 +11,65 @@ class CompleteProfileSerializer(serializers.Serializer):
     last_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     email = serializers.EmailField(required=False, allow_blank=True)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
+    contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    tenant_name = serializers.CharField(source="tenant.name", read_only=True)
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    avatar_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "phone_number",
+            "contact_phone",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "date_of_birth",
+            "role",
+            "role_display",
+            "tenant",
+            "tenant_name",
+            "avatar",
+            "avatar_url",
+            "profile_completed",
+            "terms_accepted",
+            "terms_accepted_at",
+            "terms_accepted_ip",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "phone_number",
+            "role",
+            "role_display",
+            "tenant",
+            "tenant_name",
+            "terms_accepted",
+            "terms_accepted_at",
+            "terms_accepted_ip",
+            "created_at",
+        ]
+
+    def get_avatar_url(self, obj):
+        if obj.avatar and hasattr(obj.avatar, "url"):
+            url = obj.avatar.url
+            if url.startswith("http://nginx/") or url.startswith("http://inventra/"):
+                return "/" + "/".join(url.split("/")[3:])
+            return url
+        return None
+
+
+class UserProfileUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True)
+    contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
 
 
 class EmployeeHireSerializer(serializers.Serializer):
@@ -46,9 +105,22 @@ class EmployeeFireSerializer(serializers.Serializer):
 class EmployeeOutputSerializer(serializers.ModelSerializer):
     """Represents an Employee record in API response."""
 
+    phone_number = serializers.CharField(source="user.phone_number", read_only=True)
+    contact_phone = serializers.CharField(source="user.contact_phone", read_only=True, allow_null=True)
+
     class Meta:
         model = Employee
-        fields = ["id", "user", "tenant", "position", "is_active", "hired_at", "fired_at"]
+        fields = [
+            "id",
+            "user",
+            "phone_number",
+            "contact_phone",
+            "tenant",
+            "position",
+            "is_active",
+            "hired_at",
+            "fired_at",
+        ]
         read_only_fields = fields
 
 
@@ -75,13 +147,30 @@ class UnbanSerializer(serializers.Serializer):
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
-    """Step 1 of the magic-link password flow: supply the e-mail address.
+    """Step 1 of the magic-link password flow: supply the login identifier (or e-mail address).
 
     The response is always HTTP 200 to prevent user enumeration — the caller
     can never tell whether the address exists in the system.
     """
 
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False, allow_null=True)
+    login = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        email = (attrs.get("email") or "").strip()
+        login = (attrs.get("login") or "").strip()
+        if not email and not login:
+            raise serializers.ValidationError("Foydalanuvchi nomi, telefon raqam yoki email kiritilishi shart.")
+        attrs["identifier"] = login or email
+        return attrs
+
+
+class ChangePasswordWithOldSerializer(serializers.Serializer):
+    """Change password using old password verification when email is not available."""
+
+    login = serializers.CharField()
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):

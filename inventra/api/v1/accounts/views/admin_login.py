@@ -6,6 +6,7 @@ security requirements.
 """
 
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -66,7 +67,9 @@ class AdminLoginView(APIView):
         locked, remining =login_throttle.is_locked(username)
         if locked:
             return _blocked(remining)
-        user = User.objects.filter(username=username).first()
+        user = User.objects.filter(
+            Q(username=username) | Q(phone_number=username) | Q(email=username)
+        ).first()
 
         if user is None or not user.check_password(password):
             login_throttle.register_failure(username)
@@ -119,7 +122,9 @@ class AdminLoginVerifyOTPView(APIView):
         if locked:
             return _blocked(remining)
 
-        user = User.objects.filter(username=username).first()
+        user = User.objects.filter(
+            Q(username=username) | Q(phone_number=username) | Q(email=username)
+        ).first()
         if user is None:
             login_throttle.register_failure(username)
             return _bad_otp()

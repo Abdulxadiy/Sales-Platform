@@ -4,3 +4,6 @@ from .admin_login import *
 from .unban import *
 from .employee_views import *
 from .password_reset import *
+from .profile_views import *
+from .terms_views import *
+from .docs_views import *

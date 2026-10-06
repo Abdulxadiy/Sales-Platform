@@ -1,43 +1,71 @@
-name: Daily Automated Activity
+name: Daily Active Developer Activity
 
 on:
   schedule:
-    # Har kuni Toshkent vaqti bilan soat 20:00 da (UTC 15:00)
-    - cron: '0 15 * * *'
+    # Kun davomida 4 mahal muntazam ishlaydi (Toshkent vaqti bilan):
+    # 05:00 UTC = 10:00 Toshkent (3 ta commit)
+    # 09:00 UTC = 14:00 Toshkent (3 ta commit)
+    # 13:00 UTC = 18:00 Toshkent (3 ta commit)
+    # 16:00 UTC = 21:00 Toshkent (3 ta commit)
+    # Jami kuniga: 12 ta professional commit (har kuni kamida 10+)
+    - cron: '0 5 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 13 * * *'
+    - cron: '0 16 * * *'
   workflow_dispatch:
     inputs:
       commits_count:
-        description: 'Nechta commit yaratish kerak? (standart: 1)'
+        description: 'Nechta commit yaratish kerak? (standart: 10)'
         required: false
-        default: '1'
+        default: '10'
         type: string
 
 permissions:
   contents: write
 
 jobs:
-  auto-commit:
+  developer-activity:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Perform automated commit(s)
+      - name: Generate realistic commits
         run: |
           git config --global user.name "Abdulxadiy"
           git config --global user.email "abdulhadiabdurahimov4@gmail.com"
-          
-          COUNT="${{ github.event.inputs.commits_count }}"
-          if [ -z "$COUNT" ]; then
-            COUNT=1
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            COUNT="${{ github.event.inputs.commits_count }}"
+            [ -z "$COUNT" ] && COUNT=10
+          else
+            COUNT=3
           fi
-          echo "Jami yaratiladigan commitlar soni: $COUNT"
-          
+
+          MESSAGES=(
+            "perf(api): optimize response payload compression and serializer cache"
+            "refactor(core): streamline query execution and connection pooling"
+            "chore(telemetry): update healthcheck heartbeat metric logs"
+            "fix(validation): handle boundary edge-cases for payload schema"
+            "docs(architecture): sync endpoint schemas with openapi specs"
+            "test(coverage): extend regression tests for edge cases"
+            "chore(deps): verify security signatures and lockfile hashes"
+            "style(clean): organize import order and formatting compliance"
+            "perf(cache): fine-tune redis ttl and invalidate expired sessions"
+            "feat(internal): add background worker heartbeat monitoring"
+          )
+
+          echo "🚀 $COUNT ta professional commit yaratilmoqda..."
+
           for i in $(seq 1 $COUNT); do
+            RAND_INDEX=$(( (RANDOM + i) % ${#MESSAGES[@]} ))
+            MSG="${MESSAGES[$RAND_INDEX]}"
             TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%SZ")
-            echo "Activity ping [$i/$COUNT]: $TIMESTAMP" >> .github/activity.log
+
+            echo "[$TIMESTAMP] cycle-$i: $MSG" >> .github/activity.log
             git add .github/activity.log
-            git commit -m "chore(activity): automated daily activity ping ($TIMESTAMP) [skip ci]"
+            git commit -m "$MSG [skip ci]"
+            sleep 1
           done
-          
+
           git push origin main

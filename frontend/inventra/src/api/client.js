@@ -377,6 +377,27 @@ export const tenantApi = {
       method: 'POST',
       body: JSON.stringify({ target_user_id: targetUserId }),
     }),
+  getCurrentTenant: (params = {}) => {
+    const q = params.tenant_id ? `?tenant_id=${params.tenant_id}` : '';
+    return request(`/tenants/current/${q}`);
+  },
+  updateCurrentTenant: (data, params = {}) => {
+    const q = params.tenant_id ? `?tenant_id=${params.tenant_id}` : '';
+    return request(`/tenants/current/${q}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+  testTelegram: (data = {}) =>
+    request('/tenants/current/test-telegram/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  sendDailyReportNow: (data = {}) =>
+    request('/tenants/current/send-report-now/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export const catalogApi = {
@@ -570,6 +591,14 @@ export const salesApi = {
   markNotificationRead: (id) =>
     request(`/sales/notifications/${id}/read/`, {
       method: 'POST',
+    }),
+  clearAllNotifications: () =>
+    request('/sales/notifications/', {
+      method: 'DELETE',
+    }),
+  deleteNotification: (id) =>
+    request(`/sales/notifications/${id}/`, {
+      method: 'DELETE',
     }),
 };
 

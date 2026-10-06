@@ -14,6 +14,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
+  const dialogRef = useRef(null);
   const cancelBtnRef = useRef(null);
   const confirmBtnRef = useRef(null);
 
@@ -30,41 +31,71 @@ export default function ConfirmDialog({
     dismissOnBackdrop = true,
   } = options;
 
-  // Body scroll lock & focus management
+  // Top Layer showModal management & focus control
   useEffect(() => {
-    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    // Focus default button
-    const timer = setTimeout(() => {
-      if (isAlert) {
-        confirmBtnRef.current?.focus();
-      } else if (type === 'danger') {
-        cancelBtnRef.current?.focus();
-      } else {
-        confirmBtnRef.current?.focus();
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
       }
-    }, 50);
 
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
+      // Focus default button
+      const timer = setTimeout(() => {
+        if (isAlert) {
+          confirmBtnRef.current?.focus();
+        } else if (type === 'danger') {
+          cancelBtnRef.current?.focus();
+        } else {
+          confirmBtnRef.current?.focus();
+        }
+      }, 50);
+
+      return () => clearTimeout(timer);
+    } else {
+      if (dialog.open) {
+        dialog.close();
+      }
+    }
+  }, [isOpen, isAlert, type]);
+
+  // Escape key & backdrop click handling
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleCancel = (e) => {
+      e.preventDefault();
+      onCancel?.();
+    };
+
+    const handleBackdropClick = (event) => {
+      if (event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      const isDialogContent =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+
+      if (!isDialogContent && dismissOnBackdrop) {
         onCancel?.();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    dialog.addEventListener('cancel', handleCancel);
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      dialog.addEventListener('click', handleBackdropClick);
+    }
 
     return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timer);
+      dialog.removeEventListener('cancel', handleCancel);
+      if (!('closedBy' in HTMLDialogElement.prototype)) {
+        dialog.removeEventListener('click', handleBackdropClick);
+      }
     };
-  }, [isOpen, isAlert, type, onCancel]);
-
-  if (!isOpen) return null;
+  }, [onCancel, dismissOnBackdrop]);
 
   // Icon, color and default text configuration based on type
   let IconComponent = HelpCircle;
@@ -123,233 +154,218 @@ export default function ConfirmDialog({
   const finalConfirmText = isAlert ? buttonText : (confirmText || defaultConfirmText);
 
   return (
-    <div
-      className="confirm-dialog-backdrop"
-      role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && dismissOnBackdrop) {
-          onCancel?.();
-        }
-      }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'var(--dialog-backdrop, rgba(6, 10, 8, 0.72))',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        animation: 'confirmBackdropFade 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
+    <dialog
+      ref={dialogRef}
+      className="confirm-dialog-native"
+      closedby="any"
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-desc"
     >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-desc"
-        className="confirm-dialog-card"
-        style={{
-          width: '100%',
-          maxWidth: '440px',
-          background: 'var(--bg-modal, var(--bg-surface))',
-          border: '1px solid var(--border-modal, var(--border-card))',
-          borderRadius: 20,
-          boxShadow: '0 24px 60px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-subtle)',
-          padding: '24px 24px 20px',
-          color: 'var(--text-primary)',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          textAlign: 'center',
-          animation: 'confirmCardPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        }}
-      >
-        {/* Close (X) button */}
-        <button
-          type="button"
-          onClick={onCancel}
-          aria-label="Yopish"
-          style={{
-            position: 'absolute',
-            top: 14,
-            right: 14,
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            border: 'none',
-            background: 'var(--bg-chip)',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--bg-chip-hover)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--bg-chip)';
-            e.currentTarget.style.color = 'var(--text-muted)';
-          }}
-        >
-          <X size={16} />
-        </button>
-
-        {/* Status Badge Icon */}
+      {isOpen && (
         <div
+          role="alertdialog"
+          aria-modal="true"
+          className="confirm-dialog-card"
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: bgBadge,
-            border: `1.5px solid ${borderBadge}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: accentColor,
-            marginBottom: 16,
-            boxShadow: `0 0 24px ${bgBadge}`,
-          }}
-        >
-          <IconComponent size={28} strokeWidth={2.2} />
-        </div>
-
-        {/* Title */}
-        <h3
-          id="confirm-dialog-title"
-          style={{
-            margin: '0 0 8px 0',
-            fontSize: 19,
-            fontWeight: 700,
+            width: '100%',
+            maxWidth: '440px',
+            background: 'var(--bg-modal, var(--bg-surface))',
+            border: '1px solid var(--border-modal, var(--border-card))',
+            borderRadius: 20,
+            boxShadow: '0 24px 60px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-subtle)',
+            padding: '24px 24px 20px',
             color: 'var(--text-primary)',
-            letterSpacing: '-0.015em',
-            padding: '0 16px',
-            lineHeight: 1.3,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            margin: 'auto',
           }}
         >
-          {finalTitle}
-        </h3>
+          {/* Close (X) button */}
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Yopish"
+            style={{
+              position: 'absolute',
+              top: 14,
+              right: 14,
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              border: 'none',
+              background: 'var(--bg-chip)',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-chip-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--bg-chip)';
+              e.currentTarget.style.color = 'var(--text-muted)';
+            }}
+          >
+            <X size={16} />
+          </button>
 
-        {/* Message / Description */}
-        <p
-          id="confirm-dialog-desc"
-          style={{
-            margin: '0 0 22px 0',
-            fontSize: 14,
-            lineHeight: 1.55,
-            color: 'var(--text-secondary)',
-            wordBreak: 'break-word',
-            padding: '0 8px',
-          }}
-        >
-          {message}
-        </p>
+          {/* Status Badge Icon */}
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: bgBadge,
+              border: `1.5px solid ${borderBadge}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: accentColor,
+              marginBottom: 16,
+              boxShadow: `0 0 24px ${bgBadge}`,
+            }}
+          >
+            <IconComponent size={28} strokeWidth={2.2} />
+          </div>
 
-        {description && (
+          {/* Title */}
+          <h3
+            id="confirm-dialog-title"
+            style={{
+              margin: '0 0 8px 0',
+              fontSize: 19,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.015em',
+              padding: '0 16px',
+              lineHeight: 1.3,
+            }}
+          >
+            {finalTitle}
+          </h3>
+
+          {/* Message / Description */}
+          <p
+            id="confirm-dialog-desc"
+            style={{
+              margin: '0 0 22px 0',
+              fontSize: 14,
+              lineHeight: 1.55,
+              color: 'var(--text-secondary)',
+              wordBreak: 'break-word',
+              padding: '0 8px',
+            }}
+          >
+            {message}
+          </p>
+
+          {description && (
+            <div
+              style={{
+                width: '100%',
+                margin: '-12px 0 20px 0',
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'var(--bg-input)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: 12.5,
+                color: 'var(--text-muted)',
+                lineHeight: 1.45,
+                textAlign: 'left',
+              }}
+            >
+              {description}
+            </div>
+          )}
+
+          {/* Action Buttons */}
           <div
             style={{
               width: '100%',
-              margin: '-12px 0 20px 0',
-              padding: '10px 14px',
-              borderRadius: 10,
-              background: 'var(--bg-input)',
-              border: '1px solid var(--border-subtle)',
-              fontSize: 12.5,
-              color: 'var(--text-muted)',
-              lineHeight: 1.45,
-              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isAlert ? 'center' : 'flex-end',
+              gap: 12,
             }}
           >
-            {description}
-          </div>
-        )}
+            {!isAlert && (
+              <button
+                ref={cancelBtnRef}
+                type="button"
+                onClick={onCancel}
+                style={{
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 12,
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-chip)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-chip-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                  e.currentTarget.style.borderColor = 'var(--border-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-chip)';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                  e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                }}
+              >
+                {cancelText}
+              </button>
+            )}
 
-        {/* Action Buttons */}
-        <div
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: isAlert ? 'center' : 'flex-end',
-            gap: 12,
-          }}
-        >
-          {!isAlert && (
             <button
-              ref={cancelBtnRef}
+              ref={confirmBtnRef}
               type="button"
-              onClick={onCancel}
+              onClick={onConfirm}
               style={{
                 flex: 1,
                 height: 42,
                 borderRadius: 12,
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-chip)',
-                color: 'var(--text-secondary)',
+                border: 'none',
+                background: confirmBtnBg,
+                color: confirmBtnColor,
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                boxShadow: type === 'danger'
+                  ? '0 4px 14px rgba(244, 63, 94, 0.35)'
+                  : '0 4px 14px rgba(0, 0, 0, 0.15)',
                 transition: 'all 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'var(--bg-chip-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.borderColor = 'var(--border-hover)';
+                e.currentTarget.style.background = confirmBtnHover;
+                e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'var(--bg-chip)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                e.currentTarget.style.background = confirmBtnBg;
+                e.currentTarget.style.transform = 'none';
               }}
             >
-              {cancelText}
+              {finalConfirmText}
             </button>
-          )}
-
-          <button
-            ref={confirmBtnRef}
-            type="button"
-            onClick={onConfirm}
-            style={{
-              flex: 1,
-              height: 42,
-              borderRadius: 12,
-              border: 'none',
-              background: confirmBtnBg,
-              color: confirmBtnColor,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: type === 'danger'
-                ? '0 4px 14px rgba(244, 63, 94, 0.35)'
-                : '0 4px 14px rgba(0, 0, 0, 0.15)',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = confirmBtnHover;
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = confirmBtnBg;
-              e.currentTarget.style.transform = 'none';
-            }}
-          >
-            {finalConfirmText}
-          </button>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </dialog>
   );
 }

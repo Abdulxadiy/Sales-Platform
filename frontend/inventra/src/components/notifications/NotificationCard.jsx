@@ -7,12 +7,13 @@ import {
   Check,
   Clock,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { parseZReport, formatMarkdownLine } from './NotificationParser';
 import InventraLogo from '../common/InventraLogo';
 import { useNavigate } from 'react-router-dom';
 
-export default function NotificationCard({ notification, onMarkRead }) {
+export default function NotificationCard({ notification, onMarkRead, onDelete }) {
   const navigate = useNavigate();
   const n = notification;
   const parsedZ = parseZReport(n.message || n.text);
@@ -157,6 +158,21 @@ export default function NotificationCard({ notification, onMarkRead }) {
             >
               <Check size={13} />
               <span>O‘qildi</span>
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              onClick={() => onDelete(n.id)}
+              className="btn btn-secondary"
+              style={{
+                padding: '4px 8px',
+                fontSize: 11,
+                color: 'var(--accent-rose, #ef4444)',
+              }}
+              title="O‘chirish"
+            >
+              <Trash2 size={13} />
             </button>
           )}
         </div>

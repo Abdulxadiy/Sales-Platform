@@ -15,6 +15,7 @@ import Shifts from './pages/Shifts';
 import Audit from './pages/Audit';
 import Tenants from './pages/Tenants';
 import Employees from './pages/Employees';
+import Services from './pages/Services';
 import Profile from './pages/Profile';
 import SetupAccount from './pages/SetupAccount';
 import AcceptTerms from './pages/AcceptTerms';
@@ -84,6 +85,14 @@ export default function App() {
                   element={
                     <RoleProtectedRoute allowedRoles={['owner', 'platform_admin']}>
                       <Employees />
+                    </RoleProtectedRoute>
+                  }
+                />
+                <Route
+                  path="services"
+                  element={
+                    <RoleProtectedRoute allowedRoles={['owner', 'platform_admin']}>
+                      <Services />
                     </RoleProtectedRoute>
                   }
                 />

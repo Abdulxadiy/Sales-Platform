@@ -209,16 +209,13 @@ def test_dashboard_api_permissions_and_access(api_client, tenant, owner, platfor
     resp = api_client.get(f"{DASHBOARD_URL}?tenant_id={tenant_b.id}")
     assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    # Platform Admin without tenant_id -> 400
+    # Platform Admin -> 403 Forbidden (Privacy & Commercial Secrets Protection)
     api_client.force_authenticate(user=platform_admin)
     resp = api_client.get(DASHBOARD_URL)
-    assert resp.status_code == status.HTTP_400_BAD_REQUEST
-    assert resp.data["error"]["code"] == "tenant_required"
+    assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    # Platform Admin with tenant_id -> 200
     resp = api_client.get(f"{DASHBOARD_URL}?tenant_id={tenant.id}")
-    assert resp.status_code == status.HTTP_200_OK
-    assert "kpi" in resp.data
+    assert resp.status_code == status.HTTP_403_FORBIDDEN
 
 def test_dashboard_with_voided_items_and_custom_period(tenant, owner):
     cat = CategoryFactory(tenant=tenant)

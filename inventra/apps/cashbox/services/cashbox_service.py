@@ -141,7 +141,13 @@ class CashboxService:
         expected_cash_uzs = total_sale_cash_uzs + total_extra_income_uzs - total_expenses_uzs
         expected_cash_usd = total_sale_cash_usd + total_extra_income_usd - total_expenses_usd
 
+        has_activity = sales.exists() or incomes.exists() or expenses.exists()
+        is_open = (last_report is None) or has_activity
+        status_str = "OPEN" if is_open else "CLOSED"
+
         return {
+            "is_open": is_open,
+            "status": status_str,
             "shift_start": shift_start_dt.strftime("%Y-%m-%d %H:%M:%S"),
             "total_sale_cash_uzs": total_sale_cash_uzs,
             "total_sale_cash_usd": total_sale_cash_usd,
@@ -155,6 +161,24 @@ class CashboxService:
             "total_expenses_usd": total_expenses_usd,
             "expected_cash_uzs": expected_cash_uzs,
             "expected_cash_usd": expected_cash_usd,
+            "incomes": [
+                {
+                    "source": inc.source,
+                    "amount": str(inc.amount),
+                    "currency": inc.currency,
+                    "note": inc.note,
+                }
+                for inc in incomes
+            ],
+            "expenses": [
+                {
+                    "category": exp.category,
+                    "amount": str(exp.amount),
+                    "currency": exp.currency,
+                    "note": exp.note,
+                }
+                for exp in expenses
+            ],
         }
 
     @classmethod
@@ -182,7 +206,9 @@ class CashboxService:
 
             has_discrepancy = (discrepancy_uzs != Decimal("0.00") or discrepancy_usd != Decimal("0.00"))
             final_reason = discrepancy_reason.strip() if discrepancy_reason else ""
-            if has_discrepancy and not final_reason:
+            if not has_discrepancy:
+                final_reason = ""
+            elif not final_reason:
                 final_reason = "Smenani yopgan xodim tafovut farqining sababini bilmaydi"
 
             report = DailyCashReport.objects.create(
@@ -259,6 +285,20 @@ class CashboxService:
         name_parts = [report.closed_by.first_name, report.closed_by.last_name]
         seller_name = " ".join(p for p in name_parts if p).strip() or report.closed_by.username or report.closed_by.phone_number
 
+        def _fmt_usd(val):
+            v = Decimal(str(val or 0))
+            if v < 0:
+                return f"-${abs(v):,.2f}"
+            return f"${v:,.2f}"
+
+        def _fmt_uzs(val):
+            v = Decimal(str(val or 0))
+            if v < 0:
+                return f"-{abs(v):,.2f} UZS"
+            return f"{v:,.2f} UZS"
+
+        has_diff = report.discrepancy_uzs != 0 or report.discrepancy_usd != 0
+
         lines = [
             "📊 *KUNLIK Z-HISOBOT (SMENA YOPILDI)*",
             f"🏢 *Do'kon:* {report.tenant.name}",
@@ -266,24 +306,57 @@ class CashboxService:
             f"👤 *Smenani yopdi:* {seller_name}",
             "",
             "💵 *KASSA NAQD PULI:*",
-            f"• Kutilgan: `{report.expected_cash_uzs:,.2f} UZS` | `${report.expected_cash_usd:,.2f}`",
-            f"• Haqiqiy: `{report.actual_cash_uzs:,.2f} UZS` | `${report.actual_cash_usd:,.2f}`",
-            f"• Tafovut: `{report.discrepancy_uzs:,.2f} UZS` | `${report.discrepancy_usd:,.2f}`",
+            f"• Kutilgan: `{_fmt_uzs(report.expected_cash_uzs)}` | `{_fmt_usd(report.expected_cash_usd)}`",
+            f"• Haqiqiy: `{_fmt_uzs(report.actual_cash_uzs)}` | `{_fmt_usd(report.actual_cash_usd)}`",
         ]
 
-        if report.discrepancy_reason:
-            lines.append(f"⚠️ *Tafovut izohi:* {report.discrepancy_reason}")
+        if not has_diff:
+            lines.append("• Tafovut: `0.00 UZS`")
+            lines.append("✅ *Tafovut holati:* Tafovut mavjud emas (Kassa to'liq)")
+        else:
+            diff_parts = []
+            if report.discrepancy_uzs != 0:
+                diff_parts.append(_fmt_uzs(report.discrepancy_uzs))
+            if report.discrepancy_usd != 0:
+                diff_parts.append(_fmt_usd(report.discrepancy_usd))
+            diff_str = " | ".join(f"`{p}`" for p in diff_parts)
+            is_kamomad = (report.discrepancy_uzs < 0 or report.discrepancy_usd < 0)
+            status_text = "Kamomad aniqlandi" if is_kamomad else "Ortiqchalik aniqlandi"
+            lines.append(f"• Tafovut: {diff_str} ({'Kamomad' if is_kamomad else 'Ortiqcha'})")
+            lines.append(f"⚠️ *Tafovut holati:* {status_text}")
+            if report.discrepancy_reason:
+                lines.append(f"⚠️ *Tafovut izohi:* {report.discrepancy_reason}")
 
         lines.extend([
             "",
             "📈 *SAVDOLAR:*",
-            f"• Naqd: `{report.total_sale_cash_uzs:,.2f} UZS` | `${report.total_sale_cash_usd:,.2f}`",
-            f"• Karta: `{report.total_sale_card_uzs:,.2f} UZS` | `${report.total_sale_card_usd:,.2f}`",
-            f"• Nasiya: `{report.total_sale_debt_uzs:,.2f} UZS` | `${report.total_sale_debt_usd:,.2f}`",
+            f"• Naqd: `{_fmt_uzs(report.total_sale_cash_uzs)}` | `{_fmt_usd(report.total_sale_cash_usd)}`",
+            f"• Karta: `{_fmt_uzs(report.total_sale_card_uzs)}` | `{_fmt_usd(report.total_sale_card_usd)}`",
+            f"• Nasiya: `{_fmt_uzs(report.total_sale_debt_uzs)}` | `{_fmt_usd(report.total_sale_debt_usd)}`",
             "",
-            f"📥 *Qo'shimcha kirim:* `{report.total_extra_income_uzs:,.2f} UZS` | `${report.total_extra_income_usd:,.2f}`",
-            f"📤 *Xarajatlar:* `{report.total_expenses_uzs:,.2f} UZS` | `${report.total_expenses_usd:,.2f}`",
         ])
+
+        # Qo'shimcha kirimlar tafsiloti
+        incomes = list(report.incomes.all().order_by("created_at"))
+        if incomes:
+            lines.append(f"📥 *QO'SHIMCHA KIRIMLAR:* `{_fmt_uzs(report.total_extra_income_uzs)}` | `{_fmt_usd(report.total_extra_income_usd)}`")
+            for inc in incomes:
+                note_part = f" — _{inc.note}_" if inc.note else ""
+                lines.append(f"   • *{inc.source}:* `+{Decimal(str(inc.amount)):,.2f} {inc.currency}`{note_part}")
+        else:
+            lines.append(f"📥 *Qo'shimcha kirim:* `0.00 UZS` | `$0.00`")
+
+        lines.append("")
+
+        # Chiqimlar / Xarajatlar tafsiloti
+        expenses = list(report.expenses.all().order_by("created_at"))
+        if expenses:
+            lines.append(f"📤 *XARAJATLAR / CHIQIMLAR:* `-{abs(Decimal(str(report.total_expenses_uzs))):,.2f} UZS` | `{_fmt_usd(-abs(Decimal(str(report.total_expenses_usd))))}`")
+            for exp in expenses:
+                note_part = f" — _{exp.note}_" if exp.note else ""
+                lines.append(f"   • *{exp.category}:* `-{Decimal(str(exp.amount)):,.2f} {exp.currency}`{note_part}")
+        else:
+            lines.append(f"📤 *Xarajatlar:* `0.00 UZS` | `$0.00`")
 
         if report.staff_notes:
             lines.extend([

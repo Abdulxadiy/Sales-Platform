@@ -196,6 +196,16 @@ class AnalyticsService:
                 "average_check_uzs": f"{avg_check_uzs:.2f}",
                 "average_check_usd": f"{avg_check_usd:.2f}",
             },
+            # Top-level aliases for direct frontend compatibility
+            "total_revenue_uzs": f"{total_revenue_uzs:.2f}",
+            "total_revenue_usd": f"{total_revenue_usd:.2f}",
+            "net_profit_uzs": f"{net_profit_uzs:.2f}",
+            "net_profit_usd": f"{net_profit_usd:.2f}",
+            "total_debt_uzs": f"{total_debt_uzs:.2f}",
+            "total_debt_usd": f"{total_debt_usd:.2f}",
+            "sales_count": len(sales),
+            "average_check_uzs": f"{avg_check_uzs:.2f}",
+            "average_check_usd": f"{avg_check_usd:.2f}",
             "sales_chart": [
                 {
                     "date": d["date"],
@@ -210,9 +220,12 @@ class AnalyticsService:
             "top_products": [
                 {
                     "name": p["name"],
+                    "product_name": p["name"],
                     "sku": p["sku"],
                     "quantity_sold": f"{p['quantity_sold']:.3f}",
+                    "total_quantity": f"{p['quantity_sold']:.3f}",
                     "revenue": f"{p['revenue']:.2f}",
+                    "total_revenue_uzs": f"{p['revenue']:.2f}",
                     "profit": f"{p['profit']:.2f}",
                     "currency": p["currency"],
                 }
@@ -226,11 +239,23 @@ class AnalyticsService:
                 }
                 for k, v in payment_methods.items()
             },
+            "payment_methods_list": [
+                {
+                    "method": k.upper(),
+                    "count": v["count"],
+                    "total_uzs": f"{v['amount_uzs']:.2f}",
+                    "total_usd": f"{v['amount_usd']:.2f}",
+                }
+                for k, v in payment_methods.items()
+            ],
             "cashiers_leaderboard": [
                 {
                     "name": v["name"],
+                    "cashier_name": v["name"],
                     "sales_count": v["sales_count"],
+                    "total_sales_count": v["sales_count"],
                     "total_amount_uzs": f"{v['total_amount_uzs']:.2f}",
+                    "total_revenue_uzs": f"{v['total_amount_uzs']:.2f}",
                     "total_amount_usd": f"{v['total_amount_usd']:.2f}",
                 }
                 for v in sorted(cashiers.values(), key=lambda c: c["sales_count"], reverse=True)

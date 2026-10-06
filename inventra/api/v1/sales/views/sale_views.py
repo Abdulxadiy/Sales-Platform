@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from api.permissions import HasEmployeePermission
 from apps.sales.models import Sale, SaleItem, Counterparty
 from apps.sales.services import SaleService, SaleServiceError, VoidService, VoidServiceError
+from apps.inventory.services import StockServiceError
 from api.v1.sales.serializers import (
     SaleOutputSerializer,
     SaleCreateInputSerializer,
@@ -80,7 +81,7 @@ class SaleListCreateView(SalesAPIView):
                 is_partner_sale=data.get('is_partner_sale', False),
                 idempotency_key=data.get('idempotency_key'),
             )
-        except SaleServiceError as exc:
+        except (SaleServiceError, StockServiceError) as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(SaleOutputSerializer(sales, many=True).data, status=status.HTTP_201_CREATED)

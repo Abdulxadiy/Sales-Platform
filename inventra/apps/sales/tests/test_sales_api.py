@@ -198,6 +198,24 @@ class TestSaleEndpoints:
         assert void_res.data["status"] == "voided"
         assert void_res.data["void_reason"] == "Mijoz xato mahsulot olgan"
 
+    def test_create_sale_insufficient_stock_returns_400(self, api_client, staff_with_sales_permission, stocked_variant):
+        api_client.force_authenticate(user=staff_with_sales_permission)
+
+        # Stocked variant has 50 in stock, request 100
+        response = api_client.post(SALES_URL, {
+            "items": [
+                {
+                    "product_variant_id": stocked_variant.id,
+                    "quantity": "100",
+                    "unit_price": "12000.00",
+                }
+            ],
+            "payment_type": "cash",
+        }, format="json")
+
+        assert response.status_code == 400
+        assert "Omborda yetarli mahsulot qoldig'i yo'q" in str(response.data)
+
 
 class TestCounterpartyEndpoints:
     def test_counterparty_crud(self, api_client, staff_with_sales_permission, tenant):

@@ -11,6 +11,7 @@ volumes:
   static_data:
   inventra_venv:
   bot_venv:
+  frontend_node_modules:
 
 services:
 
@@ -87,6 +88,7 @@ services:
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,inventra,nginx,*"
     depends_on:
       redis:
         condition: service_healthy
@@ -94,6 +96,8 @@ services:
         condition: service_healthy
     volumes:
       - ./inventra:/app
+      - ./docs:/app/docs
+      - ./docs:/docs
       - inventra_venv:/app/.venv
       - static_data:/app/staticfiles
     expose:
@@ -190,7 +194,29 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static_data:/var/www/static:ro
+      - ./inventra/media:/var/www/media:ro
     depends_on:
       - inventra
     networks:
       - inventra_net
+
+  # -------------------------------------------------------------------
+  # FRONTEND — React (Vite) ilovasi (Dev rejimida)
+  # -------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend/inventra
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_TARGET=http://nginx:80
+    volumes:
+      - ./frontend/inventra:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - nginx
+    networks:
+      - inventra_net
+

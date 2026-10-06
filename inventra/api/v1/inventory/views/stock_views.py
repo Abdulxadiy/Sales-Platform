@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 
@@ -18,7 +19,20 @@ class StockListView(InventoryAPIView):
     required_permission = "inventory.view_stock"
 
     def get(self, request):
-        stock = Stock.objects.filter(tenant=self.tenant).select_related("product_variant")
+        stock = (
+            Stock.objects.filter(tenant=self.tenant)
+            .select_related("product_variant", "product_variant__product", "product_variant__product__category")
+        )
+        search = request.query_params.get("search")
+        if search:
+            s = search.strip()
+            stock = stock.filter(
+                Q(product_variant__product__name__icontains=s)
+                | Q(product_variant__name__icontains=s)
+                | Q(product_variant__sku__icontains=s)
+                | Q(product_variant__code__icontains=s)
+                | Q(product_variant__barcode__icontains=s)
+            )
         return Response(StockOutputSerializer(stock, many=True).data)
 
 

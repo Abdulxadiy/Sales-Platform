@@ -39,12 +39,11 @@ class CategoryService:
     @classmethod
     @transaction.atomic
     def create(
-        cls, *, tenant, name: str, parent: Category = None, currency: str = "UZS"
+        cls, *, tenant, name: str, parent: Category = None, currency: str = "UZS", kod: str = None
     ) -> Category:
         """
-        Create a Category. `kod` is always system-assigned (see
-        _next_kod) -- the owner may only change it afterwards, via
-        update(). Subcategories automatically inherit the parent's currency.
+        Create a Category. `kod` can be provided by the caller or auto-assigned
+        (see _next_kod). Subcategories automatically inherit the parent's currency.
         """
         if parent is not None:
             if parent.tenant_id != tenant.id:
@@ -58,34 +57,105 @@ class CategoryService:
         elif currency not in ("UZS", "USD"):
             raise CategoryServiceError("currency must be 'UZS' or 'USD'.")
 
-        kod = cls._next_kod(tenant)
-        return Category.objects.create(
-            tenant=tenant, name=name, kod=kod, parent=parent, currency=currency
-        )
-
-    @staticmethod
-    @transaction.atomic
-    def update(category: Category, *, name: str = None, kod: str = None) -> Category:
-        """Owner-driven edit of name and/or kod. `parent` is intentionally
-        not reassignable here -- not discussed/agreed in the roadmap;
-        add it later if a real need shows up."""
-        if name is not None:
-            category.name = name
-
-        if kod is not None and kod != category.kod:
-            already_used = (
-                Category.objects.filter(tenant=category.tenant, kod=kod)
-                .exclude(pk=category.pk)
-                .exists()
-            )
+        if kod is not None and kod.strip():
+            kod = kod.strip()
+            already_used = Category.objects.filter(tenant=tenant, kod=kod).exists()
             if already_used:
                 raise CategoryServiceError(
                     f"kod '{kod}' is already used by another category in this tenant."
                 )
-            category.kod = kod
+        else:
+            kod = cls._next_kod(tenant)
+
+        return Category.objects.create(
+            tenant=tenant, name=name, kod=kod, parent=parent, currency=currency
+        )
+
+    @classmethod
+    @transaction.atomic
+    def update(
+        cls,
+        category: Category,
+        *,
+        name: str = None,
+        kod: str = None,
+        parent: Category = None,
+        clear_parent: bool = False,
+        currency: str = None,
+    ) -> Category:
+        """Owner-driven edit of name, kod, parent, and/or currency."""
+        if name is not None and name.strip():
+            category.name = name.strip()
+
+        if kod is not None and kod.strip():
+            kod_clean = kod.strip()
+            if kod_clean != category.kod:
+                already_used = (
+                    Category.objects.filter(tenant=category.tenant, kod=kod_clean)
+                    .exclude(pk=category.pk)
+                    .exists()
+                )
+                if already_used:
+                    raise CategoryServiceError(
+                        f"kod '{kod_clean}' is already used by another category in this tenant."
+                    )
+                category.kod = kod_clean
+
+        if clear_parent:
+            category.parent = None
+        elif parent is not None:
+            if parent.pk == category.pk:
+                raise CategoryServiceError("Kategoriya o‘ziga o‘zi ota kategoriya bo‘la olmaydi.")
+            if parent.tenant_id != category.tenant_id:
+                raise CategoryServiceError("parent must belong to the same tenant.")
+            if parent.parent_id is not None:
+                raise CategoryServiceError(
+                    "Categories are limited to 2 levels -- the chosen parent is already a subcategory."
+                )
+            if category.subcategories.filter(is_active=True).exists():
+                raise CategoryServiceError(
+                    "Ichida subkategoriyalari bo‘lgan kategoriyani boshqa kategoriyaga bola qilib bo‘lmaydi (maksimal 2 bosqich)."
+                )
+            category.parent = parent
+            category.currency = parent.currency
+
+        if currency is not None and category.parent is None:
+            if currency not in ("UZS", "USD"):
+                raise CategoryServiceError("currency must be 'UZS' or 'USD'.")
+            category.currency = currency
+            category.subcategories.update(currency=currency)
 
         category.save()
         return category
+
+    @classmethod
+    @transaction.atomic
+    def delete(cls, category: Category) -> bool:
+        """
+        Delete a Category safely.
+        - If active subcategories exist: blocks deletion with informative error.
+        - If active products exist: blocks deletion with informative error.
+        - If no active items exist:
+            - Attempts hard delete from database.
+            - If historical protected items reference it, falls back to archive (is_active=False).
+        """
+        if category.subcategories.filter(is_active=True).exists():
+            raise CategoryServiceError(
+                "Bu kategoriyada faol subkategoriyalar mavjud. Avval ularni o‘chiring yoki boshqa kategoriyaga ko‘chiring."
+            )
+
+        if category.products.filter(is_active=True).exists():
+            raise CategoryServiceError(
+                "Ushbu kategoriyada faol mahsulotlar mavjud. Avval mahsulotlarni o‘chiring yoki boshqa kategoriyaga ko‘chiring."
+            )
+
+        from django.db.models import ProtectedError
+        try:
+            category.delete()
+        except ProtectedError:
+            category.is_active = False
+            category.save(update_fields=["is_active"])
+        return True
 
     @staticmethod
     @transaction.atomic

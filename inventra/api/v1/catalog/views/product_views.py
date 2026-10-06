@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 
 from api.permissions import HasEmployeePermission
@@ -24,6 +25,7 @@ class ProductListCreateView(CatalogAPIView):
     POST /api/v1/catalog/products/ -- creates the Product AND its
     mandatory first ProductVariant in one call."""
 
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [HasEmployeePermission]
     permission_map = {"GET": "catalog.view_product", "POST": "catalog.add_product"}
 
@@ -40,6 +42,7 @@ class ProductListCreateView(CatalogAPIView):
                 Q(name__icontains=search)
                 | Q(variants__name__icontains=search)
                 | Q(variants__sku__icontains=search)
+                | Q(variants__code__icontains=search)
                 | Q(variants__barcode__icontains=search)
             ).distinct()
 
@@ -71,7 +74,12 @@ class ProductDetailView(CatalogAPIView):
     fields only (name/category/image), never its variants."""
 
     permission_classes = [HasEmployeePermission]
-    permission_map = {"GET": "catalog.view_product", "PATCH": "catalog.change_product"}
+    permission_map = {
+        "GET": "catalog.view_product",
+        "PATCH": "catalog.change_product",
+        "DELETE": "catalog.archive_product",
+    }
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, pk):
         product = get_object_or_404(
@@ -83,8 +91,9 @@ class ProductDetailView(CatalogAPIView):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         serializer = ProductUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        val_data = serializer.validated_data
 
-        category = serializer.validated_data.pop("category", None)
+        category = val_data.pop("category", None)
         if category is not None:
             if category.tenant_id != self.tenant.id:
                 return Response(
@@ -92,11 +101,41 @@ class ProductDetailView(CatalogAPIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             product.category = category
-        for field, value in serializer.validated_data.items():
+
+        # Extract variant fields if provided
+        variant_id = val_data.pop("variant_id", None)
+        variant_fields = {}
+        for v_key in ["unit", "code", "barcode", "price_partner", "price_min", "price_recommended"]:
+            if v_key in val_data:
+                variant_fields[v_key] = val_data.pop(v_key)
+
+        for field, value in val_data.items():
             setattr(product, field, value)
         product.save()
 
+        # If variant fields were provided, update the variant
+        if variant_fields:
+            variant = None
+            if variant_id:
+                variant = product.variants.filter(id=variant_id).first()
+            if not variant:
+                variant = product.variants.first()
+            if variant:
+                if "barcode" in variant_fields:
+                    variant_fields["barcode"] = variant_fields["barcode"] or None
+                for k, v in variant_fields.items():
+                    setattr(variant, k, v)
+                variant.save()
+
         return Response(ProductOutputSerializer(product, context={"request": request}).data)
+
+    def delete(self, request, pk):
+        product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
+        try:
+            ProductService.delete(product)
+        except ProductServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProductArchiveView(CatalogAPIView):
@@ -120,6 +159,7 @@ class ProductVariantCreateView(CatalogAPIView):
 
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.change_product"
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id, tenant=self.tenant)
@@ -142,7 +182,11 @@ class ProductVariantDetailView(CatalogAPIView):
     "change_product" for the same reason as above."""
 
     permission_classes = [HasEmployeePermission]
-    required_permission = "catalog.change_product"
+    permission_map = {
+        "PATCH": "catalog.change_product",
+        "DELETE": "catalog.archive_product",
+    }
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def patch(self, request, pk):
         variant = get_object_or_404(ProductVariant, pk=pk, tenant=self.tenant)
@@ -182,6 +226,14 @@ class ProductVariantDetailView(CatalogAPIView):
 
         return Response(ProductVariantOutputSerializer(variant, context={"request": request}).data)
 
+    def delete(self, request, pk):
+        variant = get_object_or_404(ProductVariant, pk=pk, tenant=self.tenant)
+        try:
+            ProductService.delete_variant(variant)
+        except ProductServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 class ProductVariantArchiveView(CatalogAPIView):
@@ -207,6 +259,7 @@ class ProductImageUploadView(CatalogAPIView):
     """POST /api/v1/catalog/products/{pk}/images/ -- uploads an image (up to 3 max)."""
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.change_product"
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)

@@ -94,12 +94,17 @@ class TestTenantIsolation:
 
 
 class TestCategoryCreateFlow:
-    def test_kod_is_not_accepted_from_the_client(self, api_client, staff_with_permission):
+    def test_kod_can_be_provided_or_auto_assigned(self, api_client, staff_with_permission):
         api_client.force_authenticate(user=staff_with_permission)
+        # 1. Custom kod provided
         response = api_client.post(CATEGORIES_URL, {"name": "Ichimliklar", "kod": "99"})
         assert response.status_code == 201
-        # System-assigned, ignores whatever the client sent.
-        assert response.data["kod"] == "01"
+        assert response.data["kod"] == "99"
+
+        # 2. Kod omitted -> auto-assigned next sequential (len=1 -> 02)
+        response2 = api_client.post(CATEGORIES_URL, {"name": "Shirinliklar"})
+        assert response2.status_code == 201
+        assert response2.data["kod"] == "02"
 
 
 class TestProductCreateFlow:
@@ -134,3 +139,164 @@ class TestProductCreateFlow:
         assert archive_response.status_code == 200
         assert archive_response.data["is_active"] is False
         assert archive_response.data["variants"][0]["is_active"] is False
+
+    def test_creating_a_product_with_custom_code(self, api_client, staff_with_permission, tenant):
+        category = CategoryFactory(tenant=tenant, kod="01")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        response = api_client.post(PRODUCTS_URL, {
+            "name": "Pepsi 1.5L",
+            "category_id": category.id,
+            "code": "01/02/15",
+            "price_partner": "10000",
+            "price_min": "12000",
+            "price_recommended": "14000",
+        })
+
+        assert response.status_code == 201
+        assert response.data["variants"][0]["code"] == "01/02/15"
+
+    def test_search_product_by_code(self, api_client, staff_with_permission, tenant):
+        category = CategoryFactory(tenant=tenant, kod="01")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        api_client.post(PRODUCTS_URL, {
+            "name": "Fanta",
+            "category_id": category.id,
+            "code": "01/03/18",
+            "price_partner": "10000",
+            "price_min": "12000",
+            "price_recommended": "14000",
+        })
+
+        res = api_client.get(f"{PRODUCTS_URL}?search=01/03/18")
+        assert res.status_code == 200
+        assert len(res.data) == 1
+        assert res.data[0]["name"] == "Fanta"
+
+    def test_search_category_by_kod(self, api_client, staff_with_permission, tenant):
+        CategoryFactory(tenant=tenant, name="Meva", kod="77")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.get(f"{CATEGORIES_URL}?search=77")
+        assert res.status_code == 200
+        assert any(c["kod"] == "77" for c in res.data)
+
+    def test_create_product_with_image_multipart(self, api_client, staff_with_permission, tenant):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        category = CategoryFactory(tenant=tenant, kod="01")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\x05\x04\x04'
+            b'\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44'
+            b'\x01\x00\x3b'
+        )
+        image = SimpleUploadedFile("item.gif", small_gif, content_type="image/gif")
+
+        data = {
+            "name": "Coca-Cola 1.5L",
+            "category_id": category.id,
+            "unit": "dona",
+            "variant_name": "Standart",
+            "code": "01/01/12",
+            "price_partner": "9000",
+            "price_min": "12000",
+            "price_recommended": "15000",
+            "image": image,
+        }
+        res = api_client.post(PRODUCTS_URL, data, format="multipart")
+        assert res.status_code == 201
+        assert res.data["name"] == "Coca-Cola 1.5L"
+        assert res.data["image"] is not None
+
+
+class TestEditAndDeleteCategoryAndProduct:
+    def test_delete_category_success_when_empty(self, api_client, staff_with_permission, tenant):
+        cat = CategoryFactory(tenant=tenant, name="Bo'sh Kategoriya")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.delete(f"{CATEGORIES_URL}{cat.id}/")
+        assert res.status_code == 204
+        from apps.catalog.models import Category
+        assert not Category.objects.filter(id=cat.id).exists()
+
+    def test_delete_category_blocked_when_has_products(self, api_client, staff_with_permission, tenant):
+        cat = CategoryFactory(tenant=tenant, name="Oziq-ovqat")
+        from apps.catalog.models import Category
+        from tests.factories import ProductFactory
+        ProductFactory(tenant=tenant, category=cat, name="Non")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.delete(f"{CATEGORIES_URL}{cat.id}/")
+        assert res.status_code == 400
+        assert "mahsulotlar mavjud" in res.data["detail"]
+        assert Category.objects.filter(id=cat.id).exists()
+
+    def test_delete_category_blocked_when_has_subcategories(self, api_client, staff_with_permission, tenant):
+        parent_cat = CategoryFactory(tenant=tenant, name="Elektronika")
+        CategoryFactory(tenant=tenant, name="Telefonlar", parent=parent_cat)
+        from apps.catalog.models import Category
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.delete(f"{CATEGORIES_URL}{parent_cat.id}/")
+        assert res.status_code == 400
+        assert "subkategoriyalar mavjud" in res.data["detail"]
+        assert Category.objects.filter(id=parent_cat.id).exists()
+
+    def test_patch_category_update_name_and_kod(self, api_client, staff_with_permission, tenant):
+        cat = CategoryFactory(tenant=tenant, name="Eski Nom", kod="05")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.patch(f"{CATEGORIES_URL}{cat.id}/", {"name": "Yangi Nom", "kod": "95"})
+        assert res.status_code == 200
+        assert res.data["name"] == "Yangi Nom"
+        assert res.data["kod"] == "95"
+
+    def test_delete_product_hard_deletes_when_no_sales(self, api_client, staff_with_permission, tenant):
+        from tests.factories import ProductFactory, ProductVariantFactory
+        from apps.catalog.models import Product, ProductVariant
+        prod = ProductFactory(tenant=tenant, name="O'chadigan Tovar")
+        ProductVariantFactory(tenant=tenant, product=prod)
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.delete(f"{PRODUCTS_URL}{prod.id}/")
+        assert res.status_code == 204
+        assert not Product.objects.filter(id=prod.id).exists()
+
+    def test_delete_product_archives_when_has_sales(self, api_client, staff_with_permission, tenant):
+        from tests.factories import ProductFactory, ProductVariantFactory, SaleFactory, SaleItemFactory
+        from apps.catalog.models import Product
+        prod = ProductFactory(tenant=tenant, name="Sotilgan Tovar")
+        var = ProductVariantFactory(tenant=tenant, product=prod)
+        sale = SaleFactory(tenant=tenant)
+        SaleItemFactory(sale=sale, product_variant=var)
+        api_client.force_authenticate(user=staff_with_permission)
+
+        res = api_client.delete(f"{PRODUCTS_URL}{prod.id}/")
+        assert res.status_code == 204
+        # Since it has a sale item, it is archived (soft-deleted)
+        prod.refresh_from_db()
+        assert prod.is_active is False
+        var.refresh_from_db()
+        assert var.is_active is False
+
+    def test_patch_product_with_variant_fields(self, api_client, staff_with_permission, tenant):
+        from tests.factories import ProductFactory, ProductVariantFactory
+        prod = ProductFactory(tenant=tenant, name="Eski Mahsulot")
+        var = ProductVariantFactory(tenant=tenant, product=prod, price_recommended=Decimal("20000"))
+        api_client.force_authenticate(user=staff_with_permission)
+
+        payload = {
+            "name": "Yangilangan Mahsulot",
+            "price_recommended": "35000",
+            "unit": "kg",
+        }
+        res = api_client.patch(f"{PRODUCTS_URL}{prod.id}/", payload)
+        assert res.status_code == 200
+        assert res.data["name"] == "Yangilangan Mahsulot"
+        var.refresh_from_db()
+        assert var.price_recommended == Decimal("35000.00")
+        assert var.unit == "kg"
+
+

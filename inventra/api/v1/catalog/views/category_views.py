@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -24,7 +25,8 @@ class CategoryListCreateView(CatalogAPIView):
         categories = Category.objects.filter(tenant=self.tenant, is_active=True)
         search = request.query_params.get("search")
         if search:
-            categories = categories.filter(name__icontains=search.strip())
+            s = search.strip()
+            categories = categories.filter(Q(name__icontains=s) | Q(kod__icontains=s))
         currency = request.query_params.get("currency")
         if currency:
             categories = categories.filter(currency=currency.upper())
@@ -51,7 +53,11 @@ class CategoryDetailView(CatalogAPIView):
     PATCH /api/v1/catalog/categories/{pk}/"""
 
     permission_classes = [HasEmployeePermission]
-    permission_map = {"GET": "catalog.view_category", "PATCH": "catalog.change_category"}
+    permission_map = {
+        "GET": "catalog.view_category",
+        "PATCH": "catalog.change_category",
+        "DELETE": "catalog.archive_category",
+    }
 
     def get(self, request, pk):
         # Filtering by tenant here does double duty: a category that
@@ -71,6 +77,14 @@ class CategoryDetailView(CatalogAPIView):
         except CategoryServiceError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(CategoryOutputSerializer(category).data)
+
+    def delete(self, request, pk):
+        category = get_object_or_404(Category, pk=pk, tenant=self.tenant)
+        try:
+            CategoryService.delete(category)
+        except CategoryServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CategoryArchiveView(CatalogAPIView):

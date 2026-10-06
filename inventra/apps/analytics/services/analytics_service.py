@@ -21,7 +21,8 @@ class AnalyticsService:
             start_dt = timezone.make_aware(datetime.combine(today, time.min))
             end_dt = timezone.make_aware(datetime.combine(today, time.max))
         elif period == "this_week":
-            start_of_week = today - timedelta(days=today.weekday())
+            # 1 haftalik hisobot: so'nggi 7 kun (bugun va oldingi 6 kun)
+            start_of_week = today - timedelta(days=6)
             start_dt = timezone.make_aware(datetime.combine(start_of_week, time.min))
             end_dt = timezone.make_aware(datetime.combine(today, time.max))
         elif period == "this_month":
@@ -78,15 +79,20 @@ class AnalyticsService:
         sales_count_uzs = 0
         sales_count_usd = 0
 
-        # Day-by-day chart data
-        daily_data = defaultdict(lambda: {
-            "date": "",
-            "revenue_uzs": Decimal("0.00"),
-            "revenue_usd": Decimal("0.00"),
-            "profit_uzs": Decimal("0.00"),
-            "profit_usd": Decimal("0.00"),
-            "sales_count": 0,
-        })
+        # Day-by-day chart data (pre-populate all days in range so empty days have 0.00 instead of vanishing)
+        daily_data = {}
+        curr = start_dt.date()
+        while curr <= end_dt.date():
+            d_key = curr.strftime("%Y-%m-%d")
+            daily_data[d_key] = {
+                "date": d_key,
+                "revenue_uzs": Decimal("0.00"),
+                "revenue_usd": Decimal("0.00"),
+                "profit_uzs": Decimal("0.00"),
+                "profit_usd": Decimal("0.00"),
+                "sales_count": 0,
+            }
+            curr += timedelta(days=1)
 
         # Payment methods breakdown
         payment_methods = {
@@ -115,7 +121,15 @@ class AnalyticsService:
 
         for sale in sales:
             date_key = sale.created_at.strftime("%Y-%m-%d")
-            daily_data[date_key]["date"] = date_key
+            if date_key not in daily_data:
+                daily_data[date_key] = {
+                    "date": date_key,
+                    "revenue_uzs": Decimal("0.00"),
+                    "revenue_usd": Decimal("0.00"),
+                    "profit_uzs": Decimal("0.00"),
+                    "profit_usd": Decimal("0.00"),
+                    "sales_count": 0,
+                }
             daily_data[date_key]["sales_count"] += 1
 
             if sale.currency == Sale.CURRENCY_UZS:

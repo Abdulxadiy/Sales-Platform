@@ -76,9 +76,9 @@ class PasswordResetRequestView(APIView):
         return Response(
             {
                 "detail": (
-                    f"Parolni tiklash havolasi emailingizga ({email_hint}) yuborildi."
+                    f"Parolni tiklash havolasi emailingizga ({email_hint}) yuborildi. Agar xat kelmasa, iltimos, 'Spam' papkasini ham tekshiring."
                     if email_hint
-                    else "Agar kiritilgan login bo‘yicha hisob va unga biriktirilgan email mavjud bo‘lsa, tiklash havolasi yuborildi."
+                    else "Tiklash havolasi emailingizga yuborildi. Agar xat kelmasa, iltimos, 'Spam' papkasini ham tekshiring."
                 ),
                 "has_email": bool(email_hint),
                 "email_hint": email_hint,

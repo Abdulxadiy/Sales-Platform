@@ -60,6 +60,8 @@ class ShiftCloseSerializer(serializers.Serializer):
 
 class DailyCashReportSerializer(serializers.ModelSerializer):
     closed_by_name = serializers.SerializerMethodField()
+    incomes = CashIncomeSerializer(many=True, read_only=True)
+    expenses = CashExpenseSerializer(many=True, read_only=True)
 
     class Meta:
         model = DailyCashReport
@@ -88,6 +90,8 @@ class DailyCashReportSerializer(serializers.ModelSerializer):
             'discrepancy_reason',
             'staff_notes',
             'is_closed',
+            'incomes',
+            'expenses',
         ]
         read_only_fields = fields
 

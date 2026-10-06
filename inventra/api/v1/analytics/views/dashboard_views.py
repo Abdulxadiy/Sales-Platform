@@ -2,40 +2,34 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404
 
-from api.permissions import IsOwnerOrPlatformAdmin
-from apps.tenants.models import Tenant
+from api.permissions import IsOwner
 from apps.analytics.services.analytics_service import AnalyticsService, AnalyticsServiceError
 
 
 class DashboardView(APIView):
     """
     Savdo Analitikasi va Boshqaruv Paneli (Dashboard).
-    Faqat do'kon egasi (owner) va platform_admin ko'rishi mumkin.
+    Faqat do'kon egasi (owner) ko'rishi mumkin.
+    Platforma administratori uchun do'konning ichki tijorat va moliyaviy ma'lumotlari
+    maxfiylik siyosatiga muvofiq qat'iy cheklangan (403 Forbidden).
     """
-    permission_classes = [IsOwnerOrPlatformAdmin]
+    permission_classes = [IsOwner]
 
     def get(self, request):
         user = request.user
         if user.role == "platform_admin":
-            tenant_id = request.query_params.get("tenant_id")
-            if not tenant_id:
-                return Response(
-                    {
-                        "error": {
-                            "code": "tenant_required",
-                            "message": "platform_admin uchun 'tenant_id' parametri talab qilinadi.",
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            tenant = get_object_or_404(Tenant, pk=tenant_id)
-        else:
-            tenant = user.tenant
-            requested_tenant_id = request.query_params.get("tenant_id")
-            if requested_tenant_id and str(tenant.id) != str(requested_tenant_id):
-                raise PermissionDenied("Siz faqat o'zingizning do'koningiz analitikasini ko'ra olasiz.")
+            raise PermissionDenied(
+                "Do'konning tijorat sirlari va moliyaviy hisobotlari platforma administratori uchun yopiq."
+            )
+
+        tenant = user.tenant
+        if not tenant or not tenant.is_active:
+            raise PermissionDenied("Do'kon faol emas yoki mavjud emas.")
+
+        requested_tenant_id = request.query_params.get("tenant_id")
+        if requested_tenant_id and str(tenant.id) != str(requested_tenant_id):
+            raise PermissionDenied("Siz faqat o'zingizning do'koningiz analitikasini ko'ra olasiz.")
 
         if not tenant or not tenant.is_active:
             raise PermissionDenied("Do'kon faol emas.")

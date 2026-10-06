@@ -24,4 +24,9 @@ class UserManager(BaseUserManager):
 
     @staticmethod
     def normalize_phone_number(phone_number: str) -> str:
-        return phone_number.strip().replace(" ", "").replace('-', '')
+        if not phone_number:
+            return ""
+        raw = phone_number.strip().replace(" ", "").replace('-', '')
+        if raw.startswith("998") and not raw.startswith("+"):
+            return f"+{raw}"
+        return raw

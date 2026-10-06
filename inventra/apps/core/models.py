@@ -28,6 +28,10 @@ class ImmutableAuditLogQuerySet(models.QuerySet):
         raise ValidationError("AuditLog entries cannot be deleted.")
 
     def update(self, **kwargs):
+        # Allow Django CASCADE/SET_NULL collector to set foreign keys to NULL on delete
+        allowed_null_keys = {'tenant', 'actor'}
+        if set(kwargs.keys()).issubset(allowed_null_keys) and all(v is None for v in kwargs.values()):
+            return super().update(**kwargs)
         from django.core.exceptions import ValidationError
         raise ValidationError("AuditLog entries cannot be updated.")
 

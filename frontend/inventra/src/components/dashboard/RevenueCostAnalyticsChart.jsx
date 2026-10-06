@@ -81,7 +81,7 @@ function formatCompactAmount(val) {
 
 export default function RevenueCostAnalyticsChart({
   chartData = [],
-  _period = 'today',
+  period = 'today',
   formatUZS,
   formatUSD,
   currencyRate = 12500,
@@ -148,7 +148,7 @@ export default function RevenueCostAnalyticsChart({
         sales_count: i === 2 ? 2 : 12,
         isDemo: true,
       }));
-    } else if (raw.length === 1) {
+    } else if (raw.length === 1 && period === 'today') {
       const p = raw[0];
       raw = [
         { ...p, date: p.date + ' (09:00)', revenue_uzs: Number(p.revenue_uzs || 0) * 0.3, profit_uzs: Number(p.profit_uzs || 0) * 0.3 },

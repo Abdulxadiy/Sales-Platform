@@ -189,7 +189,7 @@ export default function Login() {
       setResetMode('sent');
       setResetModalOpen(true);
       if (res.has_email) {
-        toast.success(res.detail || 'Tiklash havolasi emailingizga yuborildi');
+        toast.success(res.detail || 'Tiklash havolasi emailingizga yuborildi. Agar xat kelmasa, "Spam" papkasini ham tekshiring.');
       } else {
         toast.info(res.detail || 'Hisob ma’lumotlari qabul qilindi');
       }
@@ -775,16 +775,22 @@ export default function Login() {
 
                 <div
                   style={{
-                    padding: '10px 14px',
+                    padding: '12px 14px',
                     borderRadius: 10,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    fontSize: 12.5,
+                    color: 'var(--text-primary)',
                     lineHeight: 1.5,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 10,
                   }}
                 >
-                  Iltimos, pochtangizni (jumladan <strong>"Spam"</strong> papkasini) tekshiring. Havola 24 soat davomida amal qiladi.
+                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                  <div>
+                    <strong>Muhim eslatma:</strong> Agar xat asosiy pochtangizda ko‘rinmasa, iltimos, <strong>"Spam"</strong> yoki <strong>"Promotions"</strong> papkasini ham tekshiring. Havola 24 soat davomida amal qiladi.
+                  </div>
                 </div>
 
                 <div

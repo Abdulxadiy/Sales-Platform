@@ -179,9 +179,9 @@ export default function Profile() {
     }
     setSendingReset(true);
     try {
-      await authApi.passwordResetRequest(user.email);
+      const res = await authApi.passwordResetRequest(user.email);
       setShowResetInfoModal(true);
-      toast.success('Tiklash havolasi yaratildi va server loglariga yozildi');
+      toast.success(res?.detail || 'Tiklash havolasi emailingizga yuborildi. Agar xat kelmasa, "Spam" papkasini ham tekshiring.');
     } catch (err) {
       toast.error(err.message || 'Parolni tiklashda xatolik');
     } finally {
@@ -1097,33 +1097,22 @@ export default function Profile() {
                 style={{
                   padding: 14,
                   borderRadius: 10,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
                   fontSize: 12.5,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
                 }}
               >
-                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: 4 }}>
-                  Nega Gmail pochtangizga xat kelmadi?
-                </strong>
-                Loyiha hozirda mahalliy (Docker dev) rejimida ishlayotgani sababli, Django elektron xatlarni internet orqali jo‘natmasdan, bevosita Docker konsoli (loglari)ga chiqaradi:
-                <code
-                  style={{
-                    display: 'block',
-                    marginTop: 8,
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    background: 'var(--bg-input)',
-                    color: 'var(--primary)',
-                    fontFamily: 'monospace',
-                    fontSize: 11.5,
-                  }}
-                >
-                  docker compose logs inventra --tail 50
-                </code>
+                <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                <div>
+                  <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>
+                    Pochtani tekshiring
+                  </strong>
+                  Parolni qayta tiklash havolasi elektron pochtangizga muvaffaqiyatli yuborildi. Agar xat asosiy pochtangizda ko‘rinmasa, iltimos, <strong>"Spam"</strong> yoki <strong>"Promotions"</strong> papkasini ham tekshirib ko‘ring. Havola 24 soat davomida amal qiladi.
+                </div>
               </div>
-              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)' }}>
-                Agar haqiqiy Gmail manzilingizga xat kelishini xohlasangiz, loyiha administratoridan <code>.env</code> faylida <code>EMAIL_HOST_USER</code> va Google App Password sozlashini so‘rashingiz mumkin. Profilingizdan to‘g‘ridan-to‘g‘ri parol almashtirish uchun yuqoridagi <strong>"Parolni O‘zgartirish"</strong> tugmasidan foydalanishingiz tavsiya etiladi.
-              </p>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>

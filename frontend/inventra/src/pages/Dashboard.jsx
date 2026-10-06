@@ -199,7 +199,7 @@ export default function Dashboard() {
 
   const periods = [
     { key: 'today', label: 'Bugun' },
-    { key: 'this_week', label: 'Shu Hafta' },
+    { key: 'this_week', label: 'So‘nggi 7 kun' },
     { key: 'this_month', label: 'Shu Oy' },
     { key: 'this_year', label: 'Shu Yil' },
   ];

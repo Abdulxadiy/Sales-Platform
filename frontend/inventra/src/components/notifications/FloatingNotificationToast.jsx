@@ -236,9 +236,13 @@ export default function FloatingNotificationToast({
                   color: 'var(--text-muted)',
                 }}
               >
-                <span>Savdo: {parsedZ.sales.cashUzs}</span>
-                <span>•</span>
-                <span>Chiqim: {parsedZ.expense.totalUzs}</span>
+                {parsedZ.sales?.cashUzs && <span>Savdo: {parsedZ.sales.cashUzs}</span>}
+                {parsedZ.expense && (
+                  <>
+                    {parsedZ.sales?.cashUzs && <span>•</span>}
+                    <span>Chiqim: {parsedZ.expense.totalUzs}</span>
+                  </>
+                )}
               </div>
             </div>
           ) : (

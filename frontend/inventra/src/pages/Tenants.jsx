@@ -87,7 +87,7 @@ export default function Tenants() {
         description: form.description.trim() || undefined,
       });
 
-      toast.success(`"${created.name}" do‘koni muvaffaqiyatli ro‘yxatdan o‘tkazildi! Parol o‘rnatish havolasi ${email} ga yuborildi.`);
+      toast.success(`"${created.name}" do‘koni ro‘yxatdan o‘tkazildi! Parol havolasi ${email} ga yuborildi (Spam papkasini ham tekshiring).`);
       setCreateModalOpen(false);
       setForm({ name: '', owner_phone_number: '', owner_email: '', description: '' });
       loadTenants();
@@ -164,7 +164,7 @@ export default function Tenants() {
           new_owner_email: ownerEmail,
         });
         toast.success(
-          `"${updated.name}" ma’lumotlari saqlandi va egasi almashtirildi! Parol o‘rnatish havolasi ${ownerEmail} ga yuborildi.`
+          `"${updated.name}" saqlandi va egasi almashtirildi! Parol havolasi ${ownerEmail} ga yuborildi (Spam papkasini ham tekshiring).`
         );
       } else {
         toast.success(`"${updated.name}" do‘koni muvaffaqiyatli tahrirlandi!`);

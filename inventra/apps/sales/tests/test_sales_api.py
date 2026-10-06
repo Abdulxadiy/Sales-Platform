@@ -346,3 +346,23 @@ class TestNotificationEndpoints:
         assert read_res.status_code == 200
         notif.refresh_from_db()
         assert notif.is_read is True
+
+    def test_clear_all_notifications(self, api_client, owner, tenant):
+        Notification.objects.create(tenant=tenant, recipient=owner, type="info", title="1", message="1")
+        Notification.objects.create(tenant=tenant, recipient=owner, type="info", title="2", message="2")
+        assert Notification.objects.filter(recipient=owner).count() == 2
+
+        api_client.force_authenticate(user=owner)
+        del_res = api_client.delete(NOTIFICATIONS_URL)
+        assert del_res.status_code == 204
+        assert Notification.objects.filter(recipient=owner).count() == 0
+
+    def test_delete_single_notification(self, api_client, owner, tenant):
+        n1 = Notification.objects.create(tenant=tenant, recipient=owner, type="info", title="1", message="1")
+        n2 = Notification.objects.create(tenant=tenant, recipient=owner, type="info", title="2", message="2")
+
+        api_client.force_authenticate(user=owner)
+        del_res = api_client.delete(f"{NOTIFICATIONS_URL}{n1.id}/")
+        assert del_res.status_code == 204
+        assert not Notification.objects.filter(id=n1.id).exists()
+        assert Notification.objects.filter(id=n2.id).exists()

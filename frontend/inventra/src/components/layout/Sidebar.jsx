@@ -20,6 +20,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Sliders,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -110,6 +111,11 @@ export default function Sidebar({
             to: '/employees',
             label: 'Xodimlar (Jamoa)',
             icon: Users,
+          },
+          {
+            to: '/services',
+            label: 'Xizmatlar & Sozlamalar',
+            icon: Sliders,
           },
           {
             to: '/audit',

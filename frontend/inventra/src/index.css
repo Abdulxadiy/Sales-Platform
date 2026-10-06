@@ -1354,4 +1354,28 @@ dialog.custom-dialog[open] .dialog-content {
   }
 }
 
+/* ==========================================================================
+   Confirm Native Dialog (Top Layer so it renders on top of any Modal / <dialog>)
+   ========================================================================== */
+dialog.confirm-dialog-native {
+  border: none;
+  background: transparent;
+  padding: 0;
+  max-width: calc(100vw - 32px);
+  margin: auto;
+  outline: none;
+  overflow: visible;
+}
+
+dialog.confirm-dialog-native::backdrop {
+  background: var(--dialog-backdrop, rgba(6, 10, 8, 0.75));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: confirmBackdropFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog.confirm-dialog-native[open] .confirm-dialog-card {
+  animation: confirmCardPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 

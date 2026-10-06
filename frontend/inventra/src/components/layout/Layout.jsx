@@ -6,7 +6,8 @@ import Modal from '../common/Modal';
 import { cashboxApi, salesApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, CheckCheck, Sparkles } from 'lucide-react';
+import { useConfirm } from '../../context/ConfirmContext';
+import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import NotificationCard from '../notifications/NotificationCard';
 import FloatingNotificationToast from '../notifications/FloatingNotificationToast';
 import { usePersistedState } from '../../hooks/usePersistedState';
@@ -14,6 +15,7 @@ import { usePersistedState } from '../../hooks/usePersistedState';
 export default function Layout() {
   const location = useLocation();
   const toast = useToast();
+  const confirm = useConfirm();
   const { isAdmin } = useAuth();
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [shiftData, setShiftData] = useState(null);
@@ -129,21 +131,39 @@ export default function Layout() {
     }
   };
 
-  const handleTestFloatingToast = () => {
-    const sample = notifications[0] || {
-      id: 'demo-' + Date.now(),
-      title: 'Kunlik Z-Hisobot (#2)',
-      type: 'daily_z_report',
-      is_read: false,
-      created_at: new Date().toISOString(),
-      message: `📊 *KUNLIK Z-HISOBOT (SMENA YOPILDI)*\n🏢 *Do'kon:* Salom test\n📅 *Sana:* 2026-10-03 | 06:14\n👤 *Smenani yopdi:* salom\n\n💵 *KASSA NAQD PULI:*\n• Kutilgan: \`1,269,500.00 UZS\` | \`$272.00\`\n• Haqiqiy: \`1,269,500.00 UZS\` | \`$272.00\`\n• Tafovut: \`0.00 UZS\` | \`$0.00\`\n✅ *Tafovut holati:* Tafovut mavjud emas (Kassa to'liq)\n\n📈 *SAVDOLAR:*\n• Naqd: \`126,500.00 UZS\` | \`$272.00\`\n• Karta: \`50,000.00 UZS\` | \`$0.00\`\n• Nasiya: \`247,000.00 UZS\` | \`$235.00\`\n\n📥 *QO'SHIMCHA KIRIMLAR:* \`1,258,000.00 UZS\` | \`$0.00\`\n   • *Paynet:* \`+1,258,000.00 UZS\` — _Paynet flagship_\n\n📤 *XARAJATLAR / CHIQIMLAR:* \`-115,000.00 UZS\` | \`$0.00\`\n   • *Transport va logistika:* \`-35,000.00 UZS\` — _Omborga tovarlarni olib kelish_\n   • *Hodim maoshi:* \`-80,000.00 UZS\` — _Abdulxadiy maoshi_`,
-    };
+  const handleDeleteNotification = async (id) => {
+    try {
+      await salesApi.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setUnreadCount((prev) => {
+        const target = notifications.find((n) => n.id === id);
+        return target && !target.is_read ? Math.max(0, prev - 1) : prev;
+      });
+      toast.success('Bildirishnoma o‘chirildi');
+    } catch {
+      toast.error('Bildirishnomani o‘chirishda xatolik yuz berdi');
+    }
+  };
 
-    triggerFloatingToast({
-      ...sample,
-      id: 'test-' + Date.now(),
-      is_read: false,
+  const handleClearAllNotifications = async () => {
+    if (notifications.length === 0) return;
+    const ok = await confirm({
+      title: 'Barcha bildirishnomalarni tozalash',
+      message: 'Haqiqatan ham barcha bildirishnomalarni o‘chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo‘lmaydi.',
+      confirmText: 'Ha, tozalash',
+      cancelText: 'Bekor qilish',
+      type: 'warning',
     });
+    if (!ok) return;
+
+    try {
+      await salesApi.clearAllNotifications();
+      setNotifications([]);
+      setUnreadCount(0);
+      toast.success('Barcha bildirishnomalar tozalandi');
+    } catch {
+      toast.error('Bildirishnomalarni tozalashda xatolik yuz berdi');
+    }
   };
 
   // Derive title from pathname
@@ -188,6 +208,11 @@ export default function Layout() {
         return {
           title: 'Xodimlar & Jamoa Boshqaruvi',
           subtitle: 'Do‘kon xodimlari, lavozimlar, ishga olish va bo‘shatish',
+        };
+      case '/services':
+        return {
+          title: 'Xizmatlar & Sozlamalar',
+          subtitle: 'Valyuta kursi, Telegram guruhlar, kassa cheki va hisobotlar avtomatizatsiyasi',
         };
       case '/audit':
         return {
@@ -479,17 +504,6 @@ export default function Layout() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                type="button"
-                onClick={handleTestFloatingToast}
-                className="btn btn-secondary"
-                style={{ padding: '6px 11px', fontSize: 11.5 }}
-                title="Sahifaning o‘ng yuqori qismidagi 5 soniyalik animatsiyani sinash"
-              >
-                <Sparkles size={13} color="var(--primary)" />
-                <span>Animatsiyani sinash (5s)</span>
-              </button>
-
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -500,6 +514,23 @@ export default function Layout() {
                 >
                   <CheckCheck size={14} color="var(--accent-emerald)" />
                   <span>Barchasini o‘qildi</span>
+                </button>
+              )}
+
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllNotifications}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '6px 11px',
+                    fontSize: 11.5,
+                    color: 'var(--accent-rose, #ef4444)',
+                  }}
+                  title="Barcha xabarnomalarni tozalash"
+                >
+                  <Trash2 size={13} />
+                  <span>Barchasini tozalash</span>
                 </button>
               )}
             </div>
@@ -544,6 +575,7 @@ export default function Layout() {
                     key={n.id}
                     notification={n}
                     onMarkRead={handleMarkRead}
+                    onDelete={handleDeleteNotification}
                   />
                 ))}
               </div>

@@ -41,14 +41,19 @@ class TenantCreateSerializer(serializers.ModelSerializer):
 
 
 class TenantAdminSerializer(serializers.ModelSerializer):
-    """Full view for platform_admin. name/description/usd_rate editable via PATCH;
+    """Full view for platform_admin. name/description/usd_rate/settings editable via PATCH;
     owner and is_active are changed only through their dedicated endpoints."""
 
     owner_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
-        fields = ["id", "name", "owner", "owner_details", "description", "is_active", "usd_rate", "created_at"]
+        fields = [
+            "id", "name", "owner", "owner_details", "description", "is_active",
+            "usd_rate", "daily_report_time", "daily_report_target", "shift_report_target",
+            "telegram_group_id", "notify_web_reports", "notify_on_sale", "notify_on_debt",
+            "receipt_header", "receipt_footer", "receipt_phone", "created_at"
+        ]
         read_only_fields = ["id", "owner", "is_active", "created_at"]
 
     def get_owner_details(self, obj):
@@ -66,13 +71,18 @@ class TenantAdminSerializer(serializers.ModelSerializer):
 
 
 class TenantOwnerSerializer(serializers.ModelSerializer):
-    """View for the tenant's own owner. Sees everything, edits description and usd_rate."""
+    """View for the tenant's own owner. Sees everything, edits settings and description."""
 
     owner_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
-        fields = ["id", "name", "owner", "owner_details", "description", "is_active", "usd_rate", "created_at"]
+        fields = [
+            "id", "name", "owner", "owner_details", "description", "is_active",
+            "usd_rate", "daily_report_time", "daily_report_target", "shift_report_target",
+            "telegram_group_id", "notify_web_reports", "notify_on_sale", "notify_on_debt",
+            "receipt_header", "receipt_footer", "receipt_phone", "created_at"
+        ]
         read_only_fields = ["id", "name", "owner", "is_active", "created_at"]
 
     def get_owner_details(self, obj):
@@ -90,11 +100,14 @@ class TenantOwnerSerializer(serializers.ModelSerializer):
 
 
 class TenantStaffSerializer(serializers.ModelSerializer):
-    """Read-only view for staff. Same as owner's view, minus created_at."""
+    """Read-only view for staff."""
 
     class Meta:
         model = Tenant
-        fields = ["id", "name", "owner", "description", "is_active"]
+        fields = [
+            "id", "name", "owner", "description", "is_active",
+            "usd_rate", "receipt_header", "receipt_footer", "receipt_phone"
+        ]
         read_only_fields = fields
 
 

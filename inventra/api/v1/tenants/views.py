@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import status, generics
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -153,3 +154,142 @@ class TenantActivateView(APIView):
         tenant.is_active = True
         tenant.save(update_fields=["is_active"])
         return Response({"id": tenant.id, "is_active": tenant.is_active})
+
+
+class CurrentTenantView(APIView):
+    """
+    GET /api/v1/tenants/current/ -- retrieve current tenant settings.
+    PATCH /api/v1/tenants/current/ -- update settings (owner or platform_admin).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_tenant(self, request):
+        user = request.user
+        if user.role == "owner":
+            tenant = getattr(user, "owned_tenant", None)
+            if not tenant:
+                tenant = Tenant.objects.filter(owner=user).first()
+            return tenant
+        elif user.role == "platform_admin":
+            tenant_id = request.query_params.get("tenant_id")
+            if tenant_id:
+                return get_object_or_404(Tenant, pk=tenant_id)
+            return Tenant.objects.first()
+        else:
+            return getattr(user, "tenant", None)
+
+    def get(self, request):
+        tenant = self._get_tenant(request)
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        if request.user.role == "platform_admin":
+            return Response(TenantAdminSerializer(tenant).data)
+        elif request.user.role == "owner":
+            return Response(TenantOwnerSerializer(tenant).data)
+        return Response(TenantStaffSerializer(tenant).data)
+
+    def patch(self, request):
+        tenant = self._get_tenant(request)
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        if request.user.role not in ("owner", "platform_admin"):
+            return Response({"detail": "Faqat do'kon egasi sozlamalarni o'zgartira oladi."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer_class = TenantAdminSerializer if request.user.role == "platform_admin" else TenantOwnerSerializer
+        serializer = serializer_class(tenant, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class TenantTestTelegramView(APIView):
+    """
+    POST /api/v1/tenants/current/test-telegram/ -- send test message to configured Telegram destinations.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.tg_bot.models import TelegramContact
+        from apps.tg_bot.services import send_telegram_message
+
+        user = request.user
+        if user.role == "owner":
+            tenant = getattr(user, "owned_tenant", None) or Tenant.objects.filter(owner=user).first()
+        elif user.role == "platform_admin":
+            tenant_id = request.data.get("tenant_id") or request.query_params.get("tenant_id")
+            tenant = Tenant.objects.filter(pk=tenant_id).first() if tenant_id else Tenant.objects.first()
+        else:
+            return Response({"detail": "Ruxsat etilmagan."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+
+        dest_chat_ids = set()
+        custom_group_id = request.data.get("telegram_group_id")
+        group_id = custom_group_id if custom_group_id is not None else tenant.telegram_group_id
+        if group_id and group_id.strip():
+            dest_chat_ids.add(group_id.strip())
+
+        contact = TelegramContact.objects.filter(phone_number=tenant.owner.phone_number).first()
+        if contact and contact.chat_id:
+            dest_chat_ids.add(contact.chat_id)
+
+        if not dest_chat_ids:
+            return Response({
+                "success": False,
+                "detail": "Hech qanday Telegram manzil topilmadi. Guruh ID sini kiriting yoki Telegram bot (@inventraa_bot) ga shaxsiy raqamingizni ulang."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        test_msg = (
+            "🔔 *Inventra Test Bildirishnomasi*\n\n"
+            f"🏢 *Do'kon:* {tenant.name}\n"
+            f"💵 *Ichki dollar kursi:* `{tenant.usd_rate:,.2f} UZS`\n"
+            "✅ *Aloqa holati:* Telegram kanali/guruhi muvaffaqiyatli ulandi va sozlandi!"
+        )
+
+        sent_count = 0
+        for chat_id in dest_chat_ids:
+            ok = send_telegram_message(chat_id, test_msg)
+            if ok:
+                sent_count += 1
+
+        if sent_count > 0:
+            return Response({
+                "success": True,
+                "detail": f"Test xabari {sent_count} ta Telegram manzilga muvaffaqiyatli yuborildi."
+            })
+        else:
+            return Response({
+                "success": False,
+                "detail": "Telegram bot xabarni yubora olmadi. Botni guruhga admin qilib qo'shganingizni va ID to'g'riligini tekshiring."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TenantSendReportNowView(APIView):
+    """
+    POST /api/v1/tenants/current/send-report-now/ -- trigger daily report immediately.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.cashbox.tasks import send_daily_report_for_tenant_task
+
+        user = request.user
+        if user.role == "owner":
+            tenant = getattr(user, "owned_tenant", None) or Tenant.objects.filter(owner=user).first()
+        elif user.role == "platform_admin":
+            tenant_id = request.data.get("tenant_id") or request.query_params.get("tenant_id")
+            tenant = Tenant.objects.filter(pk=tenant_id).first() if tenant_id else Tenant.objects.first()
+        else:
+            return Response({"detail": "Ruxsat etilmagan."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+
+        success = send_daily_report_for_tenant_task(tenant.id)
+        if success:
+            return Response({"success": True, "detail": "Kunlik hisobot Telegramga yuborildi."})
+        return Response({
+            "success": False,
+            "detail": "Hisobot yuborilmadi. Sozlamalarda hisobot yoqilganini va Telegram manzil kiritilganini tekshiring."
+        }, status=status.HTTP_400_BAD_REQUEST)

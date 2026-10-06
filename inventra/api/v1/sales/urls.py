@@ -18,6 +18,7 @@ from api.v1.sales.views.b2b_views import (
 )
 from api.v1.sales.views.notification_views import (
     NotificationListView,
+    NotificationDetailView,
     NotificationReadView,
 )
 
@@ -41,5 +42,6 @@ urlpatterns = [
 
     # Notifications
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
     path('notifications/<int:pk>/read/', NotificationReadView.as_view(), name='notification-read'),
 ]

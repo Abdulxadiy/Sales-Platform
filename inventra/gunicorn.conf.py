@@ -36,3 +36,7 @@ if worker_class == "gevent":
     os.environ["GEVENT_RESOLVER"] = "ares"
 
 proc_name = "inventra_gunicorn"
+
+# Auto-reload workers when code changes (crucial for local dev / Docker volume mounts)
+reload = os.environ.get("GUNICORN_RELOAD", "true").lower() in ("true", "1")
+reload_extra_files = []

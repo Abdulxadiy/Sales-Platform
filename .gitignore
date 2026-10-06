@@ -229,3 +229,9 @@ __marimo__/
 *.iml
 media/
 staticfiles/
+
+# Frontend
+node_modules/
+dist/
+.vite/
+

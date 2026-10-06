@@ -377,3 +377,70 @@ class TestPasswordResetConfirmView:
         )
         assert response.status_code == 400
         assert "username_taken" in response.json().get("detail", "")
+
+
+@pytest.mark.django_db
+class TestPasswordResetEnhancements:
+    """Tests for email masking, login lookup, and changing password via old password."""
+
+    CHANGE_WITH_OLD_URL = "/api/v1/auth/password-reset/change-with-old/"
+    REQUEST_URL = "/api/v1/auth/password-reset/request/"
+
+    def test_mask_email(self):
+        from apps.accounts.services.email_utils import mask_email
+        assert mask_email("abdulxadiyabduraximov@gmail.com") == "ab***ov@gmail.com"
+        assert mask_email("alice@example.com") == "al***ce@example.com"
+        assert mask_email("john@gmail.com") == "j*n@gmail.com"
+        assert mask_email("me@test.uz") == "m*@test.uz"
+        assert mask_email("a@test.uz") == "*@test.uz"
+
+    def test_request_reset_by_username_returns_masked_hint(self, client, staff_with_email):
+        staff_with_email.username = "test_staff_user"
+        staff_with_email.save()
+
+        response = client.post(
+            self.REQUEST_URL,
+            data={"login": "test_staff_user"},
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data.get("has_email") is True
+        assert data.get("email_hint") == "al***ce@example.com"
+
+    def test_change_password_with_old_success(self, client, staff_with_email):
+        staff_with_email.username = "old_pass_user"
+        staff_with_email.set_password("OldSecretPass123!")
+        staff_with_email.save()
+
+        response = client.post(
+            self.CHANGE_WITH_OLD_URL,
+            data={
+                "login": "old_pass_user",
+                "old_password": "OldSecretPass123!",
+                "new_password": "BrandNewSecret456!",
+            },
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+
+        staff_with_email.refresh_from_db()
+        assert staff_with_email.check_password("BrandNewSecret456!")
+        assert not staff_with_email.check_password("OldSecretPass123!")
+
+    def test_change_password_with_wrong_old_fails(self, client, staff_with_email):
+        staff_with_email.username = "wrong_pass_user"
+        staff_with_email.set_password("CorrectPass123!")
+        staff_with_email.save()
+
+        response = client.post(
+            self.CHANGE_WITH_OLD_URL,
+            data={
+                "login": "wrong_pass_user",
+                "old_password": "WrongPassword999!",
+                "new_password": "BrandNewSecret456!",
+            },
+            content_type="application/json",
+        )
+        assert response.status_code == 400
+        assert "noto‘g‘ri" in response.json().get("detail", "").lower()

@@ -51,10 +51,10 @@
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 10px 30px -4px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 20px 50px -10px rgba(0, 0, 0, 0.75);
-  /* Chart Tooltip Glassmorphic */
-  --chart-tooltip-bg: rgba(22, 19, 17, 0.65);
-  --chart-tooltip-border: rgba(245, 158, 11, 0.32);
-  --chart-tooltip-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.8), 0 4px 14px rgba(0, 0, 0, 0.5);
+  /* Chart Tooltip Solid */
+  --chart-tooltip-bg: #1c1917;
+  --chart-tooltip-border: rgba(255, 255, 255, 0.14);
+  --chart-tooltip-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.75), 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="light"] {
@@ -101,11 +101,10 @@
   --shadow-sm: 0 2px 8px rgba(11, 9, 9, 0.06);
   --shadow-md: 0 10px 30px -4px rgba(11, 9, 9, 0.1);
   --shadow-lg: 0 20px 50px -10px rgba(11, 9, 9, 0.15);
-  --shadow-sidebar: 0 24px 60px rgba(11, 9, 9, 0.12);
-  /* Chart Tooltip Glassmorphic */
-  --chart-tooltip-bg: rgba(255, 255, 255, 0.48);
-  --chart-tooltip-border: rgba(200, 210, 225, 0.70);
-  --chart-tooltip-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  /* Chart Tooltip Solid */
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(11, 9, 9, 0.12);
+  --chart-tooltip-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.14), 0 4px 10px rgba(15, 23, 42, 0.06);
 }
 
 /* --------------------------------------------------------------------------
@@ -127,7 +126,7 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
   overflow-x: hidden;
 }
 
@@ -178,7 +177,7 @@ a {
   border: 1px solid var(--border-card);
   box-shadow: var(--shadow-sidebar);
   white-space: nowrap;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s ease, background-color 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   z-index: 100;
   user-select: none;
 }
@@ -578,6 +577,7 @@ a {
   width: 100%;
   background: var(--bg-app);
   position: relative;
+  transition: background-color 0.25s ease;
 }
 
 .main-content {
@@ -610,7 +610,7 @@ a {
   border: 1px solid var(--border-card);
   border-radius: 20px;
   box-shadow: var(--shadow-sm);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   width: 100%;
 }
 
@@ -750,7 +750,7 @@ a {
   border: 1px solid var(--border-card);
   border-radius: 18px;
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 .glass-card:hover {
@@ -762,19 +762,76 @@ a {
   box-shadow: var(--shadow-md);
 }
 
-/* Glassmorphic Chart Hover Tooltip */
+/* Chart Legend Pills (Theme-adaptive for both Day and Night modes) */
+.chart-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm, 8px);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.chart-pill-btn.pill-revenue.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+[data-theme="dark"] .chart-pill-btn.pill-revenue.active {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+
+.chart-pill-btn.pill-costs.active {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.10);
+  color: #e11d48;
+}
+[data-theme="dark"] .chart-pill-btn.pill-costs.active {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.16);
+  color: #fb7185;
+}
+
+.chart-pill-btn.pill-profit.active {
+  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+[data-theme="dark"] .chart-pill-btn.pill-profit.active {
+  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(14, 165, 233, 0.18);
+  color: #38bdf8;
+}
+
+.chart-pill-btn.pill-debt.active {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+[data-theme="dark"] .chart-pill-btn.pill-debt.active {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+/* Solid Clean Chart Hover Tooltip (Oddiy no-shaffof oyna) */
 .chart-tooltip-glass {
   background: var(--chart-tooltip-bg) !important;
-  backdrop-filter: blur(12px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
   border: 1px solid var(--chart-tooltip-border) !important;
   box-shadow: var(--chart-tooltip-shadow) !important;
 }
 
 .chart-tooltip-arrow {
   background: var(--chart-tooltip-bg) !important;
-  backdrop-filter: blur(12px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
   border-right: 1px solid var(--chart-tooltip-border) !important;
   border-bottom: 1px solid var(--chart-tooltip-border) !important;
 }
@@ -947,7 +1004,8 @@ dialog.custom-dialog select:focus {
 }
 
 dialog.custom-dialog[open] .dialog-content {
-  animation: scaleIn 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  animation: scaleIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes scaleIn {
@@ -969,17 +1027,130 @@ dialog.custom-dialog[open] .dialog-content {
   animation: spin 1s linear infinite;
 }
 
-/* Print Styles */
+/* Print Styles — Thermal POS Receipt & Document Isolation */
 @media print {
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Universal hide for all standard web app navigation, headers, and UI chrome */
+  header,
+  nav,
+  aside,
   .sidebar,
+  .header,
+  .app-sidebar,
+  .app-header,
+  .no-print,
+  .no-print *,
+  .toast-container,
+  .notif-toast-container,
+  button,
   .doc-hide-print {
     display: none !important;
+    visibility: hidden !important;
   }
+
+  /* Reset dialog / modal wrappers so they do not show backdrop, boxes or shadows */
+  dialog.custom-dialog {
+    all: unset !important;
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  dialog.custom-dialog::backdrop {
+    display: none !important;
+    background: transparent !important;
+  }
+
+  .dialog-content {
+    all: unset !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Hide modal header, title, and close button in print */
+  #dialog-modal-title,
+  .custom-dialog h3,
+  .custom-dialog button {
+    display: none !important;
+  }
+
+  /* Hide entire body contents by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Explicitly reveal ONLY printable receipt containers */
+  .thermal-receipt-paper,
+  .thermal-receipt-paper *,
+  #printable-pos-receipt,
+  #printable-pos-receipt *,
+  #printable-receipt,
+  #printable-receipt *,
+  #printable-shift-report,
+  #printable-shift-report *,
+  #printable-z-report,
+  #printable-z-report *,
+  .doc-certificate,
+  .doc-certificate * {
+    visibility: visible !important;
+  }
+
+  /* Position thermal receipt cleanly at the left of the print page */
+  .thermal-receipt-paper,
+  #printable-pos-receipt,
+  #printable-receipt,
+  #printable-shift-report,
+  #printable-z-report {
+    position: absolute !important;
+    left: 0 !important;
+    right: auto !important;
+    top: 0 !important;
+    width: 78mm !important;
+    max-width: 78mm !important;
+    margin: 0 !important;
+    padding: 4mm 3mm 8mm 3mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    font-family: 'Courier New', Courier, monospace, 'Segoe UI', Tahoma, sans-serif !important;
+  }
+
   .main-content {
     margin: 0 !important;
     padding: 0 !important;
   }
+
   .doc-certificate {
+    position: static !important;
     box-shadow: none !important;
     border: 2px solid #000 !important;
     background: #fff !important;
@@ -1375,7 +1546,8 @@ dialog.confirm-dialog-native::backdrop {
 }
 
 dialog.confirm-dialog-native[open] .confirm-dialog-card {
-  animation: confirmCardPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+  animation: confirmCardPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 

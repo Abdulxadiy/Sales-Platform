@@ -15,6 +15,7 @@ import {
   Layers,
   ArrowUpDown,
   CalendarDays,
+  AlertTriangle,
 } from 'lucide-react';
 import { inventoryApi, catalogApi } from '../api/client';
 import Modal from '../components/common/Modal';
@@ -33,9 +34,12 @@ const DEFAULT_INVENTORY_FILTERS = {
 
 export default function Inventory() {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'movements'
+  const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'deficits' | 'movements'
   const [stockList, setStockList] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [deficitsList, setDeficitsList] = useState([]);
+  const [deficitCount, setDeficitCount] = useState(0);
+  const [deficitSearch, setDeficitSearch] = useState('');
   const [variants, setVariants] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -69,6 +73,22 @@ export default function Inventory() {
     setFormNote('');
   };
 
+  const handleQuickIntake = (variantId) => {
+    resetForm();
+    setSelectedVariantId(String(variantId));
+    setIntakeModalOpen(true);
+  };
+
+  const refreshDeficitCount = useCallback(async () => {
+    try {
+      const res = await inventoryApi.getDeficits();
+      const list = res.results || res;
+      setDeficitCount(Array.isArray(list) ? list.length : 0);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -76,6 +96,12 @@ export default function Inventory() {
         const res = await inventoryApi.getStock();
         const list = res.results || res;
         setStockList(Array.isArray(list) ? list : []);
+      } else if (activeTab === 'deficits') {
+        const res = await inventoryApi.getDeficits(deficitSearch);
+        const list = res.results || res;
+        const arr = Array.isArray(list) ? list : [];
+        setDeficitsList(arr);
+        setDeficitCount(arr.length);
       } else {
         const res = await inventoryApi.getMovements();
         const list = res.results || res;
@@ -86,10 +112,11 @@ export default function Inventory() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, toast]);
+  }, [activeTab, deficitSearch, toast]);
 
   useEffect(() => {
     loadData();
+    refreshDeficitCount();
     catalogApi.getVariants().then((res) => {
       const list = res.results || res;
       setVariants(Array.isArray(list) ? list : []);
@@ -98,7 +125,7 @@ export default function Inventory() {
       const list = res.results || res;
       setCategories(Array.isArray(list) ? list : []);
     }).catch(() => {});
-  }, [loadData]);
+  }, [loadData, refreshDeficitCount]);
 
   // Stock Intake (Kirim qilish)
   const handleIntakeSubmit = async (e) => {
@@ -119,6 +146,7 @@ export default function Inventory() {
       setIntakeModalOpen(false);
       resetForm();
       loadData();
+      refreshDeficitCount();
     } catch (err) {
       toast.error(err.message || 'Kirim qilishda xatolik yuz berdi');
     } finally {
@@ -145,6 +173,7 @@ export default function Inventory() {
       setAdjustModalOpen(false);
       resetForm();
       loadData();
+      refreshDeficitCount();
     } catch (err) {
       toast.error(err.message || 'Tuzatishni saqlashda xatolik yuz berdi');
     } finally {
@@ -170,6 +199,7 @@ export default function Inventory() {
       setCustomerReturnModalOpen(false);
       resetForm();
       loadData();
+      refreshDeficitCount();
     } catch (err) {
       toast.error(err.message || 'Qaytarishda xatolik');
     } finally {
@@ -195,6 +225,7 @@ export default function Inventory() {
       setSupplierReturnModalOpen(false);
       resetForm();
       loadData();
+      refreshDeficitCount();
     } catch (err) {
       toast.error(err.message || 'Chiqarishda xatolik');
     } finally {
@@ -220,6 +251,7 @@ export default function Inventory() {
       setWriteOffModalOpen(false);
       resetForm();
       loadData();
+      refreshDeficitCount();
     } catch (err) {
       toast.error(err.message || 'Hisobdan chiqarishda xatolik');
     } finally {
@@ -413,6 +445,39 @@ export default function Inventory() {
             }}
           >
             Ombor Qoldiqlari
+          </button>
+          <button
+            onClick={() => setActiveTab('deficits')}
+            style={{
+              padding: '8px 18px',
+              borderRadius: 'var(--radius-xs)',
+              border: 'none',
+              background: activeTab === 'deficits' ? 'var(--accent-rose, #ef4444)' : 'transparent',
+              color: activeTab === 'deficits' ? '#ffffff' : 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span>Kamchiliklar</span>
+            {deficitCount > 0 && (
+              <span
+                style={{
+                  fontSize: 10.5,
+                  padding: '1px 6px',
+                  borderRadius: 999,
+                  background: activeTab === 'deficits' ? 'rgba(255,255,255,0.25)' : 'var(--accent-rose, #ef4444)',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                }}
+              >
+                {deficitCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('movements')}
@@ -702,6 +767,99 @@ export default function Inventory() {
         </div>
       )}
 
+      {/* Filter & Info Bar for Deficits Tab */}
+      {activeTab === 'deficits' && (
+        <div
+          className="glass-card"
+          style={{
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            background: 'var(--bg-card)',
+          }}
+        >
+          {/* Explanation banner */}
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              fontSize: 13,
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <AlertTriangle size={18} style={{ color: 'var(--accent-rose, #ef4444)', flexShrink: 0 }} />
+            <div>
+              <strong style={{ color: 'var(--text-primary)' }}>Kamchiliklar mezoni:</strong> So‘nggi 30 kun ichida kamida <strong style={{ color: 'var(--primary)' }}>10 ta sotilgan</strong> va ayni paytda ombordagi qoldig‘i <strong style={{ color: 'var(--accent-rose, #ef4444)' }}>5 yoki undan kam qolgan (≤5)</strong> tovarlar. Yangi tovar kirimi qilinib, qoldiq 5 tadan oshsa, tovar ushbu ro‘yxatdan avtomatik ravishda chiqib ketadi.
+            </div>
+          </div>
+
+          {/* Row: Search & Refresh */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+              <Search
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Kamchilik tovar nomi, kodi yoki shtrix-kodi bo‘yicha izlash..."
+                value={deficitSearch}
+                onChange={(e) => setDeficitSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 14px 9px 38px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {deficitSearch && (
+              <button
+                type="button"
+                onClick={() => setDeficitSearch('')}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  color: 'var(--accent-rose)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <RotateCcw size={12} />
+                <span>Tozalash</span>
+              </button>
+            )}
+
+            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+              Kamchiliklar: <strong style={{ color: 'var(--accent-rose, #ef4444)' }}>{deficitsList.length}</strong> ta tovar
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filter Bar for Movements Tab */}
       {activeTab === 'movements' && (
         <div
@@ -922,6 +1080,146 @@ export default function Inventory() {
                 <tr>
                   <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                     {hasActiveStockFilters ? 'Tanlangan filtrlar bo‘yicha tovarlar topilmadi' : 'Hozircha omborda qoldiqlar mavjud emas'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        ) : activeTab === 'deficits' ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 20px' }}>Tovar Varianti</th>
+                <th style={{ padding: '14px 16px' }}>Tovar Kodi</th>
+                <th style={{ padding: '14px 16px', textAlign: 'center' }}>30 Kundagi Sotuv</th>
+                <th style={{ padding: '14px 16px', textAlign: 'center' }}>Mavjud Qoldiq</th>
+                <th style={{ padding: '14px 16px' }}>Holat</th>
+                <th style={{ padding: '14px 20px', textAlign: 'center' }}>Amallar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                </tr>
+              ) : deficitsList.length > 0 ? (
+                deficitsList.map((item) => {
+                  const currentStock = Number(item.current_stock ?? 0);
+                  const isZero = currentStock <= 0;
+                  return (
+                    <tr key={item.id || item.product_variant_id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.15s ease' }}>
+                      <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              background: isZero ? 'var(--accent-rose, #ef4444)' : '#f59e0b',
+                            }}
+                          />
+                          <div>
+                            <div>{item.full_name || item.product_name}</div>
+                            {item.category_name && (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.category_name}</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                        {item.code ? (
+                          <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{item.code}</span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-xs)',
+                            background: 'rgba(59, 130, 246, 0.12)',
+                            color: '#3b82f6',
+                            fontWeight: 700,
+                            fontSize: 12,
+                          }}
+                        >
+                          {formatQuantity(item.total_sold_last_month, item.unit)} {item.unit || 'dona'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                        <span
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-xs)',
+                            background: isZero ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                            color: isZero ? 'var(--accent-rose, #ef4444)' : '#d97706',
+                            fontWeight: 800,
+                            fontSize: 13,
+                          }}
+                        >
+                          {formatQuantity(currentStock, item.unit)} {item.unit || 'dona'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-xs)',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            background: isZero ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                            color: isZero ? 'var(--accent-rose, #ef4444)' : '#d97706',
+                          }}
+                        >
+                          <AlertTriangle size={12} />
+                          {isZero ? 'Tugagan (0 dona)' : `Kam qolgan (${formatQuantity(currentStock, item.unit)} dona)`}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickIntake(item.product_variant_id || item.id)}
+                          style={{
+                            padding: '7px 14px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: 'none',
+                            background: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            boxShadow: 'var(--primary-glow)',
+                          }}
+                        >
+                          <PackagePlus size={14} />
+                          <span>Kirim qilish</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 28 }}>✅</span>
+                      <strong style={{ color: 'var(--text-primary)', fontSize: 15 }}>
+                        {deficitSearch ? 'Qidiruv bo‘yicha kamchilik tovarlar topilmadi' : 'Ayni damda kamayib qolgan tovarlar mavjud emas!'}
+                      </strong>
+                      <span style={{ fontSize: 13, maxWidth: 460 }}>
+                        {deficitSearch
+                          ? 'Boshqa so‘z yoki kod bilan qidirib ko‘ring'
+                          : 'Barcha talabgir tovarlar omborda 5 tadan ortiq yetarli miqdorda mavjud.'}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               )}

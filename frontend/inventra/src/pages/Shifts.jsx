@@ -20,6 +20,8 @@ import { cashboxApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
 import InventraLogo from '../components/common/InventraLogo';
+import ShiftReportSlip from '../components/common/ShiftReportSlip';
+import { printReceiptSlip } from '../components/common/ReceiptSlip';
 
 const STORAGE_KEY_EXPENSES = 'inventra_custom_expense_categories';
 const STORAGE_KEY_INCOMES = 'inventra_custom_income_sources';
@@ -1097,148 +1099,17 @@ export default function Shifts() {
       </Modal>
 
       {/* Modal 4: Full Z-Report Printable Detail */}
-      <Modal isOpen={reportDetailModalOpen} onClose={() => setReportDetailModalOpen(false)} title="Z-Hisobot Tafsilotlari">
+      <Modal isOpen={reportDetailModalOpen} onClose={() => setReportDetailModalOpen(false)} title="Z-Hisobot Tafsilotlari" maxWidth={440}>
         {selectedReportDetail && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div
-              id="printable-z-report"
-              style={{
-                padding: 18,
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-card)',
-                border: '1px dashed var(--border-card)',
-                fontSize: 13,
-              }}
-            >
-              <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--border-subtle)', paddingBottom: 10, marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-                  <InventraLogo size={32} showBadge={true} badgeText="POS" />
-                </div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: 18, fontWeight: 800, letterSpacing: '0.02em', color: 'var(--text-primary)' }}>Z-HISOBOT (KASSA SMENASI)</h3>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Hisobot #Z-{selectedReportDetail.id} • Do‘kon: <strong style={{ color: 'var(--text-primary)' }}>{selectedReportDetail.tenant_name || 'Salom test'}</strong>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Yopilgan: {new Date(selectedReportDetail.closed_at || selectedReportDetail.date).toLocaleString('uz-UZ')}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Kassir: <strong style={{ color: 'var(--text-primary)' }}>{selectedReportDetail.closed_by_name || 'Admin'}</strong>
-                </div>
-              </div>
+            <ShiftReportSlip report={selectedReportDetail} id="printable-z-report" />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Naqd Savdo:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{Number(selectedReportDetail.total_sale_cash_uzs || 0).toLocaleString()} UZS</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Karta Savdo:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{Number(selectedReportDetail.total_sale_card_uzs || 0).toLocaleString()} UZS</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Nasiya Savdo:</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{Number(selectedReportDetail.total_sale_debt_uzs || 0).toLocaleString()} UZS</span>
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--accent-emerald)' }}>Qo‘shimcha Kirim:</span>
-                    <span style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>+{Number(selectedReportDetail.total_extra_income_uzs || 0).toLocaleString()} UZS</span>
-                  </div>
-                  {selectedReportDetail.incomes && selectedReportDetail.incomes.length > 0 && (
-                    <div style={{ paddingLeft: 10, borderLeft: '2px solid var(--accent-emerald)', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      {selectedReportDetail.incomes.map((inc) => (
-                        <div key={inc.id} style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>• {inc.source}{inc.note ? ` (${inc.note})` : ''}:</span>
-                          <span style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>+{Number(inc.amount).toLocaleString()} {inc.currency || 'UZS'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--accent-rose)' }}>Kassadan Chiqimlar:</span>
-                    <span style={{ fontWeight: 600, color: 'var(--accent-rose)' }}>-{Number(selectedReportDetail.total_expenses_uzs || 0).toLocaleString()} UZS</span>
-                  </div>
-                  {selectedReportDetail.expenses && selectedReportDetail.expenses.length > 0 && (
-                    <div style={{ paddingLeft: 10, borderLeft: '2px solid var(--accent-rose)', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      {selectedReportDetail.expenses.map((exp) => (
-                        <div key={exp.id} style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>• {exp.category}{exp.note ? ` (${exp.note})` : ''}:</span>
-                          <span style={{ fontWeight: 600, color: 'var(--accent-rose)' }}>-{Number(exp.amount).toLocaleString()} {exp.currency || 'UZS'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ borderTop: '1px dashed var(--border-subtle)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Kutilgan Naqd Pul:</span>
-                  <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {Number(selectedReportDetail.expected_cash_uzs || 0).toLocaleString()} UZS
-                    {Number(selectedReportDetail.expected_cash_usd || 0) > 0 && ` / $${Number(selectedReportDetail.expected_cash_usd).toFixed(2)}`}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--primary)' }}>Haqiqiy Sanalgan:</span>
-                  <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                    {Number(selectedReportDetail.actual_cash_uzs || 0).toLocaleString()} UZS
-                    {Number(selectedReportDetail.actual_cash_usd || 0) > 0 && ` / $${Number(selectedReportDetail.actual_cash_usd).toFixed(2)}`}
-                  </span>
-                </div>
-
-                {(() => {
-                  const dUzs = Number(selectedReportDetail.discrepancy_uzs || 0);
-                  const dUsd = Number(selectedReportDetail.discrepancy_usd || 0);
-                  const isZero = dUzs === 0 && dUsd === 0;
-
-                  let diffText = '0 UZS (Tafovut yo‘q — Kassa to‘liq)';
-                  let color = 'var(--accent-emerald)';
-
-                  if (!isZero) {
-                    color = 'var(--accent-rose)';
-                    const parts = [];
-                    if (dUzs !== 0) {
-                      parts.push(`${dUzs > 0 ? '+' : ''}${dUzs.toLocaleString()} UZS`);
-                    }
-                    if (dUsd !== 0) {
-                      parts.push(`${dUsd > 0 ? '+$' : '-$'}${Math.abs(dUsd).toFixed(2)}`);
-                    }
-                    const isKamomad = dUzs < 0 || dUsd < 0;
-                    diffText = `${parts.join(' / ')} (${isKamomad ? 'Kamomad' : 'Ortiqcha'})`;
-                  }
-
-                  return (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>Tafovut (Farq):</span>
-                      <span style={{ fontWeight: 800, color }}>
-                        {diffText}
-                      </span>
-                    </div>
-                  );
-                })()}
-
-                {((Number(selectedReportDetail.discrepancy_uzs || 0) !== 0) || (Number(selectedReportDetail.discrepancy_usd || 0) !== 0)) && selectedReportDetail.discrepancy_reason && (
-                  <div style={{ marginTop: 6, padding: 8, background: 'rgba(239, 68, 68, 0.1)', borderRadius: 4, fontSize: 12, color: 'var(--accent-rose)' }}>
-                    <strong>Farq sababi:</strong> {selectedReportDetail.discrepancy_reason}
-                  </div>
-                )}
-                {selectedReportDetail.staff_notes && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-                    <strong>Xodim eslatmasi:</strong> {selectedReportDetail.staff_notes}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => printReceiptSlip('printable-z-report', 'Inventra Z-Hisobot')}
                 style={{
-                  padding: '9px 16px',
+                  padding: '9px 18px',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-card)',
                   background: 'var(--bg-card)',

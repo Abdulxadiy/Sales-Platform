@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   TrendingUp,
   BarChart2,
@@ -91,6 +91,7 @@ export default function RevenueCostAnalyticsChart({
 
   // Series visibility toggles
   const [showRevenue, setShowRevenue] = useState(true);
+  const [showDebt, setShowDebt] = useState(true);
   const [showCosts, setShowCosts] = useState(true);
   const [showProfit, setShowProfit] = useState(true);
 
@@ -105,28 +106,38 @@ export default function RevenueCostAnalyticsChart({
   const [chartWidth, setChartWidth] = useState(780);
   const chartHeight = 250;
 
-  // Tooltip measurement ref and state (prevents squishing/wrapping at edges)
-  const tooltipRef = useRef(null);
-  const [tooltipWidth, setTooltipWidth] = useState(280);
-
   useEffect(() => {
     if (!chartAreaRef.current) return;
+    let rafId = null;
     const updateWidth = () => {
       if (chartAreaRef.current) {
         const w = chartAreaRef.current.clientWidth;
-        if (w > 0) setChartWidth(w);
+        if (w > 0) {
+          setChartWidth((prev) => (Math.abs(w - prev) > 2 ? w : prev));
+        }
       }
     };
     updateWidth();
-    const observer = new ResizeObserver(() => updateWidth());
+    const observer = new ResizeObserver(() => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateWidth);
+    });
     observer.observe(chartAreaRef.current);
-    return () => observer.disconnect();
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
   }, []);
 
-  // Exact Colors matching Image 2 (Net profit wave is yellow per user requirement!)
-  const COLOR_REV = '#0f766e'; // Dark Emerald / Pine Teal
-  const COLOR_COST = '#9f1239'; // Deep Burgundy / Crimson
-  const COLOR_PROFIT = '#eab308'; // Vibrant Yellow (User: "sof foyda to'lqinining rangi sariq bolsin")
+  // Vibrant Neon Analytics Color Palette:
+  // Tushum (Revenue): Neon Green
+  // Chiqim (Costs): Neon Red
+  // Nasiya (Debt): Warm Amber (kept original)
+  // Sof foyda (Net profit): Neon Blue
+  const COLOR_REV = '#10b981'; // Vibrant Neon Green / Emerald (Tushum)
+  const COLOR_DEBT = '#f59e0b'; // Warm Amber (Nasiya / Qarz savdolari)
+  const COLOR_COST = '#f43f5e'; // Vibrant Neon Red / Crimson (Chiqim xarajatlar)
+  const COLOR_PROFIT = '#0ea5e9'; // Vibrant Neon Blue / Sky Cyan (Sof foyda)
 
   // Prepare normalized points
   const { pointsData, maxY, yTicks } = useMemo(() => {
@@ -138,46 +149,97 @@ export default function RevenueCostAnalyticsChart({
       const days = ['01', '02', '03', '04'];
       const revMock = [0, 7100, 55, 3100];
       const profMock = [0, 1500, 45, 400];
+      const prevProfMock = [0, 1200, 30, 350];
 
       raw = days.map((d, i) => ({
         date: `2026-10-${d}`,
         revenue_uzs: revMock[i] * 1000,
         revenue_usd: 0,
+        debt_sales_uzs: 0,
+        debt_sales_usd: 0,
+        total_sales_uzs: revMock[i] * 1000,
+        total_sales_usd: 0,
         profit_uzs: profMock[i] * 1000,
         profit_usd: 0,
+        prev_profit_uzs: prevProfMock[i] * 1000,
+        prev_profit_usd: 0,
         sales_count: i === 2 ? 2 : 12,
         isDemo: true,
       }));
     } else if (raw.length === 1 && period === 'today') {
       const p = raw[0];
+      const prevProfUzs = Number(p.prev_profit_uzs || 0);
+      const prevProfUsd = Number(p.prev_profit_usd || 0);
       raw = [
-        { ...p, date: p.date + ' (09:00)', revenue_uzs: Number(p.revenue_uzs || 0) * 0.3, profit_uzs: Number(p.profit_uzs || 0) * 0.3 },
-        { ...p, date: p.date + ' (14:00)', revenue_uzs: Number(p.revenue_uzs || 0) * 0.7, profit_uzs: Number(p.profit_uzs || 0) * 0.7 },
-        { ...p, date: p.date + ' (joriy)' },
+        {
+          ...p,
+          date: p.date + ' (09:00)',
+          revenue_uzs: Number(p.revenue_uzs || 0) * 0.3,
+          debt_sales_uzs: Number(p.debt_sales_uzs || 0) * 0.3,
+          profit_uzs: Number(p.profit_uzs || 0) * 0.3,
+          prev_profit_uzs: prevProfUzs * 0.25,
+          prev_profit_usd: prevProfUsd * 0.25,
+        },
+        {
+          ...p,
+          date: p.date + ' (14:00)',
+          revenue_uzs: Number(p.revenue_uzs || 0) * 0.7,
+          debt_sales_uzs: Number(p.debt_sales_uzs || 0) * 0.7,
+          profit_uzs: Number(p.profit_uzs || 0) * 0.7,
+          prev_profit_uzs: prevProfUzs * 0.65,
+          prev_profit_usd: prevProfUsd * 0.65,
+        },
+        {
+          ...p,
+          date: p.date + ' (joriy)',
+          prev_profit_uzs: prevProfUzs,
+          prev_profit_usd: prevProfUsd,
+        },
       ];
     }
 
     const parsed = raw.map((item, index) => {
       const rev = Number(item.revenue_uzs || 0) + Number(item.revenue_usd || 0) * currencyRate;
+      const debt = Number(item.debt_sales_uzs || 0) + Number(item.debt_sales_usd || 0) * currencyRate;
+      const totalSales = Number(item.total_sales_uzs || (rev + debt)) + Number(item.total_sales_usd || 0) * currencyRate;
       const prof = Number(item.profit_uzs || 0) + Number(item.profit_usd || 0) * currencyRate;
-      const cost = Math.max(0, rev - prof);
-      const prevRev = rev * 0.88 + (index % 2 === 0 ? rev * 0.03 : -rev * 0.02);
+      const cost = Math.max(0, totalSales - prof);
+
+      // Oldingi davr sof foydasi (Backend prev_profit_uzs / prev_profit_usd)
+      let prevProf = 0;
+      if (item.prev_profit_uzs !== undefined || item.prev_profit_usd !== undefined) {
+        prevProf = Number(item.prev_profit_uzs || 0) + Number(item.prev_profit_usd || 0) * currencyRate;
+      } else {
+        prevProf = Math.max(0, prof * 0.85 + (index % 2 === 0 ? prof * 0.05 : -prof * 0.04));
+      }
 
       return {
         raw: item,
         date: item.date || `Nuqta ${index + 1}`,
+        prevDate: item.prev_date || null,
         revenue: rev,
+        debt: debt,
+        totalSales: totalSales,
         cost: cost,
         profit: prof,
-        prevRevenue: prevRev,
+        prevProfit: prevProf,
         sales_count: item.sales_count || 1,
+        debt_count: item.debt_count || 0,
         isDemo: item.isDemo || false,
       };
     });
 
     const highest = Math.max(
       1000,
-      ...parsed.map((p) => Math.max(p.revenue, p.cost, p.profit, comparePrevPeriod ? p.prevRevenue : 0))
+      ...parsed.map((p) =>
+        Math.max(
+          showRevenue ? p.revenue : 0,
+          showDebt ? p.debt : 0,
+          showCosts ? p.cost : 0,
+          showProfit ? p.profit : 0,
+          comparePrevPeriod ? p.prevProfit : 0
+        )
+      )
     );
 
     const magnitude = Math.pow(10, Math.floor(Math.log10(highest)));
@@ -189,7 +251,7 @@ export default function RevenueCostAnalyticsChart({
     const ticks = [1, 0.75, 0.5, 0.25, 0].map((ratio) => Math.round(computedMax * ratio));
 
     return { pointsData: parsed, maxY: computedMax, yTicks: ticks };
-  }, [chartData, currencyRate, comparePrevPeriod]);
+  }, [chartData, currencyRate, comparePrevPeriod, showRevenue, showDebt, showCosts, showProfit, period]);
 
   const count = pointsData.length;
 
@@ -204,6 +266,14 @@ export default function RevenueCostAnalyticsChart({
     return pointsData.map((d, i) => {
       const x = count > 1 ? (i / (count - 1)) * W : W / 2;
       const y = padTop + plotH - (d.revenue / maxY) * plotH;
+      return { x, y };
+    });
+  }, [pointsData, count, W, padTop, plotH, maxY]);
+
+  const debtPoints = useMemo(() => {
+    return pointsData.map((d, i) => {
+      const x = count > 1 ? (i / (count - 1)) * W : W / 2;
+      const y = padTop + plotH - (d.debt / maxY) * plotH;
       return { x, y };
     });
   }, [pointsData, count, W, padTop, plotH, maxY]);
@@ -227,25 +297,48 @@ export default function RevenueCostAnalyticsChart({
   const prevPoints = useMemo(() => {
     return pointsData.map((d, i) => {
       const x = count > 1 ? (i / (count - 1)) * W : W / 2;
-      const y = padTop + plotH - (d.prevRevenue / maxY) * plotH;
+      const y = padTop + plotH - (d.prevProfit / maxY) * plotH;
       return { x, y };
     });
   }, [pointsData, count, W, padTop, plotH, maxY]);
 
   // Monotone cubic spline paths
   const revPath = useMemo(() => getMonotoneSplinePath(revPoints), [revPoints]);
+  const debtPath = useMemo(() => getMonotoneSplinePath(debtPoints), [debtPoints]);
   const costPath = useMemo(() => getMonotoneSplinePath(costPoints), [costPoints]);
   const profPath = useMemo(() => getMonotoneSplinePath(profPoints), [profPoints]);
   const prevPath = useMemo(() => getMonotoneSplinePath(prevPoints), [prevPoints]);
 
   const bottomY = padTop + plotH;
 
+  // Semi-transparent gradient curtain ("parda") area paths under each wave
   const revArea = useMemo(() => {
     if (!revPoints.length) return '';
     const last = revPoints[revPoints.length - 1];
     const first = revPoints[0];
     return `${revPath} L ${last.x.toFixed(1)} ${bottomY} L ${first.x.toFixed(1)} ${bottomY} Z`;
   }, [revPath, revPoints, bottomY]);
+
+  const debtArea = useMemo(() => {
+    if (!debtPoints.length) return '';
+    const last = debtPoints[debtPoints.length - 1];
+    const first = debtPoints[0];
+    return `${debtPath} L ${last.x.toFixed(1)} ${bottomY} L ${first.x.toFixed(1)} ${bottomY} Z`;
+  }, [debtPath, debtPoints, bottomY]);
+
+  const costArea = useMemo(() => {
+    if (!costPoints.length) return '';
+    const last = costPoints[costPoints.length - 1];
+    const first = costPoints[0];
+    return `${costPath} L ${last.x.toFixed(1)} ${bottomY} L ${first.x.toFixed(1)} ${bottomY} Z`;
+  }, [costPath, costPoints, bottomY]);
+
+  const profArea = useMemo(() => {
+    if (!profPoints.length) return '';
+    const last = profPoints[profPoints.length - 1];
+    const first = profPoints[0];
+    return `${profPath} L ${last.x.toFixed(1)} ${bottomY} L ${first.x.toFixed(1)} ${bottomY} Z`;
+  }, [profPath, profPoints, bottomY]);
 
   // Mouse move handler: 100% synchronous pixel tracking
   const handleMouseMove = (e) => {
@@ -271,14 +364,87 @@ export default function RevenueCostAnalyticsChart({
 
   const activePoint = hoveredIdx !== null ? pointsData[hoveredIdx] : null;
 
-  useLayoutEffect(() => {
-    if (tooltipRef.current) {
-      const w = tooltipRef.current.offsetWidth;
-      if (w > 0 && Math.abs(w - tooltipWidth) > 1) {
-        setTooltipWidth(w);
+  // Dynamic tooltip width calculated specifically for the ACTIVE hovered point:
+  // Snug and compact (e.g. 220px) when amounts are small with no USD,
+  // expands adaptively (e.g. 340px-390px) with generous breathing room so
+  // labels, numbers, and secondary USD badges never overflow or touch the card borders.
+  const activeTooltipWidth = useMemo(() => {
+    if (!activePoint) return 220;
+
+    const rowWidths = [];
+
+    // Header: Date on left, "X TA CHEK" on right
+    const dateStr = activePoint.date || '';
+    const countStr = `${activePoint.sales_count || 0} TA CHEK`;
+    // Date (~8.5px/char) + Count (~7.5px/char) + gap (16px) + padding (28px) + safety (20px)
+    const headerW = dateStr.length * 8.5 + countStr.length * 7.5 + 16 + 28 + 20;
+    rowWidths.push(headerW);
+
+    // Helper for rows: calculates exact pixel requirement based on typography
+    const estimateRowW = (label, uzsVal, usdAmount) => {
+      const labelW = label.length * 7.2; // 13px regular text
+      const valW = (uzsVal || '').length * 8.4; // 13px bold text
+      let usdW = 0;
+      if (usdAmount > 0 && formatUSD) {
+        const usdFormatted = `(+${formatUSD(usdAmount)})`;
+        usdW = usdFormatted.length * 7.6 + 8; // 11.5px bold + gap
       }
+      // label + gap (16px) + value + usd + padding (28px) + breathing buffer (24px)
+      return labelW + 16 + valW + usdW + 28 + 24;
+    };
+
+    if (showRevenue) {
+      const revStr = formatUZS
+        ? formatUZS(activePoint.revenue)
+        : `${(activePoint.revenue || 0).toLocaleString()} UZS`;
+      rowWidths.push(estimateRowW('Tushum (Real):', revStr, Number(activePoint.raw?.revenue_usd || 0)));
     }
-  }, [hoveredIdx, activePoint, tooltipWidth]);
+
+    if (showDebt) {
+      const debtStr = formatUZS
+        ? formatUZS(activePoint.debt)
+        : `${(activePoint.debt || 0).toLocaleString()} UZS`;
+      rowWidths.push(estimateRowW('Nasiya (Qarz):', debtStr, Number(activePoint.raw?.debt_sales_usd || 0)));
+    }
+
+    if (showCosts) {
+      const costStr = formatUZS
+        ? formatUZS(activePoint.cost)
+        : `${(activePoint.cost || 0).toLocaleString()} UZS`;
+      rowWidths.push(estimateRowW('Xarajatlar:', costStr, 0));
+    }
+
+    if (showProfit) {
+      const profStr = formatUZS
+        ? formatUZS(activePoint.profit)
+        : `${(activePoint.profit || 0).toLocaleString()} UZS`;
+      rowWidths.push(estimateRowW('Sof Foyda:', profStr, Number(activePoint.raw?.profit_usd || 0)));
+    }
+
+    if (activePoint.debt > 0 || activePoint.totalSales > activePoint.revenue) {
+      const totalStr = formatUZS
+        ? formatUZS(activePoint.totalSales)
+        : `${(activePoint.totalSales || 0).toLocaleString()} UZS`;
+      rowWidths.push(estimateRowW('Jami Savdo:', totalStr, Number(activePoint.raw?.total_sales_usd || 0)));
+    }
+
+    if (comparePrevPeriod && activePoint.prevProfit !== undefined) {
+      const prevStr = formatUZS
+        ? formatUZS(activePoint.prevProfit)
+        : `${Math.round(activePoint.prevProfit).toLocaleString()} UZS`;
+      const prevDateSuffix = activePoint.prevDate ? ` (${activePoint.prevDate.slice(5)})` : '';
+      rowWidths.push(estimateRowW(`Oldingi sof foyda${prevDateSuffix}:`, prevStr, Number(activePoint.raw?.prev_profit_usd || 0)));
+    }
+
+    const maxNeeded = rowWidths.length > 0 ? Math.max(...rowWidths) : 220;
+    const computedW = Math.max(220, maxNeeded);
+
+    // Clamp safely within chart drawing area (never exceed W - 20)
+    return Math.min(Math.round(computedW), Math.max(220, W - 20));
+  }, [activePoint, showRevenue, showDebt, showCosts, showProfit, comparePrevPeriod, formatUZS, formatUSD, W]);
+
+  const padSafety = 10;
+  const halfTW = activeTooltipWidth / 2;
 
   // Active anchor coordinates in exact screen pixels
   const activeX = useMemo(() => {
@@ -296,38 +462,39 @@ export default function RevenueCostAnalyticsChart({
       const d = pointsData[hoveredIdx];
       const maxVal = Math.max(
         showRevenue ? d.revenue : 0,
+        showDebt ? d.debt : 0,
         showCosts ? d.cost : 0,
-        showProfit ? d.profit : 0
+        showProfit ? d.profit : 0,
+        comparePrevPeriod ? d.prevProfit : 0
       );
       return padTop + plotH - (maxVal / maxY) * plotH;
     }
     const ys = [];
     if (showRevenue && revPoints[hoveredIdx]) ys.push(revPoints[hoveredIdx].y);
+    if (showDebt && debtPoints[hoveredIdx]) ys.push(debtPoints[hoveredIdx].y);
     if (showCosts && costPoints[hoveredIdx]) ys.push(costPoints[hoveredIdx].y);
     if (showProfit && profPoints[hoveredIdx]) ys.push(profPoints[hoveredIdx].y);
+    if (comparePrevPeriod && prevPoints[hoveredIdx]) ys.push(prevPoints[hoveredIdx].y);
     return ys.length > 0 ? Math.min(...ys) : padTop + 50;
-  }, [hoveredIdx, chartMode, pointsData, showRevenue, showCosts, showProfit, revPoints, costPoints, profPoints, padTop, plotH, maxY]);
+  }, [hoveredIdx, chartMode, pointsData, showRevenue, showDebt, showCosts, showProfit, comparePrevPeriod, revPoints, debtPoints, costPoints, profPoints, prevPoints, padTop, plotH, maxY]);
 
-  // Clamped horizontal position of the tooltip container (strictly prevents spilling outside canvas or text wrapping)
-  const padSafety = 12;
-  const halfTW = tooltipWidth / 2;
-
+  // Clamped horizontal position of the tooltip container (100% synchronous, 0ms latency)
   const tooltipLeft = useMemo(() => {
     if (activeX === null) return 0;
     const minL = padSafety;
-    const maxL = Math.max(minL, W - tooltipWidth - padSafety);
+    const maxL = Math.max(minL, W - activeTooltipWidth - padSafety);
     const idealL = activeX - halfTW;
     return Math.max(minL, Math.min(maxL, idealL));
-  }, [activeX, halfTW, tooltipWidth, W]);
+  }, [activeX, halfTW, W, activeTooltipWidth]);
 
   // Arrow position relative to the tooltip card (always points straight to the active marker)
   const arrowLeft = useMemo(() => {
     if (activeX === null) return '50%';
     const relX = activeX - tooltipLeft;
-    // Keep arrow safely inside the card corners (min 16px, max tooltipWidth - 16px)
-    const clampedRelX = Math.max(16, Math.min(tooltipWidth - 16, relX));
+    // Keep arrow safely inside the card corners (min 14px, max activeTooltipWidth - 14px)
+    const clampedRelX = Math.max(14, Math.min(activeTooltipWidth - 14, relX));
     return `${clampedRelX}px`;
-  }, [activeX, tooltipLeft, tooltipWidth]);
+  }, [activeX, tooltipLeft, activeTooltipWidth]);
 
   return (
     <div
@@ -370,9 +537,9 @@ export default function RevenueCostAnalyticsChart({
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: 12,
-                  background: 'rgba(15, 118, 110, 0.12)',
+                  background: 'rgba(16, 185, 129, 0.12)',
                   color: COLOR_REV,
-                  border: '1px solid rgba(15, 118, 110, 0.25)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
                 }}
               >
                 Andoza (Demo)
@@ -389,7 +556,7 @@ export default function RevenueCostAnalyticsChart({
           <div
             style={{
               display: 'flex',
-              background: 'var(--bg-card)',
+              background: 'var(--bg-chip)',
               padding: 3,
               borderRadius: 'var(--radius-sm, 8px)',
               border: '1px solid var(--border-subtle)',
@@ -521,33 +688,57 @@ export default function RevenueCostAnalyticsChart({
             }}
           >
             <defs>
-              {/* Subtle mint-green area gradient matching Image 2 */}
-              <linearGradient id="image2-rev-grad" x1="0" y1="0" x2="0" y2="1">
+              {/* 1. Neon Green gradient curtain under Revenue */}
+              <linearGradient id="chart-rev-grad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={COLOR_REV} stopOpacity="0.22" />
                 <stop offset="85%" stopColor={COLOR_REV} stopOpacity="0.04" />
                 <stop offset="100%" stopColor={COLOR_REV} stopOpacity="0.00" />
+              </linearGradient>
+
+              {/* 2. Warm Amber gradient curtain under Debt */}
+              <linearGradient id="chart-debt-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={COLOR_DEBT} stopOpacity="0.20" />
+                <stop offset="85%" stopColor={COLOR_DEBT} stopOpacity="0.03" />
+                <stop offset="100%" stopColor={COLOR_DEBT} stopOpacity="0.00" />
+              </linearGradient>
+
+              {/* 3. Neon Red gradient curtain under Costs */}
+              <linearGradient id="chart-cost-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={COLOR_COST} stopOpacity="0.20" />
+                <stop offset="85%" stopColor={COLOR_COST} stopOpacity="0.03" />
+                <stop offset="100%" stopColor={COLOR_COST} stopOpacity="0.00" />
+              </linearGradient>
+
+              {/* 4. Neon Blue gradient curtain under Net Profit */}
+              <linearGradient id="chart-prof-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={COLOR_PROFIT} stopOpacity="0.22" />
+                <stop offset="85%" stopColor={COLOR_PROFIT} stopOpacity="0.04" />
+                <stop offset="100%" stopColor={COLOR_PROFIT} stopOpacity="0.00" />
               </linearGradient>
             </defs>
 
             {/* SPLINE MODE */}
             {chartMode === 'spline' ? (
               <>
-                {/* Previous period comparison */}
+                {/* Previous period comparison (Sof foyda izi) */}
                 {comparePrevPeriod && (
                   <path
                     d={prevPath}
                     fill="none"
-                    stroke="var(--text-muted)"
-                    strokeWidth="1.6"
+                    stroke={COLOR_PROFIT}
+                    strokeWidth="1.9"
                     strokeDasharray="4 4"
-                    opacity="0.5"
+                    opacity="0.75"
                   />
                 )}
 
-                {/* Mint gradient area under Revenue */}
-                {showRevenue && <path d={revArea} fill="url(#image2-rev-grad)" />}
+                {/* Semi-transparent gradient curtains ("parda") under each active wave */}
+                {showRevenue && <path d={revArea} fill="url(#chart-rev-grad)" />}
+                {showDebt && <path d={debtArea} fill="url(#chart-debt-grad)" />}
+                {showCosts && <path d={costArea} fill="url(#chart-cost-grad)" />}
+                {showProfit && <path d={profArea} fill="url(#chart-prof-grad)" />}
 
-                {/* 1. Revenue curve (Dark Pine / Emerald Green #0f766e) */}
+                {/* 1. Revenue curve (Neon Green #10b981) */}
                 {showRevenue && (
                   <path
                     d={revPath}
@@ -559,7 +750,19 @@ export default function RevenueCostAnalyticsChart({
                   />
                 )}
 
-                {/* 2. Costs curve (Deep Burgundy / Crimson #9f1239) */}
+                {/* 2. Debt curve (Warm Amber #f59e0b) */}
+                {showDebt && (
+                  <path
+                    d={debtPath}
+                    fill="none"
+                    stroke={COLOR_DEBT}
+                    strokeWidth="2.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+
+                {/* 3. Costs curve (Neon Red #f43f5e) */}
                 {showCosts && (
                   <path
                     d={costPath}
@@ -571,7 +774,7 @@ export default function RevenueCostAnalyticsChart({
                   />
                 )}
 
-                {/* 3. Net Profit curve (Vibrant Yellow #eab308, as explicitly requested!) */}
+                {/* 4. Net Profit curve (Neon Blue #0ea5e9) */}
                 {showProfit && (
                   <path
                     d={profPath}
@@ -588,48 +791,37 @@ export default function RevenueCostAnalyticsChart({
               pointsData.map((d, i) => {
                 const slotW = W / count;
                 const xCenter = (i + 0.5) * slotW;
-                const barW = Math.max(8, Math.min(22, slotW * 0.22));
                 const bottom = padTop + plotH;
 
-                const revH = (d.revenue / maxY) * plotH;
-                const costH = (d.cost / maxY) * plotH;
-                const profH = (d.profit / maxY) * plotH;
+                const activeSeriesList = [];
+                if (showRevenue) activeSeriesList.push({ key: 'rev', h: (d.revenue / maxY) * plotH, color: COLOR_REV });
+                if (showDebt) activeSeriesList.push({ key: 'debt', h: (d.debt / maxY) * plotH, color: COLOR_DEBT });
+                if (showCosts) activeSeriesList.push({ key: 'cost', h: (d.cost / maxY) * plotH, color: COLOR_COST });
+                if (showProfit) activeSeriesList.push({ key: 'prof', h: (d.profit / maxY) * plotH, color: COLOR_PROFIT });
+                if (comparePrevPeriod) activeSeriesList.push({ key: 'prevProf', h: (d.prevProfit / maxY) * plotH, color: 'transparent', stroke: COLOR_PROFIT, isDashed: true });
+
+                const sLen = activeSeriesList.length || 1;
+                const barW = Math.max(5, Math.min(18, (slotW * 0.6) / sLen));
+                const totalW = sLen * barW + (sLen - 1) * 2;
+                const startX = xCenter - totalW / 2;
 
                 return (
                   <g key={i}>
-                    {showRevenue && (
+                    {activeSeriesList.map((s, sIdx) => (
                       <rect
-                        x={xCenter - barW * 1.55}
-                        y={bottom - revH}
+                        key={s.key}
+                        x={startX + sIdx * (barW + 2)}
+                        y={bottom - s.h}
                         width={barW}
-                        height={revH}
-                        fill={COLOR_REV}
+                        height={s.h}
+                        fill={s.color}
+                        stroke={s.stroke || 'none'}
+                        strokeWidth={s.stroke ? 1.5 : 0}
+                        strokeDasharray={s.isDashed ? '3 2' : undefined}
                         rx="3"
                         opacity={hoveredIdx === i ? 1 : 0.88}
                       />
-                    )}
-                    {showCosts && (
-                      <rect
-                        x={xCenter - barW * 0.45}
-                        y={bottom - costH}
-                        width={barW}
-                        height={costH}
-                        fill={COLOR_COST}
-                        rx="3"
-                        opacity={hoveredIdx === i ? 1 : 0.88}
-                      />
-                    )}
-                    {showProfit && (
-                      <rect
-                        x={xCenter + barW * 0.65}
-                        y={bottom - profH}
-                        width={barW}
-                        height={profH}
-                        fill={COLOR_PROFIT}
-                        rx="3"
-                        opacity={hoveredIdx === i ? 1 : 0.88}
-                      />
-                    )}
+                    ))}
                   </g>
                 );
               })
@@ -650,17 +842,60 @@ export default function RevenueCostAnalyticsChart({
                   opacity="0.8"
                 />
 
-                {/* Circular ring marker on the curve (exactly matching Image 2 at 10-03) */}
-                {chartMode === 'spline' && activeAnchorY !== null && (
+                {/* Circular ring markers on active curves */}
+                {chartMode === 'spline' && (
                   <g>
-                    <circle
-                      cx={activeX}
-                      cy={activeAnchorY}
-                      r="5.5"
-                      fill="#ffffff"
-                      stroke={showCosts ? COLOR_COST : COLOR_REV}
-                      strokeWidth="2.5"
-                    />
+                    {showRevenue && revPoints[hoveredIdx] && (
+                      <circle
+                        cx={activeX}
+                        cy={revPoints[hoveredIdx].y}
+                        r="5"
+                        fill="var(--bg-card)"
+                        stroke={COLOR_REV}
+                        strokeWidth="2.5"
+                      />
+                    )}
+                    {showDebt && debtPoints[hoveredIdx] && (
+                      <circle
+                        cx={activeX}
+                        cy={debtPoints[hoveredIdx].y}
+                        r="5"
+                        fill="var(--bg-card)"
+                        stroke={COLOR_DEBT}
+                        strokeWidth="2.5"
+                      />
+                    )}
+                    {showCosts && costPoints[hoveredIdx] && (
+                      <circle
+                        cx={activeX}
+                        cy={costPoints[hoveredIdx].y}
+                        r="5"
+                        fill="var(--bg-card)"
+                        stroke={COLOR_COST}
+                        strokeWidth="2.5"
+                      />
+                    )}
+                    {showProfit && profPoints[hoveredIdx] && (
+                      <circle
+                        cx={activeX}
+                        cy={profPoints[hoveredIdx].y}
+                        r="5"
+                        fill="var(--bg-card)"
+                        stroke={COLOR_PROFIT}
+                        strokeWidth="2.5"
+                      />
+                    )}
+                    {comparePrevPeriod && prevPoints[hoveredIdx] && (
+                      <circle
+                        cx={activeX}
+                        cy={prevPoints[hoveredIdx].y}
+                        r="4.5"
+                        fill="var(--bg-card)"
+                        stroke={COLOR_PROFIT}
+                        strokeWidth="2"
+                        strokeDasharray="2 2"
+                      />
+                    )}
                   </g>
                 )}
               </g>
@@ -670,7 +905,6 @@ export default function RevenueCostAnalyticsChart({
           {/* Floating Glassmorphic Tooltip Card (Exact 1:1 match with Image 2 + Glassmorphism & Edge Safe!) */}
           {hoveredIdx !== null && activePoint && activeX !== null && (
             <div
-              ref={tooltipRef}
               className="chart-tooltip-glass"
               style={{
                 position: 'absolute',
@@ -680,15 +914,13 @@ export default function RevenueCostAnalyticsChart({
                 pointerEvents: 'none',
                 zIndex: 60,
                 background: 'var(--chart-tooltip-bg)',
-                backdropFilter: 'blur(12px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(180%)',
                 border: '1px solid var(--chart-tooltip-border)',
                 boxShadow: 'var(--chart-tooltip-shadow)',
                 color: 'var(--text-primary)',
                 borderRadius: 'var(--radius-md, 12px)',
-                padding: '12px 18px',
-                minWidth: 230,
-                width: 'max-content',
+                padding: '10px 14px',
+                width: activeTooltipWidth,
+                boxSizing: 'border-box',
                 fontFamily: 'var(--font-sans)',
                 whiteSpace: 'nowrap',
               }}
@@ -700,7 +932,7 @@ export default function RevenueCostAnalyticsChart({
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   marginBottom: 10,
-                  gap: 18,
+                  gap: 16,
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -732,31 +964,85 @@ export default function RevenueCostAnalyticsChart({
               {/* Tabular Rows: Label on left, Value on right with zero wrapping */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, whiteSpace: 'nowrap' }}>
                 {showRevenue && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, whiteSpace: 'nowrap' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>Tushum:</span>
-                    <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      {formatUZS ? formatUZS(activePoint.revenue) : `${activePoint.revenue.toLocaleString()} UZS`}
-                      {Number(activePoint.raw?.revenue_usd || 0) > 0 && formatUSD && ` (+${formatUSD(activePoint.raw.revenue_usd)})`}
-                    </strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Tushum (Real):
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <strong style={{ color: COLOR_REV, fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        {formatUZS ? formatUZS(activePoint.revenue) : `${activePoint.revenue.toLocaleString()} UZS`}
+                      </strong>
+                      {Number(activePoint.raw?.revenue_usd || 0) > 0 && formatUSD && (
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: COLOR_REV, opacity: 0.9, whiteSpace: 'nowrap' }}>
+                          (+{formatUSD(activePoint.raw.revenue_usd)})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {showDebt && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Nasiya (Qarz):
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <strong style={{ color: COLOR_DEBT, fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        {formatUZS ? formatUZS(activePoint.debt) : `${activePoint.debt.toLocaleString()} UZS`}
+                      </strong>
+                      {Number(activePoint.raw?.debt_sales_usd || 0) > 0 && formatUSD && (
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: COLOR_DEBT, opacity: 0.9, whiteSpace: 'nowrap' }}>
+                          (+{formatUSD(activePoint.raw.debt_sales_usd)})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
                 {showCosts && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, whiteSpace: 'nowrap' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>Xarajatlar:</span>
-                    <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Xarajatlar:
+                    </span>
+                    <strong style={{ color: COLOR_COST, fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'right' }}>
                       {formatUZS ? formatUZS(activePoint.cost) : `${activePoint.cost.toLocaleString()} UZS`}
                     </strong>
                   </div>
                 )}
 
                 {showProfit && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, whiteSpace: 'nowrap' }}>
-                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>Sof Foyda:</span>
-                    <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      {formatUZS ? formatUZS(activePoint.profit) : `${activePoint.profit.toLocaleString()} UZS`}
-                      {Number(activePoint.raw?.profit_usd || 0) > 0 && formatUSD && ` (+${formatUSD(activePoint.raw.profit_usd)})`}
-                    </strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, whiteSpace: 'nowrap' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Sof Foyda:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <strong style={{ color: COLOR_PROFIT, fontFamily: 'var(--font-sans)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        {formatUZS ? formatUZS(activePoint.profit) : `${activePoint.profit.toLocaleString()} UZS`}
+                      </strong>
+                      {Number(activePoint.raw?.profit_usd || 0) > 0 && formatUSD && (
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: COLOR_PROFIT, opacity: 0.9, whiteSpace: 'nowrap' }}>
+                          (+{formatUSD(activePoint.raw.profit_usd)})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(activePoint.debt > 0 || activePoint.totalSales > activePoint.revenue) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, whiteSpace: 'nowrap', borderTop: '1px dashed var(--border-subtle)', paddingTop: 4, marginTop: 2 }}>
+                    <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 11 }}>
+                      Jami Savdo:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap', textAlign: 'right', fontSize: 11 }}>
+                      <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {formatUZS ? formatUZS(activePoint.totalSales) : `${activePoint.totalSales.toLocaleString()} UZS`}
+                      </span>
+                      {Number(activePoint.raw?.total_sales_usd || 0) > 0 && formatUSD && (
+                        <span style={{ fontSize: 10.5, fontWeight: 600, color: COLOR_REV, opacity: 0.9, whiteSpace: 'nowrap' }}>
+                          (+{formatUSD(activePoint.raw.total_sales_usd)})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -766,17 +1052,27 @@ export default function RevenueCostAnalyticsChart({
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      gap: 20,
-                      borderTop: '1px solid var(--border-subtle)',
+                      gap: 14,
+                      borderTop: '1px dashed var(--border-subtle)',
                       paddingTop: 6,
                       marginTop: 2,
-                      fontSize: 11,
-                      color: 'var(--text-muted)',
+                      fontSize: 12,
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    <span style={{ whiteSpace: 'nowrap' }}>Oldingi davr:</span>
-                    <span style={{ whiteSpace: 'nowrap' }}>{formatUZS ? formatUZS(activePoint.prevRevenue) : `${Math.round(activePoint.prevRevenue).toLocaleString()} UZS`}</span>
+                    <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap', flexShrink: 0, fontSize: 11.5 }}>
+                      Oldingi sof foyda{activePoint.prevDate ? ` (${activePoint.prevDate.slice(5)})` : ''}:
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <strong style={{ color: COLOR_PROFIT, fontFamily: 'var(--font-sans)', fontWeight: 700, opacity: 0.95, whiteSpace: 'nowrap' }}>
+                        {formatUZS ? formatUZS(activePoint.prevProfit) : `${Math.round(activePoint.prevProfit).toLocaleString()} UZS`}
+                      </strong>
+                      {Number(activePoint.raw?.prev_profit_usd || 0) > 0 && formatUSD && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: COLOR_PROFIT, opacity: 0.85, whiteSpace: 'nowrap' }}>
+                          (+{formatUSD(activePoint.raw.prev_profit_usd)})
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -793,8 +1089,6 @@ export default function RevenueCostAnalyticsChart({
                   height: 12,
                   zIndex: 1,
                   background: 'var(--chart-tooltip-bg)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
                   borderRight: '1px solid var(--chart-tooltip-border)',
                   borderBottom: '1px solid var(--chart-tooltip-border)',
                 }}
@@ -881,24 +1175,11 @@ export default function RevenueCostAnalyticsChart({
       >
         {/* Toggle Pills with Solid Checkbox Squares */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {/* Revenue Toggle (Mint Green Pill) */}
+          {/* Revenue Toggle */}
           <button
+            type="button"
             onClick={() => setShowRevenue(!showRevenue)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-sm, 8px)',
-              border: showRevenue ? '1px solid #a7f3d0' : '1px solid var(--border-subtle)',
-              background: showRevenue ? '#ecfdf5' : 'transparent',
-              color: showRevenue ? '#065f46' : 'var(--text-muted)',
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: 'var(--font-sans)',
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
-            }}
+            className={`chart-pill-btn pill-revenue ${showRevenue ? 'active' : ''}`}
           >
             <div
               style={{
@@ -917,24 +1198,34 @@ export default function RevenueCostAnalyticsChart({
             <span>Revenue (Tushum)</span>
           </button>
 
-          {/* Costs Toggle (Soft Rose Pill) */}
+          {/* Debt Toggle */}
           <button
+            type="button"
+            onClick={() => setShowDebt(!showDebt)}
+            className={`chart-pill-btn pill-debt ${showDebt ? 'active' : ''}`}
+          >
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 3,
+                background: showDebt ? COLOR_DEBT : 'transparent',
+                border: `1.5px solid ${COLOR_DEBT}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {showDebt && <Check size={10} color="#ffffff" strokeWidth={3} />}
+            </div>
+            <span>Nasiya (Berilgan qarz)</span>
+          </button>
+
+          {/* Costs Toggle */}
+          <button
+            type="button"
             onClick={() => setShowCosts(!showCosts)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-sm, 8px)',
-              border: showCosts ? '1px solid #fecdd3' : '1px solid var(--border-subtle)',
-              background: showCosts ? '#ffe4e6' : 'transparent',
-              color: showCosts ? '#881337' : 'var(--text-muted)',
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: 'var(--font-sans)',
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
-            }}
+            className={`chart-pill-btn pill-costs ${showCosts ? 'active' : ''}`}
           >
             <div
               style={{
@@ -953,24 +1244,11 @@ export default function RevenueCostAnalyticsChart({
             <span>Costs (Xarajatlar)</span>
           </button>
 
-          {/* Net Profit Toggle (Soft Yellow Pill with Yellow Checkbox, as requested!) */}
+          {/* Net Profit Toggle */}
           <button
+            type="button"
             onClick={() => setShowProfit(!showProfit)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 12px',
-              borderRadius: 'var(--radius-sm, 8px)',
-              border: showProfit ? '1px solid #fde047' : '1px solid var(--border-subtle)',
-              background: showProfit ? '#fef9c3' : 'transparent',
-              color: showProfit ? '#854d0e' : 'var(--text-muted)',
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: 'var(--font-sans)',
-              cursor: 'pointer',
-              transition: 'all var(--transition-fast)',
-            }}
+            className={`chart-pill-btn pill-profit ${showProfit ? 'active' : ''}`}
           >
             <div
               style={{
@@ -990,7 +1268,7 @@ export default function RevenueCostAnalyticsChart({
           </button>
         </div>
 
-        {/* Vs. previous period Switch (Matching Image 2!) */}
+        {/* O‘tgan davr (sof foyda izi) Switch */}
         <label
           style={{
             display: 'inline-flex',
@@ -1004,7 +1282,20 @@ export default function RevenueCostAnalyticsChart({
             userSelect: 'none',
           }}
         >
-          <span>Vs. previous period</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {comparePrevPeriod && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 14,
+                  height: 0,
+                  borderTop: `2px dashed ${COLOR_PROFIT}`,
+                  verticalAlign: 'middle',
+                }}
+              />
+            )}
+            O‘tgan davr (sof foyda)
+          </span>
           <div
             onClick={(e) => {
               e.preventDefault();
@@ -1014,7 +1305,7 @@ export default function RevenueCostAnalyticsChart({
               width: 34,
               height: 18,
               borderRadius: 10,
-              background: comparePrevPeriod ? 'var(--primary)' : 'var(--bg-chip)',
+              background: comparePrevPeriod ? COLOR_PROFIT : 'var(--bg-chip)',
               position: 'relative',
               transition: 'background 200ms ease',
             }}

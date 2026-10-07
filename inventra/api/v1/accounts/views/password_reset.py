@@ -39,7 +39,12 @@ from api.v1.accounts.views.misc import (
     send_otp_or_error,
 )
 
-__all__ = ["PasswordResetRequestView", "PasswordResetConfirmView", "ChangePasswordWithOldView"]
+__all__ = [
+    "PasswordResetRequestView",
+    "PasswordResetConfirmView",
+    "ChangePasswordWithOldView",
+    "PasswordResetVerifyView",
+]
 
 
 class PasswordResetRequestView(APIView):
@@ -60,7 +65,8 @@ class PasswordResetRequestView(APIView):
 
         identifier = serializer.validated_data.get("identifier") or serializer.validated_data.get("email") or ""
         ok, reason, email_hint = password_reset_service.request_password_reset_with_hint(
-            identifier=identifier
+            identifier=identifier,
+            purpose="reset_password",
         )
 
         if reason == "no_email":
@@ -180,3 +186,35 @@ class PasswordResetConfirmView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class PasswordResetVerifyView(APIView):
+    """GET /api/v1/auth/password-reset/verify/?token=<token>
+
+    Validates a password reset or onboarding setup token and returns tailored UI metadata
+    (purpose, tenant_name, position, username, masked phone/email).
+    Does NOT consume the token (read-only peek).
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get("token", "").strip()
+        if not token:
+            return Response(
+                {"valid": False, "detail": "Xavfsizlik tokeni kiritilmadi."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        info = password_reset_service.peek_reset_token(token)
+        if not info:
+            return Response(
+                {
+                    "valid": False,
+                    "detail": "Ushbu havola eskirgan yoki undan allaqachon foydalanilgan.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(info, status=status.HTTP_200_OK)
+

@@ -17,4 +17,8 @@ app.conf.beat_schedule = {
         'task': 'apps.cashbox.tasks.check_and_send_daily_reports_task',
         'schedule': crontab(minute='*/5'),
     },
+    'check-and-send-low-stock-reports-periodic': {
+        'task': 'apps.inventory.tasks.check_and_send_low_stock_reports_task',
+        'schedule': crontab(minute='*/5'),
+    },
 }

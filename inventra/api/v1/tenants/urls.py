@@ -11,6 +11,7 @@ from .views import (
     CurrentTenantView,
     TenantTestTelegramView,
     TenantSendReportNowView,
+    TenantSendLowStockReportNowView,
 )
 
 
@@ -19,6 +20,7 @@ urlpatterns = [
     path("current/", CurrentTenantView.as_view(), name="tenant-current"),
     path("current/test-telegram/", TenantTestTelegramView.as_view(), name="tenant-test-telegram"),
     path("current/send-report-now/", TenantSendReportNowView.as_view(), name="tenant-send-report-now"),
+    path("current/send-low-stock-report-now/", TenantSendLowStockReportNowView.as_view(), name="tenant-send-low-stock-report-now"),
     path("<int:pk>/", TenantDetailView.as_view(), name="tenant-detail"),
     path("<int:pk>/change-owner/", TenantChangeOwnerView.as_view(), name="tenant-change-owner"),
     path("<int:pk>/deactivate/", TenantDeactivateView.as_view(), name="tenant-deactivate"),

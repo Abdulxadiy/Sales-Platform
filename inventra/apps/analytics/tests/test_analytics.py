@@ -157,7 +157,12 @@ def test_dashboard_summary_calculations(tenant, owner, platform_admin):
     kpi = summary["kpi"]
     assert kpi["total_revenue_uzs"] == "100000.00"
     assert kpi["net_profit_uzs"] == "40000.00"
-    assert kpi["total_revenue_usd"] == "50.00"
+    # Sale 2 was DEBT: total_revenue_usd must NOT count unpaid debt!
+    assert kpi["total_revenue_usd"] == "0.00"
+    assert kpi["total_sales_usd"] == "50.00"
+    assert kpi["debt_sales_usd"] == "50.00"
+    assert kpi["debt_sales_uzs"] == "0.00"
+    assert kpi["debt_sales_count"] == 1
     assert kpi["net_profit_usd"] == "20.00"
     assert kpi["total_debt_uzs"] == "50000.00"
     assert kpi["total_debt_usd"] == "20.00"
@@ -172,17 +177,90 @@ def test_dashboard_summary_calculations(tenant, owner, platform_admin):
     assert pm["debt"]["count"] == 1
     assert pm["debt"]["amount_usd"] == "50.00"
 
-    # Top products
+    # Top products check with cash vs debt breakdown
     top = summary["top_products"]
     assert len(top) == 2
     assert top[0]["sku"] == "COCA-15L"
     assert top[0]["revenue"] == "100000.00"
+    assert top[0]["cash_quantity"] == "10.000"
+    assert top[0]["debt_quantity"] == "0.000"
     assert top[1]["sku"] == "SNICK-STD"
     assert top[1]["revenue"] == "50.00"
+    assert top[1]["cash_quantity"] == "0.000"
+    assert top[1]["debt_quantity"] == "5.000"
+    assert top[1]["debt_revenue"] == "50.00"
 
-    # Cashiers
+    # Cashiers check
     assert len(summary["cashiers_leaderboard"]) == 1
-    assert summary["cashiers_leaderboard"][0]["sales_count"] == 2
+    cashier = summary["cashiers_leaderboard"][0]
+    assert cashier["sales_count"] == 2
+    assert cashier["debt_count"] == 1
+    assert cashier["revenue_uzs"] == "100000.00"
+    assert cashier["revenue_usd"] == "0.00"
+    assert cashier["debt_amount_usd"] == "50.00"
+    assert cashier["total_amount_usd"] == "50.00"
+
+
+def test_dashboard_debt_collections_and_separation(tenant, owner):
+    from apps.sales.models import DebtPayment
+    cat = CategoryFactory(tenant=tenant)
+    prod = ProductFactory(tenant=tenant, category=cat, name="Samsung A17")
+    var = ProductVariantFactory(product=prod, name="Standart", sku="SAM-A17")
+    cp = CounterpartyFactory(tenant=tenant, debt_balance_usd=Decimal("2800.00"))
+
+    # 10 Samsung A17 sold on debt for $2800
+    sale = Sale.objects.create(
+        tenant=tenant,
+        sold_by=owner,
+        receipt_number="REC-SAM-01",
+        payment_type=Sale.PAYMENT_DEBT,
+        currency=Sale.CURRENCY_USD,
+        counterparty=cp,
+        total_amount=Decimal("2800.00"),
+        status=Sale.STATUS_COMPLETED,
+    )
+    SaleItem.objects.create(
+        tenant=tenant,
+        sale=sale,
+        product_variant=var,
+        quantity=Decimal("10.000"),
+        cost_price=Decimal("180.00"),
+        unit_price=Decimal("280.00"),
+        total_price=Decimal("2800.00"),
+    )
+
+    # Debt payment collected today: $500.00
+    DebtPayment.objects.create(
+        tenant=tenant,
+        counterparty=cp,
+        amount=Decimal("500.00"),
+        currency="USD",
+        recorded_by=owner,
+    )
+
+    summary = AnalyticsService.get_dashboard_summary(tenant=tenant, period="today")
+    kpi = summary["kpi"]
+
+    # Real revenue in USD should be ONLY the collected debt $500.00, NOT the $2800 credit sale!
+    assert kpi["total_revenue_usd"] == "500.00"
+    assert kpi["real_revenue_usd"] == "500.00"
+    assert kpi["collected_debt_usd"] == "500.00"
+    assert kpi["collected_debt_count"] == 1
+
+    # Debt sales is $2800.00
+    assert kpi["debt_sales_usd"] == "2800.00"
+    assert kpi["debt_sales_count"] == 1
+
+    # Total sales volume is $2800.00
+    assert kpi["total_sales_usd"] == "2800.00"
+
+    # Top product breakdown shows 10 units debt
+    top = summary["top_products"]
+    assert len(top) == 1
+    assert top[0]["debt_quantity"] == "10.000"
+    assert top[0]["debt_revenue"] == "2800.00"
+    assert top[0]["cash_quantity"] == "0.000"
+    assert top[0]["cash_revenue"] == "0.00"
 
 
 def test_dashboard_api_permissions_and_access(api_client, tenant, owner, platform_admin):

@@ -44,13 +44,46 @@ def is_in_cooldown(user_id: int) -> bool:
     return redis_client.exists(_cooldown_key(user_id)) == 1
 
 
-def store_reset_token(token: str, user_id: int) -> None:
+import json
+
+def store_reset_token(
+    token: str,
+    user_id: int,
+    purpose: str = "reset_password",
+    extra_context: dict | None = None,
+) -> None:
     """
-    Store the token mapped to user_id with 24-hour expiration
+    Store the token mapped to user_id, purpose, and context metadata with 24-hour expiration
     and set the 60-second cooldown key.
     """
-    redis_client.set(_token_key(token), str(user_id), ex=TOKEN_TTL_SECONDS)
+    payload = {
+        "user_id": user_id,
+        "purpose": purpose,
+        "extra_context": extra_context or {},
+    }
+    redis_client.set(_token_key(token), json.dumps(payload), ex=TOKEN_TTL_SECONDS)
     redis_client.set(_cooldown_key(user_id), "1", ex=COOLDOWN_SECONDS)
+
+
+def _parse_token_raw(raw_val: str | None) -> dict | None:
+    """Safely parse token payload, supporting both new JSON format and legacy integer string."""
+    if raw_val is None:
+        return None
+    try:
+        data = json.loads(raw_val)
+        if isinstance(data, dict):
+            return data
+    except (json.JSONDecodeError, ValueError, TypeError):
+        pass
+    # Legacy fallback: raw string was just user_id integer
+    try:
+        return {
+            "user_id": int(raw_val),
+            "purpose": "reset_password",
+            "extra_context": {},
+        }
+    except (ValueError, TypeError):
+        return None
 
 
 def consume_reset_token(token: str) -> int | None:
@@ -64,32 +97,187 @@ def consume_reset_token(token: str) -> int | None:
     pipe.delete(key)
     results = pipe.execute()
 
-    user_id_str = results[0]
-    if user_id_str is None:
+    raw_val = results[0]
+    parsed = _parse_token_raw(raw_val)
+    if not parsed:
         return None
-    try:
-        return int(user_id_str)
-    except (ValueError, TypeError):
-        return None
+    return parsed.get("user_id")
 
 
-def send_password_reset_email(user, token: str) -> bool:
+def peek_reset_token(token: str) -> dict | None:
+    """
+    Inspect token metadata without deleting it.
+    Used by frontend on mount to validate token and retrieve tailored UI context.
+    """
+    if not token:
+        return None
+    key = _token_key(token)
+    raw_val = redis_client.get(key)
+    parsed = _parse_token_raw(raw_val)
+    if not parsed:
+        return None
+
+    user_id = parsed.get("user_id")
+    if not user_id:
+        return None
+
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        return None
+
+    ctx = parsed.get("extra_context") or {}
+    tenant_name = ctx.get("tenant_name")
+    if not tenant_name:
+        if hasattr(user, "tenant") and user.tenant:
+            tenant_name = user.tenant.name
+        elif hasattr(user, "employees"):
+            emp = user.employees.filter(is_active=True).select_related("tenant").first()
+            if emp and emp.tenant:
+                tenant_name = emp.tenant.name
+
+    from apps.accounts.services.phone_utils import mask_phone_number
+
+    return {
+        "valid": True,
+        "purpose": parsed.get("purpose", "reset_password"),
+        "has_username": bool(user.username),
+        "username": user.username or "",
+        "phone_hint": mask_phone_number(user.phone_number) if user.phone_number else "",
+        "email_hint": mask_email(user.email) if user.email else "",
+        "tenant_name": tenant_name or "",
+        "position": ctx.get("position", ""),
+        "role": user.role,
+    }
+
+
+def _resolve_email_copy(
+    purpose: str,
+    user,
+    extra_context: dict | None = None,
+) -> dict:
+    """
+    Resolve email subject, title, body, CTA, and hints based on the purpose:
+    - 'reset_password': User forgot password on Login or requested reset from Profile.
+    - 'new_owner': Brand-new tenant store owner onboarding.
+    - 'new_employee': Brand-new employee onboarding invitation.
+    - 'transfer_owner': Tenant store ownership transferred to user.
+    """
+    ctx = extra_context or {}
+    tenant_name = ctx.get("tenant_name", "")
+    position = ctx.get("position", "")
+
+    if purpose == "new_owner":
+        tenant_badge = f" (Do‘kon: <strong>{tenant_name}</strong>)" if tenant_name else ""
+        return {
+            "subject": "Inventra — Yangi do‘koningiz yaratildi! Hisobingizni faollashtiring",
+            "title": "Do‘koningizga xush kelibsiz! 🎉",
+            "message_html": (
+                f"Assalomu alaykum! Siz Inventra savdo platformasiga do‘kon egasi sifatida ro‘yxatdan o‘tkazildingiz{tenant_badge}. "
+                "Do‘koningizni boshqarish, tovarlarni kiritish va savdoni yo‘lga qo‘yish uchun shaxsiy parolingizni belgilang va hisobingizni faollashtiring."
+            ),
+            "plain_intro": (
+                f"Siz Inventra platformasiga do‘kon egasi sifatida ro‘yxatdan o‘tkazildingiz{f' ({tenant_name})' if tenant_name else ''}.\n"
+                "Do‘koningizni boshqarishni boshlash uchun shaxsiy parolingizni belgilang va hisobingizni faollashtiring."
+            ),
+            "button_text": "Hisobni faollashtirish &rarr;",
+            "step_title": "🚀 Boshlash uchun qadamlar:",
+            "step_desc": "1. Shaxsiy parol va username belgilang &rarr; 2. Telegram orqali 2FA kodni tasdiqlang &rarr; 3. Do‘koningiz boshqaruv paneliga to‘g‘ridan-to‘g‘ri kiring.",
+            "security_note": "🔒 Ushbu xavfsiz havola <strong>24 soat</strong> davomida faqat bir marta foydalanish uchun amal qiladi. Xavfsizligingiz uchun parolingizni hech kimga bermang.",
+        }
+
+    elif purpose == "new_employee":
+        pos_str = f" ({position})" if position else ""
+        tenant_badge = f" (Do‘kon: <strong>{tenant_name}</strong>)" if tenant_name else ""
+        return {
+            "subject": "Inventra — Siz jamoaga taklif qilindingiz",
+            "title": "Inventra jamoasiga xush kelibsiz! 👋",
+            "message_html": (
+                f"Assalomu alaykum! Siz Inventra tizimiga do‘kon xodimi{pos_str} sifatida taklif qilindingiz{tenant_badge}. "
+                "Tizimda ishlashni boshlash uchun shaxsiy parolingizni belgilang va hisobingizni faollashtiring."
+            ),
+            "plain_intro": (
+                f"Siz Inventra tizimiga xodim{pos_str} sifatida taklif qilindingiz.\n"
+                "Tizimda ishlashni boshlash uchun shaxsiy parolingizni o‘rnating."
+            ),
+            "button_text": "Parol o‘rnatish va kirish &rarr;",
+            "step_title": "💡 Keyingi qadam:",
+            "step_desc": "Parol belgilagach, telefoningizga Telegram orqali kelgan 6 xonali tasdiqlash kodini kiritib tizimga kirasiz.",
+            "security_note": "🔒 Ushbu taklif havolasi <strong>24 soat</strong> davomida amal qiladi.",
+        }
+
+    elif purpose == "transfer_owner":
+        tenant_badge = f" (<strong>{tenant_name}</strong>)" if tenant_name else ""
+        return {
+            "subject": "Inventra — Do‘kon egaligi sizga topshirildi",
+            "title": "Do‘kon boshqaruvi topshirildi 🏢",
+            "message_html": (
+                f"Assalomu alaykum! Sizga Inventra tizimidagi do‘kon{tenant_badge} egaligi va to‘liq boshqaruv huquqi topshirildi. "
+                "Yangi boshqaruvchi sifatida tizimga kirish uchun shaxsiy parolingizni belgilang."
+            ),
+            "plain_intro": (
+                f"Sizga Inventra tizimidagi do‘kon{f' ({tenant_name})' if tenant_name else ''} egaligi topshirildi.\n"
+                "Tizimga kirish uchun shaxsiy parolingizni belgilang."
+            ),
+            "button_text": "Boshqaruvni qabul qilish &rarr;",
+            "step_title": "💡 Keyingi qadam:",
+            "step_desc": "Parol o‘rnatilgach, Telegram orqali xavfsizlik tasdig‘idan o‘tib, do‘koningizni to‘liq boshqarishni boshlaysiz.",
+            "security_note": "🔒 Ushbu havola <strong>24 soat</strong> davomida faqat bir marta foydalanish uchun amal qiladi.",
+        }
+
+    else:
+        # Default: reset_password
+        return {
+            "subject": "Inventra — Parolingizni qayta tiklash",
+            "title": "Parolingizni qayta tiklash",
+            "message_html": (
+                "Assalomu alaykum! Sizning Inventra hisobingiz uchun parolni qayta tiklash so‘rovi qabul qilindi. "
+                "Yangi xavfsiz parol o‘rnatish uchun quyidagi tugmani bosing."
+            ),
+            "plain_intro": (
+                "Sizning Inventra hisobingiz uchun parolni qayta tiklash so‘rovi qabul qilindi.\n"
+                "Yangi xavfsiz parol o‘rnatish uchun quyidagi havoladan foydalaning."
+            ),
+            "button_text": "Parolni qayta tiklash &rarr;",
+            "step_title": "💡 Keyingi qadam:",
+            "step_desc": "Yangi parol belgilagach, hisobingiz xavfsizligi uchun Telegram orqali 6 xonali tasdiqlash kodi yuboriladi va tizimga avtomatik kirasiz.",
+            "security_note": (
+                "🔒 Ushbu havola <strong>24 soat</strong> davomida faqat bir marta foydalanish uchun amal qiladi. "
+                "Agar bu so‘rovni siz yubormagan bo‘lsangiz, xavotir olmang — parolingiz o‘zgarmaydi. Xatni shunchaki e’tiborsiz qoldirishingiz mumkin."
+            ),
+        }
+
+
+def send_password_reset_email(
+    user,
+    token: str,
+    purpose: str = "reset_password",
+    extra_context: dict | None = None,
+) -> bool:
     """
     Send an email containing the one-time account setup / password reset link
     both in plain text and formatted responsive HTML for Gmail/clients.
+    Supports tailored messaging for password resets, new store owners, new employees, etc.
     """
     reset_url = f"{settings.FRONTEND_URL}/setup-account?token={token}"
-    subject = "Inventra — Hisobingizni faollashtiring va parol o‘rnating"
+    copy = _resolve_email_copy(purpose, user, extra_context=extra_context)
+
+    subject = copy["subject"]
+    title = copy["title"]
+    message_html = copy["message_html"]
+    button_text = copy["button_text"]
+    step_title = copy["step_title"]
+    step_desc = copy["step_desc"]
+    security_note = copy["security_note"]
 
     # Plain text version for non-HTML clients
     plain_message = (
         f"Assalomu alaykum,\n\n"
-        f"Siz Inventra platformasiga do‘kon egasi yoki xodim sifatida qo‘shildingiz (yoki parolni tiklash so‘rovi yubordingiz).\n\n"
-        f"Tizimga kirish uchun username va parolingizni quyidagi havola orqali o‘rnating:\n"
+        f"{copy['plain_intro']}\n\n"
+        f"Tizimga kirish uchun havola:\n"
         f"{reset_url}\n\n"
-        f"Keyingi qadam: Parolni o‘rnatganingizdan so‘ng, telefon raqamingizga Telegram bot orqali 6 xonali tasdiqlash kodi yuboriladi va tizimga avtomatik kirasiz.\n\n"
+        f"{step_title} {step_desc}\n\n"
         f"Ushbu havola 24 soat davomida faqat bir marta foydalanish uchun amal qiladi.\n"
-        f"Agar bu so‘rovni siz yubormagan bo‘lsangiz, ushbu xatni e’tiborsiz qoldirishingiz mumkin."
+        f"Agar bu so‘rovni siz yubormagan bo‘lsangiz, xatni e’tiborsiz qoldirishingiz mumkin."
     )
 
     # Minimalist Stripe-style responsive HTML template for Gmail & modern clients
@@ -123,12 +311,12 @@ def send_password_reset_email(user, token: str) -> bool:
 
                   <!-- Title -->
                   <h1 style="font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 14px 0; letter-spacing: -0.02em;">
-                    Hisobingizni faollashtiring
+                    {title}
                   </h1>
 
                   <!-- Message -->
                   <p style="font-size: 14.5px; line-height: 1.65; color: #475569; margin: 0 0 28px 0;">
-                    Assalomu alaykum! Siz Inventra platformasiga do‘kon boshqaruvchisi sifatida biriktirildingiz. Xavfsiz ishlashni boshlash uchun quyidagi tugma orqali shaxsiy parolingizni belgilang.
+                    {message_html}
                   </p>
 
                   <!-- Primary Action Button -->
@@ -136,7 +324,7 @@ def send_password_reset_email(user, token: str) -> bool:
                     <tr>
                       <td align="center" style="background-color: #0f172a; border-radius: 10px;">
                         <a href="{reset_url}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 14.5px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; letter-spacing: -0.01em;">
-                          Parol o‘rnatish &rarr;
+                          {button_text}
                         </a>
                       </td>
                     </tr>
@@ -145,10 +333,10 @@ def send_password_reset_email(user, token: str) -> bool:
                   <!-- Next Step Note -->
                   <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; padding: 14px 18px; margin: 0 0 24px 0;">
                     <div style="font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 4px;">
-                      💡 Keyingi qadam:
+                      {step_title}
                     </div>
                     <div style="font-size: 12.5px; line-height: 1.55; color: #64748b;">
-                      Parol o‘rnatilgach, telefoningizga Telegram orqali 6 xonali tasdiqlash kodi boradi va avtomatik tizimga kirasiz.
+                      {step_desc}
                     </div>
                   </div>
 
@@ -162,7 +350,7 @@ def send_password_reset_email(user, token: str) -> bool:
 
                   <!-- Security Footnote -->
                   <p style="font-size: 11.5px; line-height: 1.55; color: #94a3b8; margin: 0;">
-                    🔒 Ushbu havola <strong>24 soat</strong> davomida faqat bir marta foydalanish uchun amal qiladi. Agar bu so‘rovni siz yubormagan bo‘lsangiz, xatni xavotirsiz e’tiborsiz qoldirishingiz mumkin.
+                    {security_note}
                   </p>
                 </td>
               </tr>
@@ -182,7 +370,7 @@ def send_password_reset_email(user, token: str) -> bool:
     """
 
     logger.warning("=" * 60)
-    logger.warning("PAROL O'RNATISH HAVOLASI [%s]: %s", user.email, reset_url)
+    logger.warning("EMAIL JO'NATISH [%s, purpose=%s]: %s", user.email, purpose, reset_url)
     logger.warning("=" * 60)
 
     try:
@@ -194,7 +382,7 @@ def send_password_reset_email(user, token: str) -> bool:
             html_message=html_message,
             fail_silently=False,
         )
-        logger.info("Email muvaffaqiyatli jo'natildi: %s", user.email)
+        logger.info("Email muvaffaqiyatli jo'natildi: %s (purpose=%s)", user.email, purpose)
         return True
     except Exception as exc:
         logger.error("Email jo'natishda xatolik yuz berdi (%s): %s", user.email, exc)
@@ -202,7 +390,11 @@ def send_password_reset_email(user, token: str) -> bool:
 
 
 def request_password_reset(
-    email: str = "", identifier: str = "", return_hint: bool = False
+    email: str = "",
+    identifier: str = "",
+    return_hint: bool = False,
+    purpose: str = "auto",
+    extra_context: dict | None = None,
 ) -> tuple[bool, str] | tuple[bool, str, str | None]:
     """
     Process request for a password reset / setup link.
@@ -244,10 +436,33 @@ def request_password_reset(
             return False, "cooldown", None
         return False, "cooldown"
 
-    token = generate_reset_token()
-    store_reset_token(token, user.id)
+    # Smart auto-detection of email purpose if caller left as 'auto'
+    resolved_purpose = purpose
+    if resolved_purpose == "auto":
+        if not user.has_usable_password():
+            if user.role == "owner":
+                resolved_purpose = "new_owner"
+            elif user.role == "staff":
+                resolved_purpose = "new_employee"
+            else:
+                resolved_purpose = "reset_password"
+        else:
+            resolved_purpose = "reset_password"
 
-    sent = send_password_reset_email(user, token)
+    token = generate_reset_token()
+    store_reset_token(
+        token,
+        user.id,
+        purpose=resolved_purpose,
+        extra_context=extra_context,
+    )
+
+    sent = send_password_reset_email(
+        user,
+        token,
+        purpose=resolved_purpose,
+        extra_context=extra_context,
+    )
     if not sent:
         # If email delivery fails, clean up the stored token so user can retry
         redis_client.delete(_token_key(token))
@@ -261,9 +476,18 @@ def request_password_reset(
     return True, "sent"
 
 
-def request_password_reset_with_hint(identifier: str) -> tuple[bool, str, str | None]:
+def request_password_reset_with_hint(
+    identifier: str,
+    purpose: str = "reset_password",
+    extra_context: dict | None = None,
+) -> tuple[bool, str, str | None]:
     """Helper returning (ok, reason, email_hint) for API views."""
-    return request_password_reset(identifier=identifier, return_hint=True)
+    return request_password_reset(
+        identifier=identifier,
+        return_hint=True,
+        purpose=purpose,
+        extra_context=extra_context,
+    )
 
 
 def change_password_with_old(login: str, old_password: str, new_password: str) -> tuple[bool, str, User | None]:

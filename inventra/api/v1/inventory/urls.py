@@ -4,7 +4,7 @@ api/v1/catalog/views/_base.py / api/mixins.py's OwnerStaffOnlyAPIView)."""
 
 from django.urls import path
 
-from .views.stock_views import StockListView, StockDetailView
+from .views.stock_views import StockListView, StockDetailView, DeficitStockListView
 from .views.movement_views import (
     StockMovementListView,
     StockIntakeCreateView,
@@ -17,6 +17,7 @@ from .views.movement_views import (
 urlpatterns = [
     path("stock/", StockListView.as_view(), name="stock-list"),
     path("stock/<int:product_variant_id>/", StockDetailView.as_view(), name="stock-detail"),
+    path("deficits/", DeficitStockListView.as_view(), name="deficit-stock-list"),
 
     path("movements/", StockMovementListView.as_view(), name="movement-list"),
     path("intake/", StockIntakeCreateView.as_view(), name="stock-intake"),

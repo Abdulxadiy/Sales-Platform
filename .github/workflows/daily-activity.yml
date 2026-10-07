@@ -29,6 +29,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Generate realistic commits
         run: |
@@ -63,7 +66,7 @@ jobs:
             TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%SZ")
 
             echo "[$TIMESTAMP] cycle-$i: $MSG" >> .github/activity.log
-            git add .github/activity.log
+            git add -f .github/activity.log
             git commit -m "$MSG [skip ci]"
             sleep 1
           done

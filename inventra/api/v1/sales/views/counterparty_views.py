@@ -4,7 +4,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from api.permissions import HasEmployeePermission
-from apps.sales.models import Counterparty, DebtPayment
+from apps.sales.models import Counterparty, DebtPayment, Sale
 from apps.sales.services import (
     CounterpartyService,
     CounterpartyServiceError,
@@ -18,6 +18,7 @@ from api.v1.sales.serializers import (
     DebtPaymentOutputSerializer,
     DebtPaymentCreateSerializer,
     DebtPaymentCorrectionSerializer,
+    SaleOutputSerializer,
 )
 from ._base import SalesAPIView
 
@@ -137,3 +138,46 @@ class DebtPaymentCorrectionView(SalesAPIView):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(DebtPaymentOutputSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+
+class CounterpartySalesListView(SalesAPIView):
+    permission_classes = [HasEmployeePermission]
+    permission_map = {
+        'GET': 'sales.manage_counterparty',
+    }
+
+    def get(self, request, counterparty_id):
+        cp = get_object_or_404(Counterparty, pk=counterparty_id, tenant=self.tenant)
+        qs = Sale.objects.filter(
+            tenant=self.tenant,
+            counterparty=cp,
+        ).select_related(
+            'sold_by', 'counterparty', 'b2b_target_tenant'
+        ).prefetch_related(
+            'items__product_variant__product'
+        ).order_by('-created_at')
+
+        payment_type = request.query_params.get('payment_type')
+        if payment_type:
+            qs = qs.filter(payment_type=payment_type)
+
+        search = request.query_params.get('search')
+        if search:
+            search = search.strip()
+            qs = qs.filter(
+                Q(receipt_number__icontains=search)
+                | Q(items__product_variant__product__name__icontains=search)
+                | Q(items__product_variant__name__icontains=search)
+            ).distinct()
+
+        sales_data = SaleOutputSerializer(qs, many=True).data
+
+        total_sales_count = Sale.objects.filter(tenant=self.tenant, counterparty=cp).count()
+        debt_sales_count = Sale.objects.filter(tenant=self.tenant, counterparty=cp, payment_type=Sale.PAYMENT_DEBT).count()
+
+        return Response({
+            'counterparty': CounterpartyOutputSerializer(cp).data,
+            'total_sales_count': total_sales_count,
+            'debt_sales_count': debt_sales_count,
+            'sales': sales_data,
+        })

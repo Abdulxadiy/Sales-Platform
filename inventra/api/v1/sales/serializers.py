@@ -61,11 +61,15 @@ class DebtPaymentCorrectionSerializer(serializers.Serializer):
 class SaleItemOutputSerializer(serializers.ModelSerializer):
     product_variant_name = serializers.CharField(source='product_variant.name', read_only=True)
     product_name = serializers.CharField(source='product_variant.product.name', read_only=True)
+    product_code = serializers.CharField(source='product_variant.code', read_only=True)
+    product_sku = serializers.CharField(source='product_variant.sku', read_only=True)
+    unit = serializers.CharField(source='product_variant.unit', read_only=True)
 
     class Meta:
         model = SaleItem
         fields = [
             'id', 'product_variant', 'product_name', 'product_variant_name',
+            'product_code', 'product_sku', 'unit',
             'quantity', 'unit_price', 'cost_price', 'original_partner_price',
             'total_price', 'status', 'voided_quantity', 'b2b_accepted_quantity',
             'b2b_rejected_quantity',

@@ -61,6 +61,56 @@ class DebtService:
         return payment
 
     @classmethod
+    def format_telegram_debt_warning(cls, counterparty: Counterparty, currency: str, balance: Decimal) -> str:
+        tenant_name = counterparty.tenant.name if counterparty.tenant else "Noma'lum do'kon"
+        cp_name = counterparty.name
+        phone = counterparty.phone_number if counterparty.phone_number else "Kiritilmagan"
+        if currency == "UZS":
+            balance_str = f"{balance:,.2f} UZS"
+            limit_str = f"{cls.THRESHOLD_UZS:,.2f} UZS"
+        else:
+            balance_str = f"${balance:,.2f}"
+            limit_str = f"${cls.THRESHOLD_USD:,.2f}"
+
+        lines = [
+            "⚠️ *QARZ CHEGARASI OGOHLANTIRISHI!*",
+            f"🏢 *Do'kon:* {tenant_name}",
+            f"👤 *Mijoz / Kontragent:* {cp_name}",
+            f"📞 *Telefon:* `{phone}`",
+            f"💰 *Umumiy qarzdorlik:* `{balance_str}`",
+            "",
+            f"⚠️ Belgilangan qarz limiti ({limit_str}) dan oshdi!",
+        ]
+        return "\n".join(lines)
+
+    @classmethod
+    def _notify_owner_telegram(cls, counterparty: Counterparty, currency: str, balance: Decimal):
+        tenant = counterparty.tenant
+        if not tenant:
+            return
+
+        if not getattr(tenant, "notify_on_debt", True):
+            return
+
+        owner = getattr(tenant, "owner", None)
+        if not owner or not getattr(owner, "phone_number", None):
+            return
+
+        from apps.tg_bot.models import TelegramContact
+        contact = TelegramContact.objects.filter(phone_number=owner.phone_number).first()
+        if not contact or not contact.chat_id:
+            return
+
+        text = cls.format_telegram_debt_warning(counterparty, currency, balance)
+
+        try:
+            from apps.sales.tasks import send_async_telegram_message_task
+            send_async_telegram_message_task.delay(contact.chat_id, text)
+        except Exception:
+            from apps.tg_bot.services import send_telegram_message
+            send_telegram_message(contact.chat_id, text)
+
+    @classmethod
     def check_threshold_and_notify(cls, counterparty: Counterparty):
         # 1. UZS Check
         if counterparty.debt_balance_uzs > 0:
@@ -74,6 +124,7 @@ class DebtService:
                     message=f"{counterparty.name} ning qarzi {counterparty.debt_balance_uzs:,.2f} UZS ga yetdi!",
                     link=f"/sales/counterparties/{counterparty.id}/",
                 )
+                cls._notify_owner_telegram(counterparty, currency="UZS", balance=counterparty.debt_balance_uzs)
                 counterparty.last_notified_debt_step_uzs = step_uzs
             elif step_uzs < counterparty.last_notified_debt_step_uzs:
                 counterparty.last_notified_debt_step_uzs = max(0, step_uzs)
@@ -92,6 +143,7 @@ class DebtService:
                     message=f"{counterparty.name} ning qarzi {counterparty.debt_balance_usd:,.2f} USD ga yetdi!",
                     link=f"/sales/counterparties/{counterparty.id}/",
                 )
+                cls._notify_owner_telegram(counterparty, currency="USD", balance=counterparty.debt_balance_usd)
                 counterparty.last_notified_debt_step_usd = step_usd
             elif step_usd < counterparty.last_notified_debt_step_usd:
                 counterparty.last_notified_debt_step_usd = max(0, step_usd)

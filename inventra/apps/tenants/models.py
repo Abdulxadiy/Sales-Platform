@@ -63,6 +63,50 @@ class Tenant(models.Model):
         help_text="Nasiya chegarasi va qarzdorlik haqida ogohlantirish",
     )
 
+    # Kamayib qolgan tovarlar (Kamchiliklar / Defitsit) sozlamalari
+    FREQUENCY_DAILY = 'daily'
+    FREQUENCY_WEEKLY = 'weekly'
+    FREQUENCY_MONTHLY = 'monthly'
+    FREQUENCY_CHOICES = [
+        (FREQUENCY_DAILY, 'Har kuni'),
+        (FREQUENCY_WEEKLY, 'Haftalik'),
+        (FREQUENCY_MONTHLY, 'Oylik'),
+    ]
+
+    low_stock_report_target = models.CharField(
+        max_length=20,
+        choices=TARGET_CHOICES,
+        default=TARGET_BOTH,
+        help_text="Kamchilik tovarlar hisoboti yuboriladigan manzil",
+    )
+    low_stock_report_time = models.TimeField(
+        default=datetime.time(9, 0),
+        help_text="Kamayib qolgan tovarlar hisoboti yuboriladigan vaqt (masalan 09:00)",
+    )
+    low_stock_frequency = models.CharField(
+        max_length=10,
+        choices=FREQUENCY_CHOICES,
+        default=FREQUENCY_DAILY,
+        help_text="Kamchilik tovarlar hisoboti davriyligi",
+    )
+    low_stock_weekday = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Haftalik reja uchun hafta kuni (1=Dushanba .. 7=Yakshanba)",
+    )
+    low_stock_day_of_month = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Oylik reja uchun oyning sanasi (1 .. 31)",
+    )
+    notify_web_low_stock = models.BooleanField(
+        default=True,
+        help_text="Kamayib qolgan tovarlar hisobotini veb interfeys bildirishnomalariga yuborish",
+    )
+    last_low_stock_report_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="So'nggi marta kamchiliklar hisoboti yuborilgan sana va vaqt",
+    )
+
     # Chek va Kassa sozlamalari
     receipt_header = models.TextField(
         blank=True,

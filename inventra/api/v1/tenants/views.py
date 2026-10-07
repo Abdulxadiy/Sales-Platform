@@ -293,3 +293,39 @@ class TenantSendReportNowView(APIView):
             "success": False,
             "detail": "Hisobot yuborilmadi. Sozlamalarda hisobot yoqilganini va Telegram manzil kiritilganini tekshiring."
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TenantSendLowStockReportNowView(APIView):
+    """
+    POST /api/v1/tenants/current/send-low-stock-report-now/ -- trigger deficit report immediately.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.inventory.tasks import send_low_stock_report_for_tenant_task
+
+        user = request.user
+        if user.role == "owner":
+            tenant = getattr(user, "owned_tenant", None) or Tenant.objects.filter(owner=user).first()
+        elif user.role == "platform_admin":
+            tenant_id = request.data.get("tenant_id") or request.query_params.get("tenant_id")
+            tenant = Tenant.objects.filter(pk=tenant_id).first() if tenant_id else Tenant.objects.first()
+        else:
+            return Response({"detail": "Ruxsat etilmagan."}, status=status.HTTP_403_FORBIDDEN)
+
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+
+        res = send_low_stock_report_for_tenant_task(tenant.id)
+        if res.get("success"):
+            count = res.get("count", 0)
+            return Response({
+                "success": True,
+                "count": count,
+                "detail": f"Kamchilik tovarlar hisoboti ({count} ta tovar) muvaffaqiyatli jo'natildi."
+            })
+        return Response({
+            "success": False,
+            "detail": res.get("detail", "Hisobot yuborilmadi. Sozlamalarni tekshiring.")
+        }, status=status.HTTP_400_BAD_REQUEST)
+

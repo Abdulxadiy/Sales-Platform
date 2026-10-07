@@ -8,6 +8,7 @@ from api.v1.accounts.views import (
     PasswordResetRequestView,
     PasswordResetConfirmView,
     ChangePasswordWithOldView,
+    PasswordResetVerifyView,
     UserProfileView,
     UserAvatarUploadView,
     ChangePasswordView,
@@ -31,6 +32,7 @@ urlpatterns = [
     # Password setup (first login) and reset (forgot password) — both use the
     # same one-time magic-link flow.  See PasswordResetService for details.
     path('auth/password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('auth/password-reset/verify/', PasswordResetVerifyView.as_view(), name='password-reset-verify'),
     path('auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('auth/password-reset/change-with-old/', ChangePasswordWithOldView.as_view(), name='password-reset-change-with-old'),
 ]

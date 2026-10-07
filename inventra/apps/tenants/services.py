@@ -87,7 +87,11 @@ class TenantService:
             import logging
             _logger = logging.getLogger(__name__)
             try:
-                ok, reason = request_password_reset(owner_user.email)
+                ok, reason = request_password_reset(
+                    owner_user.email,
+                    purpose="new_owner",
+                    extra_context={"tenant_name": tenant.name},
+                )
                 if not ok:
                     _logger.warning("Failed to dispatch password setup email to %s: %s", owner_user.email, reason)
             except Exception as exc:
@@ -166,7 +170,11 @@ class TenantService:
             import logging
             _logger = logging.getLogger(__name__)
             try:
-                ok, reason = request_password_reset(new_owner.email)
+                ok, reason = request_password_reset(
+                    new_owner.email,
+                    purpose="transfer_owner",
+                    extra_context={"tenant_name": tenant.name},
+                )
                 if not ok:
                     _logger.warning("Failed to dispatch password setup email to %s: %s", new_owner.email, reason)
             except Exception as exc:

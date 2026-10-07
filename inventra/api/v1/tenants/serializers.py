@@ -52,9 +52,12 @@ class TenantAdminSerializer(serializers.ModelSerializer):
             "id", "name", "owner", "owner_details", "description", "is_active",
             "usd_rate", "daily_report_time", "daily_report_target", "shift_report_target",
             "telegram_group_id", "notify_web_reports", "notify_on_sale", "notify_on_debt",
+            "low_stock_report_target", "low_stock_report_time", "low_stock_frequency",
+            "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
+            "last_low_stock_report_sent_at",
             "receipt_header", "receipt_footer", "receipt_phone", "created_at"
         ]
-        read_only_fields = ["id", "owner", "is_active", "created_at"]
+        read_only_fields = ["id", "owner", "is_active", "last_low_stock_report_sent_at", "created_at"]
 
     def get_owner_details(self, obj):
         if obj.owner:
@@ -81,9 +84,12 @@ class TenantOwnerSerializer(serializers.ModelSerializer):
             "id", "name", "owner", "owner_details", "description", "is_active",
             "usd_rate", "daily_report_time", "daily_report_target", "shift_report_target",
             "telegram_group_id", "notify_web_reports", "notify_on_sale", "notify_on_debt",
+            "low_stock_report_target", "low_stock_report_time", "low_stock_frequency",
+            "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
+            "last_low_stock_report_sent_at",
             "receipt_header", "receipt_footer", "receipt_phone", "created_at"
         ]
-        read_only_fields = ["id", "name", "owner", "is_active", "created_at"]
+        read_only_fields = ["id", "name", "owner", "is_active", "last_low_stock_report_sent_at", "created_at"]
 
     def get_owner_details(self, obj):
         if obj.owner:

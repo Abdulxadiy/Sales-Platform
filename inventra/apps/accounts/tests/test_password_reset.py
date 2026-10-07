@@ -444,3 +444,39 @@ class TestPasswordResetEnhancements:
         )
         assert response.status_code == 400
         assert "noto‘g‘ri" in response.json().get("detail", "").lower()
+
+    def test_verify_token_valid_and_expired(self, client, staff_with_email):
+        VERIFY_URL = "/api/v1/auth/password-reset/verify/"
+
+        # 1. Non-existent / invalid token
+        res = client.get(VERIFY_URL + "?token=non_existent_token_123")
+        assert res.status_code == 200
+        assert res.json()["valid"] is False
+
+        # 2. Valid token with purpose
+        token = "test_verify_token_valid"
+        password_reset_service.store_reset_token(
+            token,
+            staff_with_email.id,
+            purpose="reset_password",
+            extra_context={"tenant_name": "Test Supermarket"},
+        )
+
+        res = client.get(VERIFY_URL + f"?token={token}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["valid"] is True
+        assert data["purpose"] == "reset_password"
+        assert data["tenant_name"] == "Test Supermarket"
+        assert "email_hint" in data
+        assert "phone_hint" in data
+
+        # Peek should NOT consume the token:
+        assert password_reset_service.peek_reset_token(token) is not None
+        # Consume works:
+        uid = password_reset_service.consume_reset_token(token)
+        assert uid == staff_with_email.id
+        # Now it is consumed:
+        assert password_reset_service.peek_reset_token(token) is None
+        res_after = client.get(VERIFY_URL + f"?token={token}")
+        assert res_after.json()["valid"] is False

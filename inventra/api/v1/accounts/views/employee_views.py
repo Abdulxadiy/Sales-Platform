@@ -35,6 +35,21 @@ class EmployeeHireView(TenantContextMixin, APIView):
             )
         except EmployeeServiceError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Dispatch onboarding invitation if employee has email and hasn't set a password yet
+        if employee.user.email and not employee.user.has_usable_password():
+            from apps.accounts.services.password_reset_service import request_password_reset
+            import logging
+            _logger = logging.getLogger(__name__)
+            try:
+                request_password_reset(
+                    employee.user.email,
+                    purpose="new_employee",
+                    extra_context={"position": employee.position, "tenant_name": tenant.name},
+                )
+            except Exception as exc:
+                _logger.warning("Failed to dispatch employee onboarding email to %s: %s", employee.user.email, exc)
+
         return Response(EmployeeOutputSerializer(employee).data, status=status.HTTP_201_CREATED)
 
 

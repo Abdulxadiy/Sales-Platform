@@ -54,3 +54,21 @@ class StockDetailView(InventoryAPIView):
                 "product_variant": variant.id, "quantity": "0.000", "last_cost_price": None,
             })
         return Response(StockOutputSerializer(stock).data)
+
+
+class DeficitStockListView(InventoryAPIView):
+    """
+    GET /api/v1/inventory/deficits/
+    Returns list of products whose 30-day sales >= 10 and current stock <= 5.
+    """
+
+    permission_classes = [HasEmployeePermission]
+    required_permission = "inventory.view_stock"
+
+    def get(self, request):
+        from apps.inventory.services import DeficitService
+
+        search = request.query_params.get("search")
+        deficits = DeficitService.get_deficit_variants(self.tenant, search_query=search)
+        return Response(deficits)
+

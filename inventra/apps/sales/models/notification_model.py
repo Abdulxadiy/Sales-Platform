@@ -10,6 +10,7 @@ class Notification(BaseModel):
     TYPE_B2B_CANCELLED = 'b2b_transfer_cancelled'
     TYPE_DEBT_WARNING = 'debt_threshold_warning'
     TYPE_DAILY_Z_REPORT = 'daily_z_report'
+    TYPE_LOW_STOCK_ALERT = 'low_stock_alert'
 
     TYPE_CHOICES = [
         (TYPE_B2B_REQUEST, 'B2B O\'tkazma so\'rovi'),
@@ -19,6 +20,7 @@ class Notification(BaseModel):
         (TYPE_B2B_CANCELLED, 'B2B Bekor qilindi'),
         (TYPE_DEBT_WARNING, 'Qarz chegarasi ogohlantirishi'),
         (TYPE_DAILY_Z_REPORT, 'Kunlik Z-Hisobot'),
+        (TYPE_LOW_STOCK_ALERT, 'Kamayib qolgan tovarlar ogohlantirishi'),
     ]
 
     recipient = models.ForeignKey(

@@ -10,6 +10,7 @@ from api.v1.sales.views.counterparty_views import (
     CounterpartyDetailView,
     DebtPaymentListCreateView,
     DebtPaymentCorrectionView,
+    CounterpartySalesListView,
 )
 from api.v1.sales.views.b2b_views import (
     B2BInboxListView,
@@ -32,6 +33,7 @@ urlpatterns = [
     # Counterparties & Debt
     path('counterparties/', CounterpartyListCreateView.as_view(), name='counterparty-list-create'),
     path('counterparties/<int:pk>/', CounterpartyDetailView.as_view(), name='counterparty-detail'),
+    path('counterparties/<int:counterparty_id>/sales/', CounterpartySalesListView.as_view(), name='counterparty-sales-list'),
     path('counterparties/<int:counterparty_id>/payments/', DebtPaymentListCreateView.as_view(), name='debt-payment-list-create'),
     path('counterparties/<int:counterparty_id>/payments/correct/', DebtPaymentCorrectionView.as_view(), name='debt-payment-correct'),
 

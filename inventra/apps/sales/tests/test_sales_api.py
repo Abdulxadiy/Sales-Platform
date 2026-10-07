@@ -253,6 +253,34 @@ class TestCounterpartyEndpoints:
         cp = Counterparty.objects.get(pk=cp_id)
         assert cp.is_active is False
 
+    def test_get_counterparty_sales_endpoint(self, api_client, owner, tenant, stocked_variant):
+        cp = CounterpartyFactory(tenant=tenant)
+        api_client.force_authenticate(user=owner)
+
+        # Create a debt sale for this counterparty
+        sale_res = api_client.post(SALES_URL, {
+            "items": [{"product_variant_id": stocked_variant.id, "quantity": "2", "unit_price": "15000.00"}],
+            "payment_type": "debt",
+            "counterparty_id": cp.id,
+        }, format="json")
+        assert sale_res.status_code == 201
+
+        # Fetch counterparty sales
+        res = api_client.get(f"{COUNTERPARTIES_URL}{cp.id}/sales/")
+        assert res.status_code == 200
+        assert "sales" in res.data
+        assert res.data["total_sales_count"] == 1
+        assert res.data["debt_sales_count"] == 1
+        assert len(res.data["sales"]) == 1
+
+        sale_item = res.data["sales"][0]["items"][0]
+        assert sale_item["product_variant"] == stocked_variant.id
+        assert Decimal(sale_item["quantity"]) == Decimal("2.000")
+        assert Decimal(sale_item["unit_price"]) == Decimal("15000.00")
+        assert Decimal(sale_item["total_price"]) == Decimal("30000.00")
+        assert sale_item["unit"] == stocked_variant.unit
+        assert res.data["sales"][0]["sold_by_name"] != ""
+
 
 class TestDebtPaymentEndpoints:
     def test_owner_can_record_payment(self, api_client, owner, tenant):

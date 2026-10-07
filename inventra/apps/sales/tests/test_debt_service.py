@@ -1,8 +1,10 @@
 import pytest
 from decimal import Decimal
+from unittest.mock import patch
 
 from apps.sales.models import Counterparty, DebtPayment, Notification
 from apps.sales.services import DebtService, DebtServiceError
+from apps.tg_bot.models import TelegramContact
 from tests.factories import CounterpartyFactory, OwnerFactory, StaffFactory, PlatformAdminFactory
 
 pytestmark = pytest.mark.django_db
@@ -174,3 +176,58 @@ class TestDebtThresholdNotifications:
         )
         assert notifs.count() == 1
         assert "USD" in notifs.first().title
+
+    @patch("apps.sales.tasks.send_async_telegram_message_task.delay")
+    def test_crossing_uzs_threshold_sends_telegram_to_owner(self, mock_delay, tenant, owner):
+        TelegramContact.objects.create(
+            phone_number=owner.phone_number,
+            chat_id="chat_owner_123",
+        )
+        cp = CounterpartyFactory(
+            tenant=tenant,
+            name="Alijon",
+            debt_balance_uzs=Decimal("12000000.00"),  # > 10 mln
+            last_notified_debt_step_uzs=0,
+        )
+        DebtService.check_threshold_and_notify(cp)
+        mock_delay.assert_called_once()
+        args, kwargs = mock_delay.call_args
+        assert args[0] == "chat_owner_123"
+        assert "QARZ CHEGARASI OGOHLANTIRISHI" in args[1]
+        assert "Alijon" in args[1]
+        assert "12,000,000.00 UZS" in args[1]
+
+    @patch("apps.sales.tasks.send_async_telegram_message_task.delay")
+    def test_crossing_usd_threshold_sends_telegram_to_owner(self, mock_delay, tenant, owner):
+        TelegramContact.objects.create(
+            phone_number=owner.phone_number,
+            chat_id="chat_owner_123",
+        )
+        cp = CounterpartyFactory(
+            tenant=tenant,
+            name="Valijon",
+            debt_balance_usd=Decimal("1500.00"),  # > 1000 USD
+            last_notified_debt_step_usd=0,
+        )
+        DebtService.check_threshold_and_notify(cp)
+        mock_delay.assert_called_once()
+        args, kwargs = mock_delay.call_args
+        assert args[0] == "chat_owner_123"
+        assert "Valijon" in args[1]
+        assert "$1,500.00" in args[1]
+
+    @patch("apps.sales.tasks.send_async_telegram_message_task.delay")
+    def test_notify_on_debt_disabled_does_not_send_telegram(self, mock_delay, tenant, owner):
+        tenant.notify_on_debt = False
+        tenant.save()
+        TelegramContact.objects.create(
+            phone_number=owner.phone_number,
+            chat_id="chat_owner_123",
+        )
+        cp = CounterpartyFactory(
+            tenant=tenant,
+            debt_balance_uzs=Decimal("15000000.00"),
+            last_notified_debt_step_uzs=0,
+        )
+        DebtService.check_threshold_and_notify(cp)
+        mock_delay.assert_not_called()

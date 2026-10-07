@@ -24,7 +24,7 @@ for i in $(seq 1 $COUNT); do
   TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%SZ")
 
   echo "[$TIMESTAMP] dev-ping-$i: $MSG" >> .github/activity.log
-  git add .github/activity.log
+  git add -f .github/activity.log
   git commit -m "$MSG [skip ci]"
 done
 

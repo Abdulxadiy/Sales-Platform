@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { catalogApi, salesApi } from '../api/client';
 import Modal from '../components/common/Modal';
-import InventraLogo from '../components/common/InventraLogo';
+import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -1445,101 +1445,46 @@ export default function POS() {
       </Modal>
 
       {/* Receipt Print Modal */}
-      <Modal isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} title="Chek Kvitansiyasi" maxWidth={560}>
+      <Modal isOpen={receiptOpen} onClose={() => setReceiptOpen(false)} title="Chek Kvitansiyasi" maxWidth={440}>
         <div style={{ textAlign: 'center', padding: '10px 0' }}>
-          <CheckCircle size={40} color="var(--accent-emerald)" style={{ margin: '0 auto 10px' }} />
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 4px', color: 'var(--text-primary)' }}>
-            Sotuv Muvaffaqiyatli Yakunlandi!
-          </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 16px' }}>
-            {completedSales.length > 1
-              ? `${completedSales.length} ta chek shakllantirildi (Dual-valyuta)`
-              : `Chek raqami: #${completedSales[0]?.receipt_number || completedSales[0]?.id}`}
-          </p>
-
-          <div
-            id="printable-pos-receipt"
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px dashed var(--border-card)',
-              borderRadius: 'var(--radius-sm)',
-              padding: 16,
-              textAlign: 'left',
-              marginBottom: 20,
-              fontSize: 13,
-            }}
-          >
-            {/* Header of Printable Receipt */}
-            <div style={{ textAlign: 'center', paddingBottom: 12, marginBottom: 12, borderBottom: '1px dashed var(--border-subtle)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-                <InventraLogo size={28} showBadge={false} />
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-                SAVDO KVITANSIYASI
-              </div>
-            </div>
-
-            {/* Render completed sale(s) */}
-            {completedSales.map((sale, sIdx) => {
-              const cur = sale?.currency || 'UZS';
-              const isUsd = cur === 'USD';
-              return (
-                <div
-                  key={sale?.id || sIdx}
-                  style={{
-                    marginBottom: sIdx < completedSales.length - 1 ? 16 : 0,
-                    paddingBottom: sIdx < completedSales.length - 1 ? 14 : 0,
-                    borderBottom: sIdx < completedSales.length - 1 ? '1px dashed var(--border-subtle)' : 'none',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontWeight: 700, color: isUsd ? 'var(--accent-emerald)' : 'var(--primary)' }}>
-                      Chek #{sale?.receipt_number || sale?.id} ({cur})
-                    </span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: 11 }}>
-                      {sale?.payment_type || sale?.payment_method || 'Naqd'}
-                    </span>
-                  </div>
-
-                  {sale?.items && (
-                    <div style={{ margin: '8px 0', borderTop: '1px solid var(--border-subtle)', paddingTop: 6 }}>
-                      {sale.items.map((it, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: 12 }}>
-                          <span style={{ color: 'var(--text-primary)' }}>
-                            {it.product_name || it.product_variant_name || it.variant_name || `Tovar #${it.product_variant || it.id}`} × {it.quantity}
-                          </span>
-                          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
-                            {isUsd
-                              ? `$${Number(it.total_price || (it.unit_price * it.quantity) || 0).toLocaleString()}`
-                              : `${Number(it.total_price || (it.unit_price * it.quantity) || 0).toLocaleString()} UZS`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTop: '1px dashed var(--border-subtle)' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Jami ({cur}):</span>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: isUsd ? 'var(--accent-emerald)' : 'var(--primary)' }}>
-                      {isUsd ? `$${Number(sale?.total_amount || 0).toLocaleString()}` : `${Number(sale?.total_amount || 0).toLocaleString()} UZS`}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="no-print">
+            <CheckCircle size={36} color="var(--accent-emerald)" style={{ margin: '0 auto 8px' }} />
+            <h3 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 2px', color: 'var(--text-primary)' }}>
+              Sotuv Muvaffaqiyatli Yakunlandi!
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 16px' }}>
+              {completedSales.length > 1
+                ? `${completedSales.length} ta chek shakllantirildi (Dual-valyuta)`
+                : `Chek raqami: #${completedSales[0]?.receipt_number || completedSales[0]?.id}`}
+            </p>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+          {/* Authentic Real-world Thermal Receipt Slip */}
+          <div style={{ marginBottom: 18, display: 'flex', justifyContent: 'center' }}>
+            <ReceiptSlip
+              id="printable-pos-receipt"
+              sales={completedSales}
+              paidAmountUZS={paidAmountUZS}
+              paidAmountUSD={paidAmountUSD}
+              changeDueUZS={changeDueUZS}
+              changeDueUSD={changeDueUSD}
+            />
+          </div>
+
+          <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
             <button
-              onClick={() => window.print()}
+              type="button"
+              onClick={() => printReceiptSlip('printable-pos-receipt')}
               style={{
-                padding: '10px 20px',
+                padding: '10px 22px',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--border-card)',
                 background: 'var(--bg-card)',
                 color: 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: 14,
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
               }}
@@ -1548,6 +1493,7 @@ export default function POS() {
               <span>Chop etish</span>
             </button>
             <button
+              type="button"
               onClick={() => setReceiptOpen(false)}
               style={{
                 padding: '10px 24px',
@@ -1556,6 +1502,7 @@ export default function POS() {
                 background: 'var(--primary)',
                 color: 'var(--primary-foreground)',
                 fontWeight: 700,
+                fontSize: 14,
                 cursor: 'pointer',
               }}
             >

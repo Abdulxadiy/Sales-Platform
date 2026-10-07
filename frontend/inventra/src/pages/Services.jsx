@@ -20,6 +20,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Check,
+  AlertTriangle,
+  Calendar,
 } from 'lucide-react';
 import { tenantApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +39,7 @@ export default function Services() {
   const [saving, setSaving] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [sendingReportNow, setSendingReportNow] = useState(false);
+  const [sendingLowStockReportNow, setSendingLowStockReportNow] = useState(false);
 
   // Quick Calculator State (USD <-> UZS)
   const [calcUsd, setCalcUsd] = useState('100');
@@ -50,8 +53,14 @@ export default function Services() {
     daily_report_time: '22:00:00',
     daily_report_target: 'both',
     shift_report_target: 'both',
+    low_stock_report_target: 'both',
+    low_stock_report_time: '09:00:00',
+    low_stock_frequency: 'daily',
+    low_stock_weekday: 1,
+    low_stock_day_of_month: 1,
     telegram_group_id: '',
     notify_web_reports: true,
+    notify_web_low_stock: true,
     notify_on_sale: false,
     notify_on_debt: false,
     receipt_header: 'Xaridingiz uchun rahmat!',
@@ -89,8 +98,14 @@ export default function Services() {
         daily_report_time: data.daily_report_time || '22:00:00',
         daily_report_target: data.daily_report_target || 'both',
         shift_report_target: data.shift_report_target || 'both',
+        low_stock_report_target: data.low_stock_report_target || 'both',
+        low_stock_report_time: data.low_stock_report_time || '09:00:00',
+        low_stock_frequency: data.low_stock_frequency || 'daily',
+        low_stock_weekday: data.low_stock_weekday !== undefined && data.low_stock_weekday !== null ? Number(data.low_stock_weekday) : 1,
+        low_stock_day_of_month: data.low_stock_day_of_month !== undefined && data.low_stock_day_of_month !== null ? Number(data.low_stock_day_of_month) : 1,
         telegram_group_id: data.telegram_group_id || '',
         notify_web_reports: data.notify_web_reports !== undefined ? data.notify_web_reports : true,
+        notify_web_low_stock: data.notify_web_low_stock !== undefined ? Boolean(data.notify_web_low_stock) : true,
         notify_on_sale: Boolean(data.notify_on_sale),
         notify_on_debt: Boolean(data.notify_on_debt),
         receipt_header: data.receipt_header || 'Xaridingiz uchun rahmat!',
@@ -144,6 +159,8 @@ export default function Services() {
       const payload = {
         ...formData,
         usd_rate: parseFloat(formData.usd_rate) || 12800,
+        low_stock_weekday: parseInt(formData.low_stock_weekday, 10) || 1,
+        low_stock_day_of_month: parseInt(formData.low_stock_day_of_month, 10) || 1,
       };
       const params = isAdmin && selectedTenantId ? { tenant_id: selectedTenantId } : {};
       const updated = await tenantApi.updateCurrentTenant(payload, params);
@@ -181,6 +198,20 @@ export default function Services() {
       toast.error('Hisobotni yuborishda xatolik: ' + (err.detail || err.message));
     } finally {
       setSendingReportNow(false);
+    }
+  };
+
+  // Send Low Stock Report Now
+  const handleSendLowStockReportNow = async () => {
+    setSendingLowStockReportNow(true);
+    try {
+      const params = isAdmin && selectedTenantId ? { tenant_id: selectedTenantId } : {};
+      const res = await tenantApi.sendLowStockReportNow(params);
+      toast.success(res.detail || 'Kamchiliklar hisoboti jo‘natildi!');
+    } catch (err) {
+      toast.error('Kamchiliklar hisobotini yuborishda xatolik: ' + (err.detail || err.message));
+    } finally {
+      setSendingLowStockReportNow(false);
     }
   };
 
@@ -798,6 +829,63 @@ export default function Services() {
                 })}
               </div>
             </div>
+
+            {/* Kamayib Qolgan Tovarlar Hisoboti Yo'nalishi */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 10 }}>
+                3. Kamayib Qolgan Tovarlar (Kamchiliklar) Hisoboti Manzili
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                {[
+                  { value: 'both', title: 'Ikkalasiga ham (Tavsiya)', desc: 'Ham guruh/kanalga, ham do‘kon egasining shaxsiy Telegramiga' },
+                  { value: 'group', title: 'Faqat Guruh / Kanalga', desc: 'Shaxsiy chatni bezovta qilmasdan faqat guruhga jo‘natadi' },
+                  { value: 'user', title: 'Faqat Shaxsiy Chatga', desc: 'Faqat do‘kon egasining shaxsiy Telegramiga boradi' },
+                  { value: 'none', title: 'O‘chirib qo‘yish', desc: 'Telegramga kamchiliklar haqida hisobot yuborilmaydi' },
+                ].map((opt) => {
+                  const isChecked = formData.low_stock_report_target === opt.value;
+                  return (
+                    <div
+                      key={opt.value}
+                      onClick={() => setFormData({ ...formData, low_stock_report_target: opt.value })}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 12,
+                        border: isChecked ? '2px solid var(--primary)' : '1px solid var(--border-subtle)',
+                        background: isChecked ? 'var(--primary-light)' : 'var(--bg-surface)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: isChecked ? 'var(--primary)' : 'var(--text-primary)' }}>
+                          {opt.title}
+                        </span>
+                        <div
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: 999,
+                            border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                            background: isChecked ? 'var(--primary)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {isChecked && <Check size={11} color="white" />}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                        {opt.desc}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Card: Web Interfeys va Qo'shimcha Signallar */}
@@ -832,6 +920,35 @@ export default function Services() {
                   </span>
                   <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
                     O‘chirib qo‘yilsa, smena yopilganda hisobot web interfeysdagi bildirishnomalar oynasiga (qo‘ng‘iroqcha) tushmaydi, bu esa bildirishnomalar to‘lib ketishining oldini oladi.
+                  </span>
+                </div>
+              </label>
+
+              {/* Web Low-Stock Notification Toggle */}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.notify_web_low_stock}
+                  onChange={(e) => setFormData({ ...formData, notify_web_low_stock: e.target.checked })}
+                  style={{ width: 18, height: 18, accentColor: 'var(--primary)', marginTop: 2, cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Web interfeysga kamchiliklar (defitsit) bildirishnomasini chiqarish
+                  </span>
+                  <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                    O‘chirib qo‘yilsa, kamchilik tovarlar haqidagi ogohlantirish web interfeysdagi bildirishnomalar oynasiga (qo‘ng‘iroqcha) tushmaydi.
                   </span>
                 </div>
               </label>
@@ -1162,6 +1279,225 @@ export default function Services() {
                 <span>{saving ? 'Saqlanmoqda...' : 'Vaqtni Saqlash'}</span>
               </button>
             </div>
+          </div>
+
+          {/* Card: Low Stock Report Schedule */}
+          <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertTriangle size={18} style={{ color: 'var(--accent-rose, #ef4444)' }} />
+                  <span>Kamchiliklar (Defitsit) Tovarlar Hisoboti Jadvali</span>
+                </h3>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Oxirgi 30 kunda kamida 10 ta sotilgan va hozirda ombordagi qoldig‘i 5 yoki undan kam qolgan tovarlar bo‘yicha avtomatik xabarnoma jadvali
+                </div>
+              </div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 999,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: 'var(--accent-rose, #ef4444)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                <Clock size={15} />
+                <span>
+                  {formData.low_stock_frequency === 'daily' && `Har kuni, soat ${formData.low_stock_report_time.slice(0, 5)} da`}
+                  {formData.low_stock_frequency === 'weekly' && `Haftalik (${['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'][(formData.low_stock_weekday || 1) - 1]}), soat ${formData.low_stock_report_time.slice(0, 5)} da`}
+                  {formData.low_stock_frequency === 'monthly' && `Oylik (har oyning ${formData.low_stock_day_of_month}-kuni), soat ${formData.low_stock_report_time.slice(0, 5)} da`}
+                </span>
+              </div>
+            </div>
+
+            {/* Frequency Selection */}
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Yuborilish Davriyligi (Chastotasi)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                {[
+                  { value: 'daily', label: 'Har kuni', desc: 'Har kuni belgilangan vaqtda kamchiliklar tekshirilib yuboriladi' },
+                  { value: 'weekly', label: 'Haftada bir marta', desc: 'Haftaning ma’lum bir belgilangan kunida yuboriladi' },
+                  { value: 'monthly', label: 'Oyda bir marta', desc: 'Har oyning ma’lum bir belgilangan sanasida yuboriladi' },
+                ].map((freq) => {
+                  const isChecked = formData.low_stock_frequency === freq.value;
+                  return (
+                    <div
+                      key={freq.value}
+                      onClick={() => setFormData({ ...formData, low_stock_frequency: freq.value })}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        border: isChecked ? '2px solid var(--primary)' : '1px solid var(--border-subtle)',
+                        background: isChecked ? 'var(--primary-light)' : 'var(--bg-surface)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: isChecked ? 'var(--primary)' : 'var(--text-primary)' }}>
+                          {freq.label}
+                        </span>
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 999,
+                            border: `2px solid ${isChecked ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                            background: isChecked ? 'var(--primary)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {isChecked && <Check size={10} color="white" />}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                        {freq.desc}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Conditional Parameters: Weekday or Day of Month */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              {formData.low_stock_frequency === 'weekly' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Haftaning Qaysi Kuni?
+                  </label>
+                  <select
+                    value={formData.low_stock_weekday}
+                    onChange={(e) => setFormData({ ...formData, low_stock_weekday: parseInt(e.target.value, 10) })}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-card)',
+                      background: 'var(--bg-input)',
+                      color: 'var(--text-primary)',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      outline: 'none',
+                    }}
+                  >
+                    <option value={1}>1 — Dushanba</option>
+                    <option value={2}>2 — Seshanba</option>
+                    <option value={3}>3 — Chorshanba</option>
+                    <option value={4}>4 — Payshanba</option>
+                    <option value={5}>5 — Juma</option>
+                    <option value={6}>6 — Shanba</option>
+                    <option value={7}>7 — Yakshanba</option>
+                  </select>
+                </div>
+              )}
+
+              {formData.low_stock_frequency === 'monthly' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Oyning Qaysi Sanasida? (1 — 31)
+                  </label>
+                  <select
+                    value={formData.low_stock_day_of_month}
+                    onChange={(e) => setFormData({ ...formData, low_stock_day_of_month: parseInt(e.target.value, 10) })}
+                    style={{
+                      width: '100%',
+                      padding: '11px 14px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-card)',
+                      background: 'var(--bg-input)',
+                      color: 'var(--text-primary)',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      outline: 'none',
+                    }}
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={d}>
+                        Har oyning {d}-kuni
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Time Picker */}
+              <div>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                  Yuborilish Soati
+                </label>
+                <input
+                  type="time"
+                  step="60"
+                  value={formData.low_stock_report_time.slice(0, 5)}
+                  onChange={(e) => setFormData({ ...formData, low_stock_report_time: e.target.value + ':00' })}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-card)',
+                    background: 'var(--bg-input)',
+                    color: 'var(--text-primary)',
+                    fontSize: 15,
+                    fontWeight: 700,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="btn btn-primary"
+                style={{ padding: '10px 24px', fontSize: 14, fontWeight: 700 }}
+              >
+                <Save size={16} />
+                <span>{saving ? 'Saqlanmoqda...' : 'Kamchiliklar Jadvalini Saqlash'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card: Low Stock Instant Trigger */}
+          <div className="glass-card" style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ maxWidth: 650 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={17} style={{ color: 'var(--accent-rose, #ef4444)' }} />
+                <span>Kamchiliklar Hisobotini Hozir Yuborish (Instant Trigger)</span>
+              </h3>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+                Rejadagi vaqtni kutmasdan, ayni daqiqada kamayib qolgan tovarlar tahlilini (so‘nggi 30 kunda 10+ sotilgan va qoldig‘i ≤5 bo‘lgan tovarlar) Telegramdagi belgilangan manzilga darhol jo‘natish.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSendLowStockReportNow}
+              disabled={sendingLowStockReportNow}
+              className="btn btn-secondary"
+              style={{
+                padding: '11px 20px',
+                fontSize: 13.5,
+                fontWeight: 700,
+                color: 'var(--accent-rose, #ef4444)',
+                border: '1px solid var(--accent-rose, #ef4444)',
+              }}
+            >
+              <Send size={16} />
+              <span>{sendingLowStockReportNow ? 'Yuborilmoqda...' : 'Kamchiliklar Hisobotini Hozir Yuborish'}</span>
+            </button>
           </div>
 
           {/* Card: Manual Instant Trigger */}

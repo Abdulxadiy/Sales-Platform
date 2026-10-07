@@ -261,6 +261,9 @@ export const authApi = {
       body: JSON.stringify({ login, old_password, new_password }),
     }),
 
+  passwordResetVerify: (token) =>
+    request('/auth/password-reset/verify/?token=' + encodeURIComponent(token)),
+
   passwordResetConfirm: (data) =>
     request('/auth/password-reset/confirm/', {
       method: 'POST',
@@ -398,6 +401,11 @@ export const tenantApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  sendLowStockReportNow: (data = {}) =>
+    request('/tenants/current/send-low-stock-report-now/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export const catalogApi = {
@@ -515,6 +523,10 @@ export const inventoryApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getDeficits: (search = '') => {
+    const q = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request(`/inventory/deficits/${q}`);
+  },
 };
 
 export const salesApi = {
@@ -562,6 +574,10 @@ export const salesApi = {
       method: 'DELETE',
     }),
 
+  getCounterpartySales: (counterpartyId, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/sales/counterparties/${counterpartyId}/sales/${qs ? '?' + qs : ''}`);
+  },
   getCounterpartyPayments: (counterpartyId, page = 1) =>
     request(`/sales/counterparties/${counterpartyId}/payments/?page=${page}`),
   recordDebtPayment: (counterpartyId, data) =>

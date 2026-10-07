@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
+  TrendingDown,
   DollarSign,
   Wallet,
   ShoppingBag,
@@ -680,6 +681,12 @@ export default function Dashboard() {
   // Visible ONLY to authenticated store owner
   // =========================================================================
   const kpi = data?.kpi || data || {};
+  const costUZS = kpi.total_cost_uzs !== undefined
+    ? Number(kpi.total_cost_uzs)
+    : Math.max(0, Number(kpi.total_sales_uzs || kpi.total_revenue_uzs || 0) - Number(kpi.net_profit_uzs || 0));
+  const costUSD = kpi.total_cost_usd !== undefined
+    ? Number(kpi.total_cost_usd)
+    : Math.max(0, Number(kpi.total_sales_usd || kpi.total_revenue_usd || 0) - Number(kpi.net_profit_usd || 0));
 
 
   return (
@@ -748,29 +755,34 @@ export default function Dashboard() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 16,
         }}
       >
-        {/* Card 1: Jami Tushum */}
+        {/* Card 1: Haqiqiy Tushum (Real receipts - Cash & Card) */}
         <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Jami Tushum
-              </span>
+              <div>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Haqiqiy Tushum
+                </span>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  Naqd & Karta (nasiyasiz)
+                </div>
+              </div>
               <div
                 style={{
                   width: 34,
                   height: 34,
                   borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(99, 102, 241, 0.12)',
+                  background: 'rgba(15, 118, 110, 0.14)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <TrendingUp size={16} color="var(--primary)" />
+                <TrendingUp size={16} color="#0f766e" />
               </div>
             </div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -791,30 +803,84 @@ export default function Dashboard() {
                   ? data.sales_chart.map((c) => Number(c.revenue_uzs || 1) / 1000 + 10)
                   : [12, 18, 15, 24, 21, 29, 35]
               }
-              color="#6366f1"
+              color="#0f766e"
             />
           </div>
         </div>
 
-        {/* Card 2: Sof Foyda */}
+        {/* Card 2: Nasiyaga Sotuv (Credit sales in selected period) */}
         <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Sof Foyda
-              </span>
+              <div>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Berilgan Nasiya
+                </span>
+                <div style={{ fontSize: 10, color: 'var(--accent-amber)', fontWeight: 600 }}>
+                  {kpi.debt_sales_count ? `${kpi.debt_sales_count} ta nasiya cheki` : 'Ushbu davrda'}
+                </div>
+              </div>
               <div
                 style={{
                   width: 34,
                   height: 34,
                   borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(16, 185, 129, 0.12)',
+                  background: 'rgba(245, 158, 11, 0.14)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <DollarSign size={16} color="var(--accent-emerald)" />
+                <Wallet size={16} color="var(--accent-amber)" />
+              </div>
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--accent-amber)' }}>
+              {loading && !data ? (
+                <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+              ) : (
+                formatUZS(kpi.debt_sales_uzs)
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+            <div style={{ fontSize: 13, color: 'var(--accent-amber)', fontWeight: 600 }}>
+              + {formatUSD(kpi.debt_sales_usd)}
+            </div>
+            <InlineCardSparkline
+              data={
+                data?.sales_chart && data.sales_chart.length > 0
+                  ? data.sales_chart.map((c) => Number(c.debt_sales_uzs || 1) / 1000 + 8)
+                  : [5, 10, 8, 14, 12, 19, 22]
+              }
+              color="#f59e0b"
+            />
+          </div>
+        </div>
+
+        {/* Card 3: Sof Foyda */}
+        <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Sof Foyda
+                </span>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  Daromad marjasi
+                </div>
+              </div>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(234, 179, 8, 0.14)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <DollarSign size={16} color="#eab308" />
               </div>
             </div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -831,54 +897,76 @@ export default function Dashboard() {
                   ? data.sales_chart.map((c) => Number(c.profit_uzs || 1) / 1000 + 8)
                   : [10, 14, 12, 19, 17, 25, 30]
               }
-              color="#10b981"
+              color="#eab308"
             />
           </div>
         </div>
 
-        {/* Card 3: Debitorlik Qarzlari (Nasiyalar) */}
+        {/* Card 4: Jami Chiqim (Total Costs / Expenses) */}
         <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Nasiya / Qarz Balansi
-              </span>
+              <div>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Jami Chiqim
+                </span>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  Tannarx & xarajatlar
+                </div>
+              </div>
               <div
                 style={{
                   width: 34,
                   height: 34,
                   borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(245, 158, 11, 0.12)',
+                  background: 'rgba(244, 63, 94, 0.14)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Wallet size={16} color="var(--accent-amber)" />
+                <TrendingDown size={16} color="#f43f5e" />
               </div>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--accent-amber)' }}>
-              {formatUZS(kpi.total_debt_uzs)}
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#f43f5e' }}>
+              {loading && !data ? (
+                <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+              ) : (
+                formatUZS(costUZS)
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              {formatUSD(kpi.total_debt_usd)}
+            <div style={{ fontSize: 13, color: 'var(--accent-rose)', fontWeight: 600 }}>
+              + {formatUSD(costUSD)}
             </div>
             <InlineCardSparkline
-              data={[18, 16, 22, 19, 15, 17, 14]}
-              color="#10b981"
+              data={
+                data?.sales_chart && data.sales_chart.length > 0
+                  ? data.sales_chart.map((c) => {
+                      const cSales = Number(c.total_sales_uzs || c.revenue_uzs || 0);
+                      const cProf = Number(c.profit_uzs || 0);
+                      return Math.max(1, (cSales - cProf) / 1000 + 5);
+                    })
+                  : [14, 18, 12, 16, 20, 15, 17]
+              }
+              color="#f43f5e"
             />
           </div>
         </div>
 
-        {/* Card 4: Sotuvlar Soni va O'rtacha Chek */}
+        {/* Card 5: Jami Savdo & Cheklar (Total Sales Turnover) */}
         <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Sotuvlar Soni / O‘rtacha
-              </span>
+              <div>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  Jami Savdo / Cheklar
+                </span>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  Aylanma (Tushum + Nasiya)
+                </div>
+              </div>
               <div
                 style={{
                   width: 34,
@@ -894,12 +982,12 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-              {kpi.sales_count || 0} ta chek
+              {formatUZS(kpi.total_sales_uzs || kpi.total_revenue_uzs)}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              O‘rtacha: {formatUZS(kpi.average_check_uzs)}
+              {kpi.sales_count || 0} ta chek {Number(kpi.total_sales_usd || 0) > 0 && `(+ ${formatUSD(kpi.total_sales_usd)})`}
             </div>
             <InlineCardSparkline
               data={
@@ -1000,7 +1088,18 @@ export default function Dashboard() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <CreditCard size={18} color="var(--accent-emerald)" />
+                    <CreditCard
+                      size={18}
+                      color={
+                        pm.method === 'CASH'
+                          ? 'var(--accent-emerald)'
+                          : pm.method === 'CARD'
+                          ? 'var(--primary)'
+                          : pm.method === 'DEBT'
+                          ? 'var(--accent-amber)'
+                          : 'var(--accent-cyan)'
+                      }
+                    />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>
                         {pm.method === 'CASH'
@@ -1008,20 +1107,39 @@ export default function Dashboard() {
                           : pm.method === 'CARD'
                           ? 'Bank Kartasi'
                           : pm.method === 'DEBT'
-                          ? 'Nasiya (Qarz)'
+                          ? 'Nasiya (Berilgan Qarz)'
+                          : pm.method === 'DEBT_COLLECTION'
+                          ? 'Undirilgan Nasiya (Qarz to‘lovi)'
                           : pm.method}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {pm.count} ta to‘lov
+                        {pm.count} ta {pm.method === 'DEBT' ? 'nasiya xaridi' : 'to‘lov'}
+                        {pm.method === 'DEBT' && (
+                          <span style={{ color: 'var(--accent-amber)', marginLeft: 4, fontWeight: 600 }}>
+                            (tushum emas)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: pm.method === 'DEBT' ? 'var(--accent-amber)' : 'var(--text-primary)',
+                      }}
+                    >
                       {formatUZS(pm.total_uzs)}
                     </div>
                     {Number(pm.total_usd) > 0 && (
-                      <div style={{ fontSize: 11, color: 'var(--accent-emerald)', fontWeight: 600 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: pm.method === 'DEBT' ? 'var(--accent-amber)' : 'var(--accent-emerald)',
+                          fontWeight: 600,
+                        }}
+                      >
                         + {formatUSD(pm.total_usd)}
                       </div>
                     )}
@@ -1071,6 +1189,11 @@ export default function Dashboard() {
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {c.sales_count || c.total_sales_count || 0} ta chek yopilgan
+                        {Number(c.debt_count || 0) > 0 && (
+                          <span style={{ color: 'var(--accent-amber)', marginLeft: 6, fontWeight: 600 }}>
+                            ({c.debt_count} ta nasiya)
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1081,6 +1204,12 @@ export default function Dashboard() {
                     {Number(c.total_amount_usd || 0) > 0 && (
                       <div style={{ fontSize: 11, color: 'var(--accent-emerald)', fontWeight: 600 }}>
                         + {formatUSD(c.total_amount_usd)}
+                      </div>
+                    )}
+                    {(Number(c.debt_amount_uzs || 0) > 0 || Number(c.debt_amount_usd || 0) > 0) && (
+                      <div style={{ fontSize: 10, color: 'var(--accent-amber)', fontWeight: 600, marginTop: 2 }}>
+                        Nasiya: {Number(c.debt_amount_uzs || 0) > 0 ? formatUZS(c.debt_amount_uzs) : ''}
+                        {Number(c.debt_amount_usd || 0) > 0 ? ` + ${formatUSD(c.debt_amount_usd)}` : ''}
                       </div>
                     )}
                   </div>
@@ -1136,13 +1265,25 @@ export default function Dashboard() {
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {Number(p.quantity_sold || p.total_quantity || 0).toLocaleString()} dona sotildi
+                      {Number(p.debt_quantity || 0) > 0 && (
+                        <span style={{ color: 'var(--accent-amber)', marginLeft: 6, fontWeight: 600 }}>
+                          ({Number(p.debt_quantity).toLocaleString()} dona nasiyaga)
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                  {p.currency === 'USD'
-                    ? formatUSD(p.revenue || p.total_revenue_usd)
-                    : formatUZS(p.revenue || p.total_revenue_uzs)}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-emerald)' }}>
+                    {p.currency === 'USD'
+                      ? formatUSD(p.revenue || p.total_revenue_usd)
+                      : formatUZS(p.revenue || p.total_revenue_uzs)}
+                  </div>
+                  {Number(p.debt_revenue || 0) > 0 && (
+                    <div style={{ fontSize: 11, color: 'var(--accent-amber)', fontWeight: 600, marginTop: 2 }}>
+                      Nasiya: {p.currency === 'USD' ? formatUSD(p.debt_revenue) : formatUZS(p.debt_revenue)}
+                    </div>
+                  )}
                 </div>
               </div>
             ))

@@ -18,10 +18,14 @@ import {
   Filter,
   CalendarDays,
   X,
+  ShoppingBag,
+  User,
+  Package,
+  Clock,
 } from 'lucide-react';
 import { salesApi } from '../api/client';
 import Modal from '../components/common/Modal';
-import InventraLogo from '../components/common/InventraLogo';
+import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -41,6 +45,7 @@ export default function Sales() {
   const [activeTab, setActiveTab] = useState('sales'); // 'sales' | 'counterparties' | 'b2b'
   const [salesList, setSalesList] = useState([]);
   const [counterparties, setCounterparties] = useState([]);
+  const [counterpartyFilter, setCounterpartyFilter] = useState('all'); // 'all' | 'debtors'
   const [b2bList, setB2BList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [salesFilters, setSalesFilters, resetSalesFilters] = usePersistedState(
@@ -85,6 +90,18 @@ export default function Sales() {
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [cpPaymentsHistory, setCpPaymentsHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Counterparty Purchases & Debts Detail Modal
+  const [cpDetailModalOpen, setCpDetailModalOpen] = useState(false);
+  const [selectedCpDetail, setSelectedCpDetail] = useState(null);
+  const [cpSalesData, setCpSalesData] = useState([]);
+  const [cpSalesSummary, setCpSalesSummary] = useState({ total_sales_count: 0, debt_sales_count: 0 });
+  const [loadingCpSales, setLoadingCpSales] = useState(false);
+  const [cpDetailTab, setCpDetailTab] = useState('debt_sales'); // 'debt_sales' | 'all_sales' | 'payments'
+  const [cpPurchasesSearch, setCpPurchasesSearch] = useState('');
+  const [counterpartySearch, setCounterpartySearch] = useState('');
+  const [cpDetailPayments, setCpDetailPayments] = useState([]);
+  const [loadingCpDetailPayments, setLoadingCpDetailPayments] = useState(false);
 
   // B2B Reject Modal
   const [b2bRejectModalOpen, setB2BRejectModalOpen] = useState(false);
@@ -256,6 +273,9 @@ export default function Sales() {
       toast.success('Qarz to‘lovi muvaffaqiyatli qabul qilindi!');
       setDebtModalOpen(false);
       loadData();
+      if (cpDetailModalOpen && selectedCpDetail && selectedCpDetail.id === selectedCp.id) {
+        handleOpenCounterpartyPurchases(selectedCp, cpDetailTab);
+      }
     } catch (err) {
       toast.error(err.message || 'To‘lovni qabul qilishda xatolik');
     } finally {
@@ -263,21 +283,40 @@ export default function Sales() {
     }
   };
 
-  // Open Debt History
-  const handleOpenDebtHistory = async (cp) => {
-    setSelectedCp(cp);
-    setCpPaymentsHistory([]);
-    setHistoryModalOpen(true);
-    setLoadingHistory(true);
+  // Open Counterparty Purchases & Debts Detail Modal
+  const handleOpenCounterpartyPurchases = async (cp, initialTab = 'debt_sales') => {
+    setSelectedCpDetail(cp);
+    setCpDetailTab(initialTab);
+    setCpPurchasesSearch('');
+    setCpDetailModalOpen(true);
+    setLoadingCpSales(true);
+    setLoadingCpDetailPayments(true);
     try {
-      const res = await salesApi.getCounterpartyPayments(cp.id);
-      const list = res.results || res;
-      setCpPaymentsHistory(Array.isArray(list) ? list : []);
+      const [salesRes, paymentsRes] = await Promise.all([
+        salesApi.getCounterpartySales(cp.id),
+        salesApi.getCounterpartyPayments(cp.id),
+      ]);
+      setCpSalesData(salesRes.sales || []);
+      setCpSalesSummary({
+        total_sales_count: salesRes.total_sales_count || 0,
+        debt_sales_count: salesRes.debt_sales_count || 0,
+      });
+      if (salesRes.counterparty) {
+        setSelectedCpDetail(salesRes.counterparty);
+      }
+      const payList = paymentsRes.results || paymentsRes;
+      setCpDetailPayments(Array.isArray(payList) ? payList : []);
     } catch {
-      toast.error('To‘lovlar tarixini yuklab bo‘lmadi');
+      toast.error('Mijoz xaridlari ma‘lumotlarini yuklab bo‘lmadi');
     } finally {
-      setLoadingHistory(false);
+      setLoadingCpSales(false);
+      setLoadingCpDetailPayments(false);
     }
+  };
+
+  // Open Debt History (redirects to the unified detail modal's payments tab)
+  const handleOpenDebtHistory = async (cp) => {
+    handleOpenCounterpartyPurchases(cp, 'payments');
   };
 
   // Accept B2B
@@ -396,6 +435,53 @@ export default function Sales() {
       return true;
     });
   }, [salesList, salesFilters]);
+
+  const totalDebtBalanceUZS = useMemo(() => {
+    return counterparties.reduce((sum, cp) => sum + Math.max(0, Number(cp.debt_balance_uzs || 0)), 0);
+  }, [counterparties]);
+
+  const totalDebtBalanceUSD = useMemo(() => {
+    return counterparties.reduce((sum, cp) => sum + Math.max(0, Number(cp.debt_balance_usd || 0)), 0);
+  }, [counterparties]);
+
+  const debtorCount = useMemo(() => {
+    return counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) > 0 || Number(cp.debt_balance_usd || 0) > 0).length;
+  }, [counterparties]);
+
+  const filteredCounterparties = useMemo(() => {
+    let list = counterparties;
+    if (counterpartyFilter === 'debtors') {
+      list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) > 0 || Number(cp.debt_balance_usd || 0) > 0);
+    }
+    if (!counterpartySearch.trim()) return list;
+    const q = counterpartySearch.toLowerCase().trim();
+    return list.filter((cp) =>
+      cp.name?.toLowerCase().includes(q) ||
+      cp.phone_number?.toLowerCase().includes(q) ||
+      cp.note?.toLowerCase().includes(q)
+    );
+  }, [counterparties, counterpartySearch, counterpartyFilter]);
+
+  const filteredCpPurchases = useMemo(() => {
+    if (!cpSalesData) return [];
+    let list = cpSalesData;
+    if (cpDetailTab === 'debt_sales') {
+      list = list.filter((s) => s.payment_type === 'debt');
+    }
+    if (!cpPurchasesSearch.trim()) return list;
+    const q = cpPurchasesSearch.toLowerCase().trim();
+    return list.filter((sale) => {
+      const matchesReceipt = String(sale.receipt_number || sale.id || '').toLowerCase().includes(q);
+      const matchesCashier = String(sale.sold_by_name || '').toLowerCase().includes(q);
+      const matchesItem = (sale.items || []).some((item) =>
+        item.product_name?.toLowerCase().includes(q) ||
+        item.product_variant_name?.toLowerCase().includes(q) ||
+        item.product_code?.toLowerCase().includes(q) ||
+        item.product_sku?.toLowerCase().includes(q)
+      );
+      return matchesReceipt || matchesCashier || matchesItem;
+    });
+  }, [cpSalesData, cpDetailTab, cpPurchasesSearch]);
 
   // Uzbek date formatter for day headers
   const formatUzbekDateHeader = (dateStr) => {
@@ -1007,101 +1093,362 @@ export default function Sales() {
 
       {/* Tab 2: Counterparties List */}
       {activeTab === 'counterparties' && (
-        <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '14px 20px' }}>Mijoz / Hamkor Nomi</th>
-                <th style={{ padding: '14px 16px' }}>Telefon Raqami</th>
-                <th style={{ padding: '14px 16px' }}>B2B Do‘kon Bog‘lanmasi</th>
-                <th style={{ padding: '14px 16px' }}>Nasiya Qarz (UZS)</th>
-                <th style={{ padding: '14px 16px' }}>Nasiya Qarz (USD)</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Amallar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Nasiya & Qarzdorlik Balansi Xulosasi (Debt Summary Cards) */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: 14,
+            }}
+          >
+            {/* Card 1: Jami Nasiya (UZS) */}
+            <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Umumiy Nasiya Qarz (UZS)
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Barcha mijozlar so‘mdagi qarzi
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(245, 158, 11, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Receipt size={17} color="#f59e0b" />
+                </div>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#f59e0b' }}>
+                {Math.round(totalDebtBalanceUZS).toLocaleString('uz-UZ')} UZS
+              </div>
+            </div>
+
+            {/* Card 2: Jami Nasiya (USD) */}
+            <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Umumiy Nasiya Qarz (USD)
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Barcha mijozlar dollardagi qarzi
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(234, 88, 12, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DollarSign size={17} color="#ea580c" />
+                </div>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#ea580c' }}>
+                ${totalDebtBalanceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+
+            {/* Card 3: Nasiyasi Bor Mijozlar */}
+            <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Qarzdor Mijozlar Soni
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Faol qarzi bor shaxslar
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(239, 68, 68, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <AlertTriangle size={17} color="var(--accent-rose)" />
+                </div>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {debtorCount} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>/ {counterparties.length} ta mijoz</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Search bar & filter pills for counterparties */}
+          <div
+            className="glass-card"
+            style={{
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 12,
+              background: 'var(--bg-card)',
+            }}
+          >
+            <div style={{ position: 'relative', flex: 1, minWidth: 260, maxWidth: 380 }}>
+              <Search
+                size={15}
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Mijoz nomi yoki telefon raqami bo‘yicha qidirish..."
+                value={counterpartySearch}
+                onChange={(e) => setCounterpartySearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px 8px 34px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* Filter Pills: All vs Only Debtors */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => setCounterpartyFilter('all')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid',
+                  borderColor: counterpartyFilter === 'all' ? 'var(--primary)' : 'var(--border-subtle)',
+                  background: counterpartyFilter === 'all' ? 'var(--primary-light)' : 'transparent',
+                  color: counterpartyFilter === 'all' ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                Barchasi ({counterparties.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCounterpartyFilter('debtors')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid',
+                  borderColor: counterpartyFilter === 'debtors' ? 'var(--accent-amber)' : 'var(--border-subtle)',
+                  background: counterpartyFilter === 'debtors' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+                  color: counterpartyFilter === 'debtors' ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>Faqat Qarzdorlar ({debtorCount})</span>
+              </button>
+            </div>
+
+            {counterpartySearch && (
+              <button
+                type="button"
+                onClick={() => setCounterpartySearch('')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Tozalash
+              </button>
+            )}
+            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+              Ko‘rsatilmoqda: <strong style={{ color: 'var(--text-primary)' }}>{filteredCounterparties.length}</strong> ta mijoz
+            </div>
+          </div>
+
+          <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <th style={{ padding: '14px 20px' }}>Mijoz / Hamkor Nomi</th>
+                  <th style={{ padding: '14px 16px' }}>Telefon Raqami</th>
+                  <th style={{ padding: '14px 16px' }}>B2B Do‘kon Bog‘lanmasi</th>
+                  <th style={{ padding: '14px 16px' }}>Nasiya Qarz (UZS)</th>
+                  <th style={{ padding: '14px 16px' }}>Nasiya Qarz (USD)</th>
+                  <th style={{ padding: '14px 20px', textAlign: 'right' }}>Amallar</th>
                 </tr>
-              ) : counterparties.length > 0 ? (
-                counterparties.map((cp) => {
-                  const debtUzs = Number(cp.debt_balance_uzs || 0);
-                  const debtUsd = Number(cp.debt_balance_usd || 0);
-                  const hasDebt = debtUzs > 0 || debtUsd > 0;
-                  return (
-                    <tr key={cp.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        <div>{cp.name}</div>
-                        {cp.note && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cp.note}</div>}
-                      </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
-                        {cp.phone_number || '—'}
-                      </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
-                        {cp.target_tenant_name ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
-                            <Building size={12} /> {cp.target_tenant_name}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      <td style={{ padding: '14px 16px', fontWeight: 700, color: debtUzs > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
-                        {debtUzs.toLocaleString()} UZS
-                      </td>
-                      <td style={{ padding: '14px 16px', fontWeight: 700, color: debtUsd > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
-                        ${debtUsd.toFixed(2)}
-                      </td>
-                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: 6 }}>
-                          <button
-                            onClick={() => handleOpenDebtPayment(cp)}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: 'var(--radius-xs)',
-                              border: 'none',
-                              background: 'var(--primary)',
-                              color: 'var(--primary-foreground)',
-                              fontSize: 12,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            <CreditCard size={13} />
-                            <span>Qarz To‘lash</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenDebtHistory(cp)}
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 'var(--radius-xs)',
-                              border: '1px solid var(--border-card)',
-                              background: 'transparent',
-                              color: 'var(--text-secondary)',
-                              fontSize: 12,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            <History size={13} />
-                            <span>Tarix</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Mijozlar topilmadi</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  </tr>
+                ) : filteredCounterparties.length > 0 ? (
+                  filteredCounterparties.map((cp) => {
+                    const debtUzs = Number(cp.debt_balance_uzs || 0);
+                    const debtUsd = Number(cp.debt_balance_usd || 0);
+                    const hasDebt = debtUzs > 0 || debtUsd > 0;
+                    return (
+                      <tr
+                        key={cp.id}
+                        style={{
+                          borderBottom: '1px solid var(--border-subtle)',
+                          transition: 'background var(--transition-fast)',
+                        }}
+                      >
+                        <td
+                          onClick={() => handleOpenCounterpartyPurchases(cp, 'debt_sales')}
+                          style={{
+                            padding: '14px 20px',
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                          }}
+                          title="Nasiya va xaridlar tafsilotini ko‘rish uchun bosing"
+                        >
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: 'var(--primary)', borderBottom: '1px dashed var(--primary)' }}>
+                              {cp.name}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                background: 'var(--bg-chip)',
+                                color: 'var(--text-secondary)',
+                              }}
+                            >
+                              Xaridlar
+                            </span>
+                          </div>
+                          {cp.note && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{cp.note}</div>}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                          {cp.phone_number || '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                          {cp.target_tenant_name ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontSize: 12, fontWeight: 700 }}>
+                              <Building size={12} /> {cp.target_tenant_name}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontWeight: 700, color: debtUzs > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
+                          {debtUzs.toLocaleString()} UZS
+                        </td>
+                        <td style={{ padding: '14px 16px', fontWeight: 700, color: debtUsd > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
+                          ${debtUsd.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: 6 }}>
+                            <button
+                              onClick={() => handleOpenCounterpartyPurchases(cp, 'debt_sales')}
+                              style={{
+                                padding: '6px 11px',
+                                borderRadius: 'var(--radius-xs)',
+                                border: '1px solid var(--border-card)',
+                                background: 'var(--bg-card)',
+                                color: 'var(--text-primary)',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                              }}
+                              title="Nasiya tovarlari va xaridlar tarixi"
+                            >
+                              <ShoppingBag size={13} color="var(--accent-amber)" />
+                              <span>Xaridlar</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenDebtPayment(cp)}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: 'var(--radius-xs)',
+                                border: 'none',
+                                background: 'var(--primary)',
+                                color: 'var(--primary-foreground)',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              <CreditCard size={13} />
+                              <span>Qarz To‘lash</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenDebtHistory(cp)}
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: 'var(--radius-xs)',
+                                border: '1px solid var(--border-card)',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                              title="To‘lovlar tarixi"
+                            >
+                              <History size={13} />
+                              <span>Tarix</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                      {counterpartySearch ? 'Qidiruv bo‘yicha mijozlar topilmadi' : 'Mijozlar topilmadi'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1204,137 +1551,76 @@ export default function Sales() {
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
         ) : selectedSaleDetail ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Printable Receipt Layout */}
-            <div
-              id="printable-receipt"
-              style={{
-                padding: 16,
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-card)',
-                border: '1px dashed var(--border-card)',
-                fontSize: 13,
-              }}
-            >
-              <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--border-subtle)', paddingBottom: 12, marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}>
-                  <InventraLogo size={28} showBadge={false} />
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
-                  SAVDO KVITANSIYASI
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>
-                  Chek #{selectedSaleDetail.receipt_number || selectedSaleDetail.id}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(selectedSaleDetail.created_at).toLocaleString('uz-UZ')}</div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12, fontSize: 12 }}>
-                <div><span style={{ color: 'var(--text-muted)' }}>Kassir:</span> <strong style={{ color: 'var(--text-primary)' }}>{selectedSaleDetail.sold_by_name || 'Kassir'}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)' }}>To‘lov turi:</span> <strong style={{ color: 'var(--text-primary)', textTransform: 'uppercase' }}>{selectedSaleDetail.payment_type || 'Naqd'}</strong></div>
-                <div><span style={{ color: 'var(--text-muted)' }}>Mijoz:</span> <strong style={{ color: 'var(--text-primary)' }}>{selectedSaleDetail.counterparty_name || 'Oddiy mijoz'}</strong></div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Holat:</span>{' '}
-                  <strong
-                    style={{
-                      color:
-                        (selectedSaleDetail.status || '').toLowerCase() === 'completed'
-                          ? 'var(--accent-emerald)'
-                          : (selectedSaleDetail.status || '').toLowerCase() === 'partially_voided'
-                          ? 'var(--accent-amber)'
-                          : 'var(--accent-rose)',
-                    }}
-                  >
-                    {(selectedSaleDetail.status || '').toLowerCase() === 'completed'
-                      ? 'Bajarildi'
-                      : (selectedSaleDetail.status || '').toLowerCase() === 'partially_voided'
-                      ? 'Qisman bekor qilingan'
-                      : (selectedSaleDetail.status || '').toLowerCase() === 'voided'
-                      ? 'Bekor qilingan'
-                      : selectedSaleDetail.status}
-                  </strong>
-                </div>
-              </div>
-
-              {/* Items in receipt */}
-              {(() => {
-                const canVoidReceipt = ['completed', 'partially_voided'].includes(
-                  (selectedSaleDetail.status || '').toLowerCase()
-                );
-                return (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 14 }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                        <th style={{ padding: '6px 0' }}>Tovar</th>
-                        <th style={{ padding: '6px 0', textAlign: 'center' }}>Soni</th>
-                        <th style={{ padding: '6px 0', textAlign: 'right' }}>Narxi</th>
-                        <th style={{ padding: '6px 0', textAlign: 'right' }}>Jami</th>
-                        {canVoidReceipt && <th style={{ padding: '6px 0', textAlign: 'right' }}>Amal</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(selectedSaleDetail.items || []).map((it) => {
-                        const itStatus = (it.status || '').toLowerCase();
-                        const isVoided = itStatus === 'voided' || (it.voided_quantity && it.voided_quantity >= it.quantity);
-                        const isPartiallyVoided = itStatus === 'partially_voided' || (it.voided_quantity > 0 && it.voided_quantity < it.quantity);
-                        const canVoidItem = canVoidReceipt && !isVoided;
-
-                        return (
-                          <tr key={it.id} style={{ borderBottom: '1px solid var(--border-subtle)', opacity: isVoided ? 0.45 : 1 }}>
-                            <td style={{ padding: '8px 0', color: 'var(--text-primary)' }}>
-                              <div>{it.product_name || 'Tovar'}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{it.product_variant_name}</div>
-                              {isVoided && <span style={{ fontSize: 10, color: 'var(--accent-rose)', fontWeight: 700 }}>(TO‘LIQ BEKOR QILINGAN)</span>}
-                              {isPartiallyVoided && <span style={{ fontSize: 10, color: 'var(--accent-amber)', fontWeight: 600 }}>({it.voided_quantity} ta qaytarilgan)</span>}
-                            </td>
-                            <td style={{ padding: '8px 0', textAlign: 'center', color: 'var(--text-primary)' }}>{it.quantity}</td>
-                            <td style={{ padding: '8px 0', textAlign: 'right', color: 'var(--text-secondary)' }}>{Number(it.unit_price).toLocaleString()}</td>
-                            <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>{Number(it.total_price).toLocaleString()}</td>
-                            {canVoidReceipt && (
-                              <td style={{ padding: '8px 0', textAlign: 'right' }}>
-                                {canVoidItem && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenVoidItem(it)}
-                                    title="Faqat ushbu tovarni yoki uning bir qismini bekor qilish"
-                                    style={{
-                                      padding: '3px 8px',
-                                      borderRadius: 4,
-                                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                                      background: 'rgba(239, 68, 68, 0.08)',
-                                      color: 'var(--accent-rose)',
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    Bekor qilish
-                                  </button>
-                                )}
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                );
-              })()}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--border-subtle)', paddingTop: 10 }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>JAMI SUMMA:</span>
-                <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--primary)' }}>
-                  {Number(selectedSaleDetail.total_amount || 0).toLocaleString()} {selectedSaleDetail.currency || 'UZS'}
-                </span>
-              </div>
+            {/* Authentic Printable Thermal Receipt */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <ReceiptSlip id="printable-receipt" sales={[selectedSaleDetail]} />
             </div>
 
-            {/* Modal Bottom Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+            {/* Void Items Action List (Web Only) */}
+            {['completed', 'partially_voided'].includes((selectedSaleDetail.status || '').toLowerCase()) && (
+              <div
+                className="no-print"
+                style={{
+                  marginTop: 6,
+                  padding: 12,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  Tovarlarni qisman bekor qilish / qaytarish:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(selectedSaleDetail.items || []).map((it) => {
+                    const itStatus = (it.status || '').toLowerCase();
+                    const isVoided = itStatus === 'voided' || (it.voided_quantity && it.voided_quantity >= it.quantity);
+                    if (isVoided) return null;
+                    return (
+                      <div
+                        key={it.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: 12,
+                          padding: '4px 0',
+                          borderBottom: '1px solid var(--border-subtle)',
+                        }}
+                      >
+                        <span style={{ color: 'var(--text-primary)' }}>
+                          {it.product_name || 'Tovar'} ({it.quantity} ta)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenVoidItem(it)}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: 4,
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            color: 'var(--accent-rose)',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Bekor qilish
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Bottom Actions (Web Only) */}
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => printReceiptSlip('printable-receipt')}
                 style={{
-                  padding: '9px 16px',
+                  padding: '9px 18px',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-card)',
                   background: 'var(--bg-card)',
@@ -1639,49 +1925,447 @@ export default function Sales() {
         </form>
       </Modal>
 
-      {/* Modal 6: Debt Payment History */}
-      <Modal isOpen={historyModalOpen} onClose={() => setHistoryModalOpen(false)} title={`To‘lovlar Tarixi — ${selectedCp?.name}`} maxWidth={620}>
+      {/* Modal 6: Customer Purchases & Debt History */}
+      <Modal
+        isOpen={cpDetailModalOpen}
+        onClose={() => setCpDetailModalOpen(false)}
+        title={`Mijoz Nasiya & Xarid Tarixi — ${selectedCpDetail?.name || ''}`}
+        maxWidth={900}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {loadingHistory ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
-          ) : cpPaymentsHistory.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Sana</th>
-                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Qabul qildi</th>
-                    <th style={{ padding: '10px 14px' }}>Izoh</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>Summa</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cpPaymentsHistory.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                        {new Date(p.paid_at).toLocaleString('uz-UZ')}
-                      </td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {p.recorded_by_name || 'Kassir'}
-                      </td>
-                      <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{p.note || '—'}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>
-                        +{Number(p.amount).toLocaleString()} {p.currency}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Customer Summary Card */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 12,
+              padding: 14,
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-card)',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Mijoz Ma‘lumotlari
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
+                {selectedCpDetail?.name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, fontFamily: 'monospace' }}>
+                {selectedCpDetail?.phone_number || 'Telefon kiritilmagan'}
+              </div>
+              {selectedCpDetail?.note && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, fontStyle: 'italic' }}>
+                  {selectedCpDetail.note}
+                </div>
+              )}
             </div>
-          ) : (
-            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>To‘lovlar tarixi mavjud emas</div>
-          )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Nasiya Qarzi (UZS)
+              </div>
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                  marginTop: 3,
+                }}
+              >
+                {Number(selectedCpDetail?.debt_balance_uzs || 0).toLocaleString()} UZS
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Joriy so‘m balansi
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Nasiya Qarzi (USD)
+              </div>
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                  marginTop: 3,
+                }}
+              >
+                ${Number(selectedCpDetail?.debt_balance_usd || 0).toFixed(2)}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Joriy dollar balansi
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCp(selectedCpDetail);
+                  setPaymentAmount('');
+                  setPaymentCurrency('UZS');
+                  setPaymentNote('');
+                  setDebtModalOpen(true);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '9px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: 'none',
+                  background: 'var(--primary)',
+                  color: 'var(--primary-foreground)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <CreditCard size={14} />
+                <span>Qarz To‘lash</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tab buttons */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              borderBottom: '1px solid var(--border-subtle)',
+              paddingBottom: 8,
+            }}
+          >
             <button
               type="button"
-              onClick={() => setHistoryModalOpen(false)}
-              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+              onClick={() => setCpDetailTab('debt_sales')}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: cpDetailTab === 'debt_sales' ? 'var(--primary)' : 'var(--bg-chip)',
+                color: cpDetailTab === 'debt_sales' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <ShoppingBag size={13} />
+              <span>Nasiya Xaridlari</span>
+              <span
+                style={{
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)',
+                  background: cpDetailTab === 'debt_sales' ? 'rgba(255,255,255,0.25)' : 'var(--bg-card)',
+                  fontSize: 11,
+                }}
+              >
+                {cpSalesSummary.debt_sales_count}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCpDetailTab('all_sales')}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: cpDetailTab === 'all_sales' ? 'var(--primary)' : 'var(--bg-chip)',
+                color: cpDetailTab === 'all_sales' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Receipt size={13} />
+              <span>Barcha Xaridlar</span>
+              <span
+                style={{
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)',
+                  background: cpDetailTab === 'all_sales' ? 'rgba(255,255,255,0.25)' : 'var(--bg-card)',
+                  fontSize: 11,
+                }}
+              >
+                {cpSalesSummary.total_sales_count}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCpDetailTab('payments')}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: cpDetailTab === 'payments' ? 'var(--primary)' : 'var(--bg-chip)',
+                color: cpDetailTab === 'payments' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <History size={13} />
+              <span>To‘lovlar Tarixi</span>
+              <span
+                style={{
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)',
+                  background: cpDetailTab === 'payments' ? 'rgba(255,255,255,0.25)' : 'var(--bg-card)',
+                  fontSize: 11,
+                }}
+              >
+                {cpDetailPayments.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Search bar for items/sales */}
+          {(cpDetailTab === 'debt_sales' || cpDetailTab === 'all_sales') && (
+            <div style={{ position: 'relative' }}>
+              <Search
+                size={14}
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)',
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Tovar nomi, kodi yoki chek raqami bo‘yicha qidirish..."
+                value={cpPurchasesSearch}
+                onChange={(e) => setCpPurchasesSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px 8px 34px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Tab 1 & 2: Sales List */}
+          {(cpDetailTab === 'debt_sales' || cpDetailTab === 'all_sales') && (
+            <div>
+              {loadingCpSales ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
+              ) : filteredCpPurchases.length > 0 ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    maxHeight: '52vh',
+                    overflowY: 'auto',
+                    paddingRight: 4,
+                  }}
+                >
+                  {filteredCpPurchases.map((sale) => (
+                    <div
+                      key={sale.id}
+                      style={{
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-card)',
+                        background: 'var(--bg-card)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {/* Sale Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 10,
+                          padding: '10px 14px',
+                          background: 'var(--bg-input)',
+                          borderBottom: '1px solid var(--border-subtle)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 13, color: 'var(--text-primary)' }}>
+                            #{sale.receipt_number || sale.id}
+                          </span>
+                          {sale.payment_type === 'debt' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', fontSize: 11, fontWeight: 700 }}>
+                              Nasiya (Qarz)
+                            </span>
+                          ) : sale.payment_type === 'card' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.15)', color: 'var(--accent-blue)', fontSize: 11, fontWeight: 700 }}>
+                              Karta
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 4, background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)', fontSize: 11, fontWeight: 700 }}>
+                              Naqd
+                            </span>
+                          )}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+                            <Clock size={13} style={{ color: 'var(--text-muted)' }} />
+                            {new Date(sale.created_at).toLocaleString('uz-UZ')}
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+                            <User size={13} style={{ color: 'var(--text-muted)' }} />
+                            Sotuvchi: <strong style={{ color: 'var(--text-primary)' }}>{sale.sold_by_name || 'Kassir'}</strong>
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {sale.status === 'voided' && (
+                            <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(239, 68, 68, 0.15)', color: 'var(--accent-rose)', fontSize: 11, fontWeight: 700 }}>
+                              Bekor qilingan
+                            </span>
+                          )}
+                          {sale.status === 'partially_voided' && (
+                            <span style={{ padding: '2px 8px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)', fontSize: 11, fontWeight: 700 }}>
+                              Qisman qaytarilgan
+                            </span>
+                          )}
+                          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
+                            {Number(sale.total_amount).toLocaleString()} {sale.currency}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sale Items Table */}
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              <th style={{ padding: '8px 12px', width: 32 }}>№</th>
+                              <th style={{ padding: '8px 12px' }}>Tovar & Variant (Nima olgani)</th>
+                              <th style={{ padding: '8px 12px' }}>Kodi / Barcode</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'center' }}>Soni (Nechta)</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right' }}>Dona Narxi (Qaysi narxda)</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'right' }}>Jami Qiymat (Qanchaga)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(sale.items || []).map((it, idx) => {
+                              const displayName = it.product_name || 'Noma‘lum tovar';
+                              const variantSuffix = it.product_variant_name && it.product_variant_name !== it.product_name ? ` (${it.product_variant_name})` : '';
+                              return (
+                                <tr key={it.id || idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                  <td style={{ padding: '9px 12px', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                                  <td style={{ padding: '9px 12px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <Package size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                                      <span>{displayName}{variantSuffix}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '9px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 11 }}>
+                                    {it.product_code || it.product_sku || '—'}
+                                  </td>
+                                  <td style={{ padding: '9px 12px', textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                    {Number(it.quantity).toLocaleString()} {it.unit || 'dona'}
+                                    {Number(it.voided_quantity || 0) > 0 && (
+                                      <div style={{ fontSize: 10, color: 'var(--accent-rose)', fontWeight: 500 }}>
+                                        ({it.voided_quantity} qaytarildi)
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '9px 12px', textAlign: 'right', color: 'var(--text-secondary)' }}>
+                                    {Number(it.unit_price).toLocaleString()} {sale.currency}
+                                  </td>
+                                  <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, color: sale.payment_type === 'debt' ? 'var(--accent-amber)' : 'var(--text-primary)' }}>
+                                    {Number(it.total_price).toLocaleString()} {sale.currency}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-card)' }}>
+                  <ShoppingBag size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                  <div>{cpDetailTab === 'debt_sales' ? 'Nasiyaga olingan tovarlar mavjud emas' : 'Xaridlar topilmadi'}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 3: Debt Payments History */}
+          {cpDetailTab === 'payments' && (
+            <div>
+              {loadingCpDetailPayments ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
+              ) : cpDetailPayments.length > 0 ? (
+                <div style={{ overflowX: 'auto', maxHeight: '52vh' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-input)', color: 'var(--text-muted)', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Sana & Vaqt</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Qabul qildi (Kassir)</th>
+                        <th style={{ padding: '10px 14px' }}>Izoh</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>To‘langan Summa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cpDetailPayments.map((p) => (
+                        <tr key={p.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                            {new Date(p.paid_at).toLocaleString('uz-UZ')}
+                          </td>
+                          <td style={{ padding: '10px 14px', color: 'var(--text-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            {p.recorded_by_name || 'Kassir'}
+                          </td>
+                          <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{p.note || '—'}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>
+                            +{Number(p.amount).toLocaleString()} {p.currency}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-card)' }}>
+                  <History size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                  <div>Ushbu mijoz bo‘yicha to‘lovlar tarixi mavjud emas</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+            <button
+              type="button"
+              onClick={() => setCpDetailModalOpen(false)}
+              style={{
+                padding: '9px 20px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
             >
               Yopish
             </button>

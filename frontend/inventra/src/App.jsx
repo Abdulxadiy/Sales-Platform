@@ -56,6 +56,7 @@ export default function App() {
               <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/setup-account" element={<SetupAccount />} />
+              <Route path="/reset-password" element={<SetupAccount />} />
               <Route path="/accept-terms" element={<AcceptTerms />} />
 
               <Route

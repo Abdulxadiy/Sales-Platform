@@ -1,6 +1,5 @@
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.generics import ListCreateAPIView, RetrieveAPIView, ListAPIView
 from django.shortcuts import get_object_or_404
 
 from api.mixins import OwnerStaffOnlyAPIView
@@ -14,12 +13,28 @@ from api.v1.cashbox.serializers import (
 )
 
 
-class CashExpenseListCreateView(OwnerStaffOnlyAPIView):
+class _BaseCashboxAPIView(OwnerStaffOnlyAPIView):
+    def get_branch(self, request):
+        branch_id = request.query_params.get('branch_id') or (request.data.get('branch_id') if isinstance(request.data, dict) else None)
+        if branch_id:
+            from apps.tenants.models import Branch
+            return Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
+        if hasattr(request.user, 'employments'):
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+            if emp and emp.branch:
+                return emp.branch
+        return None
+
+
+class CashExpenseListCreateView(_BaseCashboxAPIView):
     """
     Kassadan xarajatlar ro'yxati va yangi xarajat kiritish.
     """
     def get(self, request):
+        branch = self.get_branch(request)
         expenses = CashExpense.objects.filter(tenant=self.tenant)
+        if branch:
+            expenses = expenses.filter(branch=branch)
         serializer = CashExpenseSerializer(expenses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -27,10 +42,12 @@ class CashExpenseListCreateView(OwnerStaffOnlyAPIView):
         serializer = CashExpenseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        branch = self.get_branch(request)
 
         try:
             expense = CashboxService.record_expense(
                 tenant=self.tenant,
+                branch=branch,
                 user=request.user,
                 amount=data['amount'],
                 currency=data.get('currency', CashExpense.CURRENCY_UZS),
@@ -46,12 +63,15 @@ class CashExpenseListCreateView(OwnerStaffOnlyAPIView):
             )
 
 
-class CashIncomeListCreateView(OwnerStaffOnlyAPIView):
+class CashIncomeListCreateView(_BaseCashboxAPIView):
     """
     Kassaga qo'shimcha kirimlar ro'yxati va yangi kirim kiritish.
     """
     def get(self, request):
+        branch = self.get_branch(request)
         incomes = CashIncome.objects.filter(tenant=self.tenant)
+        if branch:
+            incomes = incomes.filter(branch=branch)
         serializer = CashIncomeSerializer(incomes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -59,10 +79,12 @@ class CashIncomeListCreateView(OwnerStaffOnlyAPIView):
         serializer = CashIncomeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        branch = self.get_branch(request)
 
         try:
             income = CashboxService.record_income(
                 tenant=self.tenant,
+                branch=branch,
                 user=request.user,
                 amount=data['amount'],
                 currency=data.get('currency', CashIncome.CURRENCY_UZS),
@@ -78,12 +100,13 @@ class CashIncomeListCreateView(OwnerStaffOnlyAPIView):
             )
 
 
-class CurrentShiftStatusView(OwnerStaffOnlyAPIView):
+class CurrentShiftStatusView(_BaseCashboxAPIView):
     """
     Kassaning joriy smenadagi jonli holati (kutilgan pul, tushumlar, xarajatlar).
     """
     def get(self, request):
-        status_data = CashboxService.get_current_shift_status(self.tenant)
+        branch = self.get_branch(request)
+        status_data = CashboxService.get_current_shift_status(self.tenant, branch=branch)
         # Format decimals to strings for clean JSON
         formatted = {
             k: f"{v:.2f}" if hasattr(v, "quantize") else v
@@ -92,7 +115,7 @@ class CurrentShiftStatusView(OwnerStaffOnlyAPIView):
         return Response(formatted, status=status.HTTP_200_OK)
 
 
-class ShiftCloseView(OwnerStaffOnlyAPIView):
+class ShiftCloseView(_BaseCashboxAPIView):
     """
     Smenani yopish va Z-Hisobot yaratish.
     """
@@ -100,10 +123,12 @@ class ShiftCloseView(OwnerStaffOnlyAPIView):
         serializer = ShiftCloseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        branch = self.get_branch(request)
 
         try:
             report = CashboxService.close_shift(
                 tenant=self.tenant,
+                branch=branch,
                 user=request.user,
                 actual_cash_uzs=data['actual_cash_uzs'],
                 actual_cash_usd=data['actual_cash_usd'],
@@ -118,17 +143,20 @@ class ShiftCloseView(OwnerStaffOnlyAPIView):
             )
 
 
-class DailyCashReportListView(OwnerStaffOnlyAPIView):
+class DailyCashReportListView(_BaseCashboxAPIView):
     """
     O'tgan Z-Hisobotlar ro'yxati.
     """
     def get(self, request):
+        branch = self.get_branch(request)
         reports = DailyCashReport.objects.filter(tenant=self.tenant)
+        if branch:
+            reports = reports.filter(branch=branch)
         serializer = DailyCashReportSerializer(reports, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class DailyCashReportDetailView(OwnerStaffOnlyAPIView):
+class DailyCashReportDetailView(_BaseCashboxAPIView):
     """
     Alohida Z-Hisobot tafsilotlari.
     """

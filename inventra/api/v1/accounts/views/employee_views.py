@@ -23,11 +23,18 @@ class EmployeeHireView(TenantContextMixin, APIView):
         serializer = EmployeeHireSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        branch_id = serializer.validated_data.get('branch_id')
+        branch = None
+        if branch_id:
+            from apps.tenants.models import Branch
+            branch = Branch.objects.filter(pk=branch_id, tenant=tenant).first()
+
         try:
             employee = EmployeeService.hire(
                 target_user=serializer.validated_data.get('target_user'),
                 phone_number=serializer.validated_data.get('phone_number'),
                 tenant=tenant,
+                branch=branch,
                 hired_by=request.user,
                 position=serializer.validated_data.get('position', ''),
                 permissions=serializer.validated_data.get('permissions'),

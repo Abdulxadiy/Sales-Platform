@@ -67,6 +67,7 @@ class ProductService:
         image=None,
         variant_name: str = "Standart",
         code: str = None,
+        barcode: str = None,
     ) -> Product:
         """
         Create a Product together with its mandatory first
@@ -87,6 +88,7 @@ class ProductService:
             name=variant_name,
             sku=cls._next_sku(tenant),
             code=variant_code,
+            barcode=barcode.strip() if barcode and barcode.strip() else None,
             unit=unit,
             price_partner=price_partner,
             price_min=price_min,

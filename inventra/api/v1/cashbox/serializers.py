@@ -5,11 +5,14 @@ from apps.cashbox.models import DailyCashReport, CashExpense, CashIncome
 
 class CashExpenseSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.SerializerMethodField()
+    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
 
     class Meta:
         model = CashExpense
         fields = [
             'id',
+            'branch',
+            'branch_name',
             'amount',
             'currency',
             'category',
@@ -20,7 +23,7 @@ class CashExpenseSerializer(serializers.ModelSerializer):
             'note',
             'created_at',
         ]
-        read_only_fields = ['id', 'recorded_by', 'shift_report', 'created_at']
+        read_only_fields = ['id', 'branch', 'recorded_by', 'shift_report', 'created_at']
 
     def get_recorded_by_name(self, obj):
         name_parts = [obj.recorded_by.first_name, obj.recorded_by.last_name]
@@ -29,11 +32,14 @@ class CashExpenseSerializer(serializers.ModelSerializer):
 
 class CashIncomeSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.SerializerMethodField()
+    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
 
     class Meta:
         model = CashIncome
         fields = [
             'id',
+            'branch',
+            'branch_name',
             'amount',
             'currency',
             'source',
@@ -44,7 +50,7 @@ class CashIncomeSerializer(serializers.ModelSerializer):
             'note',
             'created_at',
         ]
-        read_only_fields = ['id', 'recorded_by', 'shift_report', 'created_at']
+        read_only_fields = ['id', 'branch', 'recorded_by', 'shift_report', 'created_at']
 
     def get_recorded_by_name(self, obj):
         name_parts = [obj.recorded_by.first_name, obj.recorded_by.last_name]
@@ -52,6 +58,7 @@ class CashIncomeSerializer(serializers.ModelSerializer):
 
 
 class ShiftCloseSerializer(serializers.Serializer):
+    branch_id = serializers.IntegerField(required=False, allow_null=True)
     actual_cash_uzs = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0.00'))
     actual_cash_usd = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0.00'))
     discrepancy_reason = serializers.CharField(required=False, allow_blank=True, default='')
@@ -60,6 +67,7 @@ class ShiftCloseSerializer(serializers.Serializer):
 
 class DailyCashReportSerializer(serializers.ModelSerializer):
     closed_by_name = serializers.SerializerMethodField()
+    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
     incomes = CashIncomeSerializer(many=True, read_only=True)
     expenses = CashExpenseSerializer(many=True, read_only=True)
 
@@ -67,6 +75,8 @@ class DailyCashReportSerializer(serializers.ModelSerializer):
         model = DailyCashReport
         fields = [
             'id',
+            'branch',
+            'branch_name',
             'date',
             'closed_by',
             'closed_by_name',

@@ -88,3 +88,12 @@ class ProductVariant(BaseModel):
     @property
     def currency(self) -> str:
         return self.product.category.currency
+
+    @property
+    def stock(self):
+        main_branch = self.tenant.get_main_branch() if self.tenant else None
+        if main_branch:
+            st = self.stocks.filter(branch=main_branch).first()
+            if st:
+                return st
+        return self.stocks.first()

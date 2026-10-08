@@ -2,6 +2,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 
 from api.permissions import HasEmployeePermission
 from apps.sales.models import Sale, SaleItem, Counterparty
@@ -13,6 +15,7 @@ from api.v1.sales.serializers import (
     SaleVoidSerializer,
     SaleItemVoidSerializer,
     SaleItemOutputSerializer,
+    PublicReceiptSerializer,
 )
 from ._base import SalesAPIView
 
@@ -25,7 +28,15 @@ class SaleListCreateView(SalesAPIView):
     }
 
     def get(self, request):
-        qs = Sale.objects.filter(tenant=self.tenant).select_related('sold_by', 'counterparty', 'b2b_target_tenant').prefetch_related('items__product_variant__product')
+        qs = Sale.objects.filter(tenant=self.tenant).select_related('sold_by', 'counterparty', 'b2b_target_tenant', 'branch').prefetch_related('items__product_variant__product')
+        branch_param = request.query_params.get('branch_id')
+        if branch_param:
+            qs = qs.filter(branch_id=branch_param)
+        elif hasattr(request.user, 'employments'):
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+            if emp and emp.branch:
+                qs = qs.filter(branch=emp.branch)
+
         status_param = request.query_params.get('status')
         if status_param:
             qs = qs.filter(status=status_param)
@@ -66,6 +77,16 @@ class SaleListCreateView(SalesAPIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        branch = None
+        branch_id = data.get('branch_id')
+        if branch_id:
+            from apps.tenants.models import Branch
+            branch = get_object_or_404(Branch, pk=branch_id, tenant=self.tenant)
+        elif hasattr(request.user, 'employments'):
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+            if emp and emp.branch:
+                branch = emp.branch
+
         counterparty = None
         cp_id = data.get('counterparty_id')
         if cp_id:
@@ -75,6 +96,7 @@ class SaleListCreateView(SalesAPIView):
             sales = SaleService.create_sale(
                 tenant=self.tenant,
                 user=request.user,
+                branch=branch,
                 items_data=data['items'],
                 payment_type=data.get('payment_type', 'cash'),
                 counterparty=counterparty,
@@ -141,3 +163,33 @@ class SaleItemVoidView(SalesAPIView):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(SaleItemOutputSerializer(item).data, status=status.HTTP_200_OK)
+
+
+class PublicReceiptDetailView(APIView):
+    """
+    Publicly accessible endpoint for customers/borrowers scanning the QR code
+    on their thermal paper receipt. No authentication required.
+    Strictly returns customer-facing receipt details without revealing
+    confidential cost_price or internal profit margins.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, receipt_number):
+        receipt_number = (receipt_number or "").strip()
+        if not receipt_number:
+            return Response({"detail": "Chek raqami ko'rsatilmadi."}, status=status.HTTP_400_BAD_REQUEST)
+
+        sale = (
+            Sale.objects.select_related("tenant", "branch", "sold_by", "counterparty")
+            .prefetch_related("items__product_variant__product")
+            .filter(receipt_number__iexact=receipt_number)
+            .first()
+        )
+
+        if not sale:
+            return Response({"detail": "Chek topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PublicReceiptSerializer(sale)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

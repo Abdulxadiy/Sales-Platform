@@ -33,13 +33,13 @@ class ShopTenantProductsView(APIView):
                 is_active=True,
                 product__is_active=True,
             )
-            .select_related("product", "product__category", "stock")
-            .prefetch_related("product__gallery_images")
+            .select_related("product", "product__category")
+            .prefetch_related("stocks", "product__gallery_images")
         )
 
         in_stock_only = request.query_params.get("in_stock", "false").lower() in ("true", "1")
         if in_stock_only:
-            variants = variants.filter(stock__quantity__gt=Decimal("0.000"))
+            variants = variants.filter(stocks__quantity__gt=Decimal("0.000"))
 
         serializer = ShopProductVariantSerializer(variants, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -55,7 +55,7 @@ class ShopTenantProductDetailView(APIView):
     def get(self, request, tenant_id, variant_id):
         tenant = get_object_or_404(Tenant, pk=tenant_id, is_active=True)
         variant = get_object_or_404(
-            ProductVariant.objects.select_related("product", "product__category", "stock").prefetch_related("product__gallery_images"),
+            ProductVariant.objects.select_related("product", "product__category").prefetch_related("stocks", "product__gallery_images"),
             pk=variant_id,
             tenant=tenant,
             is_active=True,

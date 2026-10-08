@@ -4,6 +4,7 @@ from api.v1.sales.views.sale_views import (
     SaleDetailView,
     SaleVoidView,
     SaleItemVoidView,
+    PublicReceiptDetailView,
 )
 from api.v1.sales.views.counterparty_views import (
     CounterpartyListCreateView,
@@ -26,6 +27,7 @@ from api.v1.sales.views.notification_views import (
 urlpatterns = [
     # Sales
     path('', SaleListCreateView.as_view(), name='sale-list-create'),
+    path('public/receipt/<str:receipt_number>/', PublicReceiptDetailView.as_view(), name='public-receipt-detail'),
     path('<int:pk>/', SaleDetailView.as_view(), name='sale-detail'),
     path('<int:pk>/void/', SaleVoidView.as_view(), name='sale-void'),
     path('items/<int:pk>/void/', SaleItemVoidView.as_view(), name='sale-item-void'),

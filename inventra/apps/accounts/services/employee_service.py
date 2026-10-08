@@ -53,6 +53,7 @@ class EmployeeService:
         hired_by: User,
         permissions=None,
         position: str = "",
+        branch = None,
         role: str = "staff",
     ) -> Employee:
         """
@@ -106,6 +107,7 @@ class EmployeeService:
         employee = Employee.objects.create(
             user=target_user,
             tenant=tenant,
+            branch=branch,
             position=position,
             is_active=True,
             hired_by=hired_by,

@@ -38,6 +38,13 @@ class Sale(BaseModel):
     ]
 
     receipt_number = models.CharField(max_length=32)
+    branch = models.ForeignKey(
+        'tenants.Branch',
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='sales',
+    )
     sold_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='sales'
     )

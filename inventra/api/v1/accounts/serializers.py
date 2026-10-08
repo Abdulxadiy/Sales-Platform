@@ -81,6 +81,7 @@ class EmployeeHireSerializer(serializers.Serializer):
         queryset=User.objects.all(), source="target_user", required=False
     )
     position = serializers.CharField(required=False, allow_blank=True, default="")
+    branch_id = serializers.IntegerField(required=False, allow_null=True)
     permission_ids = serializers.PrimaryKeyRelatedField(
         queryset=Permission.objects.all(), many=True, required=False, source="permissions"
     )
@@ -107,6 +108,7 @@ class EmployeeOutputSerializer(serializers.ModelSerializer):
 
     phone_number = serializers.CharField(source="user.phone_number", read_only=True)
     contact_phone = serializers.CharField(source="user.contact_phone", read_only=True, allow_null=True)
+    branch_name = serializers.CharField(source="branch.name", read_only=True, default=None)
 
     class Meta:
         model = Employee
@@ -116,6 +118,8 @@ class EmployeeOutputSerializer(serializers.ModelSerializer):
             "phone_number",
             "contact_phone",
             "tenant",
+            "branch",
+            "branch_name",
             "position",
             "is_active",
             "hired_at",

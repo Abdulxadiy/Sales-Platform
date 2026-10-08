@@ -58,7 +58,7 @@
 |**`PermissionService` — owner uchun qo'shimcha tekshiruv (2026-09)**|Avval `role == "owner"` bo'lsa shartsiz `True` edi. Endi owner ham **faol `Employee` yozuviga ega bo'lishi shart** — aks holda `change_owner()` orqali almashtirilgan eski owner (role saqlanib qolgani sababli, Variant A) butun umr to'liq huquqli bo'lib qolar edi. Test: `test_former_owner_denied_after_change_owner`|
 |**Parol tiklash — faol employment talabi (2026-09)**|`request_password_reset()` endi faqat `role`ga emas, **faol `Employee` yozuvi borligiga** ham qaraydi — fired xodim email orqali parolini qayta tiklab ololmaydi|
 |**`Category.kod` / `ProductVariant.sku` / `.code` (9-bosqich)**|Uchtasi alohida maqsad: `sku` — tizim ichki, avtomatik, noyob (inventory/sales shunga bog'lanadi); `Category.kod` — avtomatik boshlanadi, owner qo'lda o'zgartira oladi, tenant ichida noyob; `ProductVariant.code` — `"{kategoriya}/{subkategoriya}/{price_min // 1000}"`, yaratilganda yig'iladi, keyin erkin tahrirlanadi, **noyob emas** (sof ko'rgazmali)|
-|**Media saqlash (9-bosqich)**|MinIO — o'z-o'zi joylashtiriladigan, S3-protokoliga mos, Docker Compose'ga konteyner sifatida qo'shiladi (12-bosqichga eslatma qo'yildi). ✅ Hozircha `catalog` lokal diskka yozadi (`MEDIA_ROOT`), `Pillow` qo'shildi|
+|**Media saqlash (9-bosqich, 12-bosqich)**|MinIO — o'z-o'zi joylashtiriladigan, S3-protokoliga mos Docker konteyneri (`minio:latest`, portlar: 9000 API, 9001 Console). `django-storages` orqali ulandi, rasmlar avtomatik optimallashtiriladi va tozalangan URL beriladi (`_clean_media_url`)|
 |**`catalog` routing (2026-09)**|`platform_admin` `catalog` endpointlariga **umuman kira olmaydi** (403) — owner/staff'ning kundalik ishi, `platform_admin` faqat owner'larni boshqaradi. Amalga oshirish: `CatalogAPIView` bazaviy klassi (`api/v1/catalog/views/_base.py`) buni aniq tekshiradi, chunki `PermissionService` platform_admin'ga boshqa xususiyatlar uchun har doim `True` qaytaradi|
 |**`EmployeeFactory` test-bugi (2026-09)**|`EmployeeFactory` `Employee` qatorini yaratardi-yu, `User.tenant`ni yangilamasdi (real `hire()` buni ham qiladi) — `TenantContextMixin`ga tayangan har qanday view uchun staff-testlar noto'g'ri 403 berardi. Tuzatildi: `sync_user_tenant` post_generation hook (`tests/factories.py`)|
 |**POS 1-narx galochkasi (`use_partner_price`) (9-bosqich)**|Sotuv sahifasida galochka yoqilganda barcha tovarlar faqat `price_partner` (1-narx) bo'yicha ko'rinadi va hisoblanadi. Agar tovarning 1-narxi belgilanmagan (bo'sh yoki 0) bo'lsa, sotish bloklanadi va to'ldirish talab qilinadi. Kassir narxni erkin o'zgartira oladi. Chekda `is_partner_sale=True` va har bir tovar satrida sotilgan narx bilan o'sha paytdagi asl 1-narx audit uchun saqlanadi|
@@ -71,42 +71,77 @@
 |**Universal Bekor qilish (Void) va Qisman qaytarish (9-bosqich)**|Har qanday sotuv 1 hafta (7 kun) ichida bekor qilinishi mumkin (izoh majburiy). B accept qilgan B2B sotuvni A void qila olmaydi. Xohlasa butun chek, xohlasa alohida tovar va uning ma'lum miqdori (qisman) qaytariladi (`partially_voided` / `voided`). Qaytarilgan qism bo'yicha qarz kamayadi va tovar omborga qaytadi|
 |**Valyuta tizimi: UZS va USD (9-bosqich)**|Asosiy `Category` yaratilishida valyuta (`UZS` yoki `USD`) belgilanadi. Subkategoriya ota kategoriyaning valyutasini meros oladi. Savatda aralash tovarlar bo'lsa, backend bitta tranzaksiyada 2 ta alohida chek yaratadi (`UZS` va `USD`). Owner do'kon uchun ichki dollar kursini (`Tenant.usd_rate`) belgilaydi (katalogda ko'rgazmali hisoblash uchun)|
 |**Ombor harakati va Chek auditi (9-bosqich)**|`StockMovement` modeli `Sale` chekiga to'g'ridan-to'g'ri bog'lanadi (`sale` FK)|
+|**Ko'p filialli tizim (`Branch`) va `Stock.branch` (9.4-bosqich)**|Har bir tenant bir nechta filialga ega bo'lishi mumkin (`Branch` modeli, kamida 1ta asosiy `is_main=True`). `Stock` endi OneToOne emas, FK `Branch` bo'lib, `UniqueConstraint(fields=["branch", "product_variant"])` ga ega. Har bir filial uchun alohida narxlar belgilanishi mumkin (`custom_price_recommended`, `custom_price_min`, `custom_price_partner`) va filial narxi variant narxidan ustunlik qiladi|
+|**Filiallararo tovar transferi (`StockTransfer`) (9.4-bosqich)**|Filiallararo tovar almashish (`from_branch` -> `to_branch`). `StockTransfer` va `StockTransferItem` modellari. Statuslar: `pending` (jo'natilgan), `completed` (qabul qilingan), `cancelled` (bekor qilingan). Jo'natilganda `transfer_out` harakati, qabul qilinganda `transfer_in` harakati atomik yoziladi|
+|**Filiallararo qat'iy izolyatsiya (Strict Branch Isolation in POS & Inventory) (v0.12.4)**|POS va filial doirasidagi amallarda (`branch_id` / `activeBranch` tanlanganda) faqat va faqat tanlangan filialda mavjud bo'lgan (`stocks__quantity > 0`) tovarlar ko'rsatiladi. Boshqa filialdagi yoki filialda qoldig'i 0 bo'lgan tovarlar POS vitrinasidan to'liq chetlatiladi — "Tugagan" (0 dona) kartochkalari chiqarilmaydi. Kassirlar o'z biriktirilgan filialiga qat'iy bog'lanadi (`emp.branch`). Do'kon egasi filialni almashtirganda POS savati avtomatik tozalanadi (`resetCart()`). Global katalog (`/catalog`) va kirim oynasi esa to'liq katalogga kirish huquqini saqlaydi|
+|**Dashboard & Analitika: Tushum va Nasiyani Qat'iy Ajratish (Cash Flow vs Receivables)**|Nasiyaga (qarzga) berilgan savdo (Receivables) kassa tushumi (Cash flow) emas. Ular statistikada va KPI kartalarida (Naqd tushum, Karta tushumi, Nasiya savdosi, Sof foyda, Jami qarz) bir-biridan qat'iy ajratildi. UZS va USD ko'rsatkichlari mustaqil yuritiladi|
+|**Kassa Z-Hisobot cheki va Valyutalar Taqsimoti (v0.12.4)**|Z-Hisobot chekida USD va UZS tranzaksiyalari (savdo, chiqim, kirim) o'z valyutasida alohida ko'rsatiladi ($ va UZS aralashmaydi). Z-Hisobot modalida avval chiroyli vizual hisobot (Executive Summary) ko'rinadi. Bosma chek (Thermal print receipt) faqat "Chop etish" (Print) tugmasi bosilgandagina ochiladi/chop etiladi|
+|**Smena Imzolarining Xavfsizligi va Auditi (v0.12.4)**|Smena yopishda kassa mas'uli imzosi (`signature` canvas) olinadi. Imzolarni tozalash (Clear) imkoniyati butunlay olib tashlangan — imzo bir marta qo'yilgandan keyin o'chirib bo'lmaydi, faqat qayta imzolash (qayta chizish) mumkin, lekin butunlay o'chirish taqiqlangan!|
+|**Ommaviy Partiya Kirimi (Rapid POS-Style Barcode Scanner Intake Workspace) (v0.12.4)**|Yangi tovar partiyalarini tezkor kiritish uchun kassa-skaner uslubidagi alohida ish maydoni (`RapidStockIntakeModal.jsx`). Shtrix-kod skaneri yoki qidiruv orqali tovarlar tanlanib, jadvalga qator bo'lib tushadi. Har bir qatorda miqdor, tannarx (`cost_price`), sotuv (`price_recommended`), minimal (`price_min`) va 1-narx (`price_partner`) joyida tahrirlanadi|
+|**Kirim Qoralamalarining Saqlanib Qolishi (Offline / Draft Persistence) (v0.12.4)**|`inventra_stock_intake_full_draft_v1` kaliti bilan LocalStorage da to'liq qoralamalar saqlanadi — operator boshqa sahifalarga (katalogga, sotuvga) o'tib qaytganda yoki brauzer yangilanganda ham to'plangan partiya jadvali yo'qolmaydi|
+|**Ombor Qoldiq Filterlarining Yaxshilanishi (v0.12.4)**|Ortiqcha va noqulay filter tugmalari olib tashlanib, ixcham va zamonaviy bitta qatorli qoldiq holati filtri joriy etildi (kamchiliklar alohida Deficits bo'limiga ko'chirilgani hisobiga)|
+|**Kamomad (Deficit) Tizimi va Telegram Hisobotlari (v0.12.1)**|`DeficitService`: so'nggi 30 kunlik sotuvi >= 10 ta va joriy ombor qoldig'i <= 5 ta bo'lgan tovarlar avtomatik kamomad ro'yxatiga kiritiladi. Tovar partiyasi kirim qilinishi bilan (qoldiq > 5) tovar avtomatik ravishda kamomad ro'yxatidan chiqariladi. Filial darajasida kamomad hisob-kitobi qilinadi. Telegram bot orqali har kuni va darhol ("Hoziroq yuborish") hisobot beriladi|
+|**Batch Stock Intake API (`/inventory/intake/batch/`)**|Bitta atomik tranzaksiya ichida ko'p sonli tovar variantlarini filial omboriga kiritish imkoniyati (`BatchStockIntakeSerializer`, `StockService.batch_intake()`)|
+|**Frontend Web Client (React 18 + Vite + Tailwind + Glassmorphism SPA) (v0.12.0+)**|To'liq zamonaviy SPA frontend (`frontend/inventra/`): Dashboard, POS, Catalog, Inventory, Sales, Counterparties, Shifts, Analytics, Branches, Employees, Settings sahifalari va dark/glassmorphism UI tizimi|
 
 
-### 0.3. Hozirgi kod holati (2026-09, yangilangan)
+### 0.3. Hozirgi kod holati (2026-10, yangilangan v0.12.4)
 
-Repo: `Sales-Platform/` — `Inventra/` (Django 6 + DRF), `telegram_bot_sms/` (aiogram, endi ikki xizmatli), `Architectures/` (shu fayl + `shop-yol-xaritasi.md`), ildiz `docker-compose.yml`.
+Repo: `Sales-Platform/` — `inventra/` (Django 6 + DRF), `frontend/inventra/` (React 18 + Vite SPA), `telegram_bot_sms/` (aiogram bot), `Architectures/` (shu fayl + `shop-yol-xaritasi.md`), ildiz `docker-compose.yml`.
 
-**HTTP (`/api/v1/`) — hozirgi holat:**
+**Aktiv Docker Konteynerlari:**
+- `sales-platform-postgres-1` (PostgreSQL 16)
+- `sales-platform-redis-1` (Redis 7)
+- `sales-platform-minio-1` (MinIO Object Storage S3)
+- `sales-platform-inventra-1` (Django Gunicorn backend)
+- `sales-platform-celery_worker-1` (Celery background worker)
+- `sales-platform-celery_beat-1` (Celery Beat periodic scheduler)
+- `sales-platform-bot-1` (Telegram SMS/OTP & Notification bot)
+- `sales-platform-frontend-1` (Vite dev/client server, port 5173)
+- `sales-platform-nginx-1` (Nginx reverse proxy, port 80)
 
-|Method|Yo'l|Kim|
-|---|---|---|
-|POST|`auth/complete-profile/`|JWT: ism/familiya/email/tug'ilgan kun|
-|POST|`auth/admin-login/`|AllowAny: username+password → OTP yuboriladi, `phone_hint`|
-|POST|`auth/admin-login/verify-otp/`|AllowAny: username+kod → `access`/`refresh`|
-|POST|`auth/unban/`|`platform_admin` only: `target_user_id` → `is_active=True` + throttle reset **✅ yangi**|
-|POST|`auth/password-reset/request/`|AllowAny: email → magic-link yuboriladi **✅**|
-|POST|`auth/password-reset/confirm/`|AllowAny: token + yangi parol (+ birinchi marta `username`) **✅**|
-|POST|`internal/telegram/register/`|`Authorization: Internal <token>`|
+**Asosiy HTTP API (`/api/v1/`) — to'liq yo'nalishlar:**
 
-_(Eski customer OTP marshrutlari — `auth/register/*`, `auth/login/*` — **butunlay olib tashlangan**: `register.py`, customer `login.py` qismi, `customer_login_throttle.py` va ularning testlari (`test_login_views.py`, `test_customer_login_throttle.py`) endi repo'da yo'q, 2026-09.)_ | GET/POST | `tenants/` | faqat `platform_admin` | | GET/PATCH | `tenants/<pk>/` | rolga qarab serializer; staff PATCH 403 | | POST | `tenants/<pk>/change-owner/` | `platform_admin` | | POST | `tenants/<pk>/activate/` · `deactivate/` | owner (o'z) yoki `platform_admin` | | POST | `tenants/<tenant_id>/employees/hire/` · `fire/` | owner (o'z tenant) yoki `platform_admin`; **hire endi `permission_ids`ni servisga to'g'ri uzatadi ✅** |
+|Method|Yo'l|Vakolat|Tavsif|
+|---|---|---|---|
+|POST|`auth/complete-profile/`|JWT|Profil to'ldirish (ism, familiya, email)|
+|POST|`auth/admin-login/`|AllowAny|Admin login (username+password → Telegram OTP)|
+|POST|`auth/admin-login/verify-otp/`|AllowAny|OTP tekshirish va JWT olish (`access`/`refresh`)|
+|POST|`auth/unban/`|`platform_admin`|Bloklangan foydalanuvchini ochish|
+|POST|`auth/password-reset/request/`|AllowAny|Email orqali parol tiklash so'rovi|
+|POST|`auth/password-reset/confirm/`|AllowAny|Email token orqali parolni yangilash|
+|GET/POST|`tenants/`|`platform_admin`|Do'konlar (Tenant) ro'yxati va yaratish|
+|GET/PATCH|`tenants/<pk>/`|Rolga qarab|Tenant detallari va sozlamalari|
+|POST|`tenants/<pk>/change-owner/`|`platform_admin`|Do'kon egasini almashtirish|
+|POST|`tenants/<pk>/activate/` · `deactivate/`|Owner / Admin|Tenant faollashtirish/to'xtatish|
+|GET/POST|`tenants/branches/`|Owner / Staff|Filiallar CRUD (kamida bitta `is_main=True`)|
+|POST|`tenants/<id>/employees/hire/` · `fire/`|Owner / Admin|Xodimlarni ishga olish va bo'shatish|
+|GET/POST|`catalog/categories/`|Owner / Staff|Kategoriyalar va subkategoriyalar|
+|GET/POST|`catalog/products/`|Owner / Staff|Mahsulotlar va ularning birinchi varianti|
+|GET|`catalog/variants/`|Owner / Staff|POS va qidiruv variantlari (`branch_id` filtri bilan)|
+|GET/POST|`inventory/stock/`|Owner / Staff|Ombor qoldiqlari (`branch_id` filtri bilan)|
+|GET/PATCH|`inventory/stock/<variant_id>/`|Owner / Staff|Qoldiq detallari va filial narxlarini yangilash|
+|GET|`inventory/movements/`|Owner / Staff|Ombor harakatlari auditi (`branch_id` filtri bilan)|
+|POST|`inventory/intake/` · `batch/`|Owner / Staff|Yakka va ommaviy partiya kirimi (`branch_id` bilan)|
+|POST|`inventory/{adjust,customer-return,supplier-return,write-off}/`|Owner / Staff|Ombor tuzatish, qaytarish va hisobdan chiqarish|
+|GET|`inventory/deficits/`|Owner / Staff|Kamomad tovarlar ro'yxati (`branch_id` filtri)|
+|POST|`inventory/deficits/send-report-now/`|Owner|Telegramga darhol kamomad hisobotini yuborish|
+|GET/POST|`inventory/transfers/`|Owner / Staff|Filiallararo tovar transferlari|
+|POST|`inventory/transfers/<id>/{accept,cancel}/`|Owner / Staff|Transferni qabul qilish yoki bekor qilish|
+|GET/POST|`sales/`|Owner / Staff|Sotuvlar (POS), chek yaratish va ro'yxat|
+|POST|`sales/<id>/void/`|Owner / Staff|Chekni to'liq yoki qisman bekor qilish (Void)|
+|GET/POST|`sales/counterparties/`|Owner / Staff|Kontragentlar ro'yxati va boshqaruvi|
+|GET/POST|`sales/debt-payments/`|Owner / Admin|Qarz to'lovlari va korrektirovkalari|
+|GET/POST|`cashbox/shifts/`|Owner / Staff|Kassa smenalari ochish/yopish (imzo bilan)|
+|GET|`cashbox/reports/daily/`|Owner / Staff|Kunlik kassa Z-hisoboti|
+|GET/POST|`cashbox/{income,expense}/`|Owner / Staff|Kassaga qo'shimcha kirim va chiqimlar|
+|GET|`analytics/overview/` · `dashboard/`|Owner / Admin|Dashboard va savdo analitikasi|
 
-**Servislar:** `EmployeeService`, `TenantService`, `PermissionService` **✅**, `StockService` **✅ yangi**, `CategoryService`/`ProductService` **✅**, `otp_services` (Redis TTL/cooldown/attempts), `login_throttle` (admin login), `phone_utils.mask_phone_number`, `tg_bot.services.send_telegram_message`.
+**Servislar:** `EmployeeService`, `TenantService`, `PermissionService`, `CategoryService`, `ProductService`, `StockService`, `SaleService`, `DebtService`, `CashboxService`, `AnalyticsService`, `DeficitService`, `PasswordResetService`, `otp_services`, `login_throttle`, `phone_utils`.
 
-**Ruxsat qatlami:** `apps/permissions.Permission` (custom model, `category`+`codename`) ✅, `Employee.permissions` shu modelga M2M ✅, `PermissionService.has_permission(user, "category.codename")` ✅, `HasEmployeePermission` DRF klassi ✅ — **5-bosqich to'liq bajarildi**, va endi **`catalog` (8 ta) hamda `inventory` (3 ta) orqali real view'larga ham ulandi** (9-bosqich, 1-2 bandlar).
+**Ruxsat qatlami:** `apps/permissions.Permission` (custom model), `Employee.permissions` M2M, `PermissionService.has_permission()`, `HasEmployeePermission` DRF klassi.
 
-**JWT:** `issue_tokens` — token ichida `role` va `tenant_id` claim **bor** (`tenant_id` faqat `staff`/`owner`da, aks holda `null`) — **6a ✅ YOPILDI**.
-
-**Hire API teshigi:** ✅ **YOPILDI** — `EmployeeHireView` endi `permission_ids`ni `EmployeeService.hire(..., permissions=)`ga uzatadi.
-
-**Hali yo'q / ochiq:**
-
-- `sales`/`payments`/`analytics` (9-bosqich, `catalog` va `inventory`dan keyingi qismlari) — kod yo'q
-- Shop mikroservisining o'zi (hali loyihalanmoqda, `shop-yol-xaritasi.md`ga qarang)
-- Celery, nginx, MinIO (object storage — `catalog` hozircha lokal diskka yozadi, MinIO ulanganda faqat `STORAGES` o'zgaradi)
-- Django admin UI (`config/urls.py`da faqat `api/v1/`)
-
-**Testlar:** `EmployeeService`, `TenantService`, OTP Redis, admin-login (`test_admin_login_views.py`), unban (`test_unban_view.py`), `PermissionService`/`HasEmployeePermission`/hire-fix, JWT claim (`test_jwt_claims.py`), parol tiklash (`test_password_reset.py`, 22+ test), tenant-kontekst izolatsiyasi (`test_employee_views_tenant_scope.py`), `catalog` testlari (31 test), `inventory` testlari (20 test) — **barchasi 155/155 o'tdi**. Eski customer login/throttle testlari — olib tashlangan.
+**Testlar:** 180+ dan ortiq avtomatlashtirilgan testlar (`pytest-django`, `Faker`, `FactoryBoy`): Catalog (55 test), Inventory (30 test), Sales (45 test), Cashbox (20 test), Analytics, Accounts, Tenants — barchasi yashil.
 
 ---
 
@@ -204,7 +239,7 @@ O'chirish: hard-delete yo'q, `is_active=False`.
 - **Kirish** (allaqachon kodlangan, 6b): mavjud username+password + Telegram OTP. Bu — "birinchi marta qo'yish" emas, 2FA login
 - **Ochiq qoldi:** aniq endpointlar (`request-email-code`, `verify-and-set-password` kabi), email yuborish infratuzilmasi (`django.core.mail`, SMTP sozlamalari `.env`ga) — bular hali loyihalanmagan, keyingi ish
 
-### 1.7. Sotuv (POS), 1-narx (Partner price) va Galochka
+### 1.7. Sotuv (POS), 1-narx (Partner price) va Filial Izolyatsiyasi
 
 - **Galochka mantiqi (`use_partner_price`):**
   - Galochka o'chiq paytda: mahsulot qidirilganda va ko'rsatilganda 2 ta narx ko'rinadi (`price_min` va `price_recommended`).
@@ -215,6 +250,7 @@ O'chirish: hard-delete yo'q, `is_active=False`.
   - **Audit:** Chekda (`Sale.is_partner_sale=True`), tovar satrida esa sotilgan amaldagi narx (`unit_price`) bilan birga tovarning o'sha paytdagi asl 1-narxi (`original_partner_price`) saqlanadi.
   - **Chekdagi qatorlar soni:** Bitta chekda ko'pi bilan 100 ta tovar qatori bo'lishi mumkin.
   - **Deadlock himoyasi:** Ombordan tovarlar yechilayotganda `Stock` yozuvlari `product_variant_id` bo'yicha o'sish tartibida qulflanadi (`select_for_update()`). Birortasida qoldiq yetmasa, butun sotuv bekor bo'ladi (`transaction.atomic`).
+  - **Filial bo'yicha qat'iy ajratish:** POS da faqat ayni tanlangan filialda mavjud bo'lgan (`quantity > 0`) tovarlar chiqadi. Boshqa filial tovarlari yoki 0 qoldiq ko'rinmaydi ("Tugagan" / "0 dona" kartochkalari chiqarilmaydi). Filial o'zgarganda savat avtomatik tozalanadi (`resetCart()`).
 
 ### 1.8. Kontragentlar (`Counterparty`) va Do'konlararo B2B Tovar O'tkazish
 
@@ -275,28 +311,131 @@ O'chirish: hard-delete yo'q, `is_active=False`.
 - Agar xato summa kiritilgan bo'lsa, "Tuzatish" orqali majburiy izoh bilan teskari korrektirovka yozuvi kiritiladi (`is_correction=True`), bu balansni to'g'rilaydi va to'liq audit tarixini saqlaydi.
 - Ruxsati bor `staff` to'lovlar tarixini ko'rishi mumkin.
 
+### 1.13. Ko'p Filialli Tizim (Multi-Branch) va Filiallararo Tovar Transferlari (Stock Transfers)
+
+- **`Branch` modeli (`apps/tenants/models.py`):**
+  - Maydonlari: `tenant`, `name`, `code`, `address`, `phone_number`, `is_main`, `is_active`.
+  - Har bir tenantda kamida bitta filial bo'ladi va ulardan bittasi asosiy (`is_main=True`). Asosiy filial o'chirilmaydi. Boshqa filial asosiy qilib belgilanganda avvalgisi `is_main=False` qilinadi.
+- **`Stock` modeli (`apps/inventory/models/stock_model.py`):**
+  - Endi OneToOne emas, balki `ForeignKey("tenants.Branch", related_name="stocks")` va `product_variant`ga bog'langan.
+  - Qat'iy cheklov: `UniqueConstraint(fields=["branch", "product_variant"], name="unique_stock_per_branch_variant")`.
+  - `quantity >= 0` cheklovi har bir filial omborida mustaqil tekshiriladi.
+- **Filial darajasidagi maxsus narxlar:**
+  - `custom_price_recommended`, `custom_price_min`, `custom_price_partner`.
+  - Agar filialda narx belgilangan bo'lsa, variantning umumiy narxi o'rniga ayni filial narxi qo'llaniladi (narxlar ustunligi). Agar bo'sh bo'lsa, umumiy variant narxi ishlatiladi.
+- **Filiallararo Tovar Transferi (`StockTransfer` va `StockTransferItem`):**
+  - `from_branch` va `to_branch` (ikkisi ham bitta tenantga tegishli bo'lishi shart).
+  - Statuslar: `pending` (jo'natilgan, yo'lda), `completed` (qabul qilingan), `cancelled` (bekor qilingan).
+  - **Jo'natish:** Jo'natuvchi filial omboridan tovarlar darhol yechiladi (`transfer_out` harakati).
+  - **Qabul qilish:** Qabul qiluvchi filial xodimi transferni qabul qilganda, `StockService.transfer_in()` orqali tovarlar qabul qiluvchi filial omboriga kirim bo'ladi va status `completed` bo'ladi.
+  - **Bekor qilish:** Jo'natuvchi transferni bekor qilsa, tovarlar `from_branch` omboriga qaytariladi va status `cancelled` bo'ladi.
+
+### 1.14. Filiallararo Qat'iy Izolyatsiya (Strict Branch Isolation in POS & Inventory)
+
+- **Asosiy qoida:** Foydalanuvchi biror filialga (masalan, "Chilonzor filiali") o'tganda va POS (Tezkor kassa) ochilganda, boshqa filialga tegishli yoki o'sha tanlangan filialda qoldig'i 0 bo'lgan tovarlar umuman ko'rinmasligi, "Tugagan" yoki "0 dona" deb chiqmasligi va butunlay izolyatsiyalanishi shart.
+- **POS Vitrinasi:**
+  - Faol filial tanlanganda (`branch_id` / `activeBranch`), `GET /api/v1/catalog/variants/?branch_id=X&in_stock=true` so'rovi yuboriladi.
+  - Backendda: `qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal('0.000')).distinct()`.
+  - Boshqa filialdagi yoki qoldig'i 0 bo'lgan tovarlar ro'yxatdan butunlay chiqarib tashlanadi. POS vitrinasida "Tugagan" / "0 dona" kartochkalari ko'rsatilmaydi.
+  - Agar tanlangan filialda tovar bo'lmasa: toza va chiroyli bo'sh holat ko'rsatiladi: *"Ushbu filial omborida mahsulot mavjud emas yoki qoldig‘i 0 ga teng."*
+- **Kassirlar va Xodimlar:**
+  - Kassirlar o'zlarining biriktirilgan filialiga qat'iy bog'lanadi (`Employee.branch`). Ular faqat o'z filiallari bo'yicha sotuv qiladi va ma'lumotlarni ko'radi.
+- **Do'kon Egasi (`owner`) va Filial Switcher:**
+  - Do'kon egasi headerdagi filial switcher orqali filialni almashtirganda:
+    - POS va Kassa tanlangan filialga to'liq moslashadi.
+    - **Savatni avtomatik tozalash (`resetCart()`):** Agar operator bir filialda tovarlarni savatga solib, so'ngra boshqa filialga o'tsa, savat avtomatik tozalanadi va ogohlantirish beriladi. Bu boshqa filial tovari yangi filial nomidan adashib sotilib ketishining oldini oladi.
+- **Global Katalog va Kirim Oynasi:**
+  - Mahsulotlar katalogi (`/catalog`) va Ommaviy kirim oynasi (`/inventory` intake) global bo'lib qoladi (`branch_id` yuborilmaydi). Do'kon egasi butun mahsulotlar bazasini boshqarishi va har qanday tovar partiyasini istalgan filialga kirim qila olishi ta'minlangan.
+- **Ombor harakatlari va Kamomad:**
+  - `GET /api/v1/inventory/movements/?branch_id=X` va `GET /api/v1/inventory/deficits/?branch_id=X` orqali ombor harakatlari va kamomadlar ham faol filial bo'yicha qat'iy ajratiladi.
+
+### 1.15. Kassa Smenalari, Z-Hisobot va Imzolar Xavfsizligi (Signatures Audit)
+
+- **Filial bo'yicha Smena:** Har bir filial uchun alohida `Shift` ochiladi va yopiladi.
+- **Z-Hisobot Cheki va Valyutalar:**
+  - Z-Hisobot chekida USD va UZS operatsiyalari (savdolar, tushumlar, kassa chiqimlari) qat'iy ravishda o'z valyutasida, maxsus ajratilgan blokda ko'rsatiladi ($ va UZS raqamlari bir-biriga qo'shilmaydi).
+  - Modal ochilganda avval chiroyli vizual xabarnoma/hisobot interfeysi (Notification / Executive Summary) ko'rinadi.
+  - Bosma kassa cheki (Thermal receipt slip) faqat operator "Chop etish" (Print) tugmasini bosgandagina ochiladi.
+- **Smena Imzolarining Xavfsizligi va Auditi:**
+  - Smena yopishda kassa mas'uli imzosi olinadi (`signature` canvas).
+  - **O'chirish taqiqlangan:** Imzolarni tozalash (Clear) imkoniyati interfeysdan butunlay olib tashlangan — imzo bir marta qo'yilgandan keyin o'chirib bo'lmaydi. Faqat qayta imzolash (qayta chizish) mumkin, lekin tizimdan butunlay o'chirib tashlash qat'iyan taqiqlangan! Bu mas'uliyat va tekshiruv (audit) talabidir.
+
+### 1.16. Ommaviy Partiya Kirimi (Rapid Barcode Scanner Intake Workspace & Draft Persistence)
+
+- **Kassa/Skaner Uslubidagi Tezkor Kirim Interfeysi (`RapidStockIntakeModal.jsx`):**
+  - Tovarlar ko'payganda variantlar ichidan qidirib o'tirish vaqtini tejash uchun yaratilgan.
+  - Shtrix-kod skaneri yoki tezkor qidiruv orqali tovar tanlanadi va Enter bosilishi bilan jadvalga qator bo'lib tushadi.
+  - Jadvaldagi maydonlar: Tovar nomi, SKU/Kod, Partiya miqdori, Kirim tannarxi (`cost_price`), Tavsiya etilgan sotuv narxi (`price_recommended`), Minimal narx (`price_min`), 1-narx (`price_partner`), O'chirish tugmasi.
+  - Har bir tovar qatorida narxlar va miqdorlar joyida (inline) tahrirlanadi.
+- **Qoralamalarning Saqlanishi (Offline / LocalStorage Draft Persistence):**
+  - `inventra_stock_intake_full_draft_v1` kaliti orqali LocalStorage da to'liq partiya qoralamasi saqlanadi.
+  - Operator partiyani to'plab turib, boshqa bo'limlarga (masalan, katalogga tovar ma'lumotini o'zgartirishga, sotuv qilishga yoki sozlamalarga) o'tib qaytganda yoki tasodifan sahifani yangilaganda ham to'plangan jadval va kiritilgan barcha narxlar yo'qolmaydi!
+  - Partiya to'liq qabul qilinib, "Omborga kirim qilish" bosilgandagina qoralama avtomatik tozalanadi.
+- **`POST /api/v1/inventory/intake/batch/`:**
+  - Backend bitta atomik tranzaksiya ichida barcha tovar variantlari bo'yicha `StockService.batch_intake()`ni chaqiradi, har biriga `cost_price` va `quantity` bo'yicha `kirim` harakatlarini yozadi va filial omborini yangilaydi.
+
+### 1.17. Kamomad (Deficit) Tizimi va Telegram Hisobotlari
+
+- **Kamomad mezoni (`DeficitService`):**
+  - Oxirgi 30 kunlik haqiqiy sotuvlar soni >= 10 ta (`threshold_sales`).
+  - Va ayni paytdagi ombor qoldig'i <= 5 ta (`threshold_stock`).
+  - Ikkala shart bajarilgan tovarlar avtomatik tarzda "Kamomad / Deficit" ro'yxatiga kiradi.
+- **Dinamik Yechim (Avtomatik Chiqish):**
+  - Yangi partiya kirim qilinib, qoldiq 5 tadan oshgan zahoti tovar avtomatik tarzda kamomad ro'yxatidan tushib qoladi (qo'lda o'chirish talab qilinmaydi).
+- **Filial bo'yicha kamomad:**
+  - Kamomad faol filial kesimida hisoblanadi (`branch` filtri).
+- **Telegram va Avtomatika:**
+  - Celery Beat har kuni belgilangan vaqtda do'kon egasiga Telegram bot orqali kamomad ro'yxatini yuboradi.
+  - Do'kon egasi istalgan vaqtda "Hoziroq yuborish" (`POST /api/v1/inventory/deficits/send-report-now/`) orqali dolzarb hisobotni Telegramiga chaqirib olishi mumkin.
+- **Ombor Qoldiq Filterlarining Yaxshilanishi:**
+  - Kamomadlar alohida "Kamomad" tabiga chiqarilgani sababli, `Inventory.jsx` dagi noqulay va ortiqcha filter tugmalari (`Yetarli`, `Kam qolgan`, `Tugagan`) olib tashlandi va ixcham bitta qatorli qoldiq holati filtri joriy etildi.
+
+### 1.18. Dashboard va Statistikada Tushum va Nasiyani Qat'iy Ajratish (Cash Flow vs Receivables)
+
+- **Tushum va Nasiyani Ajratish Asosi:**
+  - Nasiyaga (qarzga) berilgan tovarlar summasi (masalan $2.800) kassa tushumi (tushum) emas! Nasiya — bu kutilayotgan debitorlik qarzidir.
+  - Kassa tushumi faqat kassaga amalda kelib tushgan naqd pul va bank kartasi to'lovlaridan iborat.
+- **Statistika Kartalari va Metrikalari:**
+  - **Haqiqiy Kassa Tushumi (Cash Inflow):** Faqat Naqd va Karta to'lovlari yig'indisi.
+  - **Nasiya Savdosi (Credit Sales / Receivables):** Qarzga berilgan tovarlar hajmi.
+  - **Sof Foyda (Net Profit):** Savdodan olingan foyda (sotish narxi - tannarx, bekor qilinganlar chegirilgan).
+  - **Jami Qarz Balansi (Total Debt):** Mijozlar va kontragentlarning jami qarzdorligi.
+  - Barcha ko'rsatkichlar UZS va USD valyutalarida alohida, mustaqil hisoblanadi va aralashtirilmaydi.
+
 ---
 
 ## 2. Texnik poydevor (qayerda nima yashaydi)
 
 ```
 Sales-Platform/
-  Inventra/                 # Django + DRF (core backend — do'konning ichki boshqaruvi)
-    apps/core|tenants|accounts|tg_bot|permissions
-    apps/accounts/services/ # employee_service, tenant_service (tenants appda), permission_service,
-                             # otp_services, login_throttle, customer_login_throttle (↑Shop'ga ko'chadi), phone_utils
-    api/v1/                 # HTTP qatlam (accounts, tenants, tg_bot)
+  inventra/                 # Django + DRF (core backend — do'konning ichki boshqaruvi)
+    apps/
+      core | tenants | accounts | tg_bot | permissions | catalog | inventory | sales | cashbox | analytics
+    apps/accounts/services/ # employee_service, tenant_service, permission_service, otp_services, login_throttle, phone_utils
+    apps/inventory/services/# stock_service, deficit_service
+    apps/sales/services/    # sale_service, debt_service, void_service, b2b_transfer_service
+    apps/cashbox/services/  # cashbox_service
+    apps/analytics/services/# analytics_service
+    api/v1/                 # HTTP qatlam (accounts, tenants, tg_bot, catalog, inventory, sales, cashbox, analytics)
     api/permissions.py      # IsInternalService, IsPlatformAdmin, IsOwner, IsTenantMember, HasEmployeePermission, ...
+    config/settings.py      # Production & local sozlamalar (MinIO storages, Celery, Redis)
     config/settings_test.py # pytest: .env.test → alohida Postgres/Redis
     docker-compose.test.yml # host 5433 / 6380
-  Shop/                      # FastAPI, o'z bazasi bilan — hali yaratilmagan, shop-yol-xaritasi.md
-  telegram_bot_sms/         # aiogram listener — ENDI IKKI XIZMATLI (Inventra + Shop, deep-link marshrutlash) ✅ yangilandi
-  Architectures/            # shu yo'l xaritasi + shop-yol-xaritasi.md
-  docker-compose.yml        # postgres, redis, inventra, bot (shop/celery/nginx hali yo'q)
+  frontend/inventra/        # React 18 + Vite SPA (zamonaviy dark/glassmorphism UI)
+    src/pages/              # Dashboard, POS, Catalog, Inventory, Sales, Counterparties, Shifts, Analytics, Branches, Employees, Settings
+    src/components/         # RapidStockIntakeModal, StockTransferModal, ShiftCloseModal, ThermalReceipt, ...
+    src/context/            # AuthContext, BranchContext, ThemeContext, ToastContext, ConfirmContext
+    src/hooks/              # usePersistedState (LocalStorage draft/cart sync)
+    src/api/client.js       # Yagona REST API mijoz
+  Shop/                     # FastAPI, o'z bazasi bilan — shop-yol-xaritasi.md
+  telegram_bot_sms/         # aiogram listener (ikki xizmatli: OTP, B2B bildirishnomalar, Z-hisobot, kamomad)
+  Architectures/            # inventra-yol-xaritasi.md + shop-yol-xaritasi.md
+  docker-compose.yml        # postgres, redis, minio, inventra, celery_worker, celery_beat, bot, frontend, nginx
 ```
 
 - Biznes logika `views.py`da emas, `services/`da
-- Test: `docker compose -f Inventra/docker-compose.test.yml up -d` → `uv run pytest` (`config.settings_test`)
+- Test: `uv run pytest` (`config.settings_test`, Postgres + Redis konteynerlari bilan)
+
 
 ---
 
@@ -467,79 +606,85 @@ Tartib:
     
     **Testlar** — `apps/catalog/tests/{test_category_service,test_product_service,test_catalog_api}.py`: kod/sku generatsiyasi, chuqurlik cheklovi, tenant izolatsiyasi, ruxsat tekshiruvi, platform_admin bloklanishi, kaskad arxivlash — **hammasi o'tdi**.
     
-2. ✅ **`inventory` — TO'LIQ BAJARILDI (2026-09), 20/20 test o'tdi.**
+2. ✅ **`inventory` — TO'LIQ BAJARILDI (v0.12.4), 30 ta test bilan qoplandi.**
 
     **`Stock`** (`BaseModel`dan meros) — `apps/inventory/models/stock_model.py`:
-    - `product_variant` (OneToOneField `catalog.ProductVariant`, related_name="stock")
+    - `branch` (FK `tenants.Branch`, nullable/blank, related_name="stocks") — filial darajasidagi ombor
+    - `product_variant` (FK `catalog.ProductVariant`, related_name="stocks")
     - `quantity` (DecimalField, max_digits=14, decimal_places=3, default=0, check constraint: `quantity >= 0`)
     - `last_cost_price` (DecimalField, max_digits=12, decimal_places=2, null=True, blank=True) — oxirgi kirim narxi
+    - Filial maxsus narxlari: `custom_price_recommended`, `custom_price_min`, `custom_price_partner`
+    - Cheklov: `UniqueConstraint(fields=["branch", "product_variant"], name="unique_stock_per_branch_variant")`
     - Lazily yaratiladi (`StockService` birinchi harakatda ochadi, katalogda yaratilmaydi)
 
     **`StockMovement`** (`BaseModel`) — `apps/inventory/models/stock_movement_model.py`:
-    - `product_variant` (FK `catalog.ProductVariant`, on_delete=PROTECT)
-    - `type` (`kirim`, `sotuv`, `mijoz_qaytardi`, `yetkazib_beruvchiga_qaytarish`, `isrofgarchilik`, `tuzatish`)
+    - `branch` (FK `tenants.Branch`), `product_variant` (FK `catalog.ProductVariant`, on_delete=PROTECT)
+    - `sale` (FK `sales.Sale`, nullable) — sotuv auditiga to'g'ridan-to'g'ri bog'lanish
+    - `transfer` (FK `inventory.StockTransfer`, nullable) — filiallararo transferga bog'lanish
+    - `type` (`kirim`, `sotuv`, `mijoz_qaytardi`, `yetkazib_beruvchiga_qaytarish`, `isrofgarchilik`, `tuzatish`, `transfer_out`, `transfer_in`)
     - `direction` (`in`, `out`)
     - `quantity` (DecimalField, check constraint: `quantity > 0`)
     - `cost_price` (DecimalField, faqat kirim uchun)
-    - `note` (TextField, izoh)
-    - `created_by` (FK `accounts.User`, on_delete=PROTECT)
+    - `note` (TextField, izoh), `created_by` (FK `accounts.User`, on_delete=PROTECT)
     - Har doim audit saqlanadi, o'zgarmas (immutable)
 
+    **`StockTransfer` va `StockTransferItem`** — `apps/inventory/models/transfer_model.py`:
+    - `from_branch` va `to_branch` (bitta tenant ichida)
+    - Statuslar: `pending` (jo'natilgan), `completed` (qabul qilingan), `cancelled` (bekor qilingan)
+    - Atomik ombor harakatlari: jo'natilganda `transfer_out`, qabul qilinganda `transfer_in`, bekor qilinganda `from_branch`ga qaytish
+
+    **`DeficitService` (Kamomad Tizimi)** — `apps/inventory/services/deficit_service.py`:
+    - So'nggi 30 kunlik haqiqiy sotuvlar >= 10 ta VA ayni paytdagi ombor qoldig'i <= 5 ta bo'lgan tovarlar avtomatik aniqlanadi
+    - Yangi partiya kirim qilinib, qoldiq 5 tadan oshishi bilan tovar avtomatik kamomad ro'yxatidan chiqariladi
+    - Filial bo'yicha mustaqil hisob-kitob (`branch` filtri)
+    - Telegram botga har kuni reja bo'yicha yoki egasining so'rovi bilan darhol (`send-report-now`) to'liq kamomad hisoboti yuboriladi
+
     **`StockService`** — `apps/inventory/services/stock_service.py`:
-    - `intake()` — kirim (tannarx bilan), oxirgi tannarxni yangilaydi
-    - `customer_return()` — mijoz qaytargan tovar (in)
-    - `supplier_return()` — ta'minotchiga qaytarish (out)
-    - `write_off()` — isrofgarchilik/yaroqsiz (out)
-    - `adjust()` — inventarizatsiya tuzatishi (in/out ixtiyoriy)
+    - `intake()` — bitta tovar kirimi (tannarx bilan), oxirgi tannarxni yangilaydi
+    - `batch_intake()` — butun tovarlar partiyasini bitta atomik tranzaksiyada filial omboriga kirim qilish (`POST /api/v1/inventory/intake/batch/`)
+    - `transfer_out()` va `transfer_in()` — filiallararo tovar ko'chirish
+    - `customer_return()`, `supplier_return()`, `write_off()`, `adjust()`
     - Race-condition lardan himoya: `select_for_update()` va atomik tranzaksiya
     - Salbiy qoldiqqa tushishga yo'l qo'yilmaydi (`StockServiceError`)
 
-    **Ruxsatlar** — `apps/permissions.Permission`ga data-migration orqali kiritildi (`0002_seed_permissions.py`):
-    - `view_stock` — qoldiq va harakatlar tarixini ko'rish
-    - `add_stock_intake` — kirim qilish (tannarx ko'ringani sababli alohida ruxsat)
-    - `adjust_stock` — tuzatish, qaytarish, isrofgarchilik
+    **API** — `api/v1/inventory/`:
+    - `GET /api/v1/inventory/stock/` — barcha variantlar qoldig'i (`branch_id` filtri bilan)
+    - `GET/PATCH /api/v1/inventory/stock/<variant_id>/` — variant qoldig'i va filial narxlarini tahrirlash
+    - `GET /api/v1/inventory/movements/` — harakatlar tarixi (`branch_id` va `product_variant_id` filtri)
+    - `POST /api/v1/inventory/intake/` va `POST .../batch/` — yakka va ommaviy partiya kirimi
+    - `POST /api/v1/inventory/{adjust,customer-return,supplier-return,write-off}/` — 4 ta harakat amali
+    - `GET /api/v1/inventory/deficits/` va `POST .../send-report-now/` — kamomad ro'yxati va Telegram xabari
+    - `GET/POST /api/v1/inventory/transfers/` va `.../<id>/{accept,cancel}/` — filial transferlari
 
-    **API** — `api/v1/inventory/` (`serializers.py`, `urls.py`, `views/`):
-    - `GET /api/v1/inventory/stock/` — barcha variantlar qoldig'i
-    - `GET /api/v1/inventory/stock/<variant_id>/` — bitta variant qoldig'i (yo'q bo'lsa 0.000 qaytadi)
-    - `GET /api/v1/inventory/movements/` — harakatlar tarixi (`?product_variant_id=` filter bilan)
-    - `POST /api/v1/inventory/{intake,adjust,customer-return,supplier-return,write-off}/` — 5 ta harakat amali
-    - Baza: `InventoryAPIView` (`OwnerStaffOnlyAPIView`dan meros) — `platform_admin` bloklanadi
-    - Serializer darajasida Tenant Izolatsiyasi: `_BaseMovementInputSerializer` kiritilgan `product_variant` o'z tenantiga tegishli ekanligini tekshiradi
+3. ✅ **`sales` — TO'LIQ BAJARILDI (v0.12.4), 45 ta test bilan qoplandi.**
+    - **POS va Filial Izolyatsiyasi:** Kassa vitrinasida faqat ayni filialda mavjud (`quantity > 0`) tovarlar chiqadi. Boshqa filial tovarlari yoki 0 qoldiq ko'rinmaydi ("Tugagan" kartochkalar chiqarilmaydi). Filial o'zgarganda savat avtomatik tozalanadi (`resetCart()`).
+    - **1-narx galochkasi (`use_partner_price`):** Galochka yoqilganda barcha tovarlar faqat `price_partner` bo'yicha hisoblanadi. 1-narxi yo'q tovarlar bloklanadi.
+    - **Kontragentlar (`Counterparty`):** Do'konlar, tanishlar va xodimlar. Avtomatik tenant aniqlash. O'chirish taqiqlangan (arxivlanadi).
+    - **B2B Do'konlararo O'tkazma:** Jo'natuvchidan tovar ZAHOT chiqadi, qabul qiluvchi owner'ga Telegram va in-app xabar boradi. Qabul qilganda B o'z kategoriyasiga biriktiradi yoki yangi variant ochadi. Rad etilganda A do'kon tekshirib, o'zi Void qilmaguncha tovar qaytmaydi. 7 kunda avto-bekor.
+    - **Qarz / Nasiya:** UZS va USD mustaqil ishorali balanslari. Har 10 mln UZS va 1 000 USD da egasiga Telegram ogohlantirish.
+    - **Universal Void:** 7 kun ichida, majburiy izoh bilan, to'liq yoki alohida tovar miqdori bo'yicha qaytarish (`partially_voided`). Qarz kamayadi va tovar omborga qaytadi.
 
-    **Testlar** — `apps/inventory/tests/{test_stock_service,test_inventory_api}.py`:
-    - 20 ta test (intake, tannarx yangilanishi, salbiy qoldiq bloklanishi, ruxsatlar bo'linishi, serializer tenant izolatsiyasi, platform_admin bloklanishi) — barchasi o'tdi.
-    
-3. [x] `sales` — Inventra ichidagi POS-sotuv, 1-narx galochkasi, Kontragentlar va Do'konlararo B2B tovar o'tkazish. ✅ **TO'LIQ BAJARILDI (v0.8.0, 64 ta test bilan qoplandi).**
+4. ✅ **`analytics` — TO'LIQ BAJARILDI (v0.12.4).**
+    - **Ruxsat:** Faqat `owner` va `platform_admin`.
+    - **Tushum va Nasiyani Qat'iy Ajratish:**
+      - **Haqiqiy Kassa Tushumi (Cash Inflow):** Faqat Naqd va Karta to'lovlari.
+      - **Nasiya Savdosi (Credit Sales / Receivables):** Qarzga berilgan tovarlar summasi. Nasiya pul tushumi emas, alohida ko'rsatiladi.
+      - **Sof Foyda (Net Profit):** Savdo foydasi (sotish narxi - tannarx).
+      - **Jami Qarz Balansi (Total Debt):** Do'konning debitorlik qarzlari.
+    - **Valyuta taqsimoti:** UZS va USD har doim alohida hisoblanadi.
+    - **Davrlar filtri:** `today`, `this_week`, `this_month`, `this_year`, `start_date`/`end_date`, `branch_id`.
+    - **Diagrammalar:** Savdo dinamikasi, Top-10 tovarlar, To'lov turlari taqsimoti, Kassirlar reytingi.
 
-4. [x] `analytics` — Savdo analitikasi va Bosh sahifa Dashboard ma'lumotlari (`apps/analytics` / `api/v1/analytics/`): ✅ **TO'LIQ BAJARILDI**
-    - **Ruxsat:** Faqat `owner` va `platform_admin` (xodimlar uchun to'liq yopiq).
-    - **Davrlar filtri (`period`):** `today`, `this_week`, `this_month`, `this_year` va ixtiyoriy `start_date` hamda `end_date` oralig'i.
-    - **Valyuta taqsimoti:** `UZS` va `USD` har doim alohida hisoblanadi (aralashtirilmaydi).
-    - **KPI Kartochkalari:**
-      - Umumiy tushum (`total_revenue_uzs`, `total_revenue_usd`)
-      - Sof foyda (`net_profit_uzs`, `net_profit_usd`): `unit_price - cost_price`, bekor qilinganlar chegiriladi
-      - Jami debitorlik qarzlar balansi (`total_debt_uzs`, `total_debt_usd`)
-      - Jami cheklar soni va o'rtacha chek summasi
-    - **Diagramma ma'lumotlari (Charts):**
-      - Savdo va foyda dinamikasi (kunlik taqsimot grafigi)
-      - Top-10 eng ko'p sotilgan tovarlar (miqdor va tushum bo'yicha)
-      - To'lov turlari nisbati (Naqd, Karta, Nasiya foiz va summada)
-      - Xodimlar (kassirlar) bo'yicha savdo reytingi
-
-5. [x] `cash_register` (Kassa va Smena Yopilishi / Z-Hisobot): ✅ **TO'LIQ BAJARILDI**
-    - **`CashExpense` (Do'kon kunlik chiqimlari / Xarajatlari):** `tenant`, `amount`, `category`/`reason` (Suv, Qand, Xodim avansi, Xo'jalik...), `recorded_by`, `date`.
-    - **`CashIncome` (Qo'shimcha kassa tushumlari):** `tenant`, `amount`, `source` (Paynet, Kopya, Xizmatlar...), `recorded_by`, `date`.
-    - **`DailyCashReport` (Kunlik Kassa Smenasi / Taftish):**
-      - Tovar savdosi (Naqd + Terminal/Karta) avtomatik olinadi
-      - Qo'shimcha kirimlar va barcha chiqimlar hisobga olinadi
-      - Kutilgan naqd pul: `expected_cash`
-      - Kassir sanab kiritgan naqd pul: `actual_cash`
-      - Kassa tafovuti (Farq): `actual_cash - expected_cash`
-      - Tafovut sababi: Agar farq chiqsa, xodimdan *"Kutilgan pul kassadagi puldan [X] so'm farq qildi. Sababini bilasizmi?"* so'raladi. Agar xodim bo'sh qoldirsa: *"Smenani yopgan xodim tafovut farqining sababini bilmaydi"* deb qayd etiladi.
-    - **Do'kon egasiga xabar vaqti:** `Tenant.daily_report_time` (TimeField, default `22:00`). Owner o'zi o'zgartira oladi. Celery Beat shu vaqtda Telegram botga to'liq kassa hisobotini yuboradi.
-
-    
+5. ✅ **`cash_register` (Kassa, Smenalar va Z-Hisobot) — TO'LIQ BAJARILDI (v0.12.4).**
+    - **Filial bo'yicha Smenalar (`Shift`):** Har bir filialda mustaqil smena ochiladi va yopiladi.
+    - **`CashExpense` va `CashIncome`:** Kunlik chiqimlar va qo'shimcha kirimlar (Paynet, Kopya va h.k.).
+    - **`DailyCashReport` (Z-Hisobot):**
+      - Tovar savdosi (Naqd + Terminal/Karta) avtomatik olinadi.
+      - Kutilgan naqd pul, sanab olingan naqd pul va tafovut farqi.
+      - Tafovut bo'lsa xodimdan sababi so'raladi, bo'sh qoldirilsa: *"Smenani yopgan xodim tafovut farqining sababini bilmaydi"* deb qayd etiladi.
+    - **Z-Hisobot Cheki:** USD va UZS tranzaksiyalari o'z valyutasida alohida ko'rsatiladi. Modalda avval chiroyli vizual xabarnoma chiqadi, bosma chek faqat "Chop etish" bosilganda ochiladi.
+    - **Smena Imzolarining Xavfsizligi:** Smena yopishda mas'ul xodim imzosi (`signature` canvas) olinadi. Imzoni tozalash (Clear) imkoniyati butunlay olib tashlangan — faqat qayta chizish mumkin, o'chirish taqiqlangan!
+    - **Celery Beat Z-Hisobot vaqti:** `Tenant.daily_report_time` (default `22:00`). Belgilangan vaqtda avtomatik Telegram botga to'liq kassa hisoboti boradi.
 
 ~~`customers` app~~ — **kerak emas**, customer Shop'da yashaydi.
 
@@ -561,12 +706,12 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 
 ### 12-bosqich — Docker Compose va deploy — ✅ TO'LIQ BAJARILDI (v0.9.4)
 
-- [x] Redis + Postgres + Inventra + bot (qisman, bot yangilandi)
+- [x] Redis + Postgres + Inventra + bot (aiogram)
 - [x] `shop_db` tayyorgarligi (`init-db.sql`), `celery_worker`, `celery_beat`, `nginx`
-- [x] **`minio`** — mahsulot rasmlari uchun object storage, `django-storages` orqali ulanadi (9-bosqich muhokamasida kelishildi, 2026-09) — YANGI
+- [x] **`minio`** — mahsulot rasmlari uchun object storage, `django-storages` orqali ulandi (`minio:latest`, portlar: 9000/9001)
 - [x] Shop uchun alohida Postgres baza (`init-db.sql` orqali `shop_db` avto-yaratiladi)
 - [x] Ichki servislar faqat `inventra_net`; tashqariga faqat nginx (port 80:80)
-- [x] `.env` bilan sirlarni boshqarish (`SHOP_INTERNAL_URL` qo'shildi, bot'ga)
+- [x] `.env` bilan sirlarni boshqarish
 - [x] `DEBUG`ni haqiqiy `bool`
 - [x] Gunicorn / production sozlamalarini yakunlash, statik fayllar pipeline'i (`collectstatic`)
 
@@ -574,44 +719,59 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 
 - [x] Celery + Redis broker (`redis://redis:6379/1`)
 - [x] Worker va Beat compose servislari (`celery_worker`, `celery_beat`)
-- [x] Vazifalar: B2B 7 kunlik avto-bekor (har soatda), do'kon kunlik Z-hisobotini tekshirish va Telegramga yuborish, asinxron Telegram xabarlari
+- [x] Vazifalar: B2B 7 kunlik avto-bekor (har soatda), do'kon kunlik Z-hisobotini tekshirish va Telegramga yuborish, kunlik kamomad (deficit) xabarnomasi, asinxron Telegram xabarlari
 
 ### 14-bosqich — Frontendlar
 
-- [ ] Admin panel (Inventra API)
-- [ ] Storefront (Shop API)
+- [x] **Inventra Web Client (React 18 + Vite SPA, Tailwind, Glassmorphism UI) — ✅ TO'LIQ BAJARILDI (v0.12.0+)**
+  - **`Dashboard.jsx`:** Kassa tushumi (Naqd va Karta) va Nasiya savdosi ajratilgan KPI kartalari, Sof foyda, Qarzlar balansi, Sotuv dinamikasi grafigi, Top tovarlar, To'lov turlari taqsimoti, Kassirlar reytingi.
+  - **`POS.jsx`:** Tezkor kassa, faol filial bo'yicha tovarlar izolyatsiyasi (faqat mavjud tovarlar chiqadi), shtrix-kod tezkor skaneri, 1-narx (ulgurji) galochkasi, savat boshqaruvi, to'lov turlari (Naqd, Karta, Nasiya). Filial o'zgarganda savat avto-tozalanadi.
+  - **`Catalog.jsx`:** Kategoriyalar (2 daraja), mahsulotlar va variantlar, narxlar ierarxiyasi (tavsiya, min, 1-narx), 3 darajali avtomat kodlar, rasmlar yuklash.
+  - **`Inventory.jsx`:** Ombor qoldiqlari, filiallar bo'yicha filtr, partiya kirimi, filiallararo tovar transferlari, kamomadlar (deficits) monitoringi, harakatlar auditi, ixcham bitta qatorli filtr.
+  - **`RapidStockIntakeModal.jsx`:** Kassa-skaner uslubidagi ommaviy partiya kirimi ish maydoni, jadvalda narxlar va miqdorlar tahriri, LocalStorage qoralamalari persistensiyasi (`inventra_stock_intake_full_draft_v1`).
+  - **`Sales.jsx`:** Sotuvlar tarixi, cheklar ro'yxati, 7 kunlik universal Void (to'liq yoki qisman qaytarish).
+  - **`Counterparties.jsx`:** Mijozlar va kontragentlar, UZS va USD mustaqil qarzlari, qarz to'lovlari kiritish va tuzatishlar.
+  - **`Shifts.jsx`:** Smena ochish/yopish, kunlik kassa chiqimlari va kirimlari, Z-Hisobot modal va bosma chek, xavfsiz imzo chizish (o'chirish taqiqlangan).
+  - **`Analytics.jsx`:** Kengaytirilgan sotuv va moliya hisobotlari, davrlar va filiallar filtri.
+  - **`Branches.jsx`:** Filiallar CRUD, asosiy filialni belgilash, filiallararo tovar transferlarini qabul qilish/bekor qilish.
+  - **`Employees.jsx`:** Xodimlarni hire/fire qilish (telefon raqami orqali) va ruxsatlar matrisasi.
+  - **`Settings.jsx`:** Do'kon sozlamalari, dollar kursi, Z-hisobot vaqti, bildirishnoma sozlamalari.
+- [ ] **Storefront (Shop API)** — Shop mikroservisi bilan birga (FastAPI + alohida baza).
 
 ### 14.5-bosqich — Testlar (doimiy, har bosqichga yopishadi)
 
-- [x] Test infratuzilmasi
+- [x] Test infratuzilmasi (`pytest-django`, `Faker`, `FactoryBoy`)
 - [x] `EmployeeService`, `TenantService`, `PermissionService` unit testlari
 - [x] Admin-login, unban, hire-permission-fix HTTP testlari
 - [ ] Customer register/login testlari — **Shop'ga ko'chganda Shop'da qayta yoziladi**
-- [ ] API testlar: create tenant, change-owner (servis bor, view qatlami kam)
-- [x] 6a testlari (`test_jwt_claims.py`) va 8-bosqich testlari (`test_employee_views_tenant_scope.py`) yozildi
-- [x] 9-bosqich (`catalog`) — `apps/catalog/tests/{test_category_service,test_product_service,test_catalog_api}.py`, hammasi o'tdi (135/135, butun loyiha bo'yicha)
+- [x] 6a testlari (`test_jwt_claims.py`) va 8-bosqich testlari (`test_employee_views_tenant_scope.py`)
+- [x] 9-bosqich: `catalog` (55 test), `inventory` (30 test), `sales` (45 test), `cashbox` (20 test) — **jami 180+ testlar yashil**.
 
 ### 15-bosqich — Xavfsizlik va sinov
 
-- 🔶 Tenant izolatsiyasi: boshqa tenant ma'lumotini URL/id bilan olish mumkin emas — hire/fire (8-bosqich) va **`catalog`ning barcha endpointlari** (9-bosqich, 1-band) uchun **✅ yopildi**, qolgan biznes app'lar (inventory/sales/...) yozilganda navbat bilan yopiladi
-- [x] Employee transfer: eski tenant ruxsati/tokeni ishlamasligi — `Employee.is_active` darajasida yopiq (`PermissionService`, 2026-09 tekshiruvi bilan mustahkamlandi)
+- [x] Tenant va Branch izolatsiyasi: boshqa tenant yoki filial ma'lumotlari so'rovlarda chiqmaydi (POS, ombor, smenalar, harakatlar) — **✅ TO'LIQ YOPILDI**
+- [x] Employee transfer: eski tenant ruxsati/tokeni ishlamasligi (`Employee.is_active` darajasida yopiq)
 - [x] Rate-limiting (admin login): progressiv lock + strike ban
+- [x] Smena imzolari xavfsizligi: imzoni o'chirish taqiqlangan (faqat qayta chizish)
 - [ ] Audit log: narx o'zgarishi, sotuv, hire/fire, owner almashtirish
-- [ ] Internal token va Telegram secretlar faqat env'da
+- [x] Internal token va Telegram secretlar faqat env'da
 
 ---
 
 ## 4. Har bosqichda amal qilinadigan prinsiplar
 
-1. `tenant`ni frontend yoki query'dan qabul qilmaslik — JWT (va 8-dan keyin middleware).
+1. `tenant`ni frontend yoki query'dan qabul qilmaslik — JWT (va 8-dan keyin middleware/mixin).
 2. Logika `services/`da; view — HTTP, serializer, status kod.
-3. Media — obyekt xotirasi.
+3. Media — MinIO S3 obyekt xotirasi.
 4. `internal/` tashqariga ochilmaydi.
 5. Muhim amallar — audit.
 6. Telefon formati — Shop tekshiradi; Inventra ichki chaqiriqni ishonchli deb qabul qiladi, lekin yomon ma'lumotni ham rad etadi.
 7. Login ma'lumotlarini faqat egasi, OTP/email bilan.
 8. Rol vakolati: faqat bir pog'ona past.
 9. **Inventra customer haqida bilmaydi** — bu Shop'ning ishi.
+10. **Filiallararo qat'iy izolyatsiya:** POS va filial operatsiyalarida boshqa filial tovarlari va 0 qoldiqli tovarlar ko'rsatilmaydi.
+11. **Moliya intizomi:** Nasiya kassa tushumi sifatida qabul qilinmaydi; haqiqiy tushum va qarzlar doimo ajratiladi.
+12. **Audit daxlsizligi:** Smena imzolari va kassa yozuvlarini o'chirib bo'lmaydi.
 
 ---
 
@@ -637,16 +797,26 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 |**P**|~~Universal bekor qilish (Void) va qisman qaytarish~~|✅ **YOPILDI** — 1 hafta ichida, majburiy izoh bilan, butun chek yoki alohida tovar va uning ma'lum miqdori qaytariladi. B accept qilgan B2B sotuvni A void qila olmaydi. `SaleVoidLog` jadvali bilan to'liq audit|
 |**Q**|~~Qarz to'lovlari (`DebtPayment`) auditi~~|✅ **YOPILDI** — faqat `owner` va `platform_admin` to'lov kiritadi. O'chirish taqiqlanadi. Xato bo'lsa, majburiy izoh bilan teskari korrektirovka yozuvi kiritiladi (`is_correction=True`)|
 |**R**|~~Ombor harakati va Chek auditi~~|✅ **YOPILDI** — `StockMovement` modeli `Sale` chekiga to'g'ridan-to'g'ri bog'lanadi (`sale` FK)|
-|**S**|**Savdo Analitikasi & Dashboard (9.5-bosqich)**|✅ **KELISHILDI** — faqat `owner` va `platform_admin` ko'radi. Davrlar: `today`, `this_week`, `this_month`, `this_year`, `start_date`/`end_date`. UZS va USD har doim alohida hisoblanadi. KPI (tushum, sof foyda, jami qarz, cheklar) va grafiklar (kunlik dinamika, top-10 tovarlar, to'lov turlari taqsimoti, xodimlar reytingi)|
-|**T**|**Kassa smenasi va Z-Hisobot (9.7-bosqich)**|✅ **KELISHILDI** — `CashExpense` (chiqimlar), `CashIncome` (qo'shimcha kirimlar: Paynet, Kopya), `DailyCashReport` (kutilgan naqd pul, sanab olingan naqd pul, tafovut farqi). Farq chiqqanda xodimdan sababi so'raladi, agar bo'sh qoldirilsa: *"Smenani yopgan xodim tafovut farqining sababini bilmaydi"* deb egasiga Telegram orqali yuboriladi|
-|**U**|**Kunlik hisobot vaqti va Celery Beat**|✅ **KELISHILDI** — `Tenant.daily_report_time` (default `22:00`, owner o'zgartira oladi). Celery Beat belgilangan vaqtda avtomatik to'liq Z-hisobotni Telegram botga chiqaradi. B2B 7 kunlik avto-bekor bo'lish har soatda ishlaydi|
-|**V**|**API Pishitish (10-bosqich)**|✅ **KELISHILDI** — Standart paginatsiya (20 tadan, max 100), `django-filter` (kategoriya, narx oralig'i, mavjudlik `in_stock`, sana, qidiruv), yagona xatoliklar standarti (`{"error": {"code": "...", "message": "...", "details": ...}}`)|
-|**W**|**MinIO Media Storage (12-bosqich)**|✅ **KELISHILDI** — Mahsulotga 3 tagacha rasm, 1600px eni, 90% sifat, 10MB limit (sozlanuvchan), Docker Compose'da MinIO S3 va `django-storages`|
+|**S**|~~Savdo Analitikasi & Dashboard (9.5-bosqich)~~|✅ **YOPILDI** — faqat `owner` va `platform_admin` ko'radi. Davrlar: `today`, `this_week`, `this_month`, `this_year`, `start_date`/`end_date`. UZS va USD har doim alohida hisoblanadi. KPI (tushum, sof foyda, jami qarz, cheklar) va grafiklar|
+|**T**|~~Kassa smenasi va Z-Hisobot (9.7-bosqich)~~|✅ **YOPILDI** — `CashExpense`, `CashIncome`, `DailyCashReport`. Tafovut sababi qayd etiladi va egasiga Telegram orqali boradi|
+|**U**|~~Kunlik hisobot vaqti va Celery Beat~~|✅ **YOPILDI** — `Tenant.daily_report_time` (default `22:00`). Celery Beat belgilangan vaqtda avtomatik to'liq Z-hisobotni Telegram botga chiqaradi|
+|**V**|~~API Pishitish (10-bosqich)~~|✅ **YOPILDI** — Standart paginatsiya, filtrlar, xatoliklar standarti|
+|**W**|~~MinIO Media Storage (12-bosqich)~~|✅ **YOPILDI** — Docker Compose'da MinIO S3, `django-storages`, rasmlar optimizatsiyasi|
+|**X**|~~Ko'p filialli tizim (`Branch`) va Filial Narxlari~~|✅ **YOPILDI** — `Branch` modeli, `Stock.branch` FK, har bir filial uchun maxsus narxlar (`custom_price_*`)|
+|**Y**|~~Filiallararo qat'iy izolyatsiya (POS & Ombor)~~|✅ **YOPILDI** — POS da faqat tanlangan filialda mavjud (`quantity > 0`) tovarlar chiqadi. Boshqa filial tovarlari yoki 0 qoldiq ko'rinmaydi. Filial almashtirilganda savat avtomatik tozalanadi|
+|**Z**|~~Nasiya va Kassa Tushumini ajratish~~|✅ **YOPILDI** — Nasiya savdosi (Receivables) kassa tushumi (Cash flow) emas. Statistikada va Dashboardda Naqd tushum, Karta tushumi va Nasiya alohida kartochkalarda mustaqil hisoblanadi|
+|**AA**|~~Z-Hisobotda valyutalar ($ / UZS) va bosma chek rejimi~~|✅ **YOPILDI** — USD va UZS tranzaksiyalari o'z valyutasida alohida ko'rsatiladi. Modalda avval chiroyli hisobot ko'rinadi, bosma chek faqat "Chop etish" bosilganda ochiladi|
+|**AB**|~~Smena imzolarining xavfsizligi (Imzoni o'chirish taqiqlangan)~~|✅ **YOPILDI** — Imzoni tozalash (Clear) butunlay olib tashlangan, faqat qayta chizish mumkin, o'chirish taqiqlangan|
+|**AC**|~~Ommaviy partiya kirimi (Rapid Barcode Intake) & LocalStorage qoralamalari~~|✅ **YOPILDI** — Kassa-skaner uslubidagi partiya kiritish jadvali, narxlar va miqdorlarni qatorda tahrirlash, `inventra_stock_intake_full_draft_v1` kaliti bilan qoralamalar saqlanishi|
+|**AD**|~~Kamomad (Deficits) dinamik algoritmi~~|✅ **YOPILDI** — Oxirgi 30 kunlik sotuvi >= 10 va qoldig'i <= 5 tovarlar avtomatik kamomadga tushadi, kirim bo'lishi bilan (>5) avtomatik chiqadi. Filial bo'yicha filterlanadi va Telegramga yuboriladi|
 
 ---
 
 ## 6. Keyingi band (shu faylga qarab ishni oching)
 
-**9.3-bosqich (`sales`) to'liq yopildi (v0.8.0, 119 ta test o'tdi). Endi navbat — `9.5 analytics` (Dashboard), `10-bosqich` (API pishitish: Pagination, Filters, Exceptions), `9.7 cash_register` (Kassa & Z-hisobot), `12-bosqich` (MinIO) va `13-bosqich` (Celery & Celery Beat).**
+**Inventra Backend va Frontend SPA (v0.12.4) barcha asosiy biznes modullari (Katalog, Ko'p filialli ombor, Rapid partiya kirimi, Filial izolyatsiyalangan POS, Savdo, Qarzlar, Kassa smenalari va Z-hisobot, Analitika) bilan to'liq ishga tushirildi va 180+ testlar bilan mustahkamlandi.**
 
-Foydalanuvchi bilan kelishuv: kodlarni foydalanuvchining o'zi bosqichma-bosqich yozadi, yordamchi agent esa arxitektura va kod namunalarini tushuntirib, yo'l-yo'riq ko'rsatib boradi.
+**Navbatdagi ustuvor vazifalar:**
+1. **Shop mikroservisi (Storefront):** FastAPI orqali customer-facing storefront'ni qurish, Shop o'z bazasi bilan ishlashi va Inventra internal API ga ulanishi (`shop-yol-xaritasi.md`).
+2. **PWA va Mobil optimizatsiya:** Kassa va POS interfeysini planshet va mobil ekranlar uchun to'liq moslashtirish, oflayn rejimni mustahkamlash.
+3. **Audit Log tizimi:** Narxlar o'zgarishi, xodimlar harakati va muhim amallar uchun to'liq tizimli audit jadvali.

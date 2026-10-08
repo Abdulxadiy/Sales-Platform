@@ -329,3 +329,108 @@ class TenantSendLowStockReportNowView(APIView):
             "detail": res.get("detail", "Hisobot yuborilmadi. Sozlamalarni tekshiring.")
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
+class BranchListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_tenant(self, request):
+        if hasattr(request, "tenant") and request.tenant:
+            return request.tenant
+        if hasattr(request.user, "owned_tenant") and request.user.owned_tenant:
+            return request.user.owned_tenant
+        if hasattr(request.user, "employments"):
+            emp = request.user.employments.filter(is_active=True).first()
+            if emp:
+                return emp.tenant
+        tenant_id = request.query_params.get("tenant_id")
+        if tenant_id and (request.user.role == "platform_admin" or request.user.is_superuser):
+            return Tenant.objects.filter(pk=tenant_id).first()
+        return None
+
+    def get(self, request):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        from apps.tenants.models import Branch
+        from .serializers import BranchSerializer
+        branches = Branch.objects.filter(tenant=tenant)
+        serializer = BranchSerializer(branches, many=True, context={"tenant": tenant})
+        return Response(serializer.data)
+
+    def post(self, request):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        if request.user != tenant.owner and not request.user.is_superuser and request.user.role != "platform_admin":
+            return Response({"detail": "Faqat do'kon egasi yangi filial qo'sha oladi."}, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.tenants.models import Branch
+        from .serializers import BranchSerializer
+        serializer = BranchSerializer(data=request.data, context={"tenant": tenant})
+        serializer.is_valid(raise_exception=True)
+        is_main = serializer.validated_data.get("is_main", False)
+        if is_main:
+            Branch.objects.filter(tenant=tenant, is_main=True).update(is_main=False)
+        branch = serializer.save(tenant=tenant)
+        return Response(BranchSerializer(branch).data, status=status.HTTP_201_CREATED)
+
+
+class BranchDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_tenant(self, request):
+        if hasattr(request, "tenant") and request.tenant:
+            return request.tenant
+        if hasattr(request.user, "owned_tenant") and request.user.owned_tenant:
+            return request.user.owned_tenant
+        if hasattr(request.user, "employments"):
+            emp = request.user.employments.filter(is_active=True).first()
+            if emp:
+                return emp.tenant
+        return None
+
+    def get(self, request, pk):
+        tenant = self.get_tenant(request)
+        from apps.tenants.models import Branch
+        from .serializers import BranchSerializer
+        branch = get_object_or_404(Branch, pk=pk, tenant=tenant)
+        return Response(BranchSerializer(branch).data)
+
+    def patch(self, request, pk):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        if request.user != tenant.owner and not request.user.is_superuser and request.user.role != "platform_admin":
+            return Response({"detail": "Faqat do'kon egasi filialni tahrirlashi mumkin."}, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.tenants.models import Branch
+        from .serializers import BranchSerializer
+        branch = get_object_or_404(Branch, pk=pk, tenant=tenant)
+        serializer = BranchSerializer(branch, data=request.data, partial=True, context={"tenant": tenant})
+        serializer.is_valid(raise_exception=True)
+        if serializer.validated_data.get("is_main"):
+            Branch.objects.filter(tenant=tenant, is_main=True).exclude(pk=branch.pk).update(is_main=False)
+        branch = serializer.save()
+        return Response(BranchSerializer(branch).data)
+
+    def delete(self, request, pk):
+        tenant = self.get_tenant(request)
+        if not tenant:
+            return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        if request.user != tenant.owner and not request.user.is_superuser and request.user.role != "platform_admin":
+            return Response({"detail": "Faqat do'kon egasi filialni o'chirishi mumkin."}, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.tenants.models import Branch
+        branch = get_object_or_404(Branch, pk=pk, tenant=tenant)
+        if branch.is_main:
+            return Response({"detail": "Asosiy filialni o'chirib bo'lmaydi."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from apps.inventory.models import Stock
+        if Stock.objects.filter(branch=branch, quantity__gt=0).exists():
+            return Response({"detail": "Ushbu filialda qoldiq tovarlar mavjud. Avval ularni boshqa filialga o'tkazing."}, status=status.HTTP_400_BAD_REQUEST)
+
+        branch.is_active = False
+        branch.save(update_fields=["is_active", "updated_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+

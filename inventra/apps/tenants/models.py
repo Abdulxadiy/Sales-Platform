@@ -129,3 +129,41 @@ class Tenant(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_main_branch(self):
+        branch = self.branches.filter(is_main=True, is_active=True).first()
+        if not branch:
+            branch = self.branches.filter(is_active=True).first()
+        if not branch:
+            branch = Branch.objects.create(
+                tenant=self,
+                name="Asosiy filial",
+                is_main=True,
+                is_active=True,
+            )
+        return branch
+
+
+class Branch(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="branches")
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=32, blank=True, default="")
+    address = models.CharField(max_length=255, blank=True, default="")
+    phone_number = models.CharField(max_length=30, blank=True, default="")
+    is_main = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_main", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "name"],
+                name="unique_branch_name_per_tenant",
+            ),
+        ]
+
+    def __str__(self):
+        main_badge = " (Asosiy)" if self.is_main else ""
+        return f"{self.name}{main_badge}"

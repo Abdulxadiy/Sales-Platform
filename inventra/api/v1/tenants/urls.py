@@ -12,11 +12,15 @@ from .views import (
     TenantTestTelegramView,
     TenantSendReportNowView,
     TenantSendLowStockReportNowView,
+    BranchListCreateView,
+    BranchDetailView,
 )
 
 
 urlpatterns = [
     path("", TenantListCreateView.as_view(), name="tenant-list-create"),
+    path("branches/", BranchListCreateView.as_view(), name="branch-list-create"),
+    path("branches/<int:pk>/", BranchDetailView.as_view(), name="branch-detail"),
     path("current/", CurrentTenantView.as_view(), name="tenant-current"),
     path("current/test-telegram/", TenantTestTelegramView.as_view(), name="tenant-test-telegram"),
     path("current/send-report-now/", TenantSendReportNowView.as_view(), name="tenant-send-report-now"),

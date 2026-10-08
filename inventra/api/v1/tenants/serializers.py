@@ -152,3 +152,22 @@ class TenantChangeOwnerSerializer(serializers.Serializer):
                 {"new_owner_email": "Ushbu foydalanuvchida email mavjud emas. Yangi egasining email manzili kiritilishi shart."}
             )
         return attrs
+
+
+class BranchSerializer(serializers.ModelSerializer):
+    class Meta:
+        from apps.tenants.models import Branch
+        model = Branch
+        fields = [
+            "id", "name", "code", "address", "phone_number",
+            "is_main", "is_active", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_name(self, value):
+        from apps.tenants.models import Branch
+        tenant = self.context.get("tenant")
+        branch_id = self.instance.id if self.instance else None
+        if tenant and Branch.objects.filter(tenant=tenant, name__iexact=value.strip()).exclude(id=branch_id).exists():
+            raise serializers.ValidationError("Ushbu nomdagi filial allaqachon mavjud.")
+        return value.strip()

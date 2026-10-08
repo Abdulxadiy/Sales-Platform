@@ -158,6 +158,17 @@ a {
   background: var(--border-hover);
 }
 
+/* Global Number Input Spin Button Reset (Remove browser default up/down arrows & white stepper box) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* --------------------------------------------------------------------------
    Sidebar Navigation Styles (Responsive Collapsible / Expandable)
    -------------------------------------------------------------------------- */
@@ -733,11 +744,32 @@ a {
 
 
 /* Responsive Table Container */
-.table-responsive,
-.glass-card:has(table) {
+.table-responsive {
   width: 100%;
-  overflow-x: auto;
+  max-width: 100%;
+  overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+  display: block;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 7px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 999px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* --------------------------------------------------------------------------
@@ -780,47 +812,47 @@ a {
 }
 
 .chart-pill-btn.pill-revenue.active {
-  border-color: rgba(16, 185, 129, 0.45);
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  border-color: rgba(21, 128, 61, 0.45);
+  background: rgba(21, 128, 61, 0.12);
+  color: #15803d;
 }
 [data-theme="dark"] .chart-pill-btn.pill-revenue.active {
-  border-color: rgba(16, 185, 129, 0.45);
-  background: rgba(16, 185, 129, 0.16);
-  color: #34d399;
+  border-color: rgba(21, 128, 61, 0.50);
+  background: rgba(21, 128, 61, 0.20);
+  color: #22c55e;
 }
 
 .chart-pill-btn.pill-costs.active {
-  border-color: rgba(244, 63, 94, 0.45);
-  background: rgba(244, 63, 94, 0.10);
-  color: #e11d48;
+  border-color: rgba(185, 28, 28, 0.45);
+  background: rgba(185, 28, 28, 0.10);
+  color: #b91c1c;
 }
 [data-theme="dark"] .chart-pill-btn.pill-costs.active {
-  border-color: rgba(244, 63, 94, 0.45);
-  background: rgba(244, 63, 94, 0.16);
-  color: #fb7185;
+  border-color: rgba(185, 28, 28, 0.50);
+  background: rgba(185, 28, 28, 0.20);
+  color: #ef4444;
 }
 
 .chart-pill-btn.pill-profit.active {
-  border-color: rgba(14, 165, 233, 0.45);
-  background: rgba(14, 165, 233, 0.12);
-  color: #0284c7;
+  border-color: rgba(29, 78, 216, 0.45);
+  background: rgba(29, 78, 216, 0.12);
+  color: #1d4ed8;
 }
 [data-theme="dark"] .chart-pill-btn.pill-profit.active {
-  border-color: rgba(14, 165, 233, 0.45);
-  background: rgba(14, 165, 233, 0.18);
-  color: #38bdf8;
+  border-color: rgba(29, 78, 216, 0.50);
+  background: rgba(29, 78, 216, 0.20);
+  color: #3b82f6;
 }
 
 .chart-pill-btn.pill-debt.active {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(180, 83, 9, 0.45);
+  background: rgba(180, 83, 9, 0.12);
   color: #b45309;
 }
 [data-theme="dark"] .chart-pill-btn.pill-debt.active {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.16);
-  color: #fbbf24;
+  border-color: rgba(180, 83, 9, 0.50);
+  background: rgba(180, 83, 9, 0.20);
+  color: #f59e0b;
 }
 
 /* Solid Clean Chart Hover Tooltip (Oddiy no-shaffof oyna) */

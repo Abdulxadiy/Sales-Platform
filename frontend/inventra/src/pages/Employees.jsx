@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import Modal from '../components/common/Modal';
+import CustomSelect from '../components/common/CustomSelect';
 
 export default function Employees() {
   const { user, isAdmin, isOwner } = useAuth();
@@ -141,18 +142,13 @@ export default function Employees() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {isAdmin && tenants.length > 0 && (
-            <select
+            <CustomSelect
               value={selectedTenantId || ''}
-              onChange={(e) => setSelectedTenantId(Number(e.target.value))}
-              className="input-field"
-              style={{ width: 'auto', padding: '8px 36px 8px 14px', fontSize: 13 }}
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedTenantId(Number(val))}
+              options={tenants.map((t) => ({ value: t.id, label: t.name }))}
+              size="md"
+              style={{ minWidth: 200 }}
+            />
           )}
 
           <button
@@ -190,26 +186,28 @@ export default function Employees() {
 
       {/* Staff List Table */}
       <div className="glass-card" style={{ overflow: 'hidden', padding: 0 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr
-              style={{
-                borderBottom: '1px solid var(--border-subtle)',
-                background: 'var(--bg-chip)',
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
-              <th style={{ padding: '14px 20px' }}>Xodim</th>
-              <th style={{ padding: '14px 20px' }}>Lavozimi</th>
-              <th style={{ padding: '14px 20px' }}>Roli</th>
-              <th style={{ padding: '14px 20px' }}>Aloqa</th>
-              <th style={{ padding: '14px 20px' }}>Holat</th>
-              <th style={{ padding: '14px 20px', textAlign: 'right' }}>Amallar</th>
-            </tr>
-          </thead>
+        <div className="table-responsive">
+          <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr
+                style={{
+                  borderBottom: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-chip)',
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Xodim</th>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Lavozimi</th>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Roli</th>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Aloqa</th>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Holat</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amallar</th>
+              </tr>
+            </thead>
           <tbody>
             <tr
               style={{
@@ -285,6 +283,7 @@ export default function Employees() {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Hire Employee Modal */}
@@ -350,16 +349,18 @@ export default function Employees() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Tizimdagi Roli
               </label>
-              <select
+              <CustomSelect
                 id="employee-role"
                 name="role"
                 value={hireForm.role}
-                onChange={(e) => setHireForm({ ...hireForm, role: e.target.value })}
-                className="input-field"
-              >
-                <option value="staff">Kassir / Xodim (Staff)</option>
-                {isAdmin && <option value="owner">Do‘kon Egasi (Owner)</option>}
-              </select>
+                onChange={(val) => setHireForm({ ...hireForm, role: val })}
+                options={[
+                  { value: 'staff', label: 'Kassir / Xodim (Staff)' },
+                  ...(isAdmin ? [{ value: 'owner', label: 'Do‘kon Egasi (Owner)' }] : []),
+                ]}
+                fullWidth
+                size="md"
+              />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>

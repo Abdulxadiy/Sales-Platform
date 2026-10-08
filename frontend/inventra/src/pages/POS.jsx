@@ -11,17 +11,22 @@ import {
   Zap,
   ShoppingBag,
   Printer,
+  FileText,
 } from 'lucide-react';
 import { catalogApi, salesApi } from '../api/client';
 import Modal from '../components/common/Modal';
+import CustomSelect from '../components/common/CustomSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
+import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { useBranch } from '../context/BranchContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 export default function POS() {
   const toast = useToast();
   const confirm = useConfirm();
+  const { activeBranch } = useBranch();
   const searchInputRef = useRef(null);
 
   // Catalog State
@@ -49,6 +54,17 @@ export default function POS() {
   // Receipt Modal State (supports multiple sales from split dual-currency checkout)
   const [completedSales, setCompletedSales] = useState([]);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [posInvoiceModalOpen, setPosInvoiceModalOpen] = useState(false);
+  const [selectedPosInvoiceSale, setSelectedPosInvoiceSale] = useState(null);
+  const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
+
+  const handleOpenPosInvoice = (saleToOpen = null) => {
+    const target = saleToOpen || (completedSales && completedSales.length > 0 ? completedSales[0] : null);
+    if (target) {
+      setSelectedPosInvoiceSale(target);
+      setPosInvoiceModalOpen(true);
+    }
+  };
 
   const formatQuantity = (qty, unit = 'dona') => {
     const num = Number(qty || 0);
@@ -64,6 +80,7 @@ export default function POS() {
       const params = {};
       if (catId) params.category = catId;
       if (query) params.search = query;
+      if (activeBranch?.id) params.branch_id = activeBranch.id;
       const res = await catalogApi.getVariants(params);
       const items = res.results || res;
       setVariants(Array.isArray(items) ? items : []);
@@ -72,7 +89,7 @@ export default function POS() {
     } finally {
       setLoadingProducts(false);
     }
-  }, []);
+  }, [activeBranch?.id]);
 
   // Load initial categories and variants
   useEffect(() => {
@@ -337,6 +354,7 @@ export default function POS() {
     setSubmittingSale(true);
     try {
       const salePayload = {
+        branch_id: activeBranch?.id,
         payment_type: paymentMethod.toLowerCase(), // 'cash' | 'card' | 'debt'
         is_partner_sale: isPartnerSale,
         counterparty_id: selectedCounterparty ? parseInt(selectedCounterparty, 10) : null,
@@ -601,7 +619,12 @@ export default function POS() {
             })
           ) : (
             <div style={{ gridColumn: '1 / -1', padding: '60px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Mos tovarlar topilmadi
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                Mahsulot topilmadi
+              </div>
+              <div style={{ fontSize: 13 }}>
+                Ushbu filial omborida mahsulot mavjud emas yoki qoldig‘i 0 ga teng.
+              </div>
             </div>
           )}
         </div>
@@ -997,34 +1020,55 @@ export default function POS() {
             </div>
           </div>
 
-          {/* If Nasiya (Debt), Select Counterparty */}
-          {paymentMethod === 'DEBT' && (
+          {/* Counterparty selection: Required for DEBT, recommended for Partner sale, optional for regular sale */}
+          {(paymentMethod === 'DEBT' || isPartnerSale || (counterparties && counterparties.length > 0)) && (
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Kontragent (Mijoz / Do‘kon)
-              </label>
-              <select
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  {paymentMethod === 'DEBT'
+                    ? 'Kontragent (Nasiya qarzdor mijoz) *'
+                    : isPartnerSale
+                    ? 'Hamkor Do‘kon / Kontragent (1-Narx xaridori)'
+                    : 'Mijoz / Hamkor biriktirish (Ixtiyoriy)'}
+                </label>
+                {selectedCounterparty && paymentMethod !== 'DEBT' && !isPartnerSale && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCounterparty('')}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    Tozalash
+                  </button>
+                )}
+              </div>
+              <CustomSelect
                 value={selectedCounterparty}
-                onChange={(e) => setSelectedCounterparty(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                }}
-              >
-                <option value="">Mijozni tanlang...</option>
-                {counterparties.map((cp) => (
-                  <option key={cp.id} value={cp.id}>
-                    {cp.name} ({cp.phone_number || 'Tel yo‘q'})
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedCounterparty(val)}
+                placeholder={
+                  paymentMethod === 'DEBT'
+                    ? 'Mijozni tanlang (Majburiy)...'
+                    : isPartnerSale
+                    ? 'Hamkor do‘kon / sherikni tanlang...'
+                    : 'Oddiy chakana xaridor (Biriktirilmagan)'
+                }
+                options={[
+                  {
+                    value: '',
+                    label:
+                      paymentMethod === 'DEBT'
+                        ? 'Mijozni tanlang (Majburiy)...'
+                        : isPartnerSale
+                        ? 'Hamkor do‘kon / sherikni tanlang...'
+                        : 'Oddiy chakana xaridor (Biriktirilmagan)',
+                  },
+                  ...counterparties.map((cp) => ({
+                    value: cp.id,
+                    label: `${cp.name} (${cp.phone_number || 'Tel yo‘q'})${cp.target_tenant_name ? ` [B2B: ${cp.target_tenant_name}]` : ''}`,
+                  })),
+                ]}
+                fullWidth
+                style={isPartnerSale ? { borderColor: 'var(--accent-emerald)' } : {}}
+              />
             </div>
           )}
 
@@ -1459,6 +1503,45 @@ export default function POS() {
             </p>
           </div>
 
+          {/* Thermal Printer Format Switcher */}
+          <div className="no-print" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 4 }}>
+              Printer:
+            </span>
+            <button
+              type="button"
+              onClick={() => setReceiptPaperWidth('58mm')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-xs)',
+                border: receiptPaperWidth === '58mm' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+                background: receiptPaperWidth === '58mm' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                color: receiptPaperWidth === '58mm' ? 'var(--primary)' : 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              58 mm (Uzum/Kichik termal)
+            </button>
+            <button
+              type="button"
+              onClick={() => setReceiptPaperWidth('80mm')}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 'var(--radius-xs)',
+                border: receiptPaperWidth === '80mm' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+                background: receiptPaperWidth === '80mm' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                color: receiptPaperWidth === '80mm' ? 'var(--primary)' : 'var(--text-secondary)',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              80 mm (Katta POS)
+            </button>
+          </div>
+
           {/* Authentic Real-world Thermal Receipt Slip */}
           <div style={{ marginBottom: 18, display: 'flex', justifyContent: 'center' }}>
             <ReceiptSlip
@@ -1468,15 +1551,16 @@ export default function POS() {
               paidAmountUSD={paidAmountUSD}
               changeDueUZS={changeDueUZS}
               changeDueUSD={changeDueUSD}
+              paperWidth={receiptPaperWidth}
             />
           </div>
 
-          <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+          <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() => printReceiptSlip('printable-pos-receipt')}
+              onClick={() => printReceiptSlip('printable-pos-receipt', 'Inventra Savdo Cheki', receiptPaperWidth)}
               style={{
-                padding: '10px 22px',
+                padding: '10px 18px',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--border-card)',
                 background: 'var(--bg-card)',
@@ -1490,13 +1574,43 @@ export default function POS() {
               }}
             >
               <Printer size={16} />
-              <span>Chop etish</span>
+              <span>Chekni chop etish ({receiptPaperWidth})</span>
             </button>
+            {/* A4 Invoice only for Debt or Partner/Counterparty/B2B sales */}
+            {(completedSales || []).some(
+              (s) =>
+                (s.payment_type || '').toLowerCase() === 'debt' ||
+                Boolean(s.is_partner_sale) ||
+                Boolean(s.counterparty) ||
+                Boolean(s.counterparty_name) ||
+                Boolean(s.b2b_target_tenant)
+            ) && (
+              <button
+                type="button"
+                onClick={() => handleOpenPosInvoice()}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <FileText size={16} style={{ color: 'var(--primary)' }} />
+                <span>A4 Faktura</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setReceiptOpen(false)}
               style={{
-                padding: '10px 24px',
+                padding: '10px 22px',
                 borderRadius: 'var(--radius-sm)',
                 border: 'none',
                 background: 'var(--primary)',
@@ -1511,6 +1625,13 @@ export default function POS() {
           </div>
         </div>
       </Modal>
+
+      {/* Official A4 Invoice Modal */}
+      <InvoiceA4Modal
+        isOpen={posInvoiceModalOpen}
+        onClose={() => setPosInvoiceModalOpen(false)}
+        sale={selectedPosInvoiceSale}
+      />
     </div>
   );
 }

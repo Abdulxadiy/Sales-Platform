@@ -62,12 +62,17 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
       className="custom-dialog"
       closedby="any"
       aria-labelledby="dialog-modal-title"
+      style={{
+        width: `min(calc(100vw - 32px), ${maxWidth}px)`,
+        maxWidth: `min(90vw, ${maxWidth}px)`,
+      }}
     >
       <div
         className="dialog-content"
         style={{
           width: '100%',
           maxWidth: `${maxWidth}px`,
+          boxSizing: 'border-box',
           padding: '24px 28px',
           background: 'var(--bg-modal, var(--bg-surface))',
           border: '1px solid var(--border-modal, var(--border-card))',

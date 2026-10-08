@@ -6,6 +6,7 @@ import Modal from '../common/Modal';
 import { cashboxApi, salesApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import { useBranch } from '../../context/BranchContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import NotificationCard from '../notifications/NotificationCard';
@@ -17,6 +18,7 @@ export default function Layout() {
   const toast = useToast();
   const confirm = useConfirm();
   const { isAdmin } = useAuth();
+  const { activeBranch } = useBranch();
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [shiftData, setShiftData] = useState(null);
   const [cashCounted, setCashCounted] = useState('');
@@ -199,6 +201,11 @@ export default function Layout() {
           title: 'Kassa Smenalari & Z-Hisobotlar',
           subtitle: 'Chiqim va kirimlar, smena yopish jurnali',
         };
+      case '/branches':
+        return {
+          title: 'Filiallar Boshqaruvi',
+          subtitle: 'Do‘konning barcha filiallari, manzillari va savdo nuqtalari',
+        };
       case '/tenants':
         return {
           title: 'Do‘konlar (Tenants) Boshqaruvi',
@@ -238,11 +245,11 @@ export default function Layout() {
 
   useEffect(() => {
     if (shiftModalOpen && !isAdmin) {
-      cashboxApi.getCurrentShift()
+      cashboxApi.getCurrentShift(activeBranch?.id)
         .then((data) => setShiftData(data))
         .catch(() => setShiftData(null));
     }
-  }, [shiftModalOpen, isAdmin]);
+  }, [shiftModalOpen, isAdmin, activeBranch?.id]);
 
   const expectedUzs = Number(shiftData?.expected_cash_uzs || 0);
   const expectedUsd = Number(shiftData?.expected_cash_usd || 0);
@@ -260,6 +267,7 @@ export default function Layout() {
     setClosing(true);
     try {
       await cashboxApi.closeShift({
+        branch_id: activeBranch?.id,
         actual_cash_uzs: parseFloat(cashCounted),
         actual_cash_usd: parseFloat(cashCountedUsd || '0'),
         discrepancy_reason: discrepancyReason,

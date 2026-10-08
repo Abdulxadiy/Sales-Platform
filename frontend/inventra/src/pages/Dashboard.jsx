@@ -21,15 +21,16 @@ import {
   ExternalLink,
   Unlock,
   AlertTriangle,
-  Power,
-  PowerOff,
+  BookOpen,
+  Package,
+  Layers,
 } from 'lucide-react';
 import { analyticsApi, tenantApi, authApi } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/common/Modal';
 import RevenueCostAnalyticsChart from '../components/dashboard/RevenueCostAnalyticsChart';
-import { MiniEqualizer, MiniGauge, MiniSparkline, InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
+import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -400,16 +401,16 @@ export default function Dashboard() {
           </div>
 
           {filteredTenants.length > 0 ? (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div className="table-responsive">
+              <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 14px' }}>Do‘kon Nomi</th>
-                    <th style={{ padding: '10px 14px' }}>Do‘kon Egasi (Owner)</th>
-                    <th style={{ padding: '10px 14px' }}>Valyuta Kursi</th>
-                    <th style={{ padding: '10px 14px' }}>Holati</th>
-                    <th style={{ padding: '10px 14px' }}>Yaratilgan</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'right' }}>Amallar</th>
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left', whiteSpace: 'nowrap' }}>
+                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Do‘kon Nomi</th>
+                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Do‘kon Egasi (Owner)</th>
+                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Valyuta Kursi</th>
+                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Holati</th>
+                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Yaratilgan</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amallar</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -681,6 +682,7 @@ export default function Dashboard() {
   // Visible ONLY to authenticated store owner
   // =========================================================================
   const kpi = data?.kpi || data || {};
+  const overview = data?.store_overview || data?.kpi || {};
   const costUZS = kpi.total_cost_uzs !== undefined
     ? Number(kpi.total_cost_uzs)
     : Math.max(0, Number(kpi.total_sales_uzs || kpi.total_revenue_uzs || 0) - Number(kpi.net_profit_uzs || 0));
@@ -688,362 +690,566 @@ export default function Dashboard() {
     ? Number(kpi.total_cost_usd)
     : Math.max(0, Number(kpi.total_sales_usd || kpi.total_revenue_usd || 0) - Number(kpi.net_profit_usd || 0));
 
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Top Bar with Period Filter for Store Owner */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-            Moliyaviy Xulosa & Tahlil
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* ========================================================================= */}
+      {/* 1. DO'KONNING UMUMIY HOLATI & BALANSI (TOP SECTION: STORE OVERVIEW)       */}
+      {/* Barcha davrlar bo'yicha doimiy moliyaviy aktivlar va balans ko'rsatkichlari */}
+      {/* ========================================================================= */}
+      <div>
+        <div style={{ marginBottom: 16 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+            Do‘konning Umumiy Holati & Balansi
           </h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            Do‘koningizning real vaqt rejimidagi ko‘rsatkichlari
+            Do‘koningizning jami kapitali, mijozlar qarzi, ombor qiymati va barcha davrlardagi umumiy natijalari
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {/* Period Selector Pills */}
-          <div
-            style={{
-              display: 'flex',
-              background: 'var(--bg-chip)',
-              padding: 4,
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-subtle)',
-              gap: 4,
-            }}
-          >
-            {periods.map((p) => {
-              const active = period === p.key;
-              return (
-                <button
-                  key={p.key}
-                  onClick={() => setPeriod(p.key)}
-                  style={{
-                    padding: '7px 16px',
-                    borderRadius: 'var(--radius-xs)',
-                    border: 'none',
-                    background: active
-                      ? 'var(--primary)'
-                      : 'transparent',
-                    color: active ? 'var(--text-on-primary)' : 'var(--text-secondary)',
-                    fontSize: 13,
-                    fontWeight: active ? 700 : 500,
-                    cursor: 'pointer',
-                    boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                    transition: 'all var(--transition-fast)',
-                  }}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards Grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16,
-        }}
-      >
-        {/* Card 1: Haqiqiy Tushum (Real receipts - Cash & Card) */}
-        <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  Haqiqiy Tushum
-                </span>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  Naqd & Karta (nasiyasiz)
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(15, 118, 110, 0.14)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <TrendingUp size={16} color="#0f766e" />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-              {loading && !data ? (
-                <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
-              ) : (
-                formatUZS(kpi.total_revenue_uzs)
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--accent-emerald)', fontWeight: 600 }}>
-              + {formatUSD(kpi.total_revenue_usd)}
-            </div>
-            <InlineCardSparkline
-              data={
-                data?.sales_chart && data.sales_chart.length > 0
-                  ? data.sales_chart.map((c) => Number(c.revenue_uzs || 1) / 1000 + 10)
-                  : [12, 18, 15, 24, 21, 29, 35]
-              }
-              color="#0f766e"
-            />
-          </div>
-        </div>
-
-        {/* Card 2: Nasiyaga Sotuv (Credit sales in selected period) */}
-        <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  Berilgan Nasiya
-                </span>
-                <div style={{ fontSize: 10, color: 'var(--accent-amber)', fontWeight: 600 }}>
-                  {kpi.debt_sales_count ? `${kpi.debt_sales_count} ta nasiya cheki` : 'Ushbu davrda'}
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(245, 158, 11, 0.14)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Wallet size={16} color="var(--accent-amber)" />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--accent-amber)' }}>
-              {loading && !data ? (
-                <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
-              ) : (
-                formatUZS(kpi.debt_sales_uzs)
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--accent-amber)', fontWeight: 600 }}>
-              + {formatUSD(kpi.debt_sales_usd)}
-            </div>
-            <InlineCardSparkline
-              data={
-                data?.sales_chart && data.sales_chart.length > 0
-                  ? data.sales_chart.map((c) => Number(c.debt_sales_uzs || 1) / 1000 + 8)
-                  : [5, 10, 8, 14, 12, 19, 22]
-              }
-              color="#f59e0b"
-            />
-          </div>
-        </div>
-
-        {/* Card 3: Sof Foyda */}
-        <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  Sof Foyda
-                </span>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  Daromad marjasi
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(234, 179, 8, 0.14)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <DollarSign size={16} color="#eab308" />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-              {formatUZS(kpi.net_profit_uzs)}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--accent-emerald)', fontWeight: 600 }}>
-              + {formatUSD(kpi.net_profit_usd)}
-            </div>
-            <InlineCardSparkline
-              data={
-                data?.sales_chart && data.sales_chart.length > 0
-                  ? data.sales_chart.map((c) => Number(c.profit_uzs || 1) / 1000 + 8)
-                  : [10, 14, 12, 19, 17, 25, 30]
-              }
-              color="#eab308"
-            />
-          </div>
-        </div>
-
-        {/* Card 4: Jami Chiqim (Total Costs / Expenses) */}
-        <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  Jami Chiqim
-                </span>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  Tannarx & xarajatlar
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(244, 63, 94, 0.14)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <TrendingDown size={16} color="#f43f5e" />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#f43f5e' }}>
-              {loading && !data ? (
-                <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
-              ) : (
-                formatUZS(costUZS)
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ fontSize: 13, color: 'var(--accent-rose)', fontWeight: 600 }}>
-              + {formatUSD(costUSD)}
-            </div>
-            <InlineCardSparkline
-              data={
-                data?.sales_chart && data.sales_chart.length > 0
-                  ? data.sales_chart.map((c) => {
-                      const cSales = Number(c.total_sales_uzs || c.revenue_uzs || 0);
-                      const cProf = Number(c.profit_uzs || 0);
-                      return Math.max(1, (cSales - cProf) / 1000 + 5);
-                    })
-                  : [14, 18, 12, 16, 20, 15, 17]
-              }
-              color="#f43f5e"
-            />
-          </div>
-        </div>
-
-        {/* Card 5: Jami Savdo & Cheklar (Total Sales Turnover) */}
-        <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                  Jami Savdo / Cheklar
-                </span>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                  Aylanma (Tushum + Nasiya)
-                </div>
-              </div>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(6, 182, 212, 0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <ShoppingBag size={16} color="var(--accent-cyan)" />
-              </div>
-            </div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
-              {formatUZS(kpi.total_sales_uzs || kpi.total_revenue_uzs)}
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {kpi.sales_count || 0} ta chek {Number(kpi.total_sales_usd || 0) > 0 && `(+ ${formatUSD(kpi.total_sales_usd)})`}
-            </div>
-            <InlineCardSparkline
-              data={
-                data?.sales_chart && data.sales_chart.length > 0
-                  ? data.sales_chart.map((c) => Number(c.sales_count || 1) * 3 + 6)
-                  : [8, 12, 11, 16, 15, 20, 24]
-              }
-              color="#06b6d4"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Dynamic Telemetry / Operational Metrics Card (Mockup Inspired) */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '20px 24px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 24,
-        }}
-      >
-        <div style={{ paddingRight: 8 }}>
-          <MiniEqualizer
-            data={data?.sales_chart}
-            title="Sotuvlar Faolligi"
-            value={kpi.sales_count ? '96.2%' : '100%'}
-          />
-        </div>
+        {/* 5 ta Umumiy Holat Kartochkasi */}
         <div
           style={{
-            borderLeft: '1px solid var(--border-subtle)',
-            borderRight: '1px solid var(--border-subtle)',
-            padding: '0 20px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 16,
           }}
-          className="dashboard-mini-divider"
         >
-          <MiniGauge
-            title="Bitimlar Samaradorligi"
-            value="98.5%"
-            percent={98.5}
-          />
+          {/* Top Card 1: Jami Nasiyalar Qarzi (Do'konga qaytishi kerak bo'lgan pul) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #f59e0b' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Jami Nasiyalar Qarzi
+                  </span>
+                  <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>
+                    {overview.debtors_count ? `${overview.debtors_count} ta qarzdor mijoz` : 'Undirilmagan nasiyalar'}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(245, 158, 11, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <BookOpen size={18} color="#f59e0b" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#f59e0b' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(overview.total_debt_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+                + {formatUSD(overview.total_debt_usd)}
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Do‘kon haqi
+              </span>
+            </div>
+          </div>
+
+          {/* Top Card 2: Ombor Qoldig'i (Tannarx bo'yicha jami tovar kapitali) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #10b981' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Ombor Qoldig‘i (Tannarx)
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {overview.inventory_total_qty ? `${overview.inventory_total_qty} dona tovar` : 'Mavjud tovarlar'}
+                    {overview.inventory_variants_count ? ` (${overview.inventory_variants_count} tur)` : ''}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(16, 185, 129, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Package size={18} color="#10b981" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(overview.inventory_cost_value_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Tovarlar tannarx qiymati
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: 6 }}>
+                Aktiv
+              </span>
+            </div>
+          </div>
+
+          {/* Top Card 3: Kutilayotgan Savdo Tushumi (Sotuv bahosida) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #6366f1' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Kutilayotgan Tushum
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Ombordagi tovarlar sotuv bahosi
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(99, 102, 241, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Store size={18} color="#6366f1" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(overview.inventory_retail_value_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Yalpi savdo potensiali
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 8px', borderRadius: 6 }}>
+                Potensial
+              </span>
+            </div>
+          </div>
+
+          {/* Top Card 4: Jami Jamg'arilgan Sof Foyda (All-Time) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #1d4ed8' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Jami Sof Foyda (All-Time)
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Barcha davrlardagi sof daromad
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(29, 78, 216, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Award size={18} color="#1d4ed8" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(overview.all_time_profit_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: '#1d4ed8', fontWeight: 600 }}>
+                + {formatUSD(overview.all_time_profit_usd)}
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Jamg‘arilgan
+              </span>
+            </div>
+          </div>
+
+          {/* Top Card 5: Umumiy Savdo Aylanmasi (All-Time) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #15803d' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Umumiy Savdo Aylanmasi
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {overview.all_time_sales_count ? `${overview.all_time_sales_count} ta savdo cheki` : 'Barcha davrlar'}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(21, 128, 61, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <TrendingUp size={18} color="#15803d" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(overview.all_time_sales_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
+                + {formatUSD(overview.all_time_sales_usd)}
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Jami savdo
+              </span>
+            </div>
+          </div>
         </div>
-        <div style={{ paddingLeft: 8 }}>
-          <MiniSparkline
-            title="Sotuvlar Qadami"
-            value={`${kpi.sales_count || 0} ta`}
-            trend="+12.7%"
-            isPositive={true}
-            data={
-              data?.sales_chart && data.sales_chart.length > 0
-                ? data.sales_chart.map((c) => Number(c.sales_count || 1) * 8 + 10)
-                : [12, 18, 15, 24, 20, 28, 25, 30, 28, 36, 34, 42, 40, 48, 50]
-            }
-          />
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. DAVRIY MOLIYAVIY TAHLIL & FILTER (PERIOD-BASED SECTION)                 */}
+      {/* Tanlangan davr (Bugun, Kecha, 7 kun, Oy, Yil) bo'yicha dinamik hisobotlar */}
+      {/* ========================================================================= */}
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+              Davriy Moliyaviy Tahlil
+            </h2>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+              Tanlangan davr bo‘yicha tushum, xarajat, yangi berilgan nasiya va sof foyda
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {/* Period Selector Pills */}
+            <div
+              style={{
+                display: 'flex',
+                background: 'var(--bg-chip)',
+                padding: 4,
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)',
+                gap: 4,
+              }}
+            >
+              {periods.map((p) => {
+                const active = period === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    onClick={() => setPeriod(p.key)}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: 'var(--radius-xs)',
+                      border: 'none',
+                      background: active
+                        ? 'var(--primary)'
+                        : 'transparent',
+                      color: active ? 'var(--text-on-primary)' : 'var(--text-secondary)',
+                      fontSize: 13,
+                      fontWeight: active ? 700 : 500,
+                      cursor: 'pointer',
+                      boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                      transition: 'all var(--transition-fast)',
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 5 ta Davriy KPI Kartochkasi */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 16,
+          }}
+        >
+          {/* Card 1: Haqiqiy Tushum (Real receipts - Cash & Card) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Haqiqiy Tushum
+                  </span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    Naqd & Karta (nasiyasiz)
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(21, 128, 61, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <TrendingUp size={16} color="#15803d" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(kpi.total_revenue_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: '#15803d', fontWeight: 600 }}>
+                + {formatUSD(kpi.total_revenue_usd)}
+              </div>
+              <InlineCardSparkline
+                data={
+                  data?.sales_chart && data.sales_chart.length > 0
+                    ? data.sales_chart.map((c) => Number(c.revenue_uzs || 1) / 1000 + 10)
+                    : [12, 18, 15, 24, 21, 29, 35]
+                }
+                color="#15803d"
+              />
+            </div>
+          </div>
+
+          {/* Card 2: Nasiyaga Sotuv (Credit sales in selected period) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Berilgan Nasiya
+                  </span>
+                  <div style={{ fontSize: 10, color: '#b45309', fontWeight: 600 }}>
+                    {kpi.debt_sales_count ? `${kpi.debt_sales_count} ta nasiya cheki` : 'Ushbu davrda'}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(180, 83, 9, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Wallet size={16} color="#b45309" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(kpi.debt_sales_uzs)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: '#b45309', fontWeight: 600 }}>
+                + {formatUSD(kpi.debt_sales_usd)}
+              </div>
+              <InlineCardSparkline
+                data={
+                  data?.sales_chart && data.sales_chart.length > 0
+                    ? data.sales_chart.map((c) => Number(c.debt_sales_uzs || 1) / 1000 + 8)
+                    : [5, 10, 8, 14, 12, 19, 22]
+                }
+                color="#b45309"
+              />
+            </div>
+          </div>
+
+          {/* Card 3: Sof Foyda (Ushbu davrda) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Sof Foyda
+                  </span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    Daromad marjasi
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(29, 78, 216, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <DollarSign size={16} color="#1d4ed8" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {formatUZS(kpi.net_profit_uzs)}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: '#1d4ed8', fontWeight: 600 }}>
+                + {formatUSD(kpi.net_profit_usd)}
+              </div>
+              <InlineCardSparkline
+                data={
+                  data?.sales_chart && data.sales_chart.length > 0
+                    ? data.sales_chart.map((c) => Number(c.profit_uzs || 1) / 1000 + 8)
+                    : [10, 14, 12, 19, 17, 25, 30]
+                }
+                color="#1d4ed8"
+              />
+            </div>
+          </div>
+
+          {/* Card 4: Jami Chiqim (Total Costs / Expenses in period) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Jami Chiqim
+                  </span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    Tannarx & xarajatlar
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(185, 28, 28, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <TrendingDown size={16} color="#b91c1c" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {loading && !data ? (
+                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                ) : (
+                  formatUZS(costUZS)
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: '#b91c1c', fontWeight: 600 }}>
+                + {formatUSD(costUSD)}
+              </div>
+              <InlineCardSparkline
+                data={
+                  data?.sales_chart && data.sales_chart.length > 0
+                    ? data.sales_chart.map((c) => {
+                        const cSales = Number(c.total_sales_uzs || c.revenue_uzs || 0);
+                        const cProf = Number(c.profit_uzs || 0);
+                        return Math.max(1, (cSales - cProf) / 1000 + 5);
+                      })
+                    : [14, 18, 12, 16, 20, 15, 17]
+                }
+                color="#b91c1c"
+              />
+            </div>
+          </div>
+
+          {/* Card 5: Jami Savdo & Cheklar (Total Sales Turnover in period) */}
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Jami Savdo / Cheklar
+                  </span>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    Aylanma (Tushum + Nasiya)
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(15, 118, 110, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ShoppingBag size={16} color="#0f766e" />
+                </div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                {formatUZS(kpi.total_sales_uzs || kpi.total_revenue_uzs)}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {kpi.sales_count || 0} ta chek {Number(kpi.total_sales_usd || 0) > 0 && `(+ ${formatUSD(kpi.total_sales_usd)})`}
+              </div>
+              <InlineCardSparkline
+                data={
+                  data?.sales_chart && data.sales_chart.length > 0
+                    ? data.sales_chart.map((c) => Number(c.sales_count || 1) * 3 + 6)
+                    : [8, 12, 11, 16, 15, 20, 24]
+                }
+                color="#0f766e"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

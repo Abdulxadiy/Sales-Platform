@@ -243,6 +243,7 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
           <span style={{ color: 'var(--text-secondary)' }}>Naqd Savdo:</span>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
             {parsed.sales.cashUzs}
+            {parsed.sales.cashUsd && parsed.sales.cashUsd !== '$0.00' && ` / ${parsed.sales.cashUsd}`}
           </span>
         </div>
 
@@ -250,6 +251,7 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
           <span style={{ color: 'var(--text-secondary)' }}>Karta Savdo:</span>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
             {parsed.sales.cardUzs}
+            {parsed.sales.cardUsd && parsed.sales.cardUsd !== '$0.00' && ` / ${parsed.sales.cardUsd}`}
           </span>
         </div>
 
@@ -257,6 +259,7 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
           <span style={{ color: 'var(--text-secondary)' }}>Nasiya Savdo:</span>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
             {parsed.sales.debtUzs}
+            {parsed.sales.debtUsd && parsed.sales.debtUsd !== '$0.00' && ` / ${parsed.sales.debtUsd}`}
           </span>
         </div>
 
@@ -267,6 +270,7 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
               <span style={{ color: 'var(--accent-emerald)' }}>Qo‘shimcha Kirim:</span>
               <span style={{ fontWeight: 600, color: 'var(--accent-emerald)' }}>
                 +{parsed.income.totalUzs}
+                {parsed.income.totalUsd && parsed.income.totalUsd !== '$0.00' && ` / +${parsed.income.totalUsd}`}
               </span>
             </div>
             {parsed.income.items.length > 0 && (
@@ -311,6 +315,7 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
               <span style={{ color: 'var(--accent-rose)' }}>Kassadan Chiqimlar:</span>
               <span style={{ fontWeight: 600, color: 'var(--accent-rose)' }}>
                 {parsed.expense.totalUzs}
+                {parsed.expense.totalUsd && parsed.expense.totalUsd !== '$0.00' && ` / ${parsed.expense.totalUsd}`}
               </span>
             </div>
             {parsed.expense.items.length > 0 && (
@@ -375,9 +380,8 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
           </span>
           <span style={{ fontWeight: 800, color: 'var(--primary)' }}>
             {parsed.cash.actualUzs}
-            {parsed.cash.actualUsd &&
-              parsed.cash.actualUsd !== '$0.00' &&
-              ` / ${parsed.cash.actualUsd}`}
+            {((parsed.cash.actualUsd && parsed.cash.actualUsd !== '$0.00') || (parsed.cash.expectedUsd && parsed.cash.expectedUsd !== '$0.00')) &&
+              ` / ${parsed.cash.actualUsd || '$0.00'}`}
           </span>
         </div>
 

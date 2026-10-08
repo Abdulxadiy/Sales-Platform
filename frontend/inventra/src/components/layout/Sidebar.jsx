@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Sliders,
   X,
+  GitBranch,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -107,6 +108,11 @@ export default function Sidebar({
       : []),
     ...(isAdmin || isOwner
       ? [
+          {
+            to: '/branches',
+            label: 'Filiallar',
+            icon: GitBranch,
+          },
           {
             to: '/employees',
             label: 'Xodimlar (Jamoa)',

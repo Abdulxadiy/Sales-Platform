@@ -16,12 +16,15 @@ import {
   FolderTree,
   X,
   Check,
+  PackagePlus,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { catalogApi, resolveMediaUrl } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/common/Modal';
+import CustomSelect from '../components/common/CustomSelect';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 const defaultProductForm = {
@@ -33,6 +36,11 @@ const defaultProductForm = {
   price_partner: '',
   price_min: '',
   price_recommended: '',
+  do_intake: false,
+  intake_quantity: '',
+  intake_cost_price: '',
+  intake_supplier: '',
+  intake_note: '',
 };
 
 const defaultCategoryForm = {
@@ -46,6 +54,7 @@ export default function Catalog() {
   const toast = useToast();
   const confirm = useConfirm();
   const { isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState([]);
   const [variants, setVariants] = useState([]);
@@ -136,6 +145,20 @@ export default function Catalog() {
     loadVariants();
   }, [loadCategories, loadVariants]);
 
+  useEffect(() => {
+    if (searchParams.get('new') === '1' || searchParams.get('action') === 'new_product') {
+      setProductModalOpen(true);
+      if (searchParams.get('intake') === '1') {
+        setProductForm((prev) => ({ ...prev, do_intake: true }));
+      }
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('new');
+      newParams.delete('action');
+      newParams.delete('intake');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, setProductForm]);
+
   const handleSearch = (e) => {
     const val = e.target.value;
     setSearch(val);
@@ -196,7 +219,7 @@ export default function Catalog() {
   };
 
   const handleParentCategoryChange = (e) => {
-    const parentId = e.target.value;
+    const parentId = typeof e === 'object' && e !== null && 'target' in e ? e.target.value : e;
     if (parentId) {
       const parent = categories.find((c) => c.id === parseInt(parentId, 10));
       setCategoryForm((prev) => ({
@@ -228,6 +251,17 @@ export default function Catalog() {
       return;
     }
 
+    if (productForm.do_intake) {
+      if (!productForm.intake_quantity || parseFloat(productForm.intake_quantity) <= 0) {
+        toast.warning('Kirim miqdorini to‘g‘ri kiriting');
+        return;
+      }
+      if (productForm.intake_cost_price === '' || parseFloat(productForm.intake_cost_price) < 0) {
+        toast.warning('Tovar tan narxini (asl narxini) kiriting');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       if (productImage) {
@@ -244,9 +278,20 @@ export default function Catalog() {
         formData.append('price_recommended', productForm.price_recommended || '0');
         formData.append('image', productImage);
 
+        if (productForm.do_intake) {
+          formData.append('initial_quantity', productForm.intake_quantity);
+          formData.append('initial_cost_price', productForm.intake_cost_price);
+          if (productForm.intake_supplier?.trim()) {
+            formData.append('supplier', productForm.intake_supplier.trim());
+          }
+          if (productForm.intake_note?.trim()) {
+            formData.append('intake_note', productForm.intake_note.trim());
+          }
+        }
+
         await catalogApi.createProduct(formData);
       } else {
-        await catalogApi.createProduct({
+        const payload = {
           name: productForm.name.trim(),
           category_id: parseInt(productForm.category_id, 10),
           unit: productForm.unit,
@@ -255,10 +300,27 @@ export default function Catalog() {
           price_partner: parseFloat(productForm.price_partner || 0),
           price_min: parseFloat(productForm.price_min || 0),
           price_recommended: parseFloat(productForm.price_recommended || 0),
-        });
+        };
+
+        if (productForm.do_intake) {
+          payload.initial_quantity = parseFloat(productForm.intake_quantity);
+          payload.initial_cost_price = parseFloat(productForm.intake_cost_price);
+          if (productForm.intake_supplier?.trim()) {
+            payload.supplier = productForm.intake_supplier.trim();
+          }
+          if (productForm.intake_note?.trim()) {
+            payload.intake_note = productForm.intake_note.trim();
+          }
+        }
+
+        await catalogApi.createProduct(payload);
       }
 
-      toast.success(`"${productForm.name}" mahsuloti muvaffaqiyatli yaratildi!`);
+      if (productForm.do_intake) {
+        toast.success(`"${productForm.name}" yaratildi va ${productForm.intake_quantity} ${productForm.unit} omborga kirim qilindi!`);
+      } else {
+        toast.success(`"${productForm.name}" mahsuloti muvaffaqiyatli yaratildi!`);
+      }
       setProductModalOpen(false);
       resetProductForm();
       setProductImage(null);
@@ -619,19 +681,21 @@ export default function Catalog() {
           />
         </div>
 
-        <select
+        <CustomSelect
           value={selectedCat}
-          onChange={handleCatChange}
-          className="input-field"
-          style={{ width: 'auto', minWidth: 220 }}
-        >
-          <option value="">Barcha kategoriyalar</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {getCategoryLabel(c)}
-            </option>
-          ))}
-        </select>
+          onChange={(val) => {
+            handleCatChange({ target: { value: val } });
+          }}
+          options={[
+            { value: '', label: 'Barcha kategoriyalar' },
+            ...categories.map((c) => ({
+              value: c.id,
+              label: getCategoryLabel(c),
+            })),
+          ]}
+          size="md"
+          style={{ minWidth: 230 }}
+        />
       </div>
 
       {/* Variants / Products Grid */}
@@ -784,8 +848,26 @@ export default function Catalog() {
                   <h4 style={{ fontSize: 16, fontWeight: 700, margin: '4px 0 2px', color: 'var(--text-primary)' }}>
                     {v.product_name}
                   </h4>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    Variant: {v.name}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      Variant: {v.name}
+                    </div>
+                    {v.barcode && (
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--text-muted)',
+                          fontFamily: 'monospace',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                        title={`Shtrix-kod: ${v.barcode}`}
+                      >
+                        <Barcode size={13} opacity={0.7} />
+                        <span>{v.barcode}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -858,7 +940,7 @@ export default function Catalog() {
         isOpen={productModalOpen}
         onClose={() => setProductModalOpen(false)}
         title="Yangi Mahsulot Qo‘shish"
-        maxWidth={580}
+        maxWidth={640}
       >
         <form onSubmit={handleProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
@@ -880,35 +962,33 @@ export default function Catalog() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Kategoriya <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <select
+              <CustomSelect
                 value={productForm.category_id}
-                onChange={(e) => handleProductCategoryChange(e.target.value)}
-                className="input-field"
-                required
-              >
-                <option value="">Tanlang...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {getCategoryLabel(c)}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => handleProductCategoryChange(val)}
+                placeholder="Tanlang..."
+                options={categories.map((c) => ({
+                  value: c.id,
+                  label: getCategoryLabel(c),
+                }))}
+                fullWidth
+              />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 O‘lchov Birligi
               </label>
-              <select
+              <CustomSelect
                 value={productForm.unit}
-                onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}
-                className="input-field"
-              >
-                <option value="dona">Dona</option>
-                <option value="kg">Kilogramm (kg)</option>
-                <option value="litr">Litr</option>
-                <option value="metr">Metr</option>
-              </select>
+                onChange={(val) => setProductForm({ ...productForm, unit: val })}
+                options={[
+                  { value: 'dona', label: 'Dona' },
+                  { value: 'kg', label: 'Kilogramm (kg)' },
+                  { value: 'litr', label: 'Litr' },
+                  { value: 'metr', label: 'Metr' },
+                ]}
+                fullWidth
+              />
             </div>
           </div>
 
@@ -1012,24 +1092,192 @@ export default function Catalog() {
                   </div>
                 </div>
 
+                {/* Immediate Stock Intake Option */}
                 <div
                   style={{
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: productForm.do_intake ? '1px solid var(--primary)' : '1px solid var(--border-card)',
+                    background: productForm.do_intake ? 'var(--bg-surface-elevated, var(--bg-card))' : 'var(--bg-card)',
+                    transition: 'all var(--transition-fast)',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-xs)',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
+                    flexDirection: 'column',
+                    gap: 12,
                   }}
                 >
-                  <Info size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
-                  <span>
-                    Mahsulotning <strong>tannarxi</strong> ombor orqali tovar kirim qilinganda faktura narxiga qarab belgilanadi.
-                  </span>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                    onClick={() => setProductForm((prev) => ({ ...prev, do_intake: !prev.do_intake }))}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        type="checkbox"
+                        id="do_intake_checkbox"
+                        checked={!!productForm.do_intake}
+                        onChange={(e) => setProductForm((prev) => ({ ...prev, do_intake: e.target.checked }))}
+                        style={{ width: 17, height: 17, cursor: 'pointer', accentColor: 'var(--primary)' }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div>
+                        <label
+                          htmlFor="do_intake_checkbox"
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <PackagePlus size={16} color="var(--primary)" />
+                          <span>Darhol omborga kirim qilish (Boshlang‘ich qoldiq)</span>
+                        </label>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          Yangi tovar yaratilishi bilan uning miqdori va tan narxini omborga qabul qilish
+                        </div>
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: productForm.do_intake ? 'var(--primary)' : 'var(--bg-chip)',
+                        color: productForm.do_intake ? 'var(--primary-foreground)' : 'var(--text-muted)',
+                      }}
+                    >
+                      {productForm.do_intake ? 'KIRIM QILINADI' : 'KIRIMSIZ'}
+                    </span>
+                  </div>
+
+                  {/* Intake fields */}
+                  {productForm.do_intake && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        paddingTop: 12,
+                        borderTop: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                            Kirim Miqdori ({productForm.unit || 'dona'}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
+                          </label>
+                          <input
+                            type="number"
+                            step={productForm.unit === 'dona' ? '1' : '0.001'}
+                            min={productForm.unit === 'dona' ? '1' : '0.001'}
+                            placeholder={productForm.unit === 'dona' ? 'Masalan: 10' : 'Masalan: 10.5'}
+                            value={productForm.intake_quantity}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_quantity: e.target.value }))}
+                            className="input-field"
+                            required={productForm.do_intake}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                            Asl Narx / Tan Narxi ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
+                          </label>
+                          <input
+                            type="number"
+                            step={cur === 'USD' ? '0.01' : '1'}
+                            min="0"
+                            placeholder={cur === 'USD' ? 'Masalan: 10' : 'Masalan: 45000'}
+                            value={productForm.intake_cost_price}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_cost_price: e.target.value }))}
+                            className="input-field"
+                            required={productForm.do_intake}
+                          />
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
+                            Omborga kirim qilinadigan faktura narxi
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                            Ta’minotchi (Yetkazib beruvchi)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Masalan: Global Trade MCHJ yoki Baza"
+                            value={productForm.intake_supplier}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_supplier: e.target.value }))}
+                            className="input-field"
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                            Faktura raqami / Izoh
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Masalan: Faktura #1084"
+                            value={productForm.intake_note}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_note: e.target.value }))}
+                            className="input-field"
+                          />
+                        </div>
+                      </div>
+
+                      {parseFloat(productForm.intake_quantity || 0) > 0 && parseFloat(productForm.intake_cost_price || 0) > 0 && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            borderRadius: 'var(--radius-xs)',
+                            background: 'var(--bg-input)',
+                            border: '1px dashed var(--border-card)',
+                            fontSize: 12,
+                          }}
+                        >
+                          <span style={{ color: 'var(--text-secondary)' }}>Jami kirim tovar partiyasi qiymati:</span>
+                          <strong style={{ color: 'var(--primary)', fontSize: 13 }}>
+                            {(parseFloat(productForm.intake_quantity) * parseFloat(productForm.intake_cost_price)).toLocaleString()} {cur}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {!productForm.do_intake && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-xs)',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: 12,
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    <Info size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
+                    <span>
+                      Mahsulotning <strong>tannarxi</strong> ombor orqali tovar kirim qilinganda faktura narxiga qarab belgilanadi.
+                    </span>
+                  </div>
+                )}
               </>
             );
           })()}
@@ -1128,20 +1376,21 @@ export default function Catalog() {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               Ota Kategoriya (Ixtiyoriy)
             </label>
-            <select
+            <CustomSelect
               value={categoryForm.parent_id}
               onChange={handleParentCategoryChange}
-              className="input-field"
-            >
-              <option value="">(Ota kategoriya yo‘q — Asosiy Kategoriya)</option>
-              {categories
-                .filter((c) => !c.parent)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} [Kod: {c.kod}] ({c.currency})
-                  </option>
-                ))}
-            </select>
+              placeholder="(Ota kategoriya yo‘q — Asosiy Kategoriya)"
+              options={[
+                { value: '', label: '(Ota kategoriya yo‘q — Asosiy Kategoriya)' },
+                ...categories
+                  .filter((c) => !c.parent)
+                  .map((c) => ({
+                    value: c.id,
+                    label: `${c.name} [Kod: ${c.kod}] (${c.currency})`,
+                  })),
+              ]}
+              fullWidth
+            />
             <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
               Faqat asosiy kategoriyalar ota kategoriya bo‘la oladi (2 bosqichli ierarxiya)
             </span>
@@ -1183,16 +1432,16 @@ export default function Catalog() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Valyuta <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <select
+              <CustomSelect
                 value={categoryForm.currency}
-                onChange={(e) => setCategoryForm({ ...categoryForm, currency: e.target.value })}
-                className="input-field"
+                onChange={(val) => setCategoryForm({ ...categoryForm, currency: val })}
                 disabled={Boolean(categoryForm.parent_id)}
-                style={categoryForm.parent_id ? { opacity: 0.75, cursor: 'not-allowed' } : {}}
-              >
-                <option value="UZS">UZS (So‘m)</option>
-                <option value="USD">USD (AQSH Dollari)</option>
-              </select>
+                options={[
+                  { value: 'UZS', label: 'UZS (So‘m)' },
+                  { value: 'USD', label: 'USD (AQSH Dollari)' },
+                ]}
+                fullWidth
+              />
               {categoryForm.parent_id && (
                 <span style={{ fontSize: 11, color: 'var(--accent-emerald, #10b981)', marginTop: 4, display: 'block' }}>
                   ✓ Ota kategoriyadan meros olindi
@@ -1416,10 +1665,10 @@ export default function Catalog() {
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       Ota Kategoriya
                     </label>
-                    <select
+                    <CustomSelect
                       value={editCategoryForm.parent_id}
-                      onChange={(e) => {
-                        const pId = e.target.value;
+                      onChange={(val) => {
+                        const pId = val;
                         const parent = categories.find((c) => c.id === parseInt(pId, 10));
                         setEditCategoryForm({
                           ...editCategoryForm,
@@ -1427,33 +1676,36 @@ export default function Catalog() {
                           currency: parent ? parent.currency : editCategoryForm.currency,
                         });
                       }}
-                      className="input-field"
-                    >
-                      <option value="">(Asosiy Kategoriya — Ota kategoriya yo‘q)</option>
-                      {categories
-                        .filter((c) => !c.parent && c.id !== editingCategory.id)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name} [Kod: {c.kod}] ({c.currency})
-                          </option>
-                        ))}
-                    </select>
+                      placeholder="(Asosiy Kategoriya — Ota kategoriya yo‘q)"
+                      options={[
+                        { value: '', label: '(Asosiy Kategoriya — Ota kategoriya yo‘q)' },
+                        ...categories
+                          .filter((c) => !c.parent && c.id !== editingCategory.id)
+                          .map((c) => ({
+                            value: c.id,
+                            label: `${c.name} [Kod: ${c.kod}] (${c.currency})`,
+                          })),
+                      ]}
+                      size="sm"
+                      fullWidth
+                    />
                   </div>
 
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       Valyuta
                     </label>
-                    <select
+                    <CustomSelect
                       value={editCategoryForm.currency}
-                      onChange={(e) => setEditCategoryForm({ ...editCategoryForm, currency: e.target.value })}
-                      className="input-field"
+                      onChange={(val) => setEditCategoryForm({ ...editCategoryForm, currency: val })}
                       disabled={Boolean(editCategoryForm.parent_id)}
-                      style={editCategoryForm.parent_id ? { opacity: 0.75, cursor: 'not-allowed' } : {}}
-                    >
-                      <option value="UZS">UZS (So‘m)</option>
-                      <option value="USD">USD (AQSH Dollari)</option>
-                    </select>
+                      options={[
+                        { value: 'UZS', label: 'UZS (So‘m)' },
+                        { value: 'USD', label: 'USD (AQSH Dollari)' },
+                      ]}
+                      size="sm"
+                      fullWidth
+                    />
                     {editCategoryForm.parent_id && (
                       <span style={{ fontSize: 10, color: 'var(--accent-emerald, #10b981)', marginTop: 2, display: 'block' }}>
                         ✓ Ota kategoriyadan meros olinadi
@@ -1694,35 +1946,33 @@ export default function Catalog() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Kategoriya <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <select
+              <CustomSelect
                 value={editProductForm.category_id}
-                onChange={(e) => handleEditProductCategoryChange(e.target.value)}
-                className="input-field"
-                required
-              >
-                <option value="">Tanlang...</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {getCategoryLabel(c)}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => handleEditProductCategoryChange(val)}
+                placeholder="Tanlang..."
+                options={categories.map((c) => ({
+                  value: c.id,
+                  label: getCategoryLabel(c),
+                }))}
+                fullWidth
+              />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 O‘lchov Birligi
               </label>
-              <select
+              <CustomSelect
                 value={editProductForm.unit}
-                onChange={(e) => setEditProductForm({ ...editProductForm, unit: e.target.value })}
-                className="input-field"
-              >
-                <option value="dona">Dona</option>
-                <option value="kg">Kilogramm (kg)</option>
-                <option value="litr">Litr</option>
-                <option value="metr">Metr</option>
-              </select>
+                onChange={(val) => setEditProductForm({ ...editProductForm, unit: val })}
+                options={[
+                  { value: 'dona', label: 'Dona' },
+                  { value: 'kg', label: 'Kilogramm (kg)' },
+                  { value: 'litr', label: 'Litr' },
+                  { value: 'metr', label: 'Metr' },
+                ]}
+                fullWidth
+              />
             </div>
           </div>
 

@@ -22,13 +22,13 @@ import { useAuth } from '../context/AuthContext';
 import { authApi, resolveAvatarUrl } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function Profile() {
   const { user, refreshProfile } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const fileInputRef = useRef(null);
-  const dateInputRef = useRef(null);
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -493,61 +493,17 @@ export default function Profile() {
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>
               Tug‘ilgan Sana
             </label>
-            <div style={{ position: 'relative', width: '100%' }}>
-              <input
-                ref={dateInputRef}
-                id="bday"
-                name="bday"
-                autoComplete="bday"
-                type="date"
-                max="2026-12-31"
-                min="1920-01-01"
-                value={formData.date_of_birth}
-                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                onClick={(e) => {
-                  try {
-                    e.target.showPicker?.();
-                  } catch (_) {}
-                }}
-                className="input-field"
-                style={{
-                  width: '100%',
-                  padding: '11px 40px 11px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    dateInputRef.current?.showPicker?.();
-                  } catch (_) {}
-                }}
-                title="Taqvimni ochish"
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Calendar size={18} />
-              </button>
-            </div>
+            <CustomDatePicker
+              id="bday"
+              name="bday"
+              value={formData.date_of_birth}
+              onChange={(val) => setFormData({ ...formData, date_of_birth: val })}
+              placeholder="Tug‘ilgan sanani tanlang..."
+              max="2026-12-31"
+              min="1920-01-01"
+              fullWidth
+              size="lg"
+            />
             <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
               Format: YYYY-MM-DD (masalan: 1995-05-20)
             </span>

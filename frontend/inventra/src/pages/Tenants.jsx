@@ -307,22 +307,24 @@ export default function Tenants() {
       </div>
 
       {/* Tenants Table */}
-      <div className="glass-card table-responsive" style={{ padding: 0 }}>
-        <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead>
-            <tr
-              style={{
-                borderBottom: '1px solid var(--border-subtle)',
-                background: 'rgba(0,0,0,0.2)',
-                fontSize: 12,
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-              }}
-            >
-              <th style={{ padding: '14px 20px' }}>ID</th>
-              <th style={{ padding: '14px 20px' }}>Do‘kon Nomi</th>
-              <th style={{ padding: '14px 20px' }}>Tavsif</th>
+      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="table-responsive">
+          <table style={{ width: '100%', minWidth: 840, borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr
+                style={{
+                  borderBottom: '1px solid var(--border-subtle)',
+                  background: 'rgba(0,0,0,0.2)',
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>ID</th>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Do‘kon Nomi</th>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Tavsif</th>
               <th style={{ padding: '14px 20px' }}>Egasi (Owner)</th>
               <th style={{ padding: '14px 20px' }}>Holat</th>
               <th style={{ padding: '14px 20px' }}>Yaratilgan Sana</th>
@@ -526,6 +528,7 @@ export default function Tenants() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Create Tenant Modal */}

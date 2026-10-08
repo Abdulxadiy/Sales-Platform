@@ -19,9 +19,12 @@ import {
 import { cashboxApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
+import { useBranch } from '../context/BranchContext';
 import InventraLogo from '../components/common/InventraLogo';
 import ShiftReportSlip from '../components/common/ShiftReportSlip';
+import ZReportModernView from '../components/common/ZReportModernView';
 import { printReceiptSlip } from '../components/common/ReceiptSlip';
+import usePersistedState from '../hooks/usePersistedState';
 
 const STORAGE_KEY_EXPENSES = 'inventra_custom_expense_categories';
 const STORAGE_KEY_INCOMES = 'inventra_custom_income_sources';
@@ -47,6 +50,7 @@ const DEFAULT_INCOME_SOURCES = [
 
 export default function Shifts() {
   const toast = useToast();
+  const { activeBranch } = useBranch();
   const [activeTab, setActiveTab] = useState('reports'); // 'reports' | 'expenses' | 'income'
   const [shiftStatus, setShiftStatus] = useState(null);
   const [reports, setReports] = useState([]);
@@ -60,6 +64,8 @@ export default function Shifts() {
   const [incomeModalOpen, setIncomeModalOpen] = useState(false);
   const [reportDetailModalOpen, setReportDetailModalOpen] = useState(false);
   const [selectedReportDetail, setSelectedReportDetail] = useState(null);
+  const [reportViewMode, setReportViewMode] = useState('modern'); // 'modern' | 'slip'
+  const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
 
   // Shift Close Form
   const [actualCashUzs, setActualCashUzs] = useState('');
@@ -97,12 +103,14 @@ export default function Shifts() {
 
   // Expense Form
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCurrency, setExpenseCurrency] = useState('UZS');
   const [expenseCategory, setExpenseCategory] = useState(() => savedExpenseCategories[0] || 'Xarajat');
   const [expenseNote, setExpenseNote] = useState('');
   const [submittingExpense, setSubmittingExpense] = useState(false);
 
   // Income Form
   const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeCurrency, setIncomeCurrency] = useState('UZS');
   const [incomeSource, setIncomeSource] = useState(() => savedIncomeSources[0] || 'Qo‘shimcha kirim');
   const [incomeNote, setIncomeNote] = useState('');
   const [submittingIncome, setSubmittingIncome] = useState(false);
@@ -132,19 +140,19 @@ export default function Shifts() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const statusRes = await cashboxApi.getCurrentShift().catch(() => null);
+      const statusRes = await cashboxApi.getCurrentShift(activeBranch?.id).catch(() => null);
       setShiftStatus(statusRes);
 
       if (activeTab === 'reports') {
-        const res = await cashboxApi.getReports();
+        const res = await cashboxApi.getReports(1, activeBranch?.id);
         const list = res.results || res;
         setReports(Array.isArray(list) ? list : []);
       } else if (activeTab === 'expenses') {
-        const res = await cashboxApi.getExpenses();
+        const res = await cashboxApi.getExpenses(activeBranch?.id);
         const list = res.results || res;
         setExpenses(Array.isArray(list) ? list : []);
       } else if (activeTab === 'income') {
-        const res = await cashboxApi.getIncome();
+        const res = await cashboxApi.getIncome(activeBranch?.id);
         const list = res.results || res;
         setIncomes(Array.isArray(list) ? list : []);
       }
@@ -153,7 +161,7 @@ export default function Shifts() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, toast]);
+  }, [activeTab, activeBranch?.id, toast]);
 
   useEffect(() => {
     loadData();
@@ -169,6 +177,7 @@ export default function Shifts() {
     setSubmittingClose(true);
     try {
       const rep = await cashboxApi.closeShift({
+        branch_id: activeBranch?.id,
         actual_cash_uzs: parseFloat(actualCashUzs),
         actual_cash_usd: parseFloat(actualCashUsd || '0'),
         discrepancy_reason: discrepancyReason,
@@ -180,6 +189,7 @@ export default function Shifts() {
       setActualCashUsd('0');
       setDiscrepancyReason('');
       setStaffNotes('');
+      setReportViewMode('modern');
       setSelectedReportDetail(rep);
       setReportDetailModalOpen(true);
       loadData();
@@ -208,8 +218,9 @@ export default function Shifts() {
     setSubmittingExpense(true);
     try {
       await cashboxApi.createExpense({
+        branch_id: activeBranch?.id,
         amount: parseFloat(expenseAmount),
-        currency: 'UZS',
+        currency: expenseCurrency,
         category: cleanCategory,
         note: expenseNote,
       });
@@ -252,8 +263,9 @@ export default function Shifts() {
     setSubmittingIncome(true);
     try {
       await cashboxApi.createIncome({
+        branch_id: activeBranch?.id,
         amount: parseFloat(incomeAmount),
-        currency: 'UZS',
+        currency: incomeCurrency,
         source: cleanSource,
         note: incomeNote,
       });
@@ -282,6 +294,7 @@ export default function Shifts() {
 
   // Open Full Z-Report Detail
   const handleOpenReportDetail = async (report) => {
+    setReportViewMode('modern');
     try {
       const detail = await cashboxApi.getReportDetail(report.id);
       setSelectedReportDetail(detail);
@@ -556,19 +569,20 @@ export default function Shifts() {
 
       {/* Main Table Views */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        {activeTab === 'reports' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '14px 20px' }}>Hisobot ID</th>
-                <th style={{ padding: '14px 16px' }}>Sana</th>
-                <th style={{ padding: '14px 16px' }}>Kutilgan Naqd Pul</th>
-                <th style={{ padding: '14px 16px' }}>Haqiqiy Sanalgan</th>
-                <th style={{ padding: '14px 16px' }}>Tafovut (Farq)</th>
-                <th style={{ padding: '14px 16px' }}>Yopgan Xodim</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Amal</th>
-              </tr>
-            </thead>
+        <div className="table-responsive">
+          {activeTab === 'reports' && (
+            <table style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Hisobot ID</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Sana</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Kutilgan Naqd Pul</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Haqiqiy Sanalgan</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Tafovut (Farq)</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Yopgan Xodim</th>
+                  <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amal</th>
+                </tr>
+              </thead>
             <tbody>
               {loading ? (
                 <tr>
@@ -652,14 +666,14 @@ export default function Shifts() {
         )}
 
         {activeTab === 'expenses' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+          <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '14px 20px' }}>Toifa</th>
-                <th style={{ padding: '14px 16px' }}>Summa</th>
-                <th style={{ padding: '14px 16px' }}>Izoh</th>
-                <th style={{ padding: '14px 16px' }}>Kiritgan Xodim</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Sana</th>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Toifa</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Summa</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Izoh</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Kiritgan Xodim</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Sana</th>
               </tr>
             </thead>
             <tbody>
@@ -695,14 +709,14 @@ export default function Shifts() {
         )}
 
         {activeTab === 'income' && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+          <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '14px 20px' }}>Manba</th>
-                <th style={{ padding: '14px 16px' }}>Summa</th>
-                <th style={{ padding: '14px 16px' }}>Izoh</th>
-                <th style={{ padding: '14px 16px' }}>Qabul qilgan Xodim</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Sana</th>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Manba</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Summa</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Izoh</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Qabul qilgan Xodim</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Sana</th>
               </tr>
             </thead>
             <tbody>
@@ -713,17 +727,17 @@ export default function Shifts() {
               ) : incomes.length > 0 ? (
                 incomes.map((inc) => (
                   <tr key={inc.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '14px 20px' }}>
+                    <td style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>
                       <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-xs)', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-emerald)', fontSize: 12, fontWeight: 700 }}>
                         {inc.source}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--accent-emerald)' }}>
+                    <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>
                       +{Number(inc.amount).toLocaleString()} {inc.currency || 'UZS'}
                     </td>
                     <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{inc.note || '—'}</td>
-                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{inc.recorded_by_name || 'Xodim'}</td>
-                    <td style={{ padding: '14px 20px', textAlign: 'right', color: 'var(--text-muted)', fontSize: 12 }}>
+                    <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{inc.recorded_by_name || 'Xodim'}</td>
+                    <td style={{ padding: '14px 20px', textAlign: 'right', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {new Date(inc.created_at || inc.date).toLocaleString('uz-UZ')}
                     </td>
                   </tr>
@@ -736,6 +750,7 @@ export default function Shifts() {
             </tbody>
           </table>
         )}
+        </div>
       </div>
 
       {/* Modal 1: Shift Close (Z-Report confirmation) */}
@@ -836,18 +851,69 @@ export default function Shifts() {
       <Modal isOpen={expenseModalOpen} onClose={() => setExpenseModalOpen(false)} title="Kassadan Chiqim Qilish">
         <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Chiqim Summasi (UZS) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Masalan: 50000"
-              value={expenseAmount}
-              onChange={(e) => setExpenseAmount(e.target.value)}
-              required
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, outline: 'none' }}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Chiqim Summasi *
+              </label>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {['UZS', 'USD'].map((cur) => (
+                  <button
+                    key={cur}
+                    type="button"
+                    onClick={() => setExpenseCurrency(cur)}
+                    style={{
+                      padding: '2px 9px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      border: '1px solid',
+                      borderColor: expenseCurrency === cur ? 'var(--primary)' : 'var(--border-card)',
+                      background: expenseCurrency === cur ? 'var(--primary)' : 'var(--bg-card)',
+                      color: expenseCurrency === cur ? 'var(--primary-foreground, #fff)' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                step="0.01"
+                placeholder={expenseCurrency === 'USD' ? 'Masalan: 50.00' : 'Masalan: 50000'}
+                value={expenseAmount}
+                onChange={(e) => setExpenseAmount(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 52px 12px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: 15,
+                  outline: 'none',
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {expenseCurrency}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -969,18 +1035,69 @@ export default function Shifts() {
       <Modal isOpen={incomeModalOpen} onClose={() => setIncomeModalOpen(false)} title="Kassaga Qo‘shimcha Kirim">
         <form onSubmit={handleIncomeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Kirim Summasi (UZS) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="Masalan: 100000"
-              value={incomeAmount}
-              onChange={(e) => setIncomeAmount(e.target.value)}
-              required
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, outline: 'none' }}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Kirim Summasi *
+              </label>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {['UZS', 'USD'].map((cur) => (
+                  <button
+                    key={cur}
+                    type="button"
+                    onClick={() => setIncomeCurrency(cur)}
+                    style={{
+                      padding: '2px 9px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      border: '1px solid',
+                      borderColor: incomeCurrency === cur ? 'var(--accent-emerald)' : 'var(--border-card)',
+                      background: incomeCurrency === cur ? 'var(--accent-emerald)' : 'var(--bg-card)',
+                      color: incomeCurrency === cur ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                step="0.01"
+                placeholder={incomeCurrency === 'USD' ? 'Masalan: 100.00' : 'Masalan: 100000'}
+                value={incomeAmount}
+                onChange={(e) => setIncomeAmount(e.target.value)}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 52px 12px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: 15,
+                  outline: 'none',
+                }}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 14,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                {incomeCurrency}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -1099,47 +1216,121 @@ export default function Shifts() {
       </Modal>
 
       {/* Modal 4: Full Z-Report Printable Detail */}
-      <Modal isOpen={reportDetailModalOpen} onClose={() => setReportDetailModalOpen(false)} title="Z-Hisobot Tafsilotlari" maxWidth={440}>
+      <Modal
+        isOpen={reportDetailModalOpen}
+        onClose={() => setReportDetailModalOpen(false)}
+        title={reportViewMode === 'modern' ? 'Z-Hisobot (Smena Natijalari)' : 'Z-Hisobot Kassa Cheki'}
+        maxWidth={reportViewMode === 'modern' ? 560 : 440}
+      >
         {selectedReportDetail && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <ShiftReportSlip report={selectedReportDetail} id="printable-z-report" />
+            {reportViewMode === 'modern' ? (
+              <ZReportModernView
+                report={selectedReportDetail}
+                onPrint={() => printReceiptSlip('printable-z-report', 'Inventra Z-Hisobot', receiptPaperWidth)}
+                onClose={() => setReportDetailModalOpen(false)}
+                activeView={reportViewMode}
+                onToggleView={setReportViewMode}
+              />
+            ) : (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  {/* Paper width toggle */}
+                  <div style={{ display: 'inline-flex', background: 'var(--bg-card)', padding: 3, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setReceiptPaperWidth('58mm')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 4,
+                        border: receiptPaperWidth === '58mm' ? '1px solid var(--primary)' : '1px solid transparent',
+                        background: receiptPaperWidth === '58mm' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                        color: receiptPaperWidth === '58mm' ? 'var(--primary)' : 'var(--text-secondary)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      58 mm (Uzum / Kichik)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReceiptPaperWidth('80mm')}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 4,
+                        border: receiptPaperWidth === '80mm' ? '1px solid var(--primary)' : '1px solid transparent',
+                        background: receiptPaperWidth === '80mm' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                        color: receiptPaperWidth === '80mm' ? 'var(--primary)' : 'var(--text-secondary)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      80 mm (Katta POS)
+                    </button>
+                  </div>
 
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-              <button
-                type="button"
-                onClick={() => printReceiptSlip('printable-z-report', 'Inventra Z-Hisobot')}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-card)',
-                  color: 'var(--text-primary)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Printer size={15} />
-                <span>Chop etish</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportViewMode('modern')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-card)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-secondary)',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ← 📊 Hisobot ko‘rinishiga qaytish
+                  </button>
+                </div>
+                <ShiftReportSlip report={selectedReportDetail} id="printable-z-report-preview" paperWidth={receiptPaperWidth} />
+                <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                  <button
+                    type="button"
+                    onClick={() => printReceiptSlip('printable-z-report', 'Inventra Z-Hisobot', receiptPaperWidth)}
+                    style={{
+                      padding: '9px 20px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: 'none',
+                      background: 'var(--primary)',
+                      color: 'var(--primary-foreground, #fff)',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <Printer size={15} />
+                    <span>Chop etish</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setReportDetailModalOpen(false)}
-                style={{
-                  padding: '9px 20px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)',
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                }}
-              >
-                Yopish
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportDetailModalOpen(false)}
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-subtle)',
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Yopish
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Hidden thermal receipt kept ready in DOM for direct iframe printing */}
+            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: 360, pointerEvents: 'none', opacity: 0 }}>
+              <ShiftReportSlip report={selectedReportDetail} id="printable-z-report" paperWidth={receiptPaperWidth} />
             </div>
           </div>
         )}

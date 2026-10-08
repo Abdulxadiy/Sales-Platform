@@ -78,7 +78,8 @@ class DeficitService:
                 is_active=True,
                 product__is_active=True,
             )
-            .select_related("product", "product__category", "stock")
+            .select_related("product", "product__category")
+            .prefetch_related("stocks")
             .order_by("product__name", "name")
         )
 

@@ -5,7 +5,7 @@ from apps.inventory.models import Stock, StockMovement
 
 class StockServiceError(Exception):
     """
-    Raised for invalid Stock/StockMovement operations (e.g .
+    Raised for invalid Stock/StockMovement operations (e.g.
     insufficient quantity, wrong tenant).
     """
 
@@ -16,18 +16,22 @@ _FIXED_DIRECTION_BY_TYPE = {
     StockMovement.TYPE_MIJOZ_QAYTARDI: StockMovement.DIRECTION_IN,
     StockMovement.TYPE_YETKAZIB_BERUVCHIGA_QAYTARISH: StockMovement.DIRECTION_OUT,
     StockMovement.TYPE_ISROFGARCHILIK: StockMovement.DIRECTION_OUT,
+    StockMovement.TYPE_TRANSFER_OUT: StockMovement.DIRECTION_OUT,
+    StockMovement.TYPE_TRANSFER_IN: StockMovement.DIRECTION_IN,
 }
 
 
 class StockService:
     @staticmethod
-    def _get_or_create_locked_stock(tenant, product_variant):
+    def _get_or_create_locked_stock(tenant, product_variant, branch=None):
         """Lazily create the Stock row on first-ever movement (catalog
         never creates it -- see Stock's docstring), and lock it for the
         rest of this transaction so two concurrent movements against
         the same variant can never race each other's balance check."""
+        if branch is None:
+            branch = tenant.get_main_branch()
         stock, _ = Stock.objects.get_or_create(
-            tenant=tenant, product_variant=product_variant, defaults={"quantity": Decimal("0")}
+            tenant=tenant, branch=branch, product_variant=product_variant, defaults={"quantity": Decimal("0")}
         )
         # get_or_create() doesn't lock on the "got" path -- re-fetch
         # with select_for_update() to guarantee the lock either way.
@@ -38,13 +42,19 @@ class StockService:
     @transaction.atomic
     def _apply_movement(
             cls, *, tenant, product_variant, type: str, quantity: Decimal,
-            direction: str, created_by, cost_price: Decimal=None, note: str="", sale=None) -> StockMovement:
+            direction: str, created_by, branch=None, cost_price: Decimal=None,
+            note: str="", sale=None, transfer=None) -> StockMovement:
         if product_variant.tenant_id != tenant.id:
             raise StockServiceError("product_variant must belong to the same tenant.")
         if quantity <= 0:
             raise StockServiceError("quantity must be positive.")
 
-        stock = cls._get_or_create_locked_stock(tenant, product_variant)
+        if branch is None:
+            branch = tenant.get_main_branch()
+        if branch.tenant_id != tenant.id:
+            raise StockServiceError("branch must belong to the same tenant.")
+
+        stock = cls._get_or_create_locked_stock(tenant, product_variant, branch=branch)
 
         if direction == StockMovement.DIRECTION_OUT:
             if stock.quantity < quantity:
@@ -61,6 +71,7 @@ class StockService:
 
         return StockMovement.objects.create(
             tenant=tenant,
+            branch=branch,
             product_variant=product_variant,
             type=type,
             direction=direction,
@@ -68,47 +79,103 @@ class StockService:
             cost_price=cost_price if type == StockMovement.TYPE_KIRIM else None,
             note=note,
             sale=sale,
+            transfer=transfer,
             created_by=created_by,
         )
+
     # -- Public, explicit-verb API -- one method per real-world action,
     # mirroring EmployeeService.hire()/fire() rather than one generic
     # "record_movement(type=...)" entry point. --
 
     @classmethod
-    def  intake(cls, *, tenant, product_variant, quantity, cost_price, created_by, note="", sale=None) -> StockMovement:
+    def intake(cls, *, tenant, product_variant, quantity, cost_price, created_by, branch=None, note="", sale=None) -> StockMovement:
         """A purchase/restock -- the only movement type that carries a
         cost_price, and the only one gated by `add_stock_intake` rather
         than `adjust_stock` (see api/v1/inventory/views)."""
         if cost_price is None:
             raise StockServiceError("cost_price is required for an intake.")
         return cls._apply_movement(
-            tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_KIRIM,
+            tenant=tenant, branch=branch, product_variant=product_variant, type=StockMovement.TYPE_KIRIM,
             quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_KIRIM],
             created_by=created_by, cost_price=cost_price, note=note, sale=sale,
         )
+
     @classmethod
-    def customer_return(cls, *, tenant, product_variant, quantity, created_by, note="", sale=None) -> StockMovement:
+    @transaction.atomic
+    def batch_intake(
+        cls,
+        *,
+        tenant,
+        items: list[dict],
+        created_by,
+        branch=None,
+        supplier: str = "",
+        faktura_number: str = "",
+        common_note: str = "",
+    ) -> list[StockMovement]:
+        """A batch restock of multiple products in a single atomic transaction.
+
+        Each item dict must contain:
+          - product_variant: ProductVariant
+          - quantity: Decimal
+          - cost_price: Decimal
+          - note: optional str
+        """
+        if not items:
+            raise StockServiceError("Kamida bitta tovar kiritilishi shart.")
+        if len(items) > 100:
+            raise StockServiceError("Bitta partiyada ko'pi bilan 100 ta tovar bo'lishi mumkin.")
+
+        header_parts = []
+        if supplier and supplier.strip():
+            header_parts.append(f"Ta’minotchi: {supplier.strip()}")
+        if faktura_number and faktura_number.strip():
+            header_parts.append(f"Faktura: {faktura_number.strip()}")
+        if common_note and common_note.strip():
+            header_parts.append(common_note.strip())
+        composite_header = " | ".join(header_parts)
+
+        movements = []
+        for it in items:
+            item_note = it.get("note", "").strip() if it.get("note") else ""
+            final_note = f"{composite_header} | {item_note}" if (composite_header and item_note) else (composite_header or item_note)
+
+            movement = cls.intake(
+                tenant=tenant,
+                branch=branch,
+                product_variant=it["product_variant"],
+                quantity=it["quantity"],
+                cost_price=it["cost_price"],
+                created_by=created_by,
+                note=final_note,
+            )
+            movements.append(movement)
+
+        return movements
+
+    @classmethod
+    def customer_return(cls, *, tenant, product_variant, quantity, created_by, branch=None, note="", sale=None) -> StockMovement:
         return cls._apply_movement(
-            tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_MIJOZ_QAYTARDI,
+            tenant=tenant, branch=branch, product_variant=product_variant, type=StockMovement.TYPE_MIJOZ_QAYTARDI,
             quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_MIJOZ_QAYTARDI],
             created_by=created_by, note=note, sale=sale,
         )
 
     @classmethod
-    def supplier_return(cls, *, tenant, product_variant, quantity, created_by, note="") -> StockMovement:
+    def supplier_return(cls, *, tenant, product_variant, quantity, created_by, branch=None, note="") -> StockMovement:
         return cls._apply_movement(
-            tenant=tenant, product_variant=product_variant,
+            tenant=tenant, branch=branch, product_variant=product_variant,
             type=StockMovement.TYPE_YETKAZIB_BERUVCHIGA_QAYTARISH, quantity=quantity,
             direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_YETKAZIB_BERUVCHIGA_QAYTARISH],
             created_by=created_by, note=note,
         )
 
     @classmethod
-    def write_off(cls, *, tenant, product_variant, quantity, created_by, note="") -> StockMovement:
+    def write_off(cls, *, tenant, product_variant, quantity, created_by, branch=None, note="") -> StockMovement:
         """Spoilage/damage/expiry -- goods that leave the shop without
         being sold or returned anywhere."""
         movement = cls._apply_movement(
-            tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_ISROFGARCHILIK,
+            tenant=tenant, branch=branch, product_variant=product_variant, type=StockMovement.TYPE_ISROFGARCHILIK,
             quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_ISROFGARCHILIK],
             created_by=created_by, note=note,
         )
@@ -131,13 +198,13 @@ class StockService:
         return movement
 
     @classmethod
-    def adjust(cls, *, tenant, product_variant, quantity, direction, created_by, note="") -> StockMovement:
+    def adjust(cls, *, tenant, product_variant, quantity, direction, created_by, branch=None, note="") -> StockMovement:
         """An inventory-count correction -- the one type without a fixed
         direction; the caller (a stocktake) says which way it goes."""
         if direction not in (StockMovement.DIRECTION_IN, StockMovement.DIRECTION_OUT):
             raise StockServiceError("direction must be 'in' or 'out' for an adjustment.")
         movement = cls._apply_movement(
-            tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_TUZATISH,
+            tenant=tenant, branch=branch, product_variant=product_variant, type=StockMovement.TYPE_TUZATISH,
             quantity=quantity, direction=direction, created_by=created_by, note=note,
         )
         from apps.core.models import AuditAction
@@ -158,10 +225,3 @@ class StockService:
             description=f"Stock adjustment ({direction}): {quantity} for variant {product_variant.id}",
         )
         return movement
-
-    # `sell()` is deliberately not implemented yet -- that's the `sales`
-    # app's job once it exists (9-bosqich, band 3). It will call
-    # `_apply_movement(type=StockMovement.TYPE_SOTUV, direction="out", ...)`
-    # directly rather than through a public StockService method, since a
-    # sale is a `sales`-app concept with its own transaction (payment,
-    # receipt, etc.) that inventory shouldn't need to know about.

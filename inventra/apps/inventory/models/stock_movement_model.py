@@ -9,6 +9,8 @@ class StockMovement(BaseModel):
     TYPE_YETKAZIB_BERUVCHIGA_QAYTARISH = "yetkazib_beruvchiga_qaytarish"
     TYPE_ISROFGARCHILIK = "isrofgarchilik"
     TYPE_TUZATISH = "tuzatish"
+    TYPE_TRANSFER_OUT = "transfer_out"
+    TYPE_TRANSFER_IN = "transfer_in"
 
     TYPE_CHOICES = [
         (TYPE_KIRIM, "Kirim"),
@@ -17,6 +19,8 @@ class StockMovement(BaseModel):
         (TYPE_YETKAZIB_BERUVCHIGA_QAYTARISH, "Yetkazib beruvchiga qaytarish"),
         (TYPE_ISROFGARCHILIK, "Isrofgarchilik"),
         (TYPE_TUZATISH, "Tuzatish"),
+        (TYPE_TRANSFER_OUT, "Filialga o'tkazish (chiqim)"),
+        (TYPE_TRANSFER_IN, "Filialdan qabul qilish (kirim)"),
     ]
 
     DIRECTION_IN = "in"
@@ -39,8 +43,24 @@ class StockMovement(BaseModel):
 
     note = models.TextField(blank=True)
 
+    branch = models.ForeignKey(
+        "tenants.Branch",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="stock_movements",
+    )
+
     sale = models.ForeignKey(
         "sales.Sale",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="stock_movements",
+    )
+
+    transfer = models.ForeignKey(
+        "inventory.StockTransfer",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

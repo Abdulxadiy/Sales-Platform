@@ -10,6 +10,7 @@ pytestmark = pytest.mark.django_db
 
 STOCK_URL = "/api/v1/inventory/stock/"
 INTAKE_URL = "/api/v1/inventory/intake/"
+BATCH_INTAKE_URL = "/api/v1/inventory/intake/batch/"
 ADJUST_URL = "/api/v1/inventory/adjust/"
 WRITE_OFF_URL = "/api/v1/inventory/write-off/"
 
@@ -140,3 +141,58 @@ class TestStockDetailForAFreshVariant:
 
         assert response.status_code == 200
         assert response.data["quantity"] == "0.000"
+
+
+class TestBatchIntakeApi:
+    def test_batch_intake_success(self, api_client, staff_with_full_inventory_access, tenant):
+        v1 = ProductVariantFactory(tenant=tenant)
+        v2 = ProductVariantFactory(tenant=tenant)
+        api_client.force_authenticate(user=staff_with_full_inventory_access)
+
+        payload = {
+            "supplier": "Baza Universal",
+            "faktura_number": "FAK-777",
+            "note": "Kuzgi partiya",
+            "items": [
+                {"product_variant_id": v1.id, "quantity": "10.000", "cost_price": "25000.00"},
+                {"product_variant_id": v2.id, "quantity": "5.500", "cost_price": "40000.00", "note": "Maxsus narx"},
+            ],
+        }
+
+        response = api_client.post(BATCH_INTAKE_URL, payload, format="json")
+        assert response.status_code == 201
+        assert len(response.data) == 2
+
+        # Verify stock for both variants
+        res_v1 = api_client.get(f"{STOCK_URL}{v1.id}/")
+        assert res_v1.status_code == 200
+        assert Decimal(res_v1.data["quantity"]) == Decimal("10.000")
+
+        res_v2 = api_client.get(f"{STOCK_URL}{v2.id}/")
+        assert res_v2.status_code == 200
+        assert Decimal(res_v2.data["quantity"]) == Decimal("5.500")
+
+    def test_batch_intake_empty_items_rejected(self, api_client, staff_with_full_inventory_access):
+        api_client.force_authenticate(user=staff_with_full_inventory_access)
+        response = api_client.post(BATCH_INTAKE_URL, {"items": []}, format="json")
+        assert response.status_code == 400
+        assert "items" in response.data
+
+    def test_batch_intake_foreign_variant_rejected(self, api_client, staff_with_full_inventory_access, tenant):
+        v1 = ProductVariantFactory(tenant=tenant)
+        foreign = ProductVariantFactory()  # different tenant
+        api_client.force_authenticate(user=staff_with_full_inventory_access)
+
+        payload = {
+            "items": [
+                {"product_variant_id": v1.id, "quantity": "5.000", "cost_price": "1000.00"},
+                {"product_variant_id": foreign.id, "quantity": "2.000", "cost_price": "1000.00"},
+            ],
+        }
+
+        response = api_client.post(BATCH_INTAKE_URL, payload, format="json")
+        assert response.status_code == 400
+        # Check that atomicity held: v1 has not received stock intake
+        res_v1 = api_client.get(f"{STOCK_URL}{v1.id}/")
+        assert Decimal(res_v1.data["quantity"]) == Decimal("0.000")
+

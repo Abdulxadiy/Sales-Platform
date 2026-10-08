@@ -1,17 +1,24 @@
 import React from 'react';
 import InventraLogo from './InventraLogo';
-import { ReceiptBarcode } from './ReceiptSlip';
+import { ReceiptBarcode, ReceiptQRCode } from './ReceiptSlip';
 import { useAuth } from '../../context/AuthContext';
 
 /**
- * Authentic 80mm Thermal Z-Report Slip Component (Smena / Kassa Z-Hisoboti)
+ * Authentic 58mm/80mm Thermal Z-Report Slip Component (Smena / Kassa Z-Hisoboti)
  */
 export default function ShiftReportSlip({
   report = null,
   id = 'printable-z-report',
   className = '',
+  paperWidth = null,
 }) {
   const { user } = useAuth();
+
+  const effectivePaperWidth =
+    paperWidth ||
+    (typeof window !== 'undefined' ? localStorage.getItem('inventra_receipt_paper_width') : null) ||
+    '58mm';
+  const is58mm = effectivePaperWidth === '58mm';
 
   if (!report) return null;
 
@@ -38,13 +45,23 @@ export default function ShiftReportSlip({
     });
   };
 
-  const cashSales = Number(report.total_sale_cash_uzs || 0);
-  const cardSales = Number(report.total_sale_card_uzs || 0);
-  const debtSales = Number(report.total_sale_debt_uzs || 0);
-  const totalSales = cashSales + cardSales + debtSales;
+  const cashSalesUzs = Number(report.total_sale_cash_uzs || 0);
+  const cashSalesUsd = Number(report.total_sale_cash_usd || 0);
 
-  const extraIncome = Number(report.total_extra_income_uzs || 0);
-  const expenses = Number(report.total_expenses_uzs || 0);
+  const cardSalesUzs = Number(report.total_sale_card_uzs || 0);
+  const cardSalesUsd = Number(report.total_sale_card_usd || 0);
+
+  const debtSalesUzs = Number(report.total_sale_debt_uzs || 0);
+  const debtSalesUsd = Number(report.total_sale_debt_usd || 0);
+
+  const totalSalesUzs = cashSalesUzs + cardSalesUzs + debtSalesUzs;
+  const totalSalesUsd = cashSalesUsd + cardSalesUsd + debtSalesUsd;
+
+  const extraIncomeUzs = Number(report.total_extra_income_uzs || 0);
+  const extraIncomeUsd = Number(report.total_extra_income_usd || 0);
+
+  const expensesUzs = Number(report.total_expenses_uzs || 0);
+  const expensesUsd = Number(report.total_expenses_usd || 0);
 
   const expectedCashUzs = Number(report.expected_cash_uzs || 0);
   const expectedCashUsd = Number(report.expected_cash_usd || 0);
@@ -55,6 +72,20 @@ export default function ShiftReportSlip({
   const dUzs = Number(report.discrepancy_uzs || 0);
   const dUsd = Number(report.discrepancy_usd || 0);
   const isDiscrepancyZero = dUzs === 0 && dUsd === 0;
+
+  const formatDual = (uzsVal, usdVal, { prefix = '', forceUsd = false } = {}) => {
+    const uzs = Number(uzsVal || 0);
+    const usd = Number(usdVal || 0);
+    const uzsText = `${prefix}${Math.round(uzs).toLocaleString('uz-UZ')} UZS`;
+    if (usd !== 0 || forceUsd) {
+      const usdSign = usd < 0 ? '-' : prefix;
+      const usdText = `${usdSign}$${Math.abs(usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      return `${uzsText} / ${usdText}`;
+    }
+    return uzsText;
+  };
+
+  const hasUsdCash = expectedCashUsd > 0 || actualCashUsd > 0;
 
   let diffText = '0 UZS (Tafovut yo‘q — Kassa to‘liq)';
   if (!isDiscrepancyZero) {
@@ -78,98 +109,99 @@ export default function ShiftReportSlip({
       style={{
         background: '#ffffff',
         color: '#000000',
-        padding: '20px 18px',
+        padding: is58mm ? '10px 10px 14px 10px' : '16px 16px 20px 16px',
         borderRadius: 4,
-        fontFamily: "'Courier New', Courier, monospace, 'Segoe UI', Tahoma, sans-serif",
-        fontSize: 12,
-        lineHeight: 1.35,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        fontSize: is58mm ? 10.5 : 12,
+        lineHeight: 1.3,
         width: '100%',
-        maxWidth: 360,
+        maxWidth: is58mm ? 260 : 340,
         margin: '0 auto',
         boxShadow: '0 4px 18px rgba(0, 0, 0, 0.2)',
         border: '1px solid #e5e7eb',
         textAlign: 'left',
         userSelect: 'text',
+        boxSizing: 'border-box',
       }}
     >
       {/* Header: Logo & Store Info */}
-      <div style={{ textAlign: 'center', marginBottom: 10 }}>
+      <div style={{ textAlign: 'center', marginBottom: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-          <InventraLogo size={32} showBadge={false} textColor="#000000" />
+          <InventraLogo size={28} showBadge={false} textColor="#000000" />
         </div>
         <div
           style={{
-            fontSize: 13,
+            fontSize: is58mm ? 12 : 13,
             fontWeight: 800,
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.04em',
             color: '#000000',
-            marginTop: 4,
+            marginTop: 2,
           }}
         >
           {store}
         </div>
         <div
           style={{
-            fontSize: 12,
+            fontSize: is58mm ? 10.5 : 11.5,
             fontWeight: 800,
-            letterSpacing: '0.08em',
+            letterSpacing: '0.06em',
             color: '#000000',
-            marginTop: 3,
+            marginTop: 2,
           }}
         >
-          *** Z - HISOBOT (KASSA SMENASI) ***
+          *** Z - HISOBOT (SMENA) ***
         </div>
       </div>
 
       {/* Separator */}
-      <div style={{ borderTop: '1px dashed #000000', margin: '8px 0' }} />
+      <div style={{ borderTop: '1px dashed #000000', margin: '6px 0' }} />
 
       {/* Report Meta Details */}
-      <div style={{ fontSize: 11, color: '#111111', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Hisobot raqami:</span>
-          <strong style={{ fontFamily: 'monospace' }}>#Z-{report.id}</strong>
+      <div style={{ fontSize: is58mm ? 10 : 11, color: '#111111', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>Hisobot:</span>
+          <strong style={{ fontFamily: 'monospace', fontSize: is58mm ? 10.5 : 11.5 }}>#Z-{report.id}</strong>
         </div>
         {report.opened_at && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Smena ochilgan:</span>
-            <span>{formatDate(report.opened_at)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ color: '#444444' }}>Ochilgan:</span>
+            <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatDate(report.opened_at)}</span>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Smena yopilgan:</span>
-          <span>{formatDate(report.closed_at || report.date)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>Yopilgan:</span>
+          <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatDate(report.closed_at || report.date)}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Kassir (Mas’ul):</span>
-          <strong>{cashier}</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>Kassir:</span>
+          <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>{cashier}</strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Smena holati:</span>
-          <strong>YOPILGAN (Z-Report)</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>Holat:</span>
+          <strong>YOPILGAN</strong>
         </div>
       </div>
 
       {/* Separator */}
-      <div style={{ borderTop: '1px dashed #000000', margin: '8px 0' }} />
+      <div style={{ borderTop: '1px dashed #000000', margin: '6px 0' }} />
 
       {/* Section 1: Savdo Tushumlari */}
-      <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
-        SAVDO TUSHUMLARI (TO‘LOV TURLARI)
+      <div style={{ fontSize: is58mm ? 10 : 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+        SAVDO TUSHUMLARI
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>• Naqd savdo:</span>
-          <strong>{formatMoney(cashSales)}</strong>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2.5, fontSize: is58mm ? 10 : 11 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>• Naqd:</span>
+          <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(cashSalesUzs, cashSalesUsd)}</strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>• Bank kartasi:</span>
-          <strong>{formatMoney(cardSales)}</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>• Karta:</span>
+          <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(cardSalesUzs, cardSalesUsd)}</strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>• Nasiya (Qarz):</span>
-          <strong>{formatMoney(debtSales)}</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>• Nasiya:</span>
+          <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(debtSalesUzs, debtSalesUsd)}</strong>
         </div>
         <div
           style={{
@@ -178,36 +210,32 @@ export default function ShiftReportSlip({
             paddingTop: 3,
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: 12,
+            alignItems: 'baseline',
+            fontSize: is58mm ? 11 : 12,
             fontWeight: 800,
           }}
         >
           <span>JAMI SAVDO:</span>
-          <span>{formatMoney(totalSales)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(totalSalesUzs, totalSalesUsd)}</span>
         </div>
       </div>
 
       {/* Section 2: Qo'shimcha Kirimlar (agar mavjud bo'lsa) */}
-      {(extraIncome > 0 || (report.incomes && report.incomes.length > 0)) && (
+      {(extraIncomeUzs > 0 || extraIncomeUsd > 0 || (report.incomes && report.incomes.length > 0)) && (
         <>
-          <div style={{ borderTop: '1px dashed #000000', margin: '8px 0 6px' }} />
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+          <div style={{ borderTop: '1px dashed #000000', margin: '6px 0 5px' }} />
+          <div style={{ fontSize: is58mm ? 10 : 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 3 }}>
             QO‘SHIMCHA KIRIMLAR
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: is58mm ? 10 : 11 }}>
             {report.incomes && report.incomes.length > 0 ? (
               report.incomes.map((inc) => (
-                <div key={inc.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>• {inc.source}{inc.note ? ` (${inc.note})` : ''}:</span>
-                  <strong>+{formatMoney(inc.amount, inc.currency)}</strong>
+                <div key={inc.id || inc.source} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ color: '#444444' }}>• {inc.source}{inc.note ? ` (${inc.note})` : ''}:</span>
+                  <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>+{formatMoney(inc.amount, inc.currency)}</strong>
                 </div>
               ))
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• Jami kirim:</span>
-                <strong>+{formatMoney(extraIncome)}</strong>
-              </div>
-            )}
+            ) : null}
             <div
               style={{
                 borderTop: '1px dotted #666666',
@@ -215,37 +243,33 @@ export default function ShiftReportSlip({
                 paddingTop: 2,
                 display: 'flex',
                 justifyContent: 'space-between',
+                alignItems: 'baseline',
                 fontWeight: 700,
               }}
             >
               <span>Jami Kirim:</span>
-              <span>+{formatMoney(extraIncome)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(extraIncomeUzs, extraIncomeUsd, { prefix: '+' })}</span>
             </div>
           </div>
         </>
       )}
 
       {/* Section 3: Chiqimlar (agar mavjud bo'lsa) */}
-      {(expenses > 0 || (report.expenses && report.expenses.length > 0)) && (
+      {(expensesUzs > 0 || expensesUsd > 0 || (report.expenses && report.expenses.length > 0)) && (
         <>
-          <div style={{ borderTop: '1px dashed #000000', margin: '8px 0 6px' }} />
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
-            KASSADAN CHIQIMLAR (XARAJATLAR)
+          <div style={{ borderTop: '1px dashed #000000', margin: '6px 0 5px' }} />
+          <div style={{ fontSize: is58mm ? 10 : 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 3 }}>
+            KASSADAN CHIQIMLAR
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: is58mm ? 10 : 11 }}>
             {report.expenses && report.expenses.length > 0 ? (
               report.expenses.map((exp) => (
-                <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>• {exp.category}{exp.note ? ` (${exp.note})` : ''}:</span>
-                  <strong>-{formatMoney(exp.amount, exp.currency)}</strong>
+                <div key={exp.id || exp.category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ color: '#444444' }}>• {exp.category}{exp.note ? ` (${exp.note})` : ''}:</span>
+                  <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>-{formatMoney(exp.amount, exp.currency)}</strong>
                 </div>
               ))
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• Jami chiqim:</span>
-                <strong>-{formatMoney(expenses)}</strong>
-              </div>
-            )}
+            ) : null}
             <div
               style={{
                 borderTop: '1px dotted #666666',
@@ -253,37 +277,32 @@ export default function ShiftReportSlip({
                 paddingTop: 2,
                 display: 'flex',
                 justifyContent: 'space-between',
+                alignItems: 'baseline',
                 fontWeight: 700,
               }}
             >
               <span>Jami Chiqim:</span>
-              <span>-{formatMoney(expenses)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(expensesUzs, expensesUsd, { prefix: '-' })}</span>
             </div>
           </div>
         </>
       )}
 
       {/* Separator */}
-      <div style={{ borderTop: '1px dashed #000000', margin: '8px 0 6px' }} />
+      <div style={{ borderTop: '1px dashed #000000', margin: '6px 0 5px' }} />
 
       {/* Section 4: Kassa Balansi va Sanoq */}
-      <div style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
-        KASSA BALANSI VA HAQIQIY SANOQ
+      <div style={{ fontSize: is58mm ? 10 : 11, fontWeight: 800, textTransform: 'uppercase', marginBottom: 3 }}>
+        KASSA BALANSI VA SANOQ
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Kutilgan naqd pul:</span>
-          <strong>
-            {formatMoney(expectedCashUzs)}
-            {expectedCashUsd > 0 && ` / $${expectedCashUsd.toFixed(2)}`}
-          </strong>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2.5, fontSize: is58mm ? 10 : 11 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>Kutilgan naqd:</span>
+          <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(expectedCashUzs, expectedCashUsd, { forceUsd: hasUsdCash })}</strong>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Haqiqiy sanalgan:</span>
-          <strong>
-            {formatMoney(actualCashUzs)}
-            {actualCashUsd > 0 && ` / $${actualCashUsd.toFixed(2)}`}
-          </strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <span style={{ color: '#444444' }}>Haqiqiy naqd:</span>
+          <strong style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatDual(actualCashUzs, actualCashUsd, { forceUsd: hasUsdCash })}</strong>
         </div>
         <div
           style={{
@@ -292,37 +311,38 @@ export default function ShiftReportSlip({
             paddingTop: 3,
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: 12,
+            alignItems: 'baseline',
+            fontSize: is58mm ? 11 : 12,
             fontWeight: 800,
           }}
         >
-          <span>TAFOVUT (FARQ):</span>
-          <span>{diffText}</span>
+          <span>TAFOVUT:</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{diffText}</span>
         </div>
 
         {((dUzs !== 0) || (dUsd !== 0)) && report.discrepancy_reason && (
-          <div style={{ marginTop: 4, padding: '4px 6px', border: '1px solid #000000', fontSize: 10 }}>
+          <div style={{ marginTop: 4, padding: '4px 6px', border: '1px solid #000000', fontSize: 9.5 }}>
             <strong>Farq sababi:</strong> {report.discrepancy_reason}
           </div>
         )}
 
         {report.staff_notes && (
-          <div style={{ marginTop: 2, fontSize: 10, color: '#333333' }}>
+          <div style={{ marginTop: 2, fontSize: 9.5, color: '#333333' }}>
             <strong>Xodim eslatmasi:</strong> {report.staff_notes}
           </div>
         )}
       </div>
 
       {/* Separator */}
-      <div style={{ borderTop: '1px dashed #000000', margin: '10px 0 8px' }} />
+      <div style={{ borderTop: '1px dashed #000000', margin: '8px 0 6px' }} />
 
       {/* Barcode & Footer */}
-      <ReceiptBarcode value={barcodeVal} />
+      <ReceiptBarcode value={barcodeVal} width={is58mm ? 140 : 180} />
 
-      <div style={{ textAlign: 'center', marginTop: 8, fontSize: 10, color: '#333333' }}>
+      <div style={{ textAlign: 'center', marginTop: 8, fontSize: 9.5, color: '#333333', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ fontWeight: 700 }}>SMENA MUVAFFAQIYATLI YOPILDI</div>
         <div>Inventra POS tizimi • Z-Hisobot</div>
-        <div style={{ marginTop: 2, fontSize: 9, color: '#666666' }}>www.inventra.uz</div>
+        <div style={{ marginTop: 2, fontSize: 8.5, color: '#666666' }}>www.inventra.uz</div>
       </div>
     </div>
   );

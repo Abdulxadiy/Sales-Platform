@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Shield, Menu } from 'lucide-react';
+import { Clock, Shield, Menu, GitBranch, Store } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useBranch } from '../../context/BranchContext';
+import CustomSelect from '../common/CustomSelect';
 
 export default function Header({
   title,
@@ -11,7 +13,8 @@ export default function Header({
   onOpenMobileMenu,
 }) {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isOwner } = useAuth();
+  const { branches, activeBranch, setActiveBranch } = useBranch();
   const [time, setTime] = useState(new Date());
   const [shift, setShift] = useState(null);
 
@@ -23,10 +26,10 @@ export default function Header({
   const fetchShift = useCallback(() => {
     if (isAdmin) return;
     cashboxApi
-      .getCurrentShift()
+      .getCurrentShift(activeBranch?.id)
       .then((data) => setShift(data))
       .catch(() => setShift(null));
-  }, [isAdmin]);
+  }, [isAdmin, activeBranch?.id]);
 
   useEffect(() => {
     fetchShift();
@@ -34,12 +37,14 @@ export default function Header({
     const handleShiftEvent = () => fetchShift();
     window.addEventListener('shift_status_changed', handleShiftEvent);
     window.addEventListener('refresh_notifications', handleShiftEvent);
+    window.addEventListener('branch_changed', handleShiftEvent);
 
     const interval = setInterval(fetchShift, 10000);
 
     return () => {
       window.removeEventListener('shift_status_changed', handleShiftEvent);
       window.removeEventListener('refresh_notifications', handleShiftEvent);
+      window.removeEventListener('branch_changed', handleShiftEvent);
       clearInterval(interval);
     };
   }, [fetchShift]);
@@ -73,6 +78,56 @@ export default function Header({
       </div>
 
       <div className="header-actions-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {!isAdmin && activeBranch && (
+          isOwner && branches.length > 1 ? (
+            <CustomSelect
+              value={activeBranch.id}
+              onChange={(newBranchId) => {
+                const sel = branches.find((b) => String(b.id) === String(newBranchId));
+                if (sel) setActiveBranch(sel);
+              }}
+              options={branches.map((b) => ({
+                value: b.id,
+                label: b.name,
+                badge: b.is_main ? 'Asosiy' : null,
+              }))}
+              icon={GitBranch}
+              size="sm"
+              title="Faol filialni almashtirish"
+              style={{
+                borderRadius: 10,
+                background: 'var(--bg-chip)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: 12.5,
+              }}
+              menuStyle={{
+                minWidth: 230,
+                right: 0,
+                left: 'auto',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 12px',
+                borderRadius: 999,
+                background: 'var(--bg-chip)',
+                border: '1px solid var(--border-subtle)',
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+              }}
+              title={`Faol filial: ${activeBranch.name}`}
+            >
+              <Store size={14} color="var(--primary)" />
+              <span>{activeBranch.name}</span>
+            </div>
+          )
+        )}
+
         {isAdmin ? (
           <div
             style={{

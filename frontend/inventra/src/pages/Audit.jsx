@@ -109,17 +109,18 @@ export default function Audit() {
 
       {/* Audit Log Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase' }}>
-              <th style={{ padding: '14px 20px' }}>Amal</th>
-              <th style={{ padding: '14px 16px' }}>Bajargan Shaxs</th>
-              <th style={{ padding: '14px 16px' }}>Tafsilot / Tavsif</th>
-              <th style={{ padding: '14px 16px' }}>IP Manzil</th>
-              <th style={{ padding: '14px 16px' }}>Sana & Vaqt</th>
-              <th style={{ padding: '14px 20px', textAlign: 'right' }}>O‘zgarish</th>
-            </tr>
-          </thead>
+        <div className="table-responsive">
+          <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Amal</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Bajargan Shaxs</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Tafsilot / Tavsif</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>IP Manzil</th>
+                <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Sana & Vaqt</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>O‘zgarish</th>
+              </tr>
+            </thead>
           <tbody>
             {loading ? (
               <tr>
@@ -187,6 +188,7 @@ export default function Audit() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Changes Diff Modal */}

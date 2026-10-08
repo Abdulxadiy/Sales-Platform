@@ -22,10 +22,15 @@ import {
   User,
   Package,
   Clock,
+  Sparkles,
+  FileText,
 } from 'lucide-react';
 import { salesApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
+import InvoiceA4Modal, { printInvoiceA4 } from '../components/common/InvoiceA4Modal';
+import CustomSelect from '../components/common/CustomSelect';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -57,6 +62,11 @@ export default function Sales() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedSaleDetail, setSelectedSaleDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
+
+  // A4 Invoice Modal
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [selectedInvoiceSale, setSelectedInvoiceSale] = useState(null);
 
   // Void Sale Modal
   const [voidModalOpen, setVoidModalOpen] = useState(false);
@@ -85,6 +95,13 @@ export default function Sales() {
   const [paymentCurrency, setPaymentCurrency] = useState('UZS');
   const [paymentNote, setPaymentNote] = useState('');
   const [submittingPayment, setSubmittingPayment] = useState(false);
+
+  // Refund / Settle Customer Credit Modal
+  const [refundModalOpen, setRefundModalOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundCurrency, setRefundCurrency] = useState('UZS');
+  const [refundNote, setRefundNote] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
 
   // Debt Payments History Modal
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -149,6 +166,22 @@ export default function Sales() {
       setDetailModalOpen(false);
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  // Open A4 Invoice Modal
+  const handleOpenInvoice = async (sale) => {
+    if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
+      setSelectedInvoiceSale(sale);
+      setInvoiceModalOpen(true);
+      return;
+    }
+    try {
+      const detail = await salesApi.getSaleDetail(sale.id);
+      setSelectedInvoiceSale(detail);
+      setInvoiceModalOpen(true);
+    } catch (err) {
+      toast.error('Faktura ma’lumotlarini yuklab bo‘lmadi');
     }
   };
 
@@ -280,6 +313,63 @@ export default function Sales() {
       toast.error(err.message || 'To‘lovni qabul qilishda xatolik');
     } finally {
       setSubmittingPayment(false);
+    }
+  };
+
+  // Refund / Settle Customer Credit (Bizda haqqi bor mijozga pulini qaytarish)
+  const handleOpenRefundCredit = (cp) => {
+    setSelectedCp(cp);
+    const creditUzs = Math.max(0, -Number(cp.debt_balance_uzs || 0));
+    const creditUsd = Math.max(0, -Number(cp.debt_balance_usd || 0));
+    if (creditUzs > 0) {
+      setRefundAmount(creditUzs.toString());
+      setRefundCurrency('UZS');
+    } else if (creditUsd > 0) {
+      setRefundAmount(creditUsd.toString());
+      setRefundCurrency('USD');
+    } else {
+      setRefundAmount('');
+      setRefundCurrency('UZS');
+    }
+    setRefundNote('Mijozga ortiqcha to‘langan haq qaytarildi');
+    setRefundModalOpen(true);
+  };
+
+  const handleConfirmRefundCredit = async (e) => {
+    e.preventDefault();
+    const amt = parseFloat(refundAmount);
+    if (!amt || amt <= 0) {
+      toast.warning('Qaytariladigan summani kiriting');
+      return;
+    }
+    setSubmittingRefund(true);
+    try {
+      // In DebtService: when is_correction=True, amount is subtracted from debt_balance.
+      // Customer has negative balance (-35,000). Returning 35,000 to customer increases balance to 0.
+      // So amount sent is -amt: -(-amt) = +amt.
+      await salesApi.correctDebtPayment(selectedCp.id, {
+        amount: -amt,
+        currency: refundCurrency,
+        note: refundNote || 'Mijozga ortiqcha to‘langan haq qaytarildi',
+      });
+      toast.success('Mijoz haqqi muvaffaqiyatli qaytarildi! Balans tozalndi.');
+      setRefundModalOpen(false);
+      loadData();
+      if (cpDetailModalOpen && selectedCpDetail && selectedCpDetail.id === selectedCp.id) {
+        setSelectedCpDetail((prev) => {
+          if (!prev) return prev;
+          if (refundCurrency === 'UZS') {
+            return { ...prev, debt_balance_uzs: Number(prev.debt_balance_uzs || 0) + amt };
+          } else {
+            return { ...prev, debt_balance_usd: Number(prev.debt_balance_usd || 0) + amt };
+          }
+        });
+        handleOpenCounterpartyPurchases(selectedCp, cpDetailTab);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Mijoz haqqini qaytarishda xatolik');
+    } finally {
+      setSubmittingRefund(false);
     }
   };
 
@@ -444,14 +534,35 @@ export default function Sales() {
     return counterparties.reduce((sum, cp) => sum + Math.max(0, Number(cp.debt_balance_usd || 0)), 0);
   }, [counterparties]);
 
+  // Jami mijozlar haqqi (Do‘kondagi ortiqcha to‘lovlar / depozit)
+  const totalCustomerCreditUZS = useMemo(() => {
+    return counterparties.reduce((sum, cp) => sum + Math.max(0, -Number(cp.debt_balance_uzs || 0)), 0);
+  }, [counterparties]);
+
+  const totalCustomerCreditUSD = useMemo(() => {
+    return counterparties.reduce((sum, cp) => sum + Math.max(0, -Number(cp.debt_balance_usd || 0)), 0);
+  }, [counterparties]);
+
   const debtorCount = useMemo(() => {
     return counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) > 0 || Number(cp.debt_balance_usd || 0) > 0).length;
+  }, [counterparties]);
+
+  const creditorCount = useMemo(() => {
+    return counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) < 0 || Number(cp.debt_balance_usd || 0) < 0).length;
+  }, [counterparties]);
+
+  const settledCount = useMemo(() => {
+    return counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) === 0 && Number(cp.debt_balance_usd || 0) === 0).length;
   }, [counterparties]);
 
   const filteredCounterparties = useMemo(() => {
     let list = counterparties;
     if (counterpartyFilter === 'debtors') {
       list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) > 0 || Number(cp.debt_balance_usd || 0) > 0);
+    } else if (counterpartyFilter === 'creditors') {
+      list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) < 0 || Number(cp.debt_balance_usd || 0) < 0);
+    } else if (counterpartyFilter === 'settled') {
+      list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) === 0 && Number(cp.debt_balance_usd || 0) === 0);
     }
     if (!counterpartySearch.trim()) return list;
     const q = counterpartySearch.toLowerCase().trim();
@@ -702,49 +813,35 @@ export default function Sales() {
             {/* Payment Method Selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>To‘lov turi:</span>
-              <select
+              <CustomSelect
                 value={salesFilters.paymentMethod}
-                onChange={(e) => setSalesFilters({ ...salesFilters, paymentMethod: e.target.value })}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 13,
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="all">Barcha to‘lovlar</option>
-                <option value="cash">Naqd pul (CASH)</option>
-                <option value="card">Plastik karta (CARD)</option>
-                <option value="debt">Nasiya / Qarz (DEBT)</option>
-              </select>
+                onChange={(val) => setSalesFilters({ ...salesFilters, paymentMethod: val })}
+                options={[
+                  { value: 'all', label: 'Barcha to‘lovlar' },
+                  { value: 'cash', label: 'Naqd pul (CASH)' },
+                  { value: 'card', label: 'Plastik karta (CARD)' },
+                  { value: 'debt', label: 'Nasiya / Qarz (DEBT)' },
+                ]}
+                size="md"
+                style={{ minWidth: 160 }}
+              />
             </div>
 
             {/* Status Selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Holati:</span>
-              <select
+              <CustomSelect
                 value={salesFilters.status}
-                onChange={(e) => setSalesFilters({ ...salesFilters, status: e.target.value })}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 13,
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="all">Barcha holatlar</option>
-                <option value="completed">Bajarildi</option>
-                <option value="partially_voided">Qisman bekor qilingan</option>
-                <option value="voided">Bekor qilingan</option>
-              </select>
+                onChange={(val) => setSalesFilters({ ...salesFilters, status: val })}
+                options={[
+                  { value: 'all', label: 'Barcha holatlar' },
+                  { value: 'completed', label: 'Bajarildi' },
+                  { value: 'partially_voided', label: 'Qisman bekor qilingan' },
+                  { value: 'voided', label: 'Bekor qilingan' },
+                ]}
+                size="md"
+                style={{ minWidth: 160 }}
+              />
             </div>
 
             {/* Reset button */}
@@ -813,34 +910,20 @@ export default function Sales() {
             {/* If Custom Date Selected */}
             {salesFilters.datePreset === 'custom' && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={salesFilters.startDate}
-                  onChange={(e) => setSalesFilters({ ...salesFilters, startDate: e.target.value })}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 'var(--radius-xs)',
-                    border: '1px solid var(--border-card)',
-                    background: 'var(--bg-input)',
-                    color: 'var(--text-primary)',
-                    fontSize: 12,
-                    outline: 'none',
-                  }}
+                  onChange={(val) => setSalesFilters({ ...salesFilters, startDate: val })}
+                  placeholder="Boshlanish sanasi"
+                  size="sm"
+                  style={{ minWidth: 140 }}
                 />
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={salesFilters.endDate}
-                  onChange={(e) => setSalesFilters({ ...salesFilters, endDate: e.target.value })}
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 'var(--radius-xs)',
-                    border: '1px solid var(--border-card)',
-                    background: 'var(--bg-input)',
-                    color: 'var(--text-primary)',
-                    fontSize: 12,
-                    outline: 'none',
-                  }}
+                  onChange={(val) => setSalesFilters({ ...salesFilters, endDate: val })}
+                  placeholder="Tugash sanasi"
+                  size="sm"
+                  style={{ minWidth: 140 }}
                 />
               </div>
             )}
@@ -959,19 +1042,20 @@ export default function Sales() {
                   </div>
 
                   {/* Day Sales Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-app)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        <th style={{ padding: '12px 20px' }}>Chek ID</th>
-                        <th style={{ padding: '12px 16px' }}>To‘lov Usuli</th>
-                        <th style={{ padding: '12px 16px' }}>Jami Summa</th>
-                        <th style={{ padding: '12px 16px' }}>Mijoz</th>
-                        <th style={{ padding: '12px 16px' }}>Sotuvchi</th>
-                        <th style={{ padding: '12px 16px' }}>Holat</th>
-                        <th style={{ padding: '12px 16px' }}>Vaqt</th>
-                        <th style={{ padding: '12px 20px', textAlign: 'right' }}>Amallar</th>
-                      </tr>
-                    </thead>
+                  <div className="table-responsive">
+                    <table style={{ width: '100%', minWidth: 920, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-app)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                          <th style={{ padding: '12px 20px', whiteSpace: 'nowrap' }}>Chek ID</th>
+                          <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>To‘lov Usuli</th>
+                          <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Jami Summa</th>
+                          <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Mijoz</th>
+                          <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Sotuvchi</th>
+                          <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Holat</th>
+                          <th style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>Vaqt</th>
+                          <th style={{ padding: '12px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amallar</th>
+                        </tr>
+                      </thead>
                     <tbody>
                       {group.sales.map((s) => {
                         const statusLower = (s.status || '').toLowerCase();
@@ -983,18 +1067,18 @@ export default function Sales() {
 
                         return (
                           <tr key={s.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.15s ease' }}>
-                            <td style={{ padding: '14px 20px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            <td style={{ padding: '14px 20px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                               #{s.receipt_number || s.id}
                             </td>
-                            <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
+                            <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                               <span style={{ textTransform: 'uppercase', fontSize: 12, fontWeight: 600 }}>{s.payment_type || s.payment_method || 'Naqd'}</span>
                             </td>
-                            <td style={{ padding: '14px 16px', fontWeight: 700, color: isVoided ? 'var(--text-muted)' : 'var(--primary)' }}>
+                            <td style={{ padding: '14px 16px', fontWeight: 700, color: isVoided ? 'var(--text-muted)' : 'var(--primary)', whiteSpace: 'nowrap' }}>
                               {Number(s.total_amount || s.total_price_uzs || 0).toLocaleString()} {s.currency || 'UZS'}
                             </td>
-                            <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{s.counterparty_name || 'Oddiy xaridor'}</td>
-                            <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontSize: 13 }}>{s.sold_by_name || 'Kassir'}</td>
-                            <td style={{ padding: '14px 16px' }}>
+                            <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{s.counterparty_name || 'Oddiy xaridor'}</td>
+                            <td style={{ padding: '14px 16px', color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'nowrap' }}>{s.sold_by_name || 'Kassir'}</td>
+                            <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
                               <span
                                 style={{
                                   padding: '3px 8px',
@@ -1008,10 +1092,10 @@ export default function Sales() {
                                 {isCompleted ? 'Bajarildi' : isPartiallyVoided ? 'Qisman bekor' : isVoided ? 'Bekor qilingan' : s.status}
                               </span>
                             </td>
-                            <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 12 }}>
+                            <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
                               {timeStr}
                             </td>
-                            <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                            <td style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <div style={{ display: 'inline-flex', gap: 6 }}>
                                 <button
                                   type="button"
@@ -1032,6 +1116,33 @@ export default function Sales() {
                                   <Receipt size={13} />
                                   <span>Chek</span>
                                 </button>
+
+                                {((s.payment_type || '').toLowerCase() === 'debt' ||
+                                  Boolean(s.is_partner_sale) ||
+                                  Boolean(s.counterparty) ||
+                                  Boolean(s.counterparty_name) ||
+                                  Boolean(s.b2b_target_tenant)) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenInvoice(s)}
+                                    title="A4 formatida rasmiy Hisob-faktura / Yuk xati"
+                                    style={{
+                                      padding: '6px 12px',
+                                      borderRadius: 'var(--radius-xs)',
+                                      border: '1px solid var(--border-card)',
+                                      background: 'transparent',
+                                      color: 'var(--text-secondary)',
+                                      fontSize: 12,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                    }}
+                                  >
+                                    <FileText size={13} style={{ color: 'var(--primary)' }} />
+                                    <span>Faktura</span>
+                                  </button>
+                                )}
 
                                 {canVoid && (
                                   <button
@@ -1063,6 +1174,7 @@ export default function Sales() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               );
             })
@@ -1191,6 +1303,46 @@ export default function Sales() {
                 {debtorCount} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)' }}>/ {counterparties.length} ta mijoz</span>
               </div>
             </div>
+
+            {/* Card 4: Bizda Qolgan Haq (Ortiqcha to‘lovlar / depozit) */}
+            <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #15803d' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>
+                  <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Bizda Haqqi Borlar
+                  </span>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Do‘konda ortiqcha haq / depozit
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(21, 128, 61, 0.14)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Sparkles size={17} color="#15803d" />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#15803d' }}>
+                  +{Math.round(totalCustomerCreditUZS).toLocaleString('uz-UZ')} UZS
+                </div>
+                {totalCustomerCreditUSD > 0 && (
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginTop: 2 }}>
+                    +${totalCustomerCreditUSD.toFixed(2)} USD
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                <strong style={{ color: '#15803d' }}>{creditorCount}</strong> ta mijoz haqqi bor
+              </div>
+            </div>
           </div>
 
           {/* Search bar & filter pills for counterparties */}
@@ -1234,8 +1386,8 @@ export default function Sales() {
               />
             </div>
 
-            {/* Filter Pills: All vs Only Debtors */}
-            <div style={{ display: 'flex', gap: 6 }}>
+            {/* Filter Pills: All vs Only Debtors vs Only Creditors vs Settled */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setCounterpartyFilter('all')}
@@ -1273,8 +1425,51 @@ export default function Sales() {
                   gap: 6,
                 }}
               >
+                <AlertTriangle size={13} />
                 <span>Faqat Qarzdorlar ({debtorCount})</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setCounterpartyFilter('creditors')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid',
+                  borderColor: counterpartyFilter === 'creditors' ? '#15803d' : 'var(--border-subtle)',
+                  background: counterpartyFilter === 'creditors' ? 'rgba(21, 128, 61, 0.15)' : 'transparent',
+                  color: counterpartyFilter === 'creditors' ? '#15803d' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Sparkles size={13} color={counterpartyFilter === 'creditors' ? '#15803d' : 'var(--text-muted)'} />
+                <span>Bizda Haqqi Borlar ({creditorCount})</span>
+              </button>
+              {settledCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCounterpartyFilter('settled')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-xs)',
+                    border: '1px solid',
+                    borderColor: counterpartyFilter === 'settled' ? 'var(--text-muted)' : 'var(--border-subtle)',
+                    background: counterpartyFilter === 'settled' ? 'var(--bg-chip)' : 'transparent',
+                    color: counterpartyFilter === 'settled' ? 'var(--text-primary)' : 'var(--text-muted)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  Hisobi Tozalar ({settledCount})
+                </button>
+              )}
             </div>
 
             {counterpartySearch && (
@@ -1300,17 +1495,18 @@ export default function Sales() {
           </div>
 
           <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '14px 20px' }}>Mijoz / Hamkor Nomi</th>
-                  <th style={{ padding: '14px 16px' }}>Telefon Raqami</th>
-                  <th style={{ padding: '14px 16px' }}>B2B Do‘kon Bog‘lanmasi</th>
-                  <th style={{ padding: '14px 16px' }}>Nasiya Qarz (UZS)</th>
-                  <th style={{ padding: '14px 16px' }}>Nasiya Qarz (USD)</th>
-                  <th style={{ padding: '14px 20px', textAlign: 'right' }}>Amallar</th>
-                </tr>
-              </thead>
+            <div className="table-responsive">
+              <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                    <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Mijoz / Hamkor Nomi</th>
+                    <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Telefon Raqami</th>
+                    <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>B2B Do‘kon Bog‘lanmasi</th>
+                    <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Nasiya Qarz (UZS)</th>
+                    <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Nasiya Qarz (USD)</th>
+                    <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amallar</th>
+                  </tr>
+                </thead>
               <tbody>
                 {loading ? (
                   <tr>
@@ -1321,12 +1517,15 @@ export default function Sales() {
                     const debtUzs = Number(cp.debt_balance_uzs || 0);
                     const debtUsd = Number(cp.debt_balance_usd || 0);
                     const hasDebt = debtUzs > 0 || debtUsd > 0;
+                    const hasCredit = debtUzs < 0 || debtUsd < 0;
+                    const isSettled = debtUzs === 0 && debtUsd === 0;
                     return (
                       <tr
                         key={cp.id}
                         style={{
                           borderBottom: '1px solid var(--border-subtle)',
                           transition: 'background var(--transition-fast)',
+                          background: hasCredit ? 'rgba(21, 128, 61, 0.04)' : undefined,
                         }}
                       >
                         <td
@@ -1339,22 +1538,55 @@ export default function Sales() {
                           }}
                           title="Nasiya va xaridlar tafsilotini ko‘rish uchun bosing"
                         >
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span style={{ color: 'var(--primary)', borderBottom: '1px dashed var(--primary)' }}>
                               {cp.name}
                             </span>
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                padding: '1px 6px',
-                                borderRadius: 4,
-                                background: 'var(--bg-chip)',
-                                color: 'var(--text-secondary)',
-                              }}
-                            >
-                              Xaridlar
-                            </span>
+                            {hasDebt && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '2px 7px',
+                                  borderRadius: 4,
+                                  background: 'rgba(245, 158, 11, 0.15)',
+                                  color: 'var(--accent-amber)',
+                                }}
+                              >
+                                Qarzdor
+                              </span>
+                            )}
+                            {hasCredit && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '2px 7px',
+                                  borderRadius: 4,
+                                  background: 'rgba(21, 128, 61, 0.14)',
+                                  color: '#15803d',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                              >
+                                <Sparkles size={11} /> Haqqi bor
+                              </span>
+                            )}
+                            {isSettled && (
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  background: 'var(--bg-chip)',
+                                  color: 'var(--text-muted)',
+                                }}
+                              >
+                                Hisob toza
+                              </span>
+                            )}
                           </div>
                           {cp.note && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{cp.note}</div>}
                         </td>
@@ -1368,11 +1600,43 @@ export default function Sales() {
                             </span>
                           ) : '—'}
                         </td>
-                        <td style={{ padding: '14px 16px', fontWeight: 700, color: debtUzs > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
-                          {debtUzs.toLocaleString()} UZS
+                        <td style={{ padding: '14px 16px' }}>
+                          {debtUzs > 0 ? (
+                            <div>
+                              <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                                {debtUzs.toLocaleString()} UZS
+                              </div>
+                              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Mijoz qarzi</div>
+                            </div>
+                          ) : debtUzs < 0 ? (
+                            <div>
+                              <div style={{ fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                +{Math.abs(debtUzs).toLocaleString()} UZS
+                              </div>
+                              <div style={{ fontSize: 10.5, color: '#10b981', fontWeight: 600 }}>Mijoz haqqi bor</div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 UZS</span>
+                          )}
                         </td>
-                        <td style={{ padding: '14px 16px', fontWeight: 700, color: debtUsd > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)' }}>
-                          ${debtUsd.toFixed(2)}
+                        <td style={{ padding: '14px 16px' }}>
+                          {debtUsd > 0 ? (
+                            <div>
+                              <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                                ${debtUsd.toFixed(2)}
+                              </div>
+                              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Mijoz qarzi</div>
+                            </div>
+                          ) : debtUsd < 0 ? (
+                            <div>
+                              <div style={{ fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                +${Math.abs(debtUsd).toFixed(2)}
+                              </div>
+                              <div style={{ fontSize: 10.5, color: '#10b981', fontWeight: 600 }}>Mijoz haqqi bor</div>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>$0.00</span>
+                          )}
                         </td>
                         <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: 6 }}>
@@ -1396,25 +1660,49 @@ export default function Sales() {
                               <ShoppingBag size={13} color="var(--accent-amber)" />
                               <span>Xaridlar</span>
                             </button>
-                            <button
-                              onClick={() => handleOpenDebtPayment(cp)}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: 'var(--radius-xs)',
-                                border: 'none',
-                                background: 'var(--primary)',
-                                color: 'var(--primary-foreground)',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <CreditCard size={13} />
-                              <span>Qarz To‘lash</span>
-                            </button>
+                            {hasCredit ? (
+                              <button
+                                onClick={() => handleOpenRefundCredit(cp)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 'var(--radius-xs)',
+                                  border: 'none',
+                                  background: '#15803d',
+                                  color: '#ffffff',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  boxShadow: '0 2px 6px rgba(21, 128, 61, 0.25)',
+                                }}
+                                title="Mijozga ortiqcha haqini qaytarish / hisobni tozalash"
+                              >
+                                <RotateCcw size={13} />
+                                <span>Haqni Qaytarish</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleOpenDebtPayment(cp)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 'var(--radius-xs)',
+                                  border: 'none',
+                                  background: 'var(--primary)',
+                                  color: 'var(--primary-foreground)',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                }}
+                              >
+                                <CreditCard size={13} />
+                                <span>Qarz To‘lash</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => handleOpenDebtHistory(cp)}
                               style={{
@@ -1448,6 +1736,7 @@ export default function Sales() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}
@@ -1455,17 +1744,18 @@ export default function Sales() {
       {/* Tab 3: B2B Inbox */}
       {activeTab === 'b2b' && (
         <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                <th style={{ padding: '14px 20px' }}>Faktura #</th>
-                <th style={{ padding: '14px 16px' }}>Yuboruvchi Do‘kon</th>
-                <th style={{ padding: '14px 16px' }}>Tovarlar Soni</th>
-                <th style={{ padding: '14px 16px' }}>Jami Qiymat</th>
-                <th style={{ padding: '14px 16px' }}>Kelgan Sana</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Qaror</th>
-              </tr>
-            </thead>
+          <div className="table-responsive">
+            <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Faktura #</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Yuboruvchi Do‘kon</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Tovarlar Soni</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Jami Qiymat</th>
+                  <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Kelgan Sana</th>
+                  <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Qaror</th>
+                </tr>
+              </thead>
             <tbody>
               {loading ? (
                 <tr>
@@ -1542,6 +1832,7 @@ export default function Sales() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -1551,9 +1842,48 @@ export default function Sales() {
           <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
         ) : selectedSaleDetail ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Printer format switcher */}
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 4 }}>
+                Printer:
+              </span>
+              <button
+                type="button"
+                onClick={() => setReceiptPaperWidth('58mm')}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: receiptPaperWidth === '58mm' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+                  background: receiptPaperWidth === '58mm' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                  color: receiptPaperWidth === '58mm' ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                58 mm (Uzum/Kichik termal)
+              </button>
+              <button
+                type="button"
+                onClick={() => setReceiptPaperWidth('80mm')}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: receiptPaperWidth === '80mm' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+                  background: receiptPaperWidth === '80mm' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                  color: receiptPaperWidth === '80mm' ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                80 mm (Katta POS)
+              </button>
+            </div>
+
             {/* Authentic Printable Thermal Receipt */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <ReceiptSlip id="printable-receipt" sales={[selectedSaleDetail]} />
+              <ReceiptSlip id="printable-receipt" sales={[selectedSaleDetail]} paperWidth={receiptPaperWidth} />
             </div>
 
             {/* Void Items Action List (Web Only) */}
@@ -1615,27 +1945,57 @@ export default function Sales() {
             )}
 
             {/* Modal Bottom Actions (Web Only) */}
-            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-              <button
-                type="button"
-                onClick={() => printReceiptSlip('printable-receipt')}
-                style={{
-                  padding: '9px 18px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-card)',
-                  color: 'var(--text-primary)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Printer size={15} />
-                <span>Chop etish</span>
-              </button>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => printReceiptSlip('printable-receipt', 'Inventra Savdo Cheki', receiptPaperWidth)}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-card)',
+                    background: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Printer size={15} />
+                  <span>Chekni chop etish</span>
+                </button>
+
+                {selectedSaleDetail &&
+                  ((selectedSaleDetail.payment_type || '').toLowerCase() === 'debt' ||
+                    Boolean(selectedSaleDetail.is_partner_sale) ||
+                    Boolean(selectedSaleDetail.counterparty) ||
+                    Boolean(selectedSaleDetail.counterparty_name) ||
+                    Boolean(selectedSaleDetail.b2b_target_tenant)) && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInvoice(selectedSaleDetail)}
+                      style={{
+                        padding: '9px 18px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-card)',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-primary)',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <FileText size={15} style={{ color: 'var(--primary)' }} />
+                      <span>A4 Faktura (Yuk xati)</span>
+                    </button>
+                  )}
+              </div>
 
               <div style={{ display: 'flex', gap: 10 }}>
                 {['completed', 'partially_voided'].includes((selectedSaleDetail.status || '').toLowerCase()) && (
@@ -1882,14 +2242,15 @@ export default function Sales() {
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Valyuta *
               </label>
-              <select
+              <CustomSelect
                 value={paymentCurrency}
-                onChange={(e) => setPaymentCurrency(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
-              >
-                <option value="UZS">UZS (So‘m)</option>
-                <option value="USD">USD (Dollar)</option>
-              </select>
+                onChange={(val) => setPaymentCurrency(val)}
+                options={[
+                  { value: 'UZS', label: 'UZS (So‘m)' },
+                  { value: 'USD', label: 'USD (Dollar)' },
+                ]}
+                fullWidth
+              />
             </div>
           </div>
 
@@ -1920,6 +2281,163 @@ export default function Sales() {
               style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: 'var(--primary-foreground)', fontWeight: 700, cursor: 'pointer' }}
             >
               {submittingPayment ? 'Qabul qilinmoqda...' : 'To‘lovni Saqlash'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 5.5: Refund Customer Credit */}
+      <Modal
+        isOpen={refundModalOpen}
+        onClose={() => setRefundModalOpen(false)}
+        title={`Mijoz Haqqini Qaytarish — ${selectedCp?.name || ''}`}
+        maxWidth={480}
+      >
+        <form onSubmit={handleConfirmRefundCredit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Sparkles size={16} />
+              <span>Bizda Qolgan Ortiqcha Haq</span>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Mijoz do‘kondan ortiqcha to‘lagan yoki omonat qoldirgan summasini qaytarib olmoqda. To‘lov amalga oshirilgach, mijozning manfiy qarzi 0 ga tenglashadi.
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+              Mavjud haq:{' '}
+              {Math.max(0, -Number(selectedCp?.debt_balance_uzs || 0)) > 0 &&
+                `+${Math.max(0, -Number(selectedCp?.debt_balance_uzs || 0)).toLocaleString()} UZS `}
+              {Math.max(0, -Number(selectedCp?.debt_balance_usd || 0)) > 0 &&
+                `+$${Math.max(0, -Number(selectedCp?.debt_balance_usd || 0)).toFixed(2)}`}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Valyuta
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setRefundCurrency('UZS')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: refundCurrency === 'UZS' ? '2px solid #10b981' : '1px solid var(--border-card)',
+                  background: refundCurrency === 'UZS' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-input)',
+                  color: refundCurrency === 'UZS' ? '#10b981' : 'var(--text-secondary)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                UZS (So‘m)
+              </button>
+              <button
+                type="button"
+                onClick={() => setRefundCurrency('USD')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: refundCurrency === 'USD' ? '2px solid #10b981' : '1px solid var(--border-card)',
+                  background: refundCurrency === 'USD' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-input)',
+                  color: refundCurrency === 'USD' ? '#10b981' : 'var(--text-secondary)',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                USD (Dollar)
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Qaytariladigan Summa *
+            </label>
+            <input
+              type="number"
+              step="any"
+              required
+              min="0.01"
+              value={refundAmount}
+              onChange={(e) => setRefundAmount(e.target.value)}
+              placeholder="0"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-input)',
+                color: 'var(--text-primary)',
+                fontSize: 16,
+                fontWeight: 700,
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Izoh
+            </label>
+            <input
+              type="text"
+              value={refundNote}
+              onChange={(e) => setRefundNote(e.target.value)}
+              placeholder="Izoh qoldiring..."
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-input)',
+                color: 'var(--text-primary)',
+                fontSize: 14,
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setRefundModalOpen(false)}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-subtle)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              disabled={submittingRefund}
+              style={{
+                padding: '10px 22px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                background: '#10b981',
+                color: '#ffffff',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {submittingRefund ? 'Qaytarilmoqda...' : 'Haqni Qaytarish'}
             </button>
           </div>
         </form>
@@ -1963,72 +2481,102 @@ export default function Sales() {
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Nasiya Qarzi (UZS)
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
+                {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz Haqqi (UZS)' : 'Nasiya Qarzi (UZS)'}
               </div>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 800,
-                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--text-primary)' : Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
                   marginTop: 3,
                 }}
               >
-                {Number(selectedCpDetail?.debt_balance_uzs || 0).toLocaleString()} UZS
+                {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0
+                  ? `+${Math.abs(Number(selectedCpDetail?.debt_balance_uzs || 0)).toLocaleString()} UZS`
+                  : `${Number(selectedCpDetail?.debt_balance_uzs || 0).toLocaleString()} UZS`}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                Joriy so‘m balansi
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 600 : 400 }}>
+                {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : 'Joriy so‘m balansi'}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Nasiya Qarzi (USD)
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
+                {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz Haqqi (USD)' : 'Nasiya Qarzi (USD)'}
               </div>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 800,
-                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--text-primary)' : Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
                   marginTop: 3,
                 }}
               >
-                ${Number(selectedCpDetail?.debt_balance_usd || 0).toFixed(2)}
+                {Number(selectedCpDetail?.debt_balance_usd || 0) < 0
+                  ? `+$${Math.abs(Number(selectedCpDetail?.debt_balance_usd || 0)).toFixed(2)}`
+                  : `$${Number(selectedCpDetail?.debt_balance_usd || 0).toFixed(2)}`}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                Joriy dollar balansi
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 600 : 400 }}>
+                {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : 'Joriy dollar balansi'}
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-start' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCp(selectedCpDetail);
-                  setPaymentAmount('');
-                  setPaymentCurrency('UZS');
-                  setPaymentNote('');
-                  setDebtModalOpen(true);
-                }}
-                style={{
-                  width: '100%',
-                  padding: '9px 14px',
-                  borderRadius: 'var(--radius-xs)',
-                  border: 'none',
-                  background: 'var(--primary)',
-                  color: 'var(--primary-foreground)',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                <CreditCard size={14} />
-                <span>Qarz To‘lash</span>
-              </button>
+              {(Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 || Number(selectedCpDetail?.debt_balance_usd || 0) < 0) ? (
+                <button
+                  type="button"
+                  onClick={() => handleOpenRefundCredit(selectedCpDetail)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 14px',
+                    borderRadius: 'var(--radius-xs)',
+                    border: 'none',
+                    background: '#10b981',
+                    color: '#ffffff',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>Haqni Qaytarish</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCp(selectedCpDetail);
+                    setPaymentAmount('');
+                    setPaymentCurrency('UZS');
+                    setPaymentNote('');
+                    setDebtModalOpen(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '9px 14px',
+                    borderRadius: 'var(--radius-xs)',
+                    border: 'none',
+                    background: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <CreditCard size={14} />
+                  <span>Qarz To‘lash</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -2247,12 +2795,34 @@ export default function Sales() {
                           <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>
                             {Number(sale.total_amount).toLocaleString()} {sale.currency}
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenInvoice(sale)}
+                            title="A4 formatida rasmiy Hisob-faktura / Yuk xati"
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: 'var(--radius-xs)',
+                              border: '1px solid var(--border-card)',
+                              background: 'var(--bg-card)',
+                              color: 'var(--text-primary)',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <FileText size={13} style={{ color: 'var(--primary)' }} />
+                            <span>A4 Faktura</span>
+                          </button>
                         </div>
                       </div>
 
                       {/* Sale Items Table */}
-                      <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
+                      <div className="table-responsive">
+                        <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
                           <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                               <th style={{ padding: '8px 12px', width: 32 }}>№</th>
@@ -2317,8 +2887,8 @@ export default function Sales() {
               {loadingCpDetailPayments ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
               ) : cpDetailPayments.length > 0 ? (
-                <div style={{ overflowX: 'auto', maxHeight: '52vh' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <div className="table-responsive" style={{ maxHeight: '52vh' }}>
+                  <table style={{ width: '100%', minWidth: 580, borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-input)', color: 'var(--text-muted)', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Sana & Vaqt</th>
@@ -2408,6 +2978,13 @@ export default function Sales() {
           </div>
         </form>
       </Modal>
+
+      {/* Official A4 Invoice Modal */}
+      <InvoiceA4Modal
+        isOpen={invoiceModalOpen}
+        onClose={() => setInvoiceModalOpen(false)}
+        sale={selectedInvoiceSale}
+      />
     </div>
   );
 }

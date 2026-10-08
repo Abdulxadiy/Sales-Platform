@@ -129,15 +129,15 @@ export default function RevenueCostAnalyticsChart({
     };
   }, []);
 
-  // Vibrant Neon Analytics Color Palette:
-  // Tushum (Revenue): Neon Green
-  // Chiqim (Costs): Neon Red
-  // Nasiya (Debt): Warm Amber (kept original)
-  // Sof foyda (Net profit): Neon Blue
-  const COLOR_REV = '#10b981'; // Vibrant Neon Green / Emerald (Tushum)
-  const COLOR_DEBT = '#f59e0b'; // Warm Amber (Nasiya / Qarz savdolari)
-  const COLOR_COST = '#f43f5e'; // Vibrant Neon Red / Crimson (Chiqim xarajatlar)
-  const COLOR_PROFIT = '#0ea5e9'; // Vibrant Neon Blue / Sky Cyan (Sof foyda)
+  // Option 2: Executive Slate & Corporate Palette (Bosiq va to'q tuslar, zero neon)
+  // Tushum (Revenue): Forest Pine Green
+  // Nasiya (Debt): Warm Bronze / Ochre
+  // Chiqim (Costs): Deep Burgundy Wine Red
+  // Sof foyda (Net profit): Deep Sapphire Royal Blue
+  const COLOR_REV = '#15803d'; // Forest Pine Green (To'q o'rmon archasi yashili)
+  const COLOR_DEBT = '#b45309'; // Warm Bronze / Ochre (To'q bronza / Oxra)
+  const COLOR_COST = '#b91c1c'; // Deep Burgundy Wine Red (Sharob qizil / Bordeaux)
+  const COLOR_PROFIT = '#1d4ed8'; // Deep Sapphire Royal Blue (Chuqur safir ko'k)
 
   // Prepare normalized points
   const { pointsData, maxY, yTicks } = useMemo(() => {

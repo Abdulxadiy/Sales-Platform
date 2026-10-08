@@ -406,6 +406,22 @@ export const tenantApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getBranches: () => request('/tenants/branches/'),
+  getBranch: (id) => request(`/tenants/branches/${id}/`),
+  createBranch: (data) =>
+    request('/tenants/branches/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateBranch: (id, data) =>
+    request(`/tenants/branches/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteBranch: (id) =>
+    request(`/tenants/branches/${id}/`, {
+      method: 'DELETE',
+    }),
 };
 
 export const catalogApi = {
@@ -472,6 +488,7 @@ export const catalogApi = {
     if (params.barcode) query.append('barcode', params.barcode);
     if (params.category) query.append('category', params.category);
     if (params.in_stock !== undefined) query.append('in_stock', params.in_stock);
+    if (params.branch_id) query.append('branch_id', params.branch_id);
     const qs = query.toString();
     return request(`/catalog/variants/${qs ? `?${qs}` : ''}`);
   },
@@ -491,15 +508,37 @@ export const catalogApi = {
 };
 
 export const inventoryApi = {
-  getStock: (page = 1, search = '') => {
-    let q = `?page=${page}`;
+  getStock: (pageOrParams = 1, search = '', branchId = null) => {
+    if (typeof pageOrParams === 'object' && pageOrParams !== null) {
+      const query = new URLSearchParams();
+      if (pageOrParams.page) query.append('page', pageOrParams.page);
+      if (pageOrParams.search) query.append('search', pageOrParams.search);
+      if (pageOrParams.branch_id) query.append('branch_id', pageOrParams.branch_id);
+      const qs = query.toString();
+      return request(`/inventory/stock/${qs ? `?${qs}` : ''}`);
+    }
+    let q = `?page=${pageOrParams}`;
     if (search) q += `&search=${encodeURIComponent(search)}`;
+    if (branchId) q += `&branch_id=${encodeURIComponent(branchId)}`;
     return request(`/inventory/stock/${q}`);
   },
-  getStockDetail: (variantId) => request(`/inventory/stock/${variantId}/`),
+  getStockDetail: (variantId, branchId = null) => {
+    const q = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return request(`/inventory/stock/${variantId}/${q}`);
+  },
+  updateStockPrices: (variantId, data) =>
+    request(`/inventory/stock/${variantId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   getMovements: (page = 1) => request(`/inventory/movements/?page=${page}`),
   stockIntake: (data) =>
     request('/inventory/intake/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  batchStockIntake: (data) =>
+    request('/inventory/intake/batch/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -527,6 +566,31 @@ export const inventoryApi = {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
     return request(`/inventory/deficits/${q}`);
   },
+
+  // Multi-branch Transfers
+  getTransfers: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page);
+    if (params.branch_id) query.append('branch_id', params.branch_id);
+    if (params.status) query.append('status', params.status);
+    const qs = query.toString();
+    return request(`/inventory/transfers/${qs ? `?${qs}` : ''}`);
+  },
+  getTransferDetail: (id) => request(`/inventory/transfers/${id}/`),
+  createTransfer: (data) =>
+    request('/inventory/transfers/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  acceptTransfer: (id) =>
+    request(`/inventory/transfers/${id}/accept/`, {
+      method: 'POST',
+    }),
+  rejectTransfer: (id, reason = '') =>
+    request(`/inventory/transfers/${id}/reject/`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
 };
 
 export const salesApi = {
@@ -536,6 +600,8 @@ export const salesApi = {
     return request(`/sales/${q}`);
   },
   getSaleDetail: (id) => request(`/sales/${id}/`),
+  getPublicReceipt: (receiptNumber) =>
+    request(`/sales/public/receipt/${encodeURIComponent(receiptNumber)}/`),
   createSale: (saleData) =>
     request('/sales/', {
       method: 'POST',
@@ -619,25 +685,45 @@ export const salesApi = {
 };
 
 export const cashboxApi = {
-  getCurrentShift: () => request('/cashbox/shift/current/'),
+  getCurrentShift: (branchId = null) => {
+    const q = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return request(`/cashbox/shift/current/${q}`);
+  },
   closeShift: (data) =>
     request('/cashbox/shift/close/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getExpenses: () => request('/cashbox/expenses/'),
+  getExpenses: (branchId = null) => {
+    const q = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return request(`/cashbox/expenses/${q}`);
+  },
   createExpense: (data) =>
     request('/cashbox/expenses/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getIncome: () => request('/cashbox/income/'),
+  getIncome: (branchId = null) => {
+    const q = branchId ? `?branch_id=${encodeURIComponent(branchId)}` : '';
+    return request(`/cashbox/income/${q}`);
+  },
   createIncome: (data) =>
     request('/cashbox/income/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getReports: (page = 1) => request(`/cashbox/reports/?page=${page}`),
+  getReports: (pageOrParams = 1, branchId = null) => {
+    if (typeof pageOrParams === 'object' && pageOrParams !== null) {
+      const query = new URLSearchParams();
+      if (pageOrParams.page) query.append('page', pageOrParams.page);
+      if (pageOrParams.branch_id) query.append('branch_id', pageOrParams.branch_id);
+      const qs = query.toString();
+      return request(`/cashbox/reports/${qs ? `?${qs}` : ''}`);
+    }
+    let q = `?page=${pageOrParams}`;
+    if (branchId) q += `&branch_id=${encodeURIComponent(branchId)}`;
+    return request(`/cashbox/reports/${q}`);
+  },
   getReportDetail: (id) => request(`/cashbox/reports/${id}/`),
 };
 

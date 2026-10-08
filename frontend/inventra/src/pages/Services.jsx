@@ -26,6 +26,7 @@ import {
 import { tenantApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import CustomSelect from '../components/common/CustomSelect';
 
 export default function Services() {
   const { user, isAdmin, isOwner } = useAuth();
@@ -276,26 +277,16 @@ export default function Services() {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
               Do‘kon:
             </span>
-            <select
+            <CustomSelect
               value={selectedTenantId || ''}
-              onChange={(e) => setSelectedTenantId(Number(e.target.value))}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                fontSize: 13,
-                fontWeight: 600,
-                outline: 'none',
-              }}
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} (ID: {t.id})
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedTenantId(Number(val))}
+              options={tenants.map((t) => ({
+                value: t.id,
+                label: `${t.name} (ID: ${t.id})`,
+              }))}
+              size="sm"
+              style={{ minWidth: 200 }}
+            />
           </div>
         ) : (
           <div
@@ -1377,29 +1368,20 @@ export default function Services() {
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Haftaning Qaysi Kuni?
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.low_stock_weekday}
-                    onChange={(e) => setFormData({ ...formData, low_stock_weekday: parseInt(e.target.value, 10) })}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-card)',
-                      background: 'var(--bg-input)',
-                      color: 'var(--text-primary)',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      outline: 'none',
-                    }}
-                  >
-                    <option value={1}>1 — Dushanba</option>
-                    <option value={2}>2 — Seshanba</option>
-                    <option value={3}>3 — Chorshanba</option>
-                    <option value={4}>4 — Payshanba</option>
-                    <option value={5}>5 — Juma</option>
-                    <option value={6}>6 — Shanba</option>
-                    <option value={7}>7 — Yakshanba</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, low_stock_weekday: parseInt(val, 10) })}
+                    options={[
+                      { value: 1, label: '1 — Dushanba' },
+                      { value: 2, label: '2 — Seshanba' },
+                      { value: 3, label: '3 — Chorshanba' },
+                      { value: 4, label: '4 — Payshanba' },
+                      { value: 5, label: '5 — Juma' },
+                      { value: 6, label: '6 — Shanba' },
+                      { value: 7, label: '7 — Yakshanba' },
+                    ]}
+                    fullWidth
+                  />
                 </div>
               )}
 
@@ -1408,27 +1390,15 @@ export default function Services() {
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     Oyning Qaysi Sanasida? (1 — 31)
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.low_stock_day_of_month}
-                    onChange={(e) => setFormData({ ...formData, low_stock_day_of_month: parseInt(e.target.value, 10) })}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-card)',
-                      background: 'var(--bg-input)',
-                      color: 'var(--text-primary)',
-                      fontSize: 14,
-                      fontWeight: 600,
-                      outline: 'none',
-                    }}
-                  >
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                      <option key={d} value={d}>
-                        Har oyning {d}-kuni
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, low_stock_day_of_month: parseInt(val, 10) })}
+                    options={Array.from({ length: 31 }, (_, i) => ({
+                      value: i + 1,
+                      label: `Har oyning ${i + 1}-kuni`,
+                    }))}
+                    fullWidth
+                  />
                 </div>
               )}
 

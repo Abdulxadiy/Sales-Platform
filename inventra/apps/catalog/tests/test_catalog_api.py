@@ -124,6 +124,37 @@ class TestProductCreateFlow:
         assert len(response.data["variants"]) == 1
         assert response.data["variants"][0]["name"] == "Standart"
         assert response.data["variants"][0]["code"] == "32/2"
+        assert response.data["variants"][0]["stock_quantity"] == "0.000"
+
+    def test_creating_a_product_with_initial_stock_intake(self, api_client, staff_with_permission, tenant):
+        from decimal import Decimal
+        from apps.inventory.models import StockMovement
+
+        category = CategoryFactory(tenant=tenant, kod="32")
+        api_client.force_authenticate(user=staff_with_permission)
+
+        response = api_client.post(PRODUCTS_URL, {
+            "name": "Coca Cola 1.5L",
+            "category_id": category.id,
+            "price_partner": "10000",
+            "price_min": "11000",
+            "price_recommended": "13000",
+            "initial_quantity": "25.000",
+            "initial_cost_price": "9000.00",
+            "supplier": "Coca-Cola Bottlers",
+            "intake_note": "Faktura #12345",
+        })
+
+        assert response.status_code == 201
+        variant_data = response.data["variants"][0]
+        assert variant_data["stock_quantity"] == "25.000"
+
+        movement = StockMovement.objects.filter(product_variant_id=variant_data["id"]).first()
+        assert movement is not None
+        assert movement.quantity == Decimal("25.000")
+        assert movement.cost_price == Decimal("9000.00")
+        assert "Ta’minotchi: Coca-Cola Bottlers" in movement.note
+        assert "Faktura #12345" in movement.note
 
     def test_archive_cascades_through_the_api(self, api_client, staff_with_permission, tenant):
         category = CategoryFactory(tenant=tenant, kod="32")

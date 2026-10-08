@@ -41,6 +41,7 @@ class VoidService:
             if remaining_qty > 0:
                 StockService.customer_return(
                     tenant=sale.tenant,
+                    branch=sale.branch,
                     product_variant=item.product_variant,
                     quantity=remaining_qty,
                     created_by=user,
@@ -123,6 +124,7 @@ class VoidService:
         reason = reason.strip()
         StockService.customer_return(
             tenant=sale.tenant,
+            branch=sale.branch,
             product_variant=sale_item.product_variant,
             quantity=quantity,
             created_by=user,

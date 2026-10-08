@@ -1,4 +1,5 @@
 from decimal import Decimal
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -54,14 +55,49 @@ class ProductListCreateView(CatalogAPIView):
             ProductOutputSerializer(qs, many=True, context={"request": request}).data
         )
 
+    @transaction.atomic
     def post(self, request):
         serializer = ProductCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        val_data = serializer.validated_data
+        initial_quantity = val_data.pop("initial_quantity", None)
+        initial_cost_price = val_data.pop("initial_cost_price", None)
+        supplier = val_data.pop("supplier", "").strip()
+        intake_note = val_data.pop("intake_note", "").strip()
+
         try:
-            product = ProductService.create(tenant=self.tenant, **serializer.validated_data)
-        except ProductServiceError as exc:
+            product = ProductService.create(tenant=self.tenant, **val_data)
+            if initial_quantity is not None and initial_quantity > 0:
+                from apps.inventory.services import StockService
+
+                first_variant = product.variants.first()
+                note_parts = []
+                if supplier:
+                    note_parts.append(f"Ta’minotchi: {supplier}")
+                if intake_note:
+                    note_parts.append(intake_note)
+                combined_note = " | ".join(note_parts) if note_parts else "Boshlang‘ich kirim"
+
+                StockService.intake(
+                    tenant=self.tenant,
+                    product_variant=first_variant,
+                    quantity=initial_quantity,
+                    cost_price=initial_cost_price if initial_cost_price is not None else Decimal("0"),
+                    created_by=request.user,
+                    note=combined_note,
+                )
+        except (ProductServiceError, Exception) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Re-fetch product with stock pre-fetched to output accurate stock_quantity
+        product = (
+            Product.objects.filter(tenant=self.tenant, pk=product.pk)
+            .select_related("category")
+            .prefetch_related("variants__stocks", "variants", "gallery_images")
+            .first()
+        )
+
         return Response(
             ProductOutputSerializer(product, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
@@ -317,12 +353,35 @@ class ProductVariantListView(CatalogAPIView):
     required_permission = "catalog.view_product"
 
     def get(self, request):
+        branch = None
+        branch_id = request.query_params.get("branch_id")
+        if branch_id:
+            from apps.tenants.models import Branch
+            branch = Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
+        elif hasattr(request.user, "employments"):
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+            if emp and emp.branch:
+                branch = emp.branch
+
         qs = (
             ProductVariant.objects.filter(
                 tenant=self.tenant, is_active=True, product__is_active=True
             )
-            .select_related("product", "product__category", "stock")
+            .select_related("product", "product__category")
+            .prefetch_related("stocks")
         )
+
+        in_stock = request.query_params.get("in_stock")
+        if in_stock and in_stock.lower() in ("true", "1"):
+            if branch:
+                qs = qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal("0.000"))
+            else:
+                qs = qs.filter(stocks__quantity__gt=Decimal("0.000"))
+        elif branch and hasattr(request.user, "employments"):
+            # Cashier/staff is strictly isolated to products stocked in their branch
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+            if emp and emp.branch and not request.user.is_superuser and request.user != self.tenant.owner:
+                qs = qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal("0.000"))
 
         search = request.query_params.get("search")
         if search:
@@ -365,11 +424,7 @@ class ProductVariantListView(CatalogAPIView):
             except Exception:
                 pass
 
-        in_stock = request.query_params.get("in_stock")
-        if in_stock and in_stock.lower() in ("true", "1"):
-            qs = qs.filter(stock__quantity__gt=Decimal("0.000"))
-
         return Response(
-            ProductVariantOutputSerializer(qs, many=True, context={"request": request}).data,
+            ProductVariantOutputSerializer(qs.distinct(), many=True, context={"request": request, "branch": branch}).data,
             status=status.HTTP_200_OK,
         )

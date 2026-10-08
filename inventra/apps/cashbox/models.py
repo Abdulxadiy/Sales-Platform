@@ -9,6 +9,9 @@ class DailyCashReport(BaseModel):
     Kassa Z-Hisoboti (Smena yopilish hisoboti).
     """
     date = models.DateField(default=timezone.now)
+    branch = models.ForeignKey(
+        'tenants.Branch', null=True, blank=True, on_delete=models.PROTECT, related_name='daily_reports'
+    )
     closed_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='closed_shifts'
     )
@@ -68,6 +71,9 @@ class CashExpense(BaseModel):
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_UZS)
     category = models.CharField(max_length=100)
+    branch = models.ForeignKey(
+        'tenants.Branch', null=True, blank=True, on_delete=models.PROTECT, related_name='cash_expenses'
+    )
     recorded_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='cash_expenses'
     )
@@ -98,6 +104,9 @@ class CashIncome(BaseModel):
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_UZS)
     source = models.CharField(max_length=100)
+    branch = models.ForeignKey(
+        'tenants.Branch', null=True, blank=True, on_delete=models.PROTECT, related_name='cash_incomes'
+    )
     recorded_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='cash_incomes'
     )

@@ -5,6 +5,8 @@ from django.utils import timezone
 from django.db.models import Sum, Q, F
 
 from apps.sales.models import Sale, SaleItem, Counterparty, DebtPayment
+from apps.inventory.models import Stock
+from apps.catalog.models import ProductVariant
 
 
 class AnalyticsServiceError(Exception):
@@ -350,6 +352,60 @@ class AnalyticsService:
         debt_qs = Counterparty.objects.filter(tenant=tenant, is_active=True)
         total_debt_uzs = debt_qs.filter(debt_balance_uzs__gt=0).aggregate(s=Sum("debt_balance_uzs"))["s"] or Decimal("0.00")
         total_debt_usd = debt_qs.filter(debt_balance_usd__gt=0).aggregate(s=Sum("debt_balance_usd"))["s"] or Decimal("0.00")
+        debtors_count = debt_qs.filter(Q(debt_balance_uzs__gt=0) | Q(debt_balance_usd__gt=0)).count()
+        total_customers_count = debt_qs.count()
+
+        # Store Overview: Warehouse Inventory Valuation
+        stock_qs = Stock.objects.filter(tenant=tenant, quantity__gt=0).select_related("product_variant")
+        inventory_cost_value_uzs = Decimal("0.00")
+        inventory_retail_value_uzs = Decimal("0.00")
+        inventory_total_qty = Decimal("0.00")
+        for st in stock_qs:
+            qty = st.quantity
+            inventory_total_qty += qty
+            c_p = st.last_cost_price if (st.last_cost_price and st.last_cost_price > 0) else (st.product_variant.price_min or Decimal("0.00"))
+            r_p = st.product_variant.price_recommended if (st.product_variant.price_recommended and st.product_variant.price_recommended > 0) else (st.product_variant.price_min or Decimal("0.00"))
+            inventory_cost_value_uzs += qty * c_p
+            inventory_retail_value_uzs += qty * r_p
+        inventory_variants_count = ProductVariant.objects.filter(tenant=tenant, is_active=True).count()
+
+        # Store Overview: All-time Cumulative Turnover & Net Profit
+        all_time_sales_qs = Sale.objects.filter(tenant=tenant, status__in=valid_statuses)
+        all_time_sales_count = all_time_sales_qs.count()
+        all_time_sales_uzs = all_time_sales_qs.filter(currency=Sale.CURRENCY_UZS).aggregate(s=Sum("total_amount"))["s"] or Decimal("0.00")
+        all_time_sales_usd = all_time_sales_qs.filter(currency=Sale.CURRENCY_USD).aggregate(s=Sum("total_amount"))["s"] or Decimal("0.00")
+
+        all_time_profit_uzs = SaleItem.objects.filter(
+            sale__tenant=tenant,
+            sale__status__in=valid_statuses,
+            sale__currency=Sale.CURRENCY_UZS
+        ).aggregate(
+            total=Sum((F("quantity") - F("voided_quantity")) * (F("unit_price") - F("cost_price")))
+        )["total"] or Decimal("0.00")
+
+        all_time_profit_usd = SaleItem.objects.filter(
+            sale__tenant=tenant,
+            sale__status__in=valid_statuses,
+            sale__currency=Sale.CURRENCY_USD
+        ).aggregate(
+            total=Sum((F("quantity") - F("voided_quantity")) * (F("unit_price") - F("cost_price")))
+        )["total"] or Decimal("0.00")
+
+        store_overview = {
+            "total_debt_uzs": f"{total_debt_uzs:.2f}",
+            "total_debt_usd": f"{total_debt_usd:.2f}",
+            "debtors_count": debtors_count,
+            "total_customers_count": total_customers_count,
+            "inventory_cost_value_uzs": f"{inventory_cost_value_uzs:.2f}",
+            "inventory_retail_value_uzs": f"{inventory_retail_value_uzs:.2f}",
+            "inventory_total_qty": f"{inventory_total_qty:.0f}" if inventory_total_qty % 1 == 0 else f"{inventory_total_qty:.2f}",
+            "inventory_variants_count": inventory_variants_count,
+            "all_time_profit_uzs": f"{all_time_profit_uzs:.2f}",
+            "all_time_profit_usd": f"{all_time_profit_usd:.2f}",
+            "all_time_sales_uzs": f"{all_time_sales_uzs:.2f}",
+            "all_time_sales_usd": f"{all_time_sales_usd:.2f}",
+            "all_time_sales_count": all_time_sales_count,
+        }
 
         # Top 10 products
         sorted_products = sorted(product_sales.values(), key=lambda p: p["revenue"], reverse=True)[:10]
@@ -458,7 +514,20 @@ class AnalyticsService:
                 "sales_count": len(sales),
                 "average_check_uzs": f"{avg_check_uzs:.2f}",
                 "average_check_usd": f"{avg_check_usd:.2f}",
+                # Store-wide lifetime metrics
+                "debtors_count": debtors_count,
+                "total_customers_count": total_customers_count,
+                "inventory_cost_value_uzs": f"{inventory_cost_value_uzs:.2f}",
+                "inventory_retail_value_uzs": f"{inventory_retail_value_uzs:.2f}",
+                "inventory_total_qty": f"{inventory_total_qty:.0f}" if inventory_total_qty % 1 == 0 else f"{inventory_total_qty:.2f}",
+                "inventory_variants_count": inventory_variants_count,
+                "all_time_profit_uzs": f"{all_time_profit_uzs:.2f}",
+                "all_time_profit_usd": f"{all_time_profit_usd:.2f}",
+                "all_time_sales_uzs": f"{all_time_sales_uzs:.2f}",
+                "all_time_sales_usd": f"{all_time_sales_usd:.2f}",
+                "all_time_sales_count": all_time_sales_count,
             },
+            "store_overview": store_overview,
             # Top-level aliases for direct frontend compatibility
             "total_revenue_uzs": f"{total_revenue_uzs:.2f}",
             "total_revenue_usd": f"{total_revenue_usd:.2f}",

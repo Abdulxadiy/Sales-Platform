@@ -394,3 +394,47 @@ class TestNotificationEndpoints:
         assert del_res.status_code == 204
         assert not Notification.objects.filter(id=n1.id).exists()
         assert Notification.objects.filter(id=n2.id).exists()
+
+
+class TestPublicReceiptApi:
+    def test_public_receipt_success_without_auth(self, api_client, tenant, staff_with_sales_permission, stocked_variant):
+        sale = Sale.objects.create(
+            tenant=tenant,
+            sold_by=staff_with_sales_permission,
+            receipt_number="POS-20261008-9999",
+            currency="UZS",
+            total_amount=Decimal("50000.00"),
+            payment_type="cash",
+        )
+        SaleItem.objects.create(
+            tenant=tenant,
+            sale=sale,
+            product_variant=stocked_variant,
+            quantity=Decimal("2.000"),
+            unit_price=Decimal("25000.00"),
+            cost_price=Decimal("15000.00"),
+            total_price=Decimal("50000.00"),
+        )
+
+        # Unauthenticated request (Public QR Code scan simulation)
+        res = api_client.get(f"/api/v1/sales/public/receipt/{sale.receipt_number}/")
+        assert res.status_code == 200
+        data = res.data
+        assert data["receipt_number"] == "POS-20261008-9999"
+        assert data["store_name"] == tenant.name
+        assert data["total_amount"] == "50000.00"
+        assert len(data["items"]) == 1
+        item = data["items"][0]
+        assert item["product_name"] == stocked_variant.product.name
+        assert Decimal(item["quantity"]) == Decimal("2.000")
+        assert Decimal(item["unit_price"]) == Decimal("25000.00")
+        assert Decimal(item["total_price"]) == Decimal("50000.00")
+        # Confidential check:
+        assert "cost_price" not in item
+        assert "cost_price" not in str(data)
+
+    def test_public_receipt_not_found(self, api_client):
+        res = api_client.get("/api/v1/sales/public/receipt/NONEXISTENT-9999/")
+        assert res.status_code == 404
+        assert res.data["detail"] == "Chek topilmadi."
+

@@ -45,6 +45,7 @@ class SaleService:
         tenant,
         user,
         items_data: list,
+        branch = None,
         payment_type: str = 'cash',
         counterparty: Counterparty = None,
         is_partner_sale: bool = False,
@@ -54,6 +55,14 @@ class SaleService:
         Creates sale(s). If items belong to both UZS and USD categories,
         splits them into 2 separate Sale instances within 1 atomic transaction.
         """
+        if branch is None:
+            if hasattr(user, 'employments'):
+                emp = user.employments.filter(tenant=tenant, is_active=True).first()
+                if emp and emp.branch:
+                    branch = emp.branch
+        if branch is None:
+            branch = tenant.get_main_branch()
+
         if idempotency_key:
             existing_sales = list(Sale.objects.filter(tenant=tenant, idempotency_key=idempotency_key))
             if existing_sales:
@@ -87,15 +96,21 @@ class SaleService:
             if qty <= 0:
                 raise SaleServiceError(f"{variant.name} uchun miqdor 0 dan katta bo'lishi shart.")
 
-            # Partner price validation
+            # Branch-aware price validation
+            from apps.inventory.models import Stock
+            stock_rec = Stock.objects.filter(tenant=tenant, branch=branch, product_variant=variant).first()
+
             if is_partner_sale:
-                if variant.price_partner is None or variant.price_partner <= 0:
+                effective_partner = stock_rec.effective_price_partner if stock_rec else variant.price_partner
+                if effective_partner is None or effective_partner <= 0:
                     raise SaleServiceError(
                         f"{variant.product.name} ({variant.name}) uchun 1-narx belgilanmagan. To'ldirish majburiy."
                     )
-                unit_price = Decimal(str(item.get('unit_price', variant.price_partner)))
+                unit_price = Decimal(str(item.get('unit_price', effective_partner)))
             else:
-                unit_price = Decimal(str(item.get('unit_price', variant.price_recommended or variant.price_min)))
+                effective_rec = stock_rec.effective_price_recommended if stock_rec else variant.price_recommended
+                effective_min = stock_rec.effective_price_min if stock_rec else variant.price_min
+                unit_price = Decimal(str(item.get('unit_price', effective_rec or effective_min)))
 
             if unit_price <= 0:
                 raise SaleServiceError(f"{variant.name} narxi 0 dan katta bo'lishi shart.")
@@ -104,6 +119,7 @@ class SaleService:
                 'variant': variant,
                 'quantity': qty,
                 'unit_price': unit_price,
+                'stock_rec': stock_rec,
             })
 
         created_sales = []
@@ -119,6 +135,7 @@ class SaleService:
 
             sale = Sale.objects.create(
                 tenant=tenant,
+                branch=branch,
                 receipt_number=receipt_number,
                 sold_by=user,
                 counterparty=counterparty,
@@ -138,12 +155,14 @@ class SaleService:
                 variant = item['variant']
                 qty = item['quantity']
                 price = item['unit_price']
+                st_rec = item['stock_rec']
                 line_total = qty * price
 
                 # Reduce stock & link to sale
                 try:
                     movement = StockService._apply_movement(
                         tenant=tenant,
+                        branch=branch,
                         product_variant=variant,
                         type='sotuv',
                         direction='out',
@@ -155,8 +174,7 @@ class SaleService:
                 except StockServiceError as err:
                     stock_qty = Decimal('0')
                     try:
-                        from apps.inventory.models import Stock
-                        st = Stock.objects.filter(tenant=tenant, product_variant=variant).first()
+                        st = Stock.objects.filter(tenant=tenant, branch=branch, product_variant=variant).first()
                         if st:
                             stock_qty = st.quantity
                     except Exception:
@@ -168,7 +186,7 @@ class SaleService:
                         f"Omborda yetarli mahsulot qoldig'i yo'q: {product_label}. Omborda mavjud: {stock_qty}, so'ralgan: {qty}. (Not enough stock)"
                     ) from err
 
-                cost_price = variant.stock.last_cost_price or Decimal('0.00')
+                cost_price = (st_rec.last_cost_price if st_rec else None) or (variant.stock.last_cost_price if variant.stock else None) or Decimal('0.00')
 
                 SaleItem.objects.create(
                     tenant=tenant,

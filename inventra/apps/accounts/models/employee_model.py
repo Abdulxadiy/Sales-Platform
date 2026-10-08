@@ -1,4 +1,4 @@
-﻿from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model
 from apps.core.models import BaseModel
 from django.db import models
 
@@ -8,6 +8,14 @@ User = get_user_model()
 class Employee(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='employments')
     position = models.CharField(max_length=100, blank=True)
+    branch = models.ForeignKey(
+        'tenants.Branch',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='employees',
+        help_text="Xodim biriktirilgan filial (agar ko'rsatilsa, xodim faqat shu filialda ishlaydi)",
+    )
 
     hired_at = models.DateTimeField(auto_now_add=True)
     fired_at = models.DateTimeField(null=True, blank=True)

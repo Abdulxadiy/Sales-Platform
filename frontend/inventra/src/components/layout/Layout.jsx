@@ -317,7 +317,7 @@ export default function Layout() {
           onOpenShiftModal={() => setShiftModalOpen(true)}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
-        <main style={{ marginTop: 24 }}>
+        <main style={{ marginTop: 24, position: 'relative', zIndex: 1 }}>
           <div className="animate-fade-in" key={location.pathname}>
             <Outlet />
           </div>

@@ -31,6 +31,7 @@ import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip'
 import InvoiceA4Modal, { printInvoiceA4 } from '../components/common/InvoiceA4Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import Pagination from '../components/common/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { usePersistedState } from '../hooks/usePersistedState';
@@ -53,10 +54,27 @@ export default function Sales() {
   const [counterpartyFilter, setCounterpartyFilter] = useState('all'); // 'all' | 'debtors'
   const [b2bList, setB2BList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [salesPage, setSalesPage] = useState(1);
+  const [totalSalesCount, setTotalSalesCount] = useState(0);
   const [salesFilters, setSalesFilters, resetSalesFilters] = usePersistedState(
     'inventra_sales_filters_v2',
     DEFAULT_SALES_FILTERS
   );
+
+  // Ensure persisted dates are clean strings, fixing any previously corrupted localStorage state
+  useEffect(() => {
+    if (salesFilters) {
+      const isStartCorrupt = salesFilters.startDate && typeof salesFilters.startDate !== 'string';
+      const isEndCorrupt = salesFilters.endDate && typeof salesFilters.endDate !== 'string';
+      if (isStartCorrupt || isEndCorrupt) {
+        setSalesFilters((prev) => ({
+          ...prev,
+          startDate: typeof prev.startDate === 'string' ? prev.startDate : (prev.startDate?.target?.value || prev.startDate?.value || ''),
+          endDate: typeof prev.endDate === 'string' ? prev.endDate : (prev.endDate?.target?.value || prev.endDate?.value || ''),
+        }));
+      }
+    }
+  }, [salesFilters, setSalesFilters]);
 
   // Sale Detail & Receipt Modal
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -130,9 +148,15 @@ export default function Sales() {
     setLoading(true);
     try {
       if (activeTab === 'sales') {
-        const res = await salesApi.getSales();
-        const list = res.results || res;
-        setSalesList(Array.isArray(list) ? list : []);
+        const res = await salesApi.getSales(salesPage, salesFilters.search || '');
+        if (res && res.results) {
+          setSalesList(res.results);
+          setTotalSalesCount(typeof res.count === 'number' ? res.count : res.results.length);
+        } else {
+          const list = Array.isArray(res) ? res : [];
+          setSalesList(list);
+          setTotalSalesCount(list.length);
+        }
       } else if (activeTab === 'counterparties') {
         const res = await salesApi.getCounterparties();
         const list = res.results || res;
@@ -147,11 +171,16 @@ export default function Sales() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, toast]);
+  }, [activeTab, salesPage, salesFilters.search, toast]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Reset pagination to page 1 when search or tab changes
+  useEffect(() => {
+    setSalesPage(1);
+  }, [salesFilters.search, activeTab]);
 
   // Open Sale Detail
   const handleOpenDetail = async (sale) => {
@@ -517,8 +546,10 @@ export default function Sales() {
             return false;
           }
         } else if (salesFilters.datePreset === 'custom') {
-          if (salesFilters.startDate && dateKey < salesFilters.startDate) return false;
-          if (salesFilters.endDate && dateKey > salesFilters.endDate) return false;
+          const sFilter = typeof salesFilters.startDate === 'string' ? salesFilters.startDate : (salesFilters.startDate?.target?.value || '');
+          const eFilter = typeof salesFilters.endDate === 'string' ? salesFilters.endDate : (salesFilters.endDate?.target?.value || '');
+          if (sFilter && dateKey < sFilter) return false;
+          if (eFilter && dateKey > eFilter) return false;
         }
       }
 
@@ -911,16 +942,22 @@ export default function Sales() {
             {salesFilters.datePreset === 'custom' && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 6 }}>
                 <CustomDatePicker
-                  value={salesFilters.startDate}
-                  onChange={(val) => setSalesFilters({ ...salesFilters, startDate: val })}
+                  value={typeof salesFilters.startDate === 'string' ? salesFilters.startDate : (salesFilters.startDate?.target?.value || '')}
+                  onChange={(val) => {
+                    const cleanVal = typeof val === 'string' ? val : (val?.target?.value || '');
+                    setSalesFilters({ ...salesFilters, startDate: cleanVal });
+                  }}
                   placeholder="Boshlanish sanasi"
                   size="sm"
                   style={{ minWidth: 140 }}
                 />
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
                 <CustomDatePicker
-                  value={salesFilters.endDate}
-                  onChange={(val) => setSalesFilters({ ...salesFilters, endDate: val })}
+                  value={typeof salesFilters.endDate === 'string' ? salesFilters.endDate : (salesFilters.endDate?.target?.value || '')}
+                  onChange={(val) => {
+                    const cleanVal = typeof val === 'string' ? val : (val?.target?.value || '');
+                    setSalesFilters({ ...salesFilters, endDate: cleanVal });
+                  }}
                   placeholder="Tugash sanasi"
                   size="sm"
                   style={{ minWidth: 140 }}
@@ -1199,6 +1236,16 @@ export default function Sales() {
                 </button>
               )}
             </div>
+          )}
+
+          {/* Pagination Controls */}
+          {sortedDayGroups.length > 0 && (
+            <Pagination
+              currentPage={salesPage}
+              totalItems={totalSalesCount}
+              pageSize={20}
+              onPageChange={(p) => setSalesPage(p)}
+            />
           )}
         </div>
       )}

@@ -30,6 +30,7 @@ import RapidStockIntakeModal from '../components/inventory/RapidStockIntakeModal
 import StockTransferModal from '../components/inventory/StockTransferModal';
 import StockPriceModal from '../components/inventory/StockPriceModal';
 import CustomSelect from '../components/common/CustomSelect';
+import Pagination from '../components/common/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../context/AuthContext';
@@ -63,6 +64,10 @@ export default function Inventory() {
   const [variants, setVariants] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [stockPage, setStockPage] = useState(1);
+  const STOCK_PAGE_SIZE = 25;
+  const [movementPage, setMovementPage] = useState(1);
+  const MOVEMENT_PAGE_SIZE = 25;
   const [inventoryFilters, setInventoryFilters, resetInventoryFilters] = usePersistedState(
     'inventra_inventory_filters_v2',
     DEFAULT_INVENTORY_FILTERS
@@ -389,6 +394,15 @@ export default function Inventory() {
       });
   }, [stockList, inventoryFilters, categories]);
 
+  const paginatedStock = useMemo(() => {
+    const start = (stockPage - 1) * STOCK_PAGE_SIZE;
+    return filteredStock.slice(start, start + STOCK_PAGE_SIZE);
+  }, [filteredStock, stockPage, STOCK_PAGE_SIZE]);
+
+  useEffect(() => {
+    setStockPage(1);
+  }, [inventoryFilters.stockSearch, inventoryFilters.stockCategory, inventoryFilters.stockSort, activeBranch?.id]);
+
   const filteredMovements = useMemo(() => {
     return movements.filter((m) => {
       // 1. Search text
@@ -439,6 +453,15 @@ export default function Inventory() {
       return true;
     });
   }, [movements, inventoryFilters]);
+
+  const paginatedMovements = useMemo(() => {
+    const start = (movementPage - 1) * MOVEMENT_PAGE_SIZE;
+    return filteredMovements.slice(start, start + MOVEMENT_PAGE_SIZE);
+  }, [filteredMovements, movementPage, MOVEMENT_PAGE_SIZE]);
+
+  useEffect(() => {
+    setMovementPage(1);
+  }, [inventoryFilters.movementSearch, inventoryFilters.movementType, inventoryFilters.movementDate, activeBranch?.id]);
 
   const hasActiveStockFilters =
     Boolean(inventoryFilters.stockSearch) ||
@@ -1082,7 +1105,7 @@ export default function Inventory() {
                   <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
                 </tr>
               ) : filteredStock.length > 0 ? (
-                filteredStock.map((item, idx) => {
+                paginatedStock.map((item, idx) => {
                   const qty = Number(item.quantity ?? item.stock_quantity ?? 0);
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.15s ease' }}>
@@ -1538,7 +1561,7 @@ export default function Inventory() {
                   <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
                 </tr>
               ) : filteredMovements.length > 0 ? (
-                filteredMovements.map((m) => {
+                paginatedMovements.map((m) => {
                   const isIn = m.direction === 'in';
                   return (
                     <tr key={m.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -1588,6 +1611,26 @@ export default function Inventory() {
         )}
         </div>
       </div>
+
+      {/* Pagination Controls for Stock Tab */}
+      {activeTab === 'stock' && filteredStock.length > STOCK_PAGE_SIZE && (
+        <Pagination
+          currentPage={stockPage}
+          totalItems={filteredStock.length}
+          pageSize={STOCK_PAGE_SIZE}
+          onPageChange={setStockPage}
+        />
+      )}
+
+      {/* Pagination Controls for Movements Tab */}
+      {activeTab === 'movements' && filteredMovements.length > MOVEMENT_PAGE_SIZE && (
+        <Pagination
+          currentPage={movementPage}
+          totalItems={filteredMovements.length}
+          pageSize={MOVEMENT_PAGE_SIZE}
+          onPageChange={setMovementPage}
+        />
+      )}
 
       {/* Rapid POS-Style Barcode & Keyboard Stream Intake Workspace with Persisted Draft */}
       <RapidStockIntakeModal

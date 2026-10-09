@@ -23,6 +23,7 @@ import { authApi, resolveAvatarUrl } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import Modal from '../components/common/Modal';
 
 export default function Profile() {
   const { user, refreshProfile } = useAuth();
@@ -497,7 +498,10 @@ export default function Profile() {
               id="bday"
               name="bday"
               value={formData.date_of_birth}
-              onChange={(val) => setFormData({ ...formData, date_of_birth: val })}
+              onChange={(val) => {
+                const cleanVal = typeof val === 'string' ? val : (val?.target?.value || '');
+                setFormData({ ...formData, date_of_birth: cleanVal });
+              }}
               placeholder="Tug‘ilgan sanani tanlang..."
               max="2026-12-31"
               min="1920-01-01"
@@ -752,76 +756,13 @@ export default function Profile() {
       </div>
 
       {/* Change Password Modal */}
-      {showPasswordModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'var(--dialog-backdrop)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 20,
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowPasswordModal(false);
-          }}
-        >
-          <div
-            className="glass-card"
-            style={{
-              width: '100%',
-              maxWidth: 440,
-              padding: 28,
-              background: 'var(--bg-modal)',
-              border: '1px solid var(--border-modal)',
-              boxShadow: 'var(--shadow-lg)',
-              animation: 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Lock size={18} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                    Parolni O‘zgartirish
-                  </h3>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    Yangi xavfsiz parol belgilang
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowPasswordModal(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: 4,
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Modal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        title="Parolni O‘zgartirish"
+        maxWidth={440}
+      >
+        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Old Password */}
               <div>
                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>
@@ -985,114 +926,54 @@ export default function Profile() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Reset Info Modal */}
-      {showResetInfoModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'var(--dialog-backdrop)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 20,
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowResetInfoModal(false);
-          }}
-        >
-          <div
-            className="glass-card"
-            style={{
-              width: '100%',
-              maxWidth: 480,
-              padding: 28,
-              background: 'var(--bg-modal)',
-              border: '1px solid var(--border-modal)',
-              boxShadow: 'var(--shadow-lg)',
-              animation: 'scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  background: 'rgba(0, 242, 254, 0.14)',
-                  color: 'var(--accent-cyan)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                <Info size={22} />
-              </div>
+      <Modal
+        isOpen={showResetInfoModal}
+        onClose={() => setShowResetInfoModal(false)}
+        title="Parolni Qayta Tiklash Havolasi"
+        maxWidth={480}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ margin: 0 }}>
+              Parolni yangilash so‘rovi muvaffaqiyatli qabul qilindi.
+            </p>
+            <div
+              style={{
+                padding: 14,
+                borderRadius: 10,
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                fontSize: 12.5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
               <div>
-                <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                  Parolni Qayta Tiklash Havolasi
-                </h3>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Email xizmati va lokal muhit tafsilotlari
-                </span>
+                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>
+                  Pochtani tekshiring
+                </strong>
+                Parolni qayta tiklash havolasi elektron pochtangizga muvaffaqiyatli yuborildi. Agar xat asosiy pochtangizda ko‘rinmasa, iltimos, <strong>"Spam"</strong> yoki <strong>"Promotions"</strong> papkasini ham tekshirib ko‘ring. Havola 24 soat davomida amal qiladi.
               </div>
-            </div>
-
-            <div style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <p style={{ margin: 0 }}>
-                Parolni yangilash so‘rovi muvaffaqiyatli qabul qilindi.
-              </p>
-              <div
-                style={{
-                  padding: 14,
-                  borderRadius: 10,
-                  background: 'rgba(245, 158, 11, 0.08)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  fontSize: 12.5,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                }}
-              >
-                <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
-                <div>
-                  <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>
-                    Pochtani tekshiring
-                  </strong>
-                  Parolni qayta tiklash havolasi elektron pochtangizga muvaffaqiyatli yuborildi. Agar xat asosiy pochtangizda ko‘rinmasa, iltimos, <strong>"Spam"</strong> yoki <strong>"Promotions"</strong> papkasini ham tekshirib ko‘ring. Havola 24 soat davomida amal qiladi.
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button
-                type="button"
-                onClick={() => setShowResetInfoModal(false)}
-                className="btn-primary"
-                style={{
-                  padding: '9px 20px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  background: 'var(--primary)',
-                  color: 'var(--primary-foreground)',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Tushundim
-              </button>
             </div>
           </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={() => setShowResetInfoModal(false)}
+              className="btn btn-primary"
+              style={{ padding: '9px 24px', fontSize: 13, fontWeight: 700 }}
+            >
+              Tushundim
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

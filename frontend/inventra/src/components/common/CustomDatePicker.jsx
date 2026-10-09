@@ -33,19 +33,47 @@ export default function CustomDatePicker({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
 
-  // Parse initial date or default to current date
-  const parseDate = (str) => {
-    if (!str) return null;
-    const parts = str.split('-');
+  // Parse initial date or default to current date safely from string, Date, or object
+  const parseDate = (val) => {
+    if (!val) return null;
+    if (val instanceof Date) {
+      return isNaN(val.getTime()) ? null : val;
+    }
+    let str = val;
+    if (typeof str === 'object' && str !== null) {
+      str = str.target?.value || str.value || '';
+    }
+    if (typeof str === 'number') {
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof str !== 'string') {
+      try {
+        str = String(str);
+      } catch {
+        return null;
+      }
+    }
+    const trimmed = str.trim();
+    if (!trimmed) return null;
+
+    // Handle ISO formats like '2026-10-08T12:00:00Z'
+    const cleanStr = trimmed.split('T')[0];
+    const parts = cleanStr.split(/[-/]/);
     if (parts.length === 3) {
       const y = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10) - 1;
       const d = parseInt(parts[2], 10);
       if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-        return new Date(y, m, d);
+        const parsed = new Date(y, m, d);
+        if (!isNaN(parsed.getTime())) {
+          return parsed;
+        }
       }
     }
-    return null;
+
+    const fallback = new Date(cleanStr);
+    return isNaN(fallback.getTime()) ? null : fallback;
   };
 
   const selectedDate = parseDate(value);
@@ -112,9 +140,9 @@ export default function CustomDatePicker({
 
   // Human-readable formatted string for display
   const formatDisplay = (date) => {
-    if (!date) return '';
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '';
     const day = date.getDate();
-    const monthName = MONTH_NAMES_UZ[date.getMonth()];
+    const monthName = MONTH_NAMES_UZ[date.getMonth()] || '';
     const year = date.getFullYear();
     return `${String(day).padStart(2, '0')}-${monthName}, ${year}`;
   };
@@ -126,16 +154,16 @@ export default function CustomDatePicker({
   };
 
   const triggerChange = (valStr) => {
-    if (onChange) {
-      onChange(valStr);
-      // Support synthetic event for form consumers
-      if (typeof onChange === 'function') {
-        const syntheticEvent = {
-          target: { name, value: valStr },
-          currentTarget: { name, value: valStr },
-          preventDefault: () => {},
-          stopPropagation: () => {},
-        };
+    if (typeof onChange === 'function') {
+      const syntheticEvent = {
+        target: { name, value: valStr },
+        currentTarget: { name, value: valStr },
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      };
+      try {
+        onChange(valStr, syntheticEvent);
+      } catch (err) {
         try {
           onChange(syntheticEvent);
         } catch (_) {}
@@ -247,6 +275,7 @@ export default function CustomDatePicker({
         display: fullWidth ? 'flex' : 'inline-flex',
         width: fullWidth ? '100%' : 'auto',
         userSelect: 'none',
+        zIndex: isOpen ? 50 : undefined,
       }}
       title={title}
     >

@@ -157,6 +157,7 @@ export default function CustomSelect({
         display: fullWidth ? 'flex' : 'inline-flex',
         width: fullWidth ? '100%' : 'auto',
         userSelect: 'none',
+        zIndex: isOpen ? 50 : undefined,
       }}
       title={title}
     >

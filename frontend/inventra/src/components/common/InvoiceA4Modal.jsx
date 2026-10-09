@@ -7,6 +7,7 @@ import {
   Check,
   ChevronRight,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import Modal from './Modal';
 import { useAuth } from '../../context/AuthContext';
@@ -76,6 +77,16 @@ export function printInvoiceA4(elementId = 'printable-invoice-a4', title = 'Inve
             width: 100%;
             border-collapse: collapse;
           }
+          thead {
+            display: table-header-group;
+          }
+          tfoot {
+            display: table-footer-group;
+          }
+          tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
           th, td {
             border: 1px solid #374151;
             padding: 5px 8px;
@@ -85,6 +96,11 @@ export function printInvoiceA4(elementId = 'printable-invoice-a4', title = 'Inve
             background-color: #f3f4f6 !important;
             font-weight: 700;
             text-align: center;
+          }
+          .invoice-summary-block,
+          .invoice-signatures-block {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           img {
             max-width: 100%;
@@ -477,8 +493,12 @@ export default function InvoiceA4Modal({
     printInvoiceA4('printable-invoice-a4', `Hisob-faktura ${invoiceNumber}`);
   };
 
+  const hasSignatures = Boolean(signatures.sender && signatures.receiver);
+
   // Start Multi-step Signature Flow
   const startSigning = () => {
+    // Once invoice is signed by both parties, updating is strictly blocked
+    if (hasSignatures) return;
     setSignStep('sender');
     setTempSenderSig(null);
     setSigningModalOpen(true);
@@ -490,6 +510,7 @@ export default function InvoiceA4Modal({
   };
 
   const handleReceiverSave = (sigDataUrl) => {
+    if (hasSignatures) return;
     const finalSigs = {
       sender: tempSenderSig,
       receiver: sigDataUrl,
@@ -501,8 +522,6 @@ export default function InvoiceA4Modal({
     }
     setSigningModalOpen(false);
   };
-
-  const hasSignatures = Boolean(signatures.sender && signatures.receiver);
 
   return (
     <Modal
@@ -556,27 +575,49 @@ export default function InvoiceA4Modal({
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {/* Signature button */}
-            <button
-              type="button"
-              onClick={startSigning}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-xs)',
-                border: '1px solid var(--primary)',
-                background: hasSignatures ? 'rgba(59, 130, 246, 0.1)' : 'var(--primary)',
-                color: hasSignatures ? 'var(--primary)' : 'var(--primary-foreground)',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <PenTool size={14} />
-              <span>{hasSignatures ? 'Imzolarni yangilash' : 'Ekranda elektron imzolash'}</span>
-            </button>
+            {/* Signature button / Locked status */}
+            {hasSignatures ? (
+              <div
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid rgba(16, 185, 129, 0.35)',
+                  background: 'rgba(16, 185, 129, 0.12)',
+                  color: 'var(--accent-emerald)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  userSelect: 'none',
+                }}
+                title="Hujjat rasman imzolangan va qulflangan. Imzolarni qayta yangilash yoki o‘zgartirish butunlay taqiqlangan."
+              >
+                <Lock size={14} />
+                <span>Imzolangan (O‘zgartirib bo‘lmaydi)</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={startSigning}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  border: '1px solid var(--primary)',
+                  background: 'var(--primary)',
+                  color: 'var(--primary-foreground)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <PenTool size={14} />
+                <span>Ekranda elektron imzolash</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -648,12 +689,14 @@ export default function InvoiceA4Modal({
         <div
           style={{
             maxHeight: signingModalOpen ? '48vh' : '72vh',
-            overflowY: 'auto',
-            background: '#4b5563',
+            overflow: 'auto',
+            background: 'var(--bg-input, #334155)',
             padding: '24px 16px',
             borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
             display: 'flex',
             justifyContent: 'center',
+            alignItems: 'flex-start',
             transition: 'max-height 0.2s ease',
           }}
         >
@@ -664,6 +707,8 @@ export default function InvoiceA4Modal({
               width: '100%',
               maxWidth: '750px',
               minHeight: '960px',
+              height: 'fit-content',
+              alignSelf: 'flex-start',
               background: '#ffffff',
               color: '#111827',
               padding: '36px 42px',
@@ -791,7 +836,7 @@ export default function InvoiceA4Modal({
                     const lineTotal = Number(it.total_price || 0);
 
                     return (
-                      <tr key={it.id || idx} style={{ borderBottom: '1px solid #d1d5db' }}>
+                      <tr key={it.id || idx} style={{ borderBottom: '1px solid #d1d5db', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <td style={{ padding: '7px 8px', border: '1px solid #374151', textAlign: 'center', color: '#6b7280' }}>
                           {idx + 1}
                         </td>
@@ -823,7 +868,7 @@ export default function InvoiceA4Modal({
                   })}
 
                   {/* Summary Totals Row */}
-                  <tr style={{ background: '#f9fafb', fontWeight: 700, borderTop: '2px solid #374151' }}>
+                  <tr style={{ background: '#f9fafb', fontWeight: 700, borderTop: '2px solid #374151', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                     <td colSpan={4} style={{ padding: '8px 10px', border: '1px solid #374151', textAlign: 'right', textTransform: 'uppercase', fontSize: 11 }}>
                       Jami tovarlar soni va qiymati:
                     </td>
@@ -843,12 +888,15 @@ export default function InvoiceA4Modal({
 
             {/* Total in words and terms block */}
             <div
+              className="invoice-summary-block"
               style={{
                 border: '1px solid #e5e7eb',
                 borderRadius: 4,
                 padding: '12px 16px',
                 marginBottom: 24,
                 background: '#fafafa',
+                pageBreakInside: 'avoid',
+                breakInside: 'avoid',
               }}
             >
               <div style={{ fontSize: 12, marginBottom: 4 }}>
@@ -867,12 +915,15 @@ export default function InvoiceA4Modal({
 
             {/* Signatures & Stamp area with Electronic Signatures */}
             <div
+              className="invoice-signatures-block"
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gap: 32,
                 marginTop: 16,
                 paddingTop: 12,
+                pageBreakInside: 'avoid',
+                breakInside: 'avoid',
               }}
             >
               {/* Handed over by (Seller) */}

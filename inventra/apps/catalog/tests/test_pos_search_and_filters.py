@@ -109,6 +109,13 @@ def test_pos_variant_search_and_filters(api_client, tenant, staff_with_full_acce
     assert len(resp_cat.data) == 1
     assert resp_cat.data[0]["id"] == v1.id
 
+    # 6. Pagination on demand with ?page=1
+    resp_page = api_client.get(f"{VARIANTS_URL}?page=1")
+    assert resp_page.status_code == status.HTTP_200_OK
+    assert "results" in resp_page.data
+    assert "count" in resp_page.data
+    assert resp_page.data["count"] == 2
+
 
 def test_product_and_category_filters(api_client, tenant, staff_with_full_access):
     api_client.force_authenticate(user=staff_with_full_access)
@@ -169,3 +176,10 @@ def test_counterparty_and_sales_filters(api_client, tenant, staff_with_full_acce
     assert resp_sale.status_code == status.HTTP_200_OK
     assert len(resp_sale.data) == 1
     assert resp_sale.data[0]["receipt_number"] == "REC-998877"
+
+    # Sales pagination
+    resp_sale_page = api_client.get(f"{SALES_URL}?page=1")
+    assert resp_sale_page.status_code == status.HTTP_200_OK
+    assert "results" in resp_sale_page.data
+    assert "count" in resp_sale_page.data
+    assert resp_sale_page.data["count"] == 1

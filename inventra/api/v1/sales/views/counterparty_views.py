@@ -45,6 +45,12 @@ class CounterpartyListCreateView(SalesAPIView):
         if has_debt and has_debt.lower() in ('true', '1'):
             qs = qs.filter(Q(debt_balance_uzs__gt=0) | Q(debt_balance_usd__gt=0))
 
+        if request.query_params.get('page'):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(qs, request)
+            return paginator.get_paginated_response(CounterpartyOutputSerializer(page_data, many=True).data)
+
         return Response(CounterpartyOutputSerializer(qs, many=True).data)
 
     def post(self, request):

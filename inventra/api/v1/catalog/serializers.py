@@ -70,6 +70,9 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "product", "sku", "is_active", "currency", "stock_quantity"]
 
     def _get_branch_stock(self, obj):
+        if hasattr(obj, "_cached_branch_stock"):
+            return obj._cached_branch_stock
+
         branch = self.context.get("branch")
         if not branch:
             request = self.context.get("request")
@@ -79,13 +82,38 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
                     emp = request.user.employments.filter(tenant=tenant, is_active=True).first() if tenant else None
                     if emp and emp.branch:
                         branch = emp.branch
+
+        st = None
         if branch:
-            if hasattr(obj, "_prefetched_stocks"):
-                for st in obj._prefetched_stocks:
-                    if st.branch_id == branch.id:
-                        return st
-            return obj.stocks.filter(branch=branch).first()
-        return getattr(obj, "stock", None)
+            if hasattr(obj, "_prefetched_branch_stocks"):
+                for s in obj._prefetched_branch_stocks:
+                    if s.branch_id == branch.id:
+                        st = s
+                        break
+            elif hasattr(obj, "_prefetched_stocks"):
+                for s in obj._prefetched_stocks:
+                    if s.branch_id == branch.id:
+                        st = s
+                        break
+            elif hasattr(obj, "_prefetched_objects_cache") and "stocks" in obj._prefetched_objects_cache:
+                for s in obj._prefetched_objects_cache["stocks"]:
+                    if s.branch_id == branch.id:
+                        st = s
+                        break
+            else:
+                st = obj.stocks.filter(branch=branch).first()
+        else:
+            if hasattr(obj, "_prefetched_branch_stocks") and obj._prefetched_branch_stocks:
+                st = obj._prefetched_branch_stocks[0]
+            elif hasattr(obj, "_prefetched_stocks") and obj._prefetched_stocks:
+                st = obj._prefetched_stocks[0]
+            elif hasattr(obj, "_prefetched_objects_cache") and "stocks" in obj._prefetched_objects_cache and obj._prefetched_objects_cache["stocks"]:
+                st = obj._prefetched_objects_cache["stocks"][0]
+            else:
+                st = getattr(obj, "stock", None)
+
+        obj._cached_branch_stock = st
+        return st
 
     def get_stock_quantity(self, obj):
         st = self._get_branch_stock(obj)

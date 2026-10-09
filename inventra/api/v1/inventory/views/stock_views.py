@@ -41,6 +41,12 @@ class StockListView(InventoryAPIView):
                 | Q(product_variant__code__icontains=s)
                 | Q(product_variant__barcode__icontains=s)
             )
+        if request.query_params.get("page"):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(stock.order_by("id"), request)
+            return paginator.get_paginated_response(StockOutputSerializer(page_data, many=True).data)
+
         return Response(StockOutputSerializer(stock, many=True).data)
 
 

@@ -35,6 +35,13 @@ class CategoryListCreateView(CatalogAPIView):
             categories = categories.filter(parent__isnull=True)
         elif parent:
             categories = categories.filter(parent_id=parent)
+
+        if request.query_params.get("page"):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(categories, request)
+            return paginator.get_paginated_response(CategoryOutputSerializer(page_data, many=True).data)
+
         return Response(CategoryOutputSerializer(categories, many=True).data)
 
     def post(self, request):

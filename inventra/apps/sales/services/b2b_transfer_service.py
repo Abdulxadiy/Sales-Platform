@@ -127,8 +127,28 @@ class B2BTransferService:
                 total_accepted_items += 1
             elif item.b2b_accepted_quantity > 0:
                 item.status = SaleItem.STATUS_PARTIALLY_VOIDED  # partially accepted
+                if rejected_qty > 0:
+                    StockService.customer_return(
+                        tenant=sale.tenant,
+                        branch=sale.branch,
+                        product_variant=item.product_variant,
+                        quantity=rejected_qty,
+                        created_by=sale.tenant.owner,
+                        note=f"B2B qisman qabul qilindi, qoldiq qaytarildi: {sale.receipt_number}",
+                        sale=sale,
+                    )
             else:
                 item.status = SaleItem.STATUS_B2B_REJECTED
+                if rejected_qty > 0:
+                    StockService.customer_return(
+                        tenant=sale.tenant,
+                        branch=sale.branch,
+                        product_variant=item.product_variant,
+                        quantity=rejected_qty,
+                        created_by=sale.tenant.owner,
+                        note=f"B2B qabul qilinmadi, tovar qaytarildi: {sale.receipt_number}",
+                        sale=sale,
+                    )
 
             item.save(update_fields=['b2b_accepted_quantity', 'b2b_rejected_quantity', 'status'])
 
@@ -172,6 +192,15 @@ class B2BTransferService:
             item.b2b_rejected_quantity = item.quantity
             item.status = SaleItem.STATUS_B2B_REJECTED
             item.save(update_fields=['b2b_rejected_quantity', 'status'])
+            StockService.customer_return(
+                tenant=sale.tenant,
+                branch=sale.branch,
+                product_variant=item.product_variant,
+                quantity=item.quantity,
+                created_by=sale.tenant.owner,
+                note=f"B2B transfer rad etildi: {sale.receipt_number}",
+                sale=sale,
+            )
 
         # Notify A
         Notification.objects.create(
@@ -207,8 +236,19 @@ class B2BTransferService:
             for item in sale.items.all():
                 if item.status != SaleItem.STATUS_B2B_ACCEPTED:
                     item.status = SaleItem.STATUS_B2B_REJECTED
-                    item.b2b_rejected_quantity = item.quantity - item.b2b_accepted_quantity
+                    rejected_qty = item.quantity - item.b2b_accepted_quantity
+                    item.b2b_rejected_quantity = rejected_qty
                     item.save(update_fields=['status', 'b2b_rejected_quantity'])
+                    if rejected_qty > 0:
+                        StockService.customer_return(
+                            tenant=sale.tenant,
+                            branch=sale.branch,
+                            product_variant=item.product_variant,
+                            quantity=rejected_qty,
+                            created_by=sale.tenant.owner,
+                            note=f"B2B transfer muddati tugadi (7 kun): {sale.receipt_number}",
+                            sale=sale,
+                        )
 
             Notification.objects.create(
                 tenant=sale.tenant,

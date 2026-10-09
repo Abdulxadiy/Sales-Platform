@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import AnonRateThrottle
 
 from api.permissions import HasEmployeePermission
 from apps.sales.models import Sale, SaleItem, Counterparty
@@ -18,6 +19,10 @@ from api.v1.sales.serializers import (
     PublicReceiptSerializer,
 )
 from ._base import SalesAPIView
+
+
+class PublicReceiptRateThrottle(AnonRateThrottle):
+    rate = '60/minute'
 
 
 class SaleListCreateView(SalesAPIView):
@@ -70,6 +75,12 @@ class SaleListCreateView(SalesAPIView):
         if date_to:
             qs = qs.filter(created_at__date__lte=date_to)
 
+        if request.query_params.get('page'):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(qs, request)
+            return paginator.get_paginated_response(SaleOutputSerializer(page_data, many=True).data)
+
         return Response(SaleOutputSerializer(qs, many=True).data)
 
     def post(self, request):
@@ -106,7 +117,13 @@ class SaleListCreateView(SalesAPIView):
         except (SaleServiceError, StockServiceError) as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(SaleOutputSerializer(sales, many=True).data, status=status.HTTP_201_CREATED)
+        sale_ids = [s.id for s in sales]
+        sales_qs = (
+            Sale.objects.filter(id__in=sale_ids)
+            .select_related('sold_by', 'counterparty', 'branch', 'b2b_target_tenant')
+            .prefetch_related('items__product_variant__product')
+        )
+        return Response(SaleOutputSerializer(sales_qs, many=True).data, status=status.HTTP_201_CREATED)
 
 
 class SaleDetailView(SalesAPIView):
@@ -115,7 +132,7 @@ class SaleDetailView(SalesAPIView):
 
     def get(self, request, pk):
         sale = get_object_or_404(
-            Sale.objects.select_related('sold_by', 'counterparty', 'b2b_target_tenant').prefetch_related('items__product_variant__product'),
+            Sale.objects.select_related('sold_by', 'counterparty', 'branch', 'b2b_target_tenant').prefetch_related('items__product_variant__product'),
             pk=pk,
             tenant=self.tenant,
         )
@@ -174,6 +191,7 @@ class PublicReceiptDetailView(APIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [PublicReceiptRateThrottle]
 
     def get(self, request, receipt_number):
         receipt_number = (receipt_number or "").strip()

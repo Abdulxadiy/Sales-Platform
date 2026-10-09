@@ -1,6 +1,6 @@
 from decimal import Decimal
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from api.permissions import HasEmployeePermission
 from apps.catalog.models import Product, ProductVariant
+from apps.inventory.models import Stock
 from apps.catalog.services import ProductService, ProductServiceError
 from api.v1.catalog.serializers import (
     ProductOutputSerializer,
@@ -31,10 +32,31 @@ class ProductListCreateView(CatalogAPIView):
     permission_map = {"GET": "catalog.view_product", "POST": "catalog.add_product"}
 
     def get(self, request):
+        branch = None
+        branch_id = request.query_params.get("branch_id")
+        emp = None
+        if hasattr(request.user, "employments"):
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+        if branch_id:
+            from apps.tenants.models import Branch
+            branch = Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
+        elif emp and emp.branch:
+            branch = emp.branch
+        elif self.tenant:
+            branch = self.tenant.get_main_branch()
+
+        stock_qs = Stock.objects.filter(branch=branch) if branch else Stock.objects.all()
+        variant_prefetch = Prefetch(
+            "variants",
+            queryset=ProductVariant.objects.filter(is_active=True).prefetch_related(
+                Prefetch("stocks", queryset=stock_qs, to_attr="_prefetched_branch_stocks")
+            ),
+        )
+
         qs = (
             Product.objects.filter(tenant=self.tenant, is_active=True)
             .select_related("category")
-            .prefetch_related("variants", "gallery_images")
+            .prefetch_related(variant_prefetch, "gallery_images")
         )
         search = request.query_params.get("search")
         if search:
@@ -51,8 +73,16 @@ class ProductListCreateView(CatalogAPIView):
         if category_id:
             qs = qs.filter(category_id=category_id)
 
+        if request.query_params.get("page"):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(qs, request)
+            return paginator.get_paginated_response(
+                ProductOutputSerializer(page_data, many=True, context={"request": request, "branch": branch}).data
+            )
+
         return Response(
-            ProductOutputSerializer(qs, many=True, context={"request": request}).data
+            ProductOutputSerializer(qs, many=True, context={"request": request, "branch": branch}).data
         )
 
     @transaction.atomic
@@ -355,20 +385,27 @@ class ProductVariantListView(CatalogAPIView):
     def get(self, request):
         branch = None
         branch_id = request.query_params.get("branch_id")
+        emp = None
+        if hasattr(request.user, "employments"):
+            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
+
         if branch_id:
             from apps.tenants.models import Branch
             branch = Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
-        elif hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch:
-                branch = emp.branch
+        elif emp and emp.branch:
+            branch = emp.branch
+        elif self.tenant:
+            branch = self.tenant.get_main_branch()
+
+        stock_qs = Stock.objects.filter(branch=branch) if branch else Stock.objects.all()
+        stocks_prefetch = Prefetch("stocks", queryset=stock_qs, to_attr="_prefetched_branch_stocks")
 
         qs = (
             ProductVariant.objects.filter(
                 tenant=self.tenant, is_active=True, product__is_active=True
             )
             .select_related("product", "product__category")
-            .prefetch_related("stocks")
+            .prefetch_related(stocks_prefetch)
         )
 
         in_stock = request.query_params.get("in_stock")
@@ -377,10 +414,9 @@ class ProductVariantListView(CatalogAPIView):
                 qs = qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal("0.000"))
             else:
                 qs = qs.filter(stocks__quantity__gt=Decimal("0.000"))
-        elif branch and hasattr(request.user, "employments"):
+        elif branch and emp:
             # Cashier/staff is strictly isolated to products stocked in their branch
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch and not request.user.is_superuser and request.user != self.tenant.owner:
+            if emp.branch and not request.user.is_superuser and request.user != self.tenant.owner:
                 qs = qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal("0.000"))
 
         search = request.query_params.get("search")
@@ -424,7 +460,16 @@ class ProductVariantListView(CatalogAPIView):
             except Exception:
                 pass
 
+        ordered_qs = qs.distinct().order_by("id")
+        if request.query_params.get("page"):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(ordered_qs, request)
+            return paginator.get_paginated_response(
+                ProductVariantOutputSerializer(page_data, many=True, context={"request": request, "branch": branch}).data
+            )
+
         return Response(
-            ProductVariantOutputSerializer(qs.distinct(), many=True, context={"request": request, "branch": branch}).data,
+            ProductVariantOutputSerializer(ordered_qs, many=True, context={"request": request, "branch": branch}).data,
             status=status.HTTP_200_OK,
         )

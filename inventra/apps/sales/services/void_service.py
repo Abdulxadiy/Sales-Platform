@@ -66,13 +66,14 @@ class VoidService:
         sale.save(update_fields=['status', 'voided_at', 'voided_by', 'void_reason'])
 
         # Adjust counterparty debt if sale was on debt
-        if sale.payment_type == Sale.PAYMENT_DEBT and sale.counterparty:
-            cp = sale.counterparty
+        if sale.payment_type == Sale.PAYMENT_DEBT and sale.counterparty_id:
+            from apps.sales.models import Counterparty
+            cp = Counterparty.objects.select_for_update().get(pk=sale.counterparty_id)
             if sale.currency == 'UZS':
                 cp.debt_balance_uzs -= sale.total_amount
             else:
                 cp.debt_balance_usd -= sale.total_amount
-            cp.save()
+            cp.save(update_fields=['debt_balance_uzs', 'debt_balance_usd'])
             DebtService.check_threshold_and_notify(cp)
 
         # If B2B transfer was pending or rejected, notify receiver
@@ -149,14 +150,18 @@ class VoidService:
 
         # Adjust counterparty debt
         refund_amount = quantity * sale_item.unit_price
-        if sale.payment_type == Sale.PAYMENT_DEBT and sale.counterparty:
-            cp = sale.counterparty
+        if sale.payment_type == Sale.PAYMENT_DEBT and sale.counterparty_id:
+            from apps.sales.models import Counterparty
+            cp = Counterparty.objects.select_for_update().get(pk=sale.counterparty_id)
             if sale.currency == 'UZS':
                 cp.debt_balance_uzs -= refund_amount
             else:
                 cp.debt_balance_usd -= refund_amount
-            cp.save()
+            cp.save(update_fields=['debt_balance_uzs', 'debt_balance_usd'])
             DebtService.check_threshold_and_notify(cp)
+
+        # Adjust sale total amount
+        sale.total_amount = max(Decimal('0.00'), sale.total_amount - refund_amount)
 
         # Check all items status in sale
         all_items = list(sale.items.all())
@@ -169,7 +174,7 @@ class VoidService:
         else:
             sale.status = Sale.STATUS_PARTIALLY_VOIDED
 
-        sale.save(update_fields=['status', 'voided_at', 'voided_by', 'void_reason'])
+        sale.save(update_fields=['status', 'voided_at', 'voided_by', 'void_reason', 'total_amount'])
 
         from apps.core.models import AuditAction
         from apps.core.services.audit_service import AuditService

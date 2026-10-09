@@ -259,6 +259,11 @@ class TestB2BRejectTransfer:
         assert rejected_sale.status == Sale.STATUS_B2B_REJECTED
         assert rejected_sale.b2b_reject_reason == "Tovarlar sifatsiz va narxi qimmat"
 
+        # Stock is returned to tenant A
+        var_a = b2b_setup["variant_a"]
+        var_a.stock.refresh_from_db()
+        assert var_a.stock.quantity == Decimal("20.000")
+
         # Notification sent to A
         notif = Notification.objects.filter(
             tenant=b2b_setup["tenant_a"],

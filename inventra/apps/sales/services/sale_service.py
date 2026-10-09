@@ -21,18 +21,24 @@ class InsufficientStockError(SaleServiceError, StockServiceError):
 class SaleService:
     @staticmethod
     def _next_receipt_number(tenant) -> str:
+        from apps.tenants.models import Tenant
+        # Row-level lock on tenant serializes receipt number generation per tenant
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
+
         today_str = timezone.now().strftime('%Y%m%d')
         prefix = f"POS-{today_str}-"
         
         last_sale = (
-            Sale.objects.select_for_update()
-            .filter(tenant=tenant, receipt_number__startswith=prefix)
-            .order_by('-receipt_number')
+            Sale.objects.filter(tenant=tenant, receipt_number__startswith=prefix)
+            .order_by('-id')
             .first()
         )
-        if last_sale:
-            last_seq = int(last_sale.receipt_number.split('-')[-1])
-            next_seq = last_seq + 1
+        if last_sale and last_sale.receipt_number.startswith(prefix):
+            try:
+                last_seq = int(last_sale.receipt_number.split('-')[-1])
+                next_seq = last_seq + 1
+            except (ValueError, IndexError):
+                next_seq = Sale.objects.filter(tenant=tenant, receipt_number__startswith=prefix).count() + 1
         else:
             next_seq = 1
         return f"{prefix}{next_seq:04d}"

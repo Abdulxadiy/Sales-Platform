@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -18,6 +18,7 @@ import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
+import Pagination from '../components/common/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useBranch } from '../context/BranchContext';
@@ -33,8 +34,11 @@ export default function POS() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [variants, setVariants] = useState([]);
+  const [allVariants, setAllVariants] = useState([]);
+  const allVariantsRef = useRef([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [posPage, setPosPage] = useState(1);
+  const POS_PAGE_SIZE = 20;
 
   // 1-Narx (Partner Price) Switcher - Persisted
   const [isPartnerSale, setIsPartnerSale] = usePersistedState('inventra_pos_partner_sale', false);
@@ -74,72 +78,6 @@ export default function POS() {
     return `${parseFloat(num.toFixed(3))}`;
   };
 
-  const loadVariants = useCallback(async (catId = null, query = '') => {
-    setLoadingProducts(true);
-    try {
-      const params = {};
-      if (catId) params.category = catId;
-      if (query) params.search = query;
-      if (activeBranch?.id) params.branch_id = activeBranch.id;
-      const res = await catalogApi.getVariants(params);
-      const items = res.results || res;
-      setVariants(Array.isArray(items) ? items : []);
-    } catch {
-      setVariants([]);
-    } finally {
-      setLoadingProducts(false);
-    }
-  }, [activeBranch?.id]);
-
-  // Load initial categories and variants
-  useEffect(() => {
-    catalogApi.getCategories().then((res) => {
-      const list = res.results || res;
-      setCategories(Array.isArray(list) ? list : []);
-    }).catch(() => {});
-
-    loadVariants();
-  }, [loadVariants]);
-
-
-  const handleCategorySelect = (catId) => {
-    setSelectedCategory(catId);
-    loadVariants(catId, searchQuery);
-  };
-
-  const handleSearchChange = (e) => {
-    const val = e.target.value;
-    setSearchQuery(val);
-    loadVariants(selectedCategory, val);
-  };
-
-  // Barcode quick add on Enter
-  const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      e.preventDefault();
-      // Try exact barcode match or 3-level code first
-      const exactMatch = variants.find(
-        (v) =>
-          v.barcode?.toLowerCase() === searchQuery.trim().toLowerCase() ||
-          v.code?.toLowerCase() === searchQuery.trim().toLowerCase() ||
-          v.sku?.toLowerCase() === searchQuery.trim().toLowerCase()
-      );
-      if (exactMatch) {
-        if (addToCart(exactMatch)) {
-          setSearchQuery('');
-          loadVariants(selectedCategory, '');
-          toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
-        }
-      } else if (variants.length === 1) {
-        if (addToCart(variants[0])) {
-          setSearchQuery('');
-          loadVariants(selectedCategory, '');
-          toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
-        }
-      }
-    }
-  };
-
   const formatPrice = (val, cur = 'UZS') => {
     const num = Number(val || 0);
     if (cur === 'USD') {
@@ -155,14 +93,81 @@ export default function POS() {
     return Number(variant.price_recommended || variant.price_min || 0);
   }, [isPartnerSale]);
 
-  const getItemEffectivePrice = (item) => {
+  const getItemEffectivePrice = useCallback((item) => {
     if (item.customPrice !== undefined && item.customPrice !== '') {
       return Number(item.customPrice);
     }
     return getDefaultPrice(item.variant, isPartnerSale);
+  }, [getDefaultPrice, isPartnerSale]);
+
+  const loadVariants = useCallback(async () => {
+    setLoadingProducts(true);
+    try {
+      const params = {};
+      if (activeBranch?.id) params.branch_id = activeBranch.id;
+      const res = await catalogApi.getVariants(params);
+      const items = res.results || res;
+      const list = Array.isArray(items) ? items : [];
+      setAllVariants(list);
+      allVariantsRef.current = list;
+    } catch {
+      setAllVariants([]);
+      allVariantsRef.current = [];
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, [activeBranch?.id]);
+
+  // Load initial categories and variants
+  useEffect(() => {
+    catalogApi.getCategories().then((res) => {
+      const list = res.results || res;
+      setCategories(Array.isArray(list) ? list : []);
+    }).catch(() => {});
+
+    loadVariants();
+  }, [loadVariants]);
+
+  // In-memory instant filtering (0ms latency, zero HTTP requests)
+  const variants = useMemo(() => {
+    let list = allVariants;
+    if (selectedCategory) {
+      list = list.filter((v) => v.category_id === selectedCategory);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((v) => {
+        const pName = (v.product_name || '').toLowerCase();
+        const vName = (v.name || '').toLowerCase();
+        const bCode = (v.barcode || '').toLowerCase();
+        const code = (v.code || '').toLowerCase();
+        const sku = (v.sku || '').toLowerCase();
+        return pName.includes(q) || vName.includes(q) || bCode.includes(q) || code.includes(q) || sku.includes(q);
+      });
+    }
+    return list;
+  }, [allVariants, selectedCategory, searchQuery]);
+
+  // Paginated subset of filtered variants for display
+  const paginatedVariants = useMemo(() => {
+    const start = (posPage - 1) * POS_PAGE_SIZE;
+    return variants.slice(start, start + POS_PAGE_SIZE);
+  }, [variants, posPage, POS_PAGE_SIZE]);
+
+  // Reset to first page when category or search changes
+  useEffect(() => {
+    setPosPage(1);
+  }, [selectedCategory, searchQuery]);
+
+  const handleCategorySelect = (catId) => {
+    setSelectedCategory(catId);
   };
 
-  const addToCart = (variant) => {
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const addToCart = useCallback((variant) => {
     const available = Number(variant.stock_quantity ?? 0);
     if (available <= 0) {
       toast.warning(`"${variant.product_name || variant.name || 'Ushbu tovar'}" bazada tugagan! (Ombordagi qoldiq: 0)`);
@@ -188,6 +193,40 @@ export default function POS() {
       return [...prev, { variant, quantity: 1, customPrice: initialPrice }];
     });
     return success;
+  }, [getDefaultPrice, isPartnerSale, setCart, toast]);
+
+  // Barcode quick add on Enter (instantly searches in-memory array)
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) {
+        if (cart.length > 0) {
+          handleOpenCheckout();
+        }
+        return;
+      }
+      e.preventDefault();
+      // Try exact barcode match or 3-level code first across all branch variants
+      const exactMatch = allVariantsRef.current.find(
+        (v) =>
+          v.barcode?.toLowerCase() === q ||
+          v.code?.toLowerCase() === q ||
+          v.sku?.toLowerCase() === q
+      );
+      if (exactMatch) {
+        if (addToCart(exactMatch)) {
+          setSearchQuery('');
+          toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
+        }
+      } else if (variants.length === 1) {
+        if (addToCart(variants[0])) {
+          setSearchQuery('');
+          toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
+        }
+      } else {
+        toast.error(`"${searchQuery}" shtrix-kodli tovar topilmadi`);
+      }
+    }
   };
 
   const updateQuantity = (variantId, delta) => {
@@ -272,30 +311,54 @@ export default function POS() {
     }
   };
 
-  const cartUZS = cart.filter((item) => item.variant.currency === 'UZS' || !item.variant.currency);
-  const cartUSD = cart.filter((item) => item.variant.currency === 'USD');
+  const cartUZS = useMemo(
+    () => cart.filter((item) => item.variant.currency === 'UZS' || !item.variant.currency),
+    [cart]
+  );
+  const cartUSD = useMemo(
+    () => cart.filter((item) => item.variant.currency === 'USD'),
+    [cart]
+  );
   const hasUZS = cartUZS.length > 0;
   const hasUSD = cartUSD.length > 0;
   const isSplitCheckout = hasUZS && hasUSD;
 
-  const cartTotalUZS = cartUZS.reduce(
-    (acc, item) => acc + getItemEffectivePrice(item) * (Number(item.quantity) || 0),
-    0
+  const cartTotalUZS = useMemo(
+    () =>
+      cartUZS.reduce(
+        (acc, item) => acc + getItemEffectivePrice(item) * (Number(item.quantity) || 0),
+        0
+      ),
+    [cartUZS, getItemEffectivePrice]
   );
 
-  const cartTotalUSD = cartUSD.reduce(
-    (acc, item) => acc + getItemEffectivePrice(item) * (Number(item.quantity) || 0),
-    0
+  const cartTotalUSD = useMemo(
+    () =>
+      cartUSD.reduce(
+        (acc, item) => acc + getItemEffectivePrice(item) * (Number(item.quantity) || 0),
+        0
+      ),
+    [cartUSD, getItemEffectivePrice]
   );
 
-  const changeDueUZS = Math.max(0, parseFloat(paidAmountUZS || 0) - cartTotalUZS);
-  const changeDueUSD = Math.max(0, parseFloat(paidAmountUSD || 0) - cartTotalUSD);
+  const changeDueUZS = useMemo(
+    () => Math.max(0, parseFloat(paidAmountUZS || 0) - cartTotalUZS),
+    [paidAmountUZS, cartTotalUZS]
+  );
+  const changeDueUSD = useMemo(
+    () => Math.max(0, parseFloat(paidAmountUSD || 0) - cartTotalUSD),
+    [paidAmountUSD, cartTotalUSD]
+  );
 
-  const hasStockError = cart.some((item) => {
-    const available = Number(item.variant.stock_quantity ?? 0);
-    const qty = Number(item.quantity) || 0;
-    return available <= 0 || qty > available;
-  });
+  const hasStockError = useMemo(
+    () =>
+      cart.some((item) => {
+        const available = Number(item.variant.stock_quantity ?? 0);
+        const qty = Number(item.quantity) || 0;
+        return available <= 0 || qty > available;
+      }),
+    [cart]
+  );
 
   // Open Checkout
   const handleOpenCheckout = async () => {
@@ -369,6 +432,7 @@ export default function POS() {
       const salesList = Array.isArray(res) ? res : [res];
       setCompletedSales(salesList);
       resetCart();
+      loadVariants();
       setCheckoutOpen(false);
       setReceiptOpen(true);
       toast.success('Sotuv muvaffaqiyatli amalga oshirildi!');
@@ -515,7 +579,7 @@ export default function POS() {
               Tovarlar yuklanmoqda...
             </div>
           ) : variants.length > 0 ? (
-            variants.map((v) => {
+            paginatedVariants.map((v) => {
               const activePrice = getDefaultPrice(v);
               const inStock = Number(v.stock_quantity || 0) > 0;
               return (
@@ -628,6 +692,17 @@ export default function POS() {
             </div>
           )}
         </div>
+
+        {/* POS Pagination Bar */}
+        {variants.length > POS_PAGE_SIZE && (
+          <Pagination
+            currentPage={posPage}
+            totalItems={variants.length}
+            pageSize={POS_PAGE_SIZE}
+            onPageChange={setPosPage}
+            compact={true}
+          />
+        )}
       </div>
 
       {/* Right Column: Live Cart Drawer */}

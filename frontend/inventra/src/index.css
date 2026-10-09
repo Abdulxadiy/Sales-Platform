@@ -611,6 +611,8 @@ input[type="number"] {
 
 /* App Header Styling */
 .app-header {
+  position: relative;
+  z-index: 80;
   padding: 16px 24px;
   display: flex;
   align-items: center;
@@ -1173,7 +1175,9 @@ dialog.custom-dialog[open] .dialog-content {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    font-family: 'Courier New', Courier, monospace, 'Segoe UI', Tahoma, sans-serif !important;
+    font-family: 'JetBrains Mono', 'SF Mono', Consolas, 'Courier New', monospace !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .main-content {

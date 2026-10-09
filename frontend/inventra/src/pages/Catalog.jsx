@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Package,
   Search,
@@ -25,6 +25,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
+import Pagination from '../components/common/Pagination';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 const defaultProductForm = {
@@ -61,6 +62,17 @@ export default function Catalog() {
   const [selectedCat, setSelectedCat] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 24;
+
+  const paginatedVariants = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return variants.slice(start, start + pageSize);
+  }, [variants, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCat, search]);
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -739,7 +751,7 @@ export default function Catalog() {
             </button>
           </div>
         ) : (
-          variants.map((v) => {
+          paginatedVariants.map((v) => {
             const stockQty = parseFloat(v.stock_quantity || 0);
             const isOutOfStock = stockQty <= 0;
 
@@ -932,6 +944,17 @@ export default function Catalog() {
               </div>
             );
           })
+        )}
+
+        {variants.length > pageSize && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <Pagination
+              currentPage={currentPage}
+              totalItems={variants.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         )}
       </div>
 

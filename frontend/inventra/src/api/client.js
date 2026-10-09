@@ -134,7 +134,7 @@ export async function request(endpoint, options = {}) {
             failedQueue.push({ resolve, reject });
           }).then((newToken) => {
             headers['Authorization'] = `Bearer ${newToken}`;
-            return fetch(url, { ...config, headers });
+            return fetch(url, { ...config, headers }).then((res) => handleResponse(res));
           });
         }
 

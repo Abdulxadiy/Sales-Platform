@@ -32,7 +32,7 @@ export function ReceiptQRCode({ value = '', size = 84 }) {
   }
 
   return (
-    <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 4 }}>
+    <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 4, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
       <div
         className="receipt-qr-card"
         style={{
@@ -45,6 +45,8 @@ export function ReceiptQRCode({ value = '', size = 84 }) {
           borderRadius: 4,
           background: '#ffffff',
           textAlign: 'center',
+          breakInside: 'avoid',
+          pageBreakInside: 'avoid',
         }}
       >
         <img
@@ -88,15 +90,6 @@ export function printReceiptSlip(
   const is58mm = storedWidth === '58mm';
   const paperWidth = is58mm ? '58mm' : '80mm';
 
-  // Calculate approximate content height to make roll height match content in Chrome preview & drivers
-  const contentHeightPx = printEl.scrollHeight || printEl.offsetHeight || 0;
-  // 1px = ~0.2646mm. Add 12mm buffer for top/bottom margins and printer tear-off
-  const dynamicHeightMm = contentHeightPx > 50
-    ? `${Math.max(80, Math.ceil(contentHeightPx * 0.265) + 12)}mm`
-    : (is58mm ? '210mm' : '297mm');
-
-  const pageSizeRule = `${paperWidth} ${dynamicHeightMm}`;
-
   // Remove any previously created print iframe
   const existingIframe = document.getElementById('inventra-thermal-print-iframe');
   if (existingIframe) {
@@ -108,10 +101,12 @@ export function printReceiptSlip(
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
   iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.width = paperWidth;
+  iframe.style.height = '10000px'; // Give ample space for unconstrained height measurement
   iframe.style.border = '0';
-  iframe.style.visibility = 'hidden';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  iframe.style.zIndex = '-9999';
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow.document;
@@ -125,27 +120,19 @@ export function printReceiptSlip(
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-        <style>
+        <style id="receipt-dynamic-page-size">
           @page {
-            size: ${pageSizeRule};
+            size: ${paperWidth} auto;
             margin: 0mm;
           }
           @media print {
             @page {
-              size: ${pageSizeRule};
+              size: ${paperWidth} auto;
               margin: 0mm;
             }
-            html {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-            }
-            body {
-              margin: 0 auto !important;
-              padding: 0 !important;
-              width: 100% !important;
-            }
           }
+        </style>
+        <style>
           * {
             box-sizing: border-box;
             margin: 0;
@@ -177,9 +164,17 @@ export function printReceiptSlip(
             width: 100% !important;
             max-width: ${is58mm ? '54mm' : '76mm'} !important;
             margin: 0 auto !important;
-            padding: ${is58mm ? '1.5mm 2.5mm 3.5mm 2.5mm' : '2.5mm 4mm 5mm 4mm'} !important;
+            padding: ${is58mm ? '1.5mm 2mm 2mm 2mm' : '2mm 3mm 3mm 3mm'} !important;
             box-sizing: border-box !important;
             text-align: left;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+          .receipt-footer-section,
+          .receipt-qr-card,
+          .receipt-barcode-wrap {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           .no-print {
             display: none !important;
@@ -190,6 +185,21 @@ export function printReceiptSlip(
             max-width: 100%;
           }
           @media print {
+            html, body {
+              width: 100% !important;
+              height: auto !important;
+              overflow: visible !important;
+            }
+            .receipt-print-wrapper {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
+            .receipt-footer-section,
+            .receipt-qr-card,
+            .receipt-barcode-wrap {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
             .receipt-dashed-line {
               border-top: 1px dashed #000000 !important;
             }
@@ -210,7 +220,7 @@ export function printReceiptSlip(
         </style>
       </head>
       <body>
-        <div class="receipt-print-wrapper">
+        <div class="receipt-print-wrapper" id="receipt-print-wrapper">
           ${printEl.innerHTML}
         </div>
       </body>
@@ -218,14 +228,70 @@ export function printReceiptSlip(
   `);
   doc.close();
 
-  setTimeout(() => {
+  const executePrint = async () => {
     try {
+      // 1. Wait for web fonts to load
+      if (doc.fonts && doc.fonts.ready) {
+        await doc.fonts.ready;
+      }
+
+      // 2. Wait for any inline QR code images
+      const images = Array.from(doc.images || []);
+      if (images.length > 0) {
+        await Promise.all(
+          images.map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise((resolve) => {
+                  img.onload = resolve;
+                  img.onerror = resolve;
+                })
+          )
+        );
+      }
+
+      // 3. Measure the REAL rendered height of the receipt content inside the 58mm/80mm print iframe
+      const wrapper = doc.getElementById('receipt-print-wrapper') || doc.body;
+      const rect = wrapper.getBoundingClientRect();
+      const actualHeightPx = Math.ceil(
+        Math.max(rect.height || 0, wrapper.scrollHeight || 0, wrapper.offsetHeight || 0)
+      );
+
+      // 1px = 0.2645833 mm (at standard 96 DPI CSS scale).
+      // Minimal compact buffer (+4mm) ensures Chrome stays strictly on 1 page without leaving any large blank tail!
+      const contentHeightMm = Math.ceil(actualHeightPx * 0.2646);
+      const targetHeightMm = Math.max(30, contentHeightMm + 4);
+
+      // 4. Update the dynamic page rule with the TRUE measured height
+      const dynamicStyle = doc.getElementById('receipt-dynamic-page-size');
+      if (dynamicStyle) {
+        dynamicStyle.textContent = `
+          @page {
+            size: ${paperWidth} ${targetHeightMm}mm;
+            margin: 0mm;
+          }
+          @media print {
+            @page {
+              size: ${paperWidth} ${targetHeightMm}mm;
+              margin: 0mm;
+            }
+          }
+        `;
+      }
+
+      // 5. Trigger print dialog
+      setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      }, 80);
+    } catch {
       iframe.contentWindow.focus();
       iframe.contentWindow.print();
-    } catch {
-      window.print();
     }
-  }, 250);
+  };
+
+  // Wait a short tick for iframe DOM layout and font initialization, then execute
+  setTimeout(executePrint, 150);
 }
 
 /**
@@ -262,7 +328,7 @@ export function ReceiptBarcode({ value = 'POS-00000', width = 145 }) {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginTop: 10, textAlign: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginTop: 10, textAlign: 'center', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
       <svg
         width={width}
         height="30"
@@ -542,74 +608,83 @@ export default function ReceiptSlip({
               }}
             />
 
-            {/* Total Section (Pure receipt text, NO gray boxes/frames!) */}
+            {/* Total, Payment, QR & Barcode Footer Section (Never split across pages) */}
             <div
+              className="receipt-footer-section"
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                padding: '2px 0',
+                breakInside: 'avoid',
+                pageBreakInside: 'avoid',
               }}
             >
-              <span style={{ fontSize: is58mm ? 12 : 13, fontWeight: 700, textTransform: 'uppercase' }}>
-                JAMI:
-              </span>
-              <span style={{ fontSize: is58mm ? 14 : 16, fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                {formatMoney(totalAmount, cur)}
-              </span>
-            </div>
-
-            {/* Optional Cash & Change Breakdown */}
-            {sale?.payment_type === 'cash' && (isUsd ? paidAmountUSD : paidAmountUZS) && (
+              {/* Total Section (Pure receipt text, NO gray boxes/frames!) */}
               <div
                 style={{
-                  borderTop: '1px dotted #000000',
-                  marginTop: 4,
-                  paddingTop: 4,
-                  fontSize: is58mm ? 9.5 : 10,
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  padding: '2px 0',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span>Naqd:</span>
-                  <span>{formatMoney(isUsd ? paidAmountUSD : paidAmountUZS, cur)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontWeight: 700 }}>
-                  <span>Qaytim:</span>
-                  <span>{formatMoney(isUsd ? (changeDueUSD || 0) : (changeDueUZS || 0), cur)}</span>
-                </div>
+                <span style={{ fontSize: is58mm ? 12 : 13, fontWeight: 700, textTransform: 'uppercase' }}>
+                  JAMI:
+                </span>
+                <span style={{ fontSize: is58mm ? 14 : 16, fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {formatMoney(totalAmount, cur)}
+                </span>
               </div>
-            )}
 
-            {/* Separator */}
-            <div
-              style={{
-                borderTop: '1px dashed #000000',
-                margin: '7px 0 5px',
-              }}
-            />
+              {/* Optional Cash & Change Breakdown */}
+              {sale?.payment_type === 'cash' && (isUsd ? paidAmountUSD : paidAmountUZS) && (
+                <div
+                  style={{
+                    borderTop: '1px dotted #000000',
+                    marginTop: 4,
+                    paddingTop: 4,
+                    fontSize: is58mm ? 9.5 : 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span>Naqd:</span>
+                    <span>{formatMoney(isUsd ? paidAmountUSD : paidAmountUZS, cur)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontWeight: 700 }}>
+                    <span>Qaytim:</span>
+                    <span>{formatMoney(isUsd ? (changeDueUSD || 0) : (changeDueUZS || 0), cur)}</span>
+                  </div>
+                </div>
+              )}
 
-            {/* QR Code (Has dashed border frame!) */}
-            {showQrCode && (
-              <ReceiptQRCode
-                value={
-                  typeof window !== 'undefined'
-                    ? `${window.location.origin}/r/${receiptNo}`
-                    : `https://app.inventra.uz/r/${receiptNo}`
-                }
-                size={is58mm ? 84 : 105}
+              {/* Separator */}
+              <div
+                style={{
+                  borderTop: '1px dashed #000000',
+                  margin: '7px 0 5px',
+                }}
               />
-            )}
 
-            {/* Barcode */}
-            <ReceiptBarcode value={receiptNo} width={is58mm ? 145 : 180} />
+              {/* QR Code (Has dashed border frame!) */}
+              {showQrCode && (
+                <ReceiptQRCode
+                  value={
+                    typeof window !== 'undefined'
+                      ? `${window.location.origin}/r/${receiptNo}`
+                      : `https://app.inventra.uz/r/${receiptNo}`
+                  }
+                  size={is58mm ? 84 : 105}
+                />
+              )}
 
-            <div style={{ textAlign: 'center', marginTop: 8, fontSize: 9, color: '#000000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <div style={{ fontWeight: 700 }}>XARIDINGIZ UCHUN RAHMAT!</div>
-              <div>Iltimos, chekni saqlab qo‘ying.</div>
-              <div style={{ marginTop: 2, fontSize: 8.5, color: '#000000' }}>www.inventra.uz</div>
+              {/* Barcode */}
+              <ReceiptBarcode value={receiptNo} width={is58mm ? 145 : 180} />
+
+              <div style={{ textAlign: 'center', marginTop: 8, fontSize: 9, color: '#000000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{ fontWeight: 700 }}>XARIDINGIZ UCHUN RAHMAT!</div>
+                <div>Iltimos, chekni saqlab qo‘ying.</div>
+                <div style={{ marginTop: 2, fontSize: 8.5, color: '#000000' }}>www.inventra.uz</div>
+              </div>
             </div>
           </div>
         );

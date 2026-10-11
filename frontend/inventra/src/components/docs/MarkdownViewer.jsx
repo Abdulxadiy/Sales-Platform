@@ -86,9 +86,8 @@ function scrollToHeading(targetId, rawHref) {
  * Formatted specifically for the Inventra Obsidian & Gold Design System.
  */
 export default function MarkdownViewer({ content = '', className = '' }) {
-  if (!content) return null;
-
   useEffect(() => {
+    if (!content) return;
     if (typeof window !== 'undefined' && window.location.hash) {
       const hashId = window.location.hash.slice(1);
       const timer = setTimeout(() => {
@@ -97,6 +96,8 @@ export default function MarkdownViewer({ content = '', className = '' }) {
       return () => clearTimeout(timer);
     }
   }, [content]);
+
+  if (!content) return null;
 
   const lines = content.split('\n');
   const elements = [];

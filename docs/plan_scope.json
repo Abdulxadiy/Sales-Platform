@@ -34,7 +34,8 @@
     "Architectures/.obsidian/*",
     ".directory",
     "*/.directory",
-    "frontend/inventra/dist_docker/*"
+    "frontend/inventra/dist_docker/*",
+    "frontend/inventra/src/components/docs/MarkdownViewer.jsx"
   ],
   "phase1": [
     "inventra/apps/inventory/*",

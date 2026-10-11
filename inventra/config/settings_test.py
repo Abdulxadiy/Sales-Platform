@@ -34,7 +34,9 @@ load_dotenv(BASE_DIR / ".env.test", override=True)
 # was already in the shell environment. Its own internal `load_dotenv()`
 # call (for the default .env) runs WITHOUT override=True, so it can't
 # clobber the .env.test values we just set.
-from .settings import *  # noqa: F401,F403  (reuse INSTALLED_APPS, REST_FRAMEWORK, etc.)
+from .settings import *  # noqa: F401,F403,E402  (reuse INSTALLED_APPS, REST_FRAMEWORK, etc.)
+
+SECRET_KEY = "test-secret-key-not-for-real-use"
 
 DATABASES = {
     "default": {

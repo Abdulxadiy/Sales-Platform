@@ -9,10 +9,12 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-from datetime import timedelta
-from dotenv import load_dotenv
-from pathlib import Path
 import os
+from datetime import timedelta
+from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,6 +28,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY or SECRET_KEY.startswith('django-insecure'):
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY is required and must not start with 'django-insecure'.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't', 'yes')
@@ -154,7 +158,9 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Inventra Sales Platform API',
-    'DESCRIPTION': "Inventra savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari.",
+    'DESCRIPTION': (
+        "Inventra savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari."
+    ),
     'VERSION': '0.9.2',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,

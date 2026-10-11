@@ -369,9 +369,7 @@ def send_password_reset_email(
     </html>
     """
 
-    logger.warning("=" * 60)
-    logger.warning("EMAIL JO'NATISH [%s, purpose=%s]: %s", user.email, purpose, reset_url)
-    logger.warning("=" * 60)
+    logger.info("Password reset email queued: user_id=%s purpose=%s", user.id, purpose)
 
     try:
         send_mail(
@@ -382,10 +380,10 @@ def send_password_reset_email(
             html_message=html_message,
             fail_silently=False,
         )
-        logger.info("Email muvaffaqiyatli jo'natildi: %s (purpose=%s)", user.email, purpose)
+        logger.info("Email muvaffaqiyatli jo'natildi: user_id=%s (purpose=%s)", user.id, purpose)
         return True
     except Exception as exc:
-        logger.error("Email jo'natishda xatolik yuz berdi (%s): %s", user.email, exc)
+        logger.error("Email jo'natishda xatolik yuz berdi: user_id=%s error=%s", user.id, type(exc).__name__)
         return False
 
 

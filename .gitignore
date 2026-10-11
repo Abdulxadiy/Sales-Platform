@@ -233,5 +233,12 @@ staticfiles/
 # Frontend
 node_modules/
 dist/
+dist_docker/
 .vite/
+
+# Junk and IDE
+.directory
+*/.directory
+Architectures/.idea/
+Architectures/.obsidian/
 

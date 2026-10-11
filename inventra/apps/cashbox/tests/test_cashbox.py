@@ -1,19 +1,16 @@
 from decimal import Decimal
-import pytest
-from rest_framework.test import APIClient
-from rest_framework import status
 
-from apps.cashbox.models import CashExpense, CashIncome, DailyCashReport
+import pytest
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from apps.cashbox.models import CashExpense, CashIncome
 from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
-from apps.sales.models import Sale, SaleItem, Notification
+from apps.sales.models import Notification, Sale
 from tests.factories import (
-    TenantFactory,
-    OwnerFactory,
-    StaffFactory,
     EmployeeFactory,
-    CategoryFactory,
-    ProductFactory,
-    ProductVariantFactory,
+    OwnerFactory,
+    TenantFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -86,9 +83,11 @@ def test_record_expense_and_income_validation(tenant, owner):
 
 
 def test_shift_flow_and_discrepancy_handling(tenant, owner):
+    branch = tenant.get_main_branch()
     # 1. Sales
     Sale.objects.create(
         tenant=tenant,
+        branch=branch,
         sold_by=owner,
         receipt_number="R1",
         payment_type=Sale.PAYMENT_CASH,
@@ -98,6 +97,7 @@ def test_shift_flow_and_discrepancy_handling(tenant, owner):
     )
     Sale.objects.create(
         tenant=tenant,
+        branch=branch,
         sold_by=owner,
         receipt_number="R2",
         payment_type=Sale.PAYMENT_CARD,
@@ -107,6 +107,7 @@ def test_shift_flow_and_discrepancy_handling(tenant, owner):
     )
     Sale.objects.create(
         tenant=tenant,
+        branch=branch,
         sold_by=owner,
         receipt_number="R3",
         payment_type=Sale.PAYMENT_CASH,

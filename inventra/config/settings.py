@@ -9,7 +9,9 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
+import importlib.metadata
 import os
+import tomllib
 from datetime import timedelta
 from pathlib import Path
 
@@ -156,12 +158,21 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+try:
+    APP_VERSION = importlib.metadata.version("inventra")
+except importlib.metadata.PackageNotFoundError:
+    try:
+        with open(BASE_DIR / "pyproject.toml", "rb") as _f:
+            APP_VERSION = tomllib.load(_f).get("project", {}).get("version", "0.13.1")
+    except Exception:
+        APP_VERSION = "0.13.1"
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Inventra Sales Platform API',
     'DESCRIPTION': (
         "Inventra savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari."
     ),
-    'VERSION': '0.9.2',
+    'VERSION': APP_VERSION,
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
 }

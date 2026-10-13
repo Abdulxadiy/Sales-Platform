@@ -4,6 +4,7 @@ from django.core.exceptions import ImproperlyConfigured
 import secrets
 
 from apps.accounts.services.permission_service import PermissionService
+from apps.accounts.models import Employee
 
 
 class IsInternalService(BasePermission):
@@ -45,6 +46,21 @@ class IsOwner(BasePermission):
         )
 
 
+class IsActiveOwner(BasePermission):
+    """Allow an owner only while they have an active owner membership."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.role == "owner"
+            and Employee.objects.filter(
+                user=user, is_owner=True, is_active=True, tenant__owner=user
+            ).exists()
+        )
+
+
 class IsOwnerOrPlatformAdmin(BasePermission):
     """Allow access to either owner or platform_admin users."""
 
@@ -73,9 +89,11 @@ class IsTenantMember(BasePermission):
         if user.role == 'platform_admin':
             return True
         if user.role == 'owner':
-            return obj.owner_id == user.id
+            tenant = getattr(request, 'tenant', None)
+            return bool(tenant and obj.id == tenant.id and obj.owner_id == user.id)
         if user.role == 'staff':
-            return obj.id == user.tenant_id
+            tenant = getattr(request, 'tenant', None)
+            return bool(tenant and obj.id == tenant.id)
         return False
 
 
@@ -92,7 +110,13 @@ class IsTenantOwnerOrPlatformAdmin(BasePermission):
         user = request.user
         if user.role == 'platform_admin':
             return True
-        return user.role == 'owner' and obj.owner_id == user.id
+        tenant = getattr(request, 'tenant', None)
+        return bool(
+            user.role == 'owner'
+            and tenant
+            and obj.id == tenant.id
+            and obj.owner_id == user.id
+        )
 
 
 class HasEmployeePermission(BasePermission):
@@ -125,13 +149,21 @@ class HasEmployeePermission(BasePermission):
 
     def has_permission(self, request, view):
         codename = self._required_permission(request, view)
-        return PermissionService.has_permission(request.user, codename)
+        return PermissionService.has_permission(
+            request.user,
+            codename,
+            tenant=getattr(request, 'tenant', None),
+            employee=getattr(request, 'employee', None),
+        )
 
     @staticmethod
     def _required_permission(request, view):
         permission_map = getattr(view, "permission_map", None)
         if permission_map is not None:
-            codename = permission_map.get(request.method)
+            method = "GET" if request.method == "HEAD" else request.method
+            codename = permission_map.get(method)
+            if method == "OPTIONS":
+                codename = permission_map.get("GET") or next(iter(permission_map.values()), None)
             if codename is None:
                 raise ImproperlyConfigured(
                     f"{view.__class__.__name__}.permission_map has no entry "

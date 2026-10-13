@@ -66,8 +66,10 @@ def config(root=ROOT):
         raise QueueError("Remote must match the configured GitHub repository.")
     for key in ("default_branch", "backup_branch", "queue_branch", "state_branch"):
         run(["git", "check-ref-format", f"refs/heads/{settings[key]}"])
-    if not 15 <= settings["minimum_batch"] <= settings["target_per_day"] <= 100:
-        raise QueueError("Invalid batch limits.")
+    if "minimum_batch" in settings or "target_per_day" in settings:
+        raise QueueError(
+            "Daily commit quotas are retired; publish completed reviewed work instead."
+        )
     ZoneInfo(settings["timezone"])
     return settings
 
@@ -222,7 +224,6 @@ def backup(root, settings):
         fetch(repo)
         main = ref(repo, settings["default_branch"])
         previous = ref(repo, settings["backup_branch"])
-        local_head = output(repo, "rev-parse", "HEAD")
         git(repo, "rm", "-r", "--force", "--quiet", "--ignore-unmatch", ".")
         for value in paths:
             destination = repo / value
@@ -249,8 +250,8 @@ def backup(root, settings):
         sha = tree_commit(
             repo,
             tree,
-            [previous, main, local_head],
-            "backup(workspace): preserve current source and local history",
+            [previous, main],
+            "backup(workspace): preserve current source snapshot",
             settings,
             bot=True,
         )
@@ -343,10 +344,6 @@ def enqueue(root, settings):
         groups = validate_groups(plan["groups"], changed)
         if not groups:
             raise QueueError("No changes to queue.")
-        if len(groups) < settings["minimum_batch"]:
-            raise QueueError(
-                f"Only {len(groups)} meaningful groups; minimum is {settings['minimum_batch']}. Backup is already safe."
-            )
         manifest = {
             "version": 1,
             "queue_id": datetime.now(ZoneInfo(settings["timezone"])).strftime(
@@ -390,20 +387,7 @@ def enqueue(root, settings):
         print(f"Queue pushed: {manifest['queue_id']} ({len(groups)} genuine commits)")
 
 
-def batch_size(remaining, target, minimum):
-    if remaining == 0:
-        return 0
-    if remaining < minimum:
-        raise QueueError(
-            f"{remaining} groups remain; publishing fewer than {minimum} would violate the selected minimum."
-        )
-    take = min(target, remaining)
-    if 0 < remaining - take < minimum:
-        take = remaining
-    return take
-
-
-def prepare_batch(repo, settings, manifest, progress, *, force=False, today=None):
+def prepare_batch(repo, settings, manifest, progress, *, today=None):
     groups = manifest["groups"]
     if manifest.get("version") != 1:
         raise QueueError("Unknown queue format.")
@@ -426,15 +410,10 @@ def prepare_batch(repo, settings, manifest, progress, *, force=False, today=None
     if completed != [g["id"] for g in groups[: len(completed)]]:
         raise QueueError("Queue progress is not a valid prefix.")
     day = today or datetime.now(ZoneInfo(settings["timezone"])).date().isoformat()
-    if progress.get("days", {}).get(day) and not force:
-        print("Today was already published; nothing to do.")
-        return None
     remaining = groups[len(completed) :]
-    count = batch_size(
-        len(remaining), settings["target_per_day"], settings["minimum_batch"]
-    )
+    count = len(remaining)
     if not count:
-        print("Queue finished. Add real changes before scheduling another batch.")
+        print("Queue finished. Add completed real changes before another publication.")
         return None
     selected = remaining[:count]
     git(repo, "checkout", "--detach", "--quiet", main)
@@ -495,7 +474,7 @@ def validate_delivery(repo, settings):
         raise QueueError("Validation changed tracked files; publishing is stopped.")
 
 
-def publish(settings, dry_run=False, force=False):
+def publish(settings, dry_run=False):
     if settings["paused"]:
         print("Publishing is paused. Backups can continue.")
         return
@@ -507,7 +486,7 @@ def publish(settings, dry_run=False, force=False):
         manifest = read_json(repo, queue, MANIFEST)
         old_state = ref(repo, settings["state_branch"])
         progress = read_json(repo, old_state, STATE) if old_state else {}
-        prepared = prepare_batch(repo, settings, manifest, progress, force=force)
+        prepared = prepare_batch(repo, settings, manifest, progress)
         if prepared is None:
             return
         if dry_run:
@@ -578,11 +557,6 @@ def main():
     parser.add_argument("command", choices=["backup", "enqueue", "publish", "status"])
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--force-today",
-        action="store_true",
-        help="Manually allow another genuine batch today.",
-    )
     args = parser.parse_args()
     root = args.root.resolve()
     settings = config(root)
@@ -599,7 +573,7 @@ def main():
     elif args.command == "enqueue":
         enqueue(root, settings)
     elif args.command == "publish":
-        publish(settings, args.dry_run, args.force_today)
+        publish(settings, args.dry_run)
     else:
         status(settings)
     return 0

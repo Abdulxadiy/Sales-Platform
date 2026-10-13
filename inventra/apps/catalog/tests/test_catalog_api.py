@@ -1,3 +1,4 @@
+from apps.accounts.models import Employee
 from decimal import Decimal
 
 import pytest
@@ -130,6 +131,9 @@ class TestProductCreateFlow:
         from decimal import Decimal
         from apps.inventory.models import StockMovement
 
+        Employee.objects.get(user=staff_with_permission, tenant=tenant, is_active=True).permissions.add(
+            Permission.objects.get(category="inventory", codename="add_stock_intake")
+        )
         category = CategoryFactory(tenant=tenant, kod="32")
         api_client.force_authenticate(user=staff_with_permission)
 

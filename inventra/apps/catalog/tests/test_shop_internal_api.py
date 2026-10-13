@@ -1,17 +1,14 @@
 from decimal import Decimal
+
 import pytest
 from django.conf import settings
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from apps.catalog.services import ProductService
 from apps.inventory.services import StockService
-from apps.sales.models import Sale, SaleItem, Counterparty
+from apps.sales.models import Sale
 from tests.factories import (
-    TenantFactory,
-    OwnerFactory,
-    StaffFactory,
-    EmployeeFactory,
     CategoryFactory,
 )
 
@@ -82,68 +79,18 @@ def test_shop_tenant_products_list_and_detail(internal_client, tenant, owner):
     assert detail_resp.data["price"] == "80000.00"
 
 
-def test_shop_order_deduct_success_and_failure(internal_client, tenant, owner):
-    cat = CategoryFactory(tenant=tenant)
-    p = ProductService.create(
-        tenant=tenant,
-        name="Smart Watch",
-        category=cat,
-        price_partner=Decimal("150000"),
-        price_min=Decimal("180000"),
-        price_recommended=Decimal("220000"),
-    )
-    variant = p.variants.first()
-    StockService.intake(
-        tenant=tenant,
-        product_variant=variant,
-        quantity=Decimal("5.000"),
-        cost_price=Decimal("140000"),
-        created_by=owner,
+def test_shop_order_endpoint_cannot_create_sales_or_customer_profiles(
+    internal_client, tenant
+):
+    response = internal_client.post(
+        f"/api/v1/internal/shop/tenants/{tenant.id}/order-deduct/",
+        {
+            "order_id": "SHOP-1001",
+            "customer_phone": "+998901112233",
+            "items": [],
+        },
+        format="json",
     )
 
-    deduct_url = f"/api/v1/internal/shop/tenants/{tenant.id}/order-deduct/"
-
-    # 1. Successful deduction
-    payload = {
-        "order_id": "SHOP-1001",
-        "customer_phone": "+998901112233",
-        "customer_name": "Islom Karimov",
-        "payment_type": "card",
-        "items": [
-            {
-                "product_variant_id": variant.id,
-                "quantity": "2.000",
-                "unit_price": "220000.00",
-            }
-        ],
-    }
-
-    resp = internal_client.post(deduct_url, payload, format="json")
-    assert resp.status_code == status.HTTP_201_CREATED
-    assert resp.data["status"] == "success"
-    assert resp.data["order_id"] == "SHOP-1001"
-
-    # Verify stock decreased: 5 - 2 = 3
-    variant.stock.refresh_from_db()
-    assert variant.stock.quantity == Decimal("3.000")
-
-    # Verify counterparty created
-    cp = Counterparty.objects.filter(tenant=tenant, phone_number="+998901112233").first()
-    assert cp is not None
-
-    # 2. Failure: Insufficient stock (requesting 10 when only 3 remain)
-    fail_payload = {
-        "order_id": "SHOP-1002",
-        "customer_phone": "+998901112233",
-        "payment_type": "card",
-        "items": [
-            {
-                "product_variant_id": variant.id,
-                "quantity": "10.000",
-                "unit_price": "220000.00",
-            }
-        ],
-    }
-    fail_resp = internal_client.post(deduct_url, fail_payload, format="json")
-    assert fail_resp.status_code == status.HTTP_400_BAD_REQUEST
-    assert fail_resp.data["error"]["code"] == "order_deduct_failed"
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert not Sale.objects.filter(tenant=tenant).exists()

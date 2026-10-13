@@ -12,9 +12,11 @@ care about instead of repeating the full field list everywhere.
 import factory
 from factory.django import DjangoModelFactory
 from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
 
 from apps.accounts.models import User, Employee
-from apps.tenants.models import Tenant
+from apps.tenants.models import SellerProfile, Tenant
 from apps.catalog.models import Category, Product, ProductVariant
 from apps.sales.models import Counterparty, Sale, SaleItem, DebtPayment
 
@@ -96,14 +98,8 @@ class TenantFactory(DjangoModelFactory):
     fully valid tenant+owner pair for tests that don't care about the
     owner's identity specifically.
 
-    Also wires `owner.tenant` back to point at this tenant, mirroring
-    the side effect EmployeeService.hire() performs in production
-    (called from TenantService.create_with_owner()). Without this, a
-    plain `TenantFactory()` would leave `tenant.owner.tenant_id` as
-    None -- a half-wired User/Tenant pair that production code can
-    never actually produce (hire() always sets both sides together),
-    so a factory that skipped it would let tests pass or fail based on
-    an inconsistency that isn't reachable outside the test suite.
+    Owner access is represented by Employee membership, not a single
+    tenant foreign key on User.
     """
 
     class Meta:
@@ -114,14 +110,22 @@ class TenantFactory(DjangoModelFactory):
     description = ""
     is_active = True
     owner = factory.SubFactory(OwnerFactory)
+    seller_profile = factory.LazyAttribute(lambda obj: SellerProfile.objects.get_or_create(
+        owner=obj.owner,
+        tax_identifier=f"TEST-{obj.owner.id}",
+        defaults={
+            "legal_form": SellerProfile.LEGAL_FORM_OTHER,
+            "official_name": f"Test seller {obj.owner.id}",
+            "status": SellerProfile.STATUS_APPROVED,
+            "expires_at": timezone.now() + timedelta(days=365),
+        },
+    )[0])
 
     @factory.post_generation
-    def _wire_owner_tenant(self, create, extracted, **kwargs):
-        if not create:
-            return
-        if self.owner.tenant_id != self.id:
-            self.owner.tenant = self
-            self.owner.save(update_fields=["tenant"])
+    def open_shift(self, create, extracted, **kwargs):
+        if create and extracted is not False:
+            from apps.cashbox.models import CashShift
+            CashShift.objects.create(tenant=self, opened_by=self.owner)
 
 class EmployeeFactory(DjangoModelFactory):
     """An Employee row. Defaults to a staff member freshly hired by a
@@ -144,21 +148,9 @@ class EmployeeFactory(DjangoModelFactory):
     tenant = factory.SubFactory(TenantFactory)
     position = "Sales"
     is_active = True
+    is_owner = factory.LazyAttribute(lambda employee: employee.user.role == "owner")
     hired_by = factory.SubFactory(PlatformAdminFactory)
 
-    @factory.post_generation
-    def sync_user_tenant(self, create, extracted, **kwargs):
-        """Mirrors EmployeeService.hire(), which sets User.tenant as part
-        of hiring. Without this, TenantContextMixin (api/mixins.py) --
-        which reads request.user.tenant directly, never the Employee
-        row -- sees `tenant=None` for any staff/owner created via this
-        factory alone, and every tenant-scoped view 403s them. Found via
-        apps/catalog/tests/test_catalog_api.py, 2026-09."""
-        if not create:
-            return
-        if self.user.tenant_id != self.tenant_id:
-            self.user.tenant = self.tenant
-            self.user.save(update_fields=["tenant"])
 
 
 class CategoryFactory(DjangoModelFactory):

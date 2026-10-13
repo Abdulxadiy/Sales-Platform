@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 from apps.permissions.models import Permission
 
 from api.permissions import HasEmployeePermission
+from api.mixins import TenantContextMixin
 from tests.factories import StaffFactory, TenantFactory, EmployeeFactory
 
 pytestmark = pytest.mark.django_db
@@ -30,7 +31,7 @@ def some_permission():
     )
 
 
-class _SinglePermissionView(APIView):
+class _SinglePermissionView(TenantContextMixin, APIView):
     permission_classes = [IsAuthenticated, HasEmployeePermission]
     required_permission = CODENAME
 
@@ -38,7 +39,7 @@ class _SinglePermissionView(APIView):
         return Response({"ok": True})
 
 
-class _PerMethodPermissionView(APIView):
+class _PerMethodPermissionView(TenantContextMixin, APIView):
     permission_classes = [IsAuthenticated, HasEmployeePermission]
     permission_map = {"GET": "accounts.do_the_thing", "POST": "accounts.some_other_thing"}
 
@@ -49,7 +50,7 @@ class _PerMethodPermissionView(APIView):
         return Response({"ok": True})
 
 
-class _MisconfiguredView(APIView):
+class _MisconfiguredView(TenantContextMixin, APIView):
     permission_classes = [IsAuthenticated, HasEmployeePermission]
     # no required_permission, no permission_map -- deliberately broken
 

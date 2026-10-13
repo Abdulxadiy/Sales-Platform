@@ -1,3 +1,4 @@
+from tests.factories import EmployeeFactory
 import pytest
 from decimal import Decimal
 from unittest.mock import patch
@@ -38,9 +39,26 @@ class TestDebtServiceRecordPayment:
         cp.refresh_from_db()
         assert cp.debt_balance_usd == Decimal("300.00")
 
+    def test_record_payment_with_branch(self, tenant, owner):
+        from tests.factories import TenantFactory
+        branch2 = TenantFactory(owner=owner, name="Filial 2")
+        EmployeeFactory(user=owner, tenant=branch2, is_owner=True)
+        cp = CounterpartyFactory(tenant=tenant, debt_balance_uzs=Decimal("200000.00"))
+        payment = DebtService.record_payment(
+            counterparty=cp,
+            amount=Decimal("70000.00"),
+            currency="UZS",
+            recorded_by=owner,
+            branch=branch2,
+        )
+        assert payment.branch == branch2
+        assert payment.tenant == branch2
+        cp.refresh_from_db()
+        assert cp.debt_balance_uzs == Decimal("130000.00")
+
     def test_staff_cannot_record_payment(self, tenant, staff):
         cp = CounterpartyFactory(tenant=tenant, debt_balance_uzs=Decimal("50000.00"))
-        with pytest.raises(DebtServiceError, match="faqat do'kon egasi yoki admin"):
+        with pytest.raises(DebtServiceError, match="ruxsat berilmagan"):
             DebtService.record_payment(
                 counterparty=cp,
                 amount=Decimal("10000.00"),
@@ -178,7 +196,7 @@ class TestDebtThresholdNotifications:
         assert "USD" in notifs.first().title
 
     @patch("apps.sales.tasks.send_async_telegram_message_task.delay")
-    def test_crossing_uzs_threshold_sends_telegram_to_owner(self, mock_delay, tenant, owner):
+    def test_crossing_uzs_threshold_sends_telegram_to_owner(self, mock_delay, tenant, owner, django_capture_on_commit_callbacks):
         TelegramContact.objects.create(
             phone_number=owner.phone_number,
             chat_id="chat_owner_123",
@@ -189,7 +207,8 @@ class TestDebtThresholdNotifications:
             debt_balance_uzs=Decimal("12000000.00"),  # > 10 mln
             last_notified_debt_step_uzs=0,
         )
-        DebtService.check_threshold_and_notify(cp)
+        with django_capture_on_commit_callbacks(execute=True):
+            DebtService.check_threshold_and_notify(cp)
         mock_delay.assert_called_once()
         args, kwargs = mock_delay.call_args
         assert args[0] == "chat_owner_123"
@@ -198,7 +217,7 @@ class TestDebtThresholdNotifications:
         assert "12,000,000.00 UZS" in args[1]
 
     @patch("apps.sales.tasks.send_async_telegram_message_task.delay")
-    def test_crossing_usd_threshold_sends_telegram_to_owner(self, mock_delay, tenant, owner):
+    def test_crossing_usd_threshold_sends_telegram_to_owner(self, mock_delay, tenant, owner, django_capture_on_commit_callbacks):
         TelegramContact.objects.create(
             phone_number=owner.phone_number,
             chat_id="chat_owner_123",
@@ -209,7 +228,8 @@ class TestDebtThresholdNotifications:
             debt_balance_usd=Decimal("1500.00"),  # > 1000 USD
             last_notified_debt_step_usd=0,
         )
-        DebtService.check_threshold_and_notify(cp)
+        with django_capture_on_commit_callbacks(execute=True):
+            DebtService.check_threshold_and_notify(cp)
         mock_delay.assert_called_once()
         args, kwargs = mock_delay.call_args
         assert args[0] == "chat_owner_123"

@@ -1,19 +1,16 @@
 from decimal import Decimal
-import pytest
-from rest_framework.test import APIClient
-from rest_framework import status
 
-from apps.cashbox.models import CashExpense, CashIncome, DailyCashReport
+import pytest
+from rest_framework import status
+from rest_framework.test import APIClient
+
+from apps.cashbox.models import CashExpense, CashIncome
 from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
-from apps.sales.models import Sale, SaleItem, Notification
+from apps.sales.models import Notification, Sale
 from tests.factories import (
-    TenantFactory,
-    OwnerFactory,
-    StaffFactory,
     EmployeeFactory,
-    CategoryFactory,
-    ProductFactory,
-    ProductVariantFactory,
+    OwnerFactory,
+    TenantFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -33,11 +30,10 @@ def api_client():
 def create_tenant_with_owner(platform_admin):
     owner_user = OwnerFactory()
     t = TenantFactory(owner=owner_user)
-    owner_user.tenant = t
-    owner_user.save(update_fields=["tenant"])
     EmployeeFactory(
         user=owner_user,
         tenant=t,
+        is_owner=True,
         is_active=True,
         position="Owner",
         hired_by=platform_admin,

@@ -49,26 +49,22 @@ def owner(db):
 
 @pytest.fixture
 def tenant(db, owner, platform_admin):
-    """A Tenant owned by `owner`, with everything a real owner would have:
-    an active Employee(position="Owner") record and owner.tenant pointing
-    back at this tenant.
+    """A Tenant owned by `owner`, with an active owner Employee membership.
 
     This mirrors the end state of TenantService.create_with_owner(), but
     is built directly through factories (skipping the service call) so
     tests that exercise fire()/hire() logic on top of it run faster and
     don't depend on TenantService already being correct.
 
-    Because pytest caches fixture instances per test function, any test
-    that requests both `owner` and `tenant` gets the SAME owner instance
-    in both — there's no risk of the tenant belonging to a different
-    owner object than the one visible in the test body.
+    Because pytest caches fixture instances per test function, the tenant
+    and owner fixtures refer to the same user instance.
     """
     t = TenantFactory(owner=owner)
-    owner.tenant = t
-    owner.save(update_fields=["tenant"])
     EmployeeFactory(
-        user=owner, tenant=t, is_active=True, position="Owner", hired_by=platform_admin,
+        user=owner, tenant=t, is_owner=True, is_active=True, position="Owner", hired_by=platform_admin,
     )
+    from apps.cashbox.models import CashShift
+    CashShift.objects.get_or_create(tenant=t, closed_at__isnull=True, defaults={'opened_by': owner})
     return t
 
 
@@ -90,3 +86,20 @@ def customer(db):
     """A bare User with no active Employee record -- i.e. someone who
     exists in the system but hasn't been hired into any tenant yet."""
     return UserFactory()
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    # Transactional concurrency tests flush data migrations at teardown. Restore
+    # the real permission catalog when a previously used test DB is reused.
+    from importlib import import_module
+    from django.apps import apps
+    with django_db_blocker.unblock():
+        for module, function in (
+            ("apps.catalog.migrations.0002_seed_permissions", "seed_permissions"),
+            ("apps.inventory.migrations.0002_seed_permissions", "seed_permissions"),
+            ("apps.inventory.migrations.0007_seed_transfer_permission", "add_permission"),
+            ("apps.sales.migrations.0002_seed_permissions", "seed_permissions"),
+            ("apps.permissions.migrations.0002_cashbox_and_cost_permissions", "seed"),
+        ):
+            getattr(import_module(module), function)(apps, None)

@@ -1,62 +1,42 @@
-"""
-Tests verifying custom JWT claims (role, tenant_id) added to access and refresh tokens.
-Roadmap reference: Phase 6a (JWT custom claims).
-"""
+"""JWTs carry identity and role, while tenant context stays request-scoped."""
 
 import pytest
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from api.v1.accounts.views.misc import issue_tokens
-from tests.factories import UserFactory, TenantFactory
+from tests.factories import UserFactory, TenantFactory, EmployeeFactory
 
 pytestmark = pytest.mark.django_db
 
 
-class TestJWTCustomClaims:
-    """Tests that issue_tokens attaches proper 'role' and 'tenant_id' claims."""
+def assert_tenant_is_not_claimed(tokens, role):
+    access = AccessToken(tokens["access"])
+    refresh = RefreshToken(tokens["refresh"])
+    for token in (access, refresh):
+        assert token["role"] == role
+        assert "tenant_id" not in token
+        assert "terms_accepted" not in token
 
-    def test_staff_token_claims(self):
-        """Staff tokens must contain role='staff' and the valid tenant_id."""
-        tenant = TenantFactory()
-        staff_user = UserFactory(role="staff", tenant=tenant)
 
-        tokens = issue_tokens(staff_user)
+def test_staff_token_does_not_pin_a_tenant():
+    tenant = TenantFactory()
+    staff = UserFactory(role="staff")
+    EmployeeFactory(user=staff, tenant=tenant, is_owner=False)
 
-        # Verify access token claims
-        access_token = AccessToken(tokens["access"])
-        assert access_token["role"] == "staff"
-        assert access_token["tenant_id"] == tenant.id
+    assert_tenant_is_not_claimed(issue_tokens(staff), "staff")
 
-        # Verify refresh token claims
-        refresh_token = RefreshToken(tokens["refresh"])
-        assert refresh_token["role"] == "staff"
-        assert refresh_token["tenant_id"] == tenant.id
 
-    def test_owner_token_claims(self):
-        """Owner tokens must contain role='owner' and their tenant_id."""
-        tenant = TenantFactory()
-        owner_user = tenant.owner
+def test_owner_token_can_be_used_with_multiple_selected_tenants():
+    owner = UserFactory(role="owner")
+    tenant_a = TenantFactory(owner=owner)
+    tenant_b = TenantFactory(owner=owner)
+    EmployeeFactory(user=owner, tenant=tenant_a, is_owner=True)
+    EmployeeFactory(user=owner, tenant=tenant_b, is_owner=True)
 
-        tokens = issue_tokens(owner_user)
+    assert_tenant_is_not_claimed(issue_tokens(owner), "owner")
 
-        access_token = AccessToken(tokens["access"])
-        assert access_token["role"] == "owner"
-        assert access_token["tenant_id"] == tenant.id
 
-        refresh_token = RefreshToken(tokens["refresh"])
-        assert refresh_token["role"] == "owner"
-        assert refresh_token["tenant_id"] == tenant.id
+def test_platform_admin_token_does_not_claim_a_tenant():
+    admin = UserFactory(role="platform_admin")
 
-    def test_platform_admin_token_claims(self):
-        """Platform admin tokens must have role='platform_admin' and tenant_id=None."""
-        admin_user = UserFactory(role="platform_admin", tenant=None)
-
-        tokens = issue_tokens(admin_user)
-
-        access_token = AccessToken(tokens["access"])
-        assert access_token["role"] == "platform_admin"
-        assert access_token["tenant_id"] is None
-
-        refresh_token = RefreshToken(tokens["refresh"])
-        assert refresh_token["role"] == "platform_admin"
-        assert refresh_token["tenant_id"] is None
+    assert_tenant_is_not_claimed(issue_tokens(admin), "platform_admin")

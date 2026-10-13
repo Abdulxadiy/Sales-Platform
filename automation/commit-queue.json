@@ -8,8 +8,6 @@
   "author_name": "Abdulxadiy",
   "author_email": "241130805+Abdulxadiy@users.noreply.github.com",
   "timezone": "Asia/Tashkent",
-  "target_per_day": 20,
-  "minimum_batch": 15,
   "paused": false,
   "validation": [
     {"cwd": ".", "argv": ["python3", "-m", "unittest", "discover", "-s", "tests/automation", "-v"]},

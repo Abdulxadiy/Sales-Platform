@@ -23,16 +23,25 @@
     "deployment-configuration",
     "ci-and-client-regressions"
   ],
-  "last_main_sha": "d98f3956335ab94e7cfaafd163096b5568e18a91",
+  "last_main_sha": "ee881d51836d8178994a64b31c82804af0ea7042",
   "days": {
-    "2026-10-13": 21
+    "2026-10-13": 22
   },
-  "updated_at": "2026-10-13T22:25:06.198906+05:00",
+  "updated_at": "2026-10-13T23:12:09.899902+05:00",
   "manual_fixes": [
     {
-      "sha": "d98f3956335ab94e7cfaafd163096b5568e18a91",
+      "sha": "8cb25d8426385083e8dfdcc9a9afe13dc16f91e7",
       "date": "2026-10-13",
       "message": "fix(backup): use a valid systemd working directory and cover service generation"
+    },
+    {
+      "sha": "ee881d51836d8178994a64b31c82804af0ea7042",
+      "date": "2026-10-13",
+      "message": "fix(automation): publish reviewed work without daily commit quotas"
     }
-  ]
+  ],
+  "history_cleanup": {
+    "removed_log_only_commits": 80,
+    "preserved_real_main_commits": 227
+  }
 }

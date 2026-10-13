@@ -1,0 +1,86 @@
+# Standalone production layout. Configure real .env files before starting.
+# Domain and TLS termination are intentionally configured at deployment time.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: ./.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      retries: 10
+  inventra:
+    build: ./inventra
+    restart: unless-stopped
+    env_file: ./inventra/.env
+    environment: &backend_environment
+      DJANGO_DEBUG: 'False'
+      LOCAL_DEMO_LOGIN_ENABLED: 'False'
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: '5432'
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+      - ./docs:/app/docs
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  celery_worker:
+    build: ./inventra
+    restart: unless-stopped
+    command: celery -A config worker -l info
+    env_file: ./inventra/.env
+    environment: *backend_environment
+    depends_on: [inventra]
+  celery_beat:
+    build: ./inventra
+    restart: unless-stopped
+    command: celery -A config beat -l info
+    env_file: ./inventra/.env
+    environment: *backend_environment
+    depends_on: [inventra]
+  bot:
+    build: ./telegram_bot_sms
+    restart: unless-stopped
+    env_file: ./telegram_bot_sms/.env
+    depends_on: [inventra]
+  frontend:
+    build:
+      context: ./frontend/inventra
+      target: production
+    restart: unless-stopped
+    ports: ['80:80']
+    volumes: [static_data:/var/www/static:ro]
+    depends_on: [inventra]
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    profiles: [minio]
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
+    volumes: [minio_data:/data]
+volumes:
+  postgres_data:
+  redis_data:
+  static_data:
+  media_data:
+  minio_data:

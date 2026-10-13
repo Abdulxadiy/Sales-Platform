@@ -9,14 +9,14 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 import requests
 
 # Environment Variables
-BOT_TOKEN = os.environ['BOT_TOKEN']
+TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 INVENTRA_INTERNAL_URL = os.environ['INVENTRA_INTERNAL_URL']
 INTERNAL_SERVICE_TOKEN = os.environ['INTERNAL_SERVICE_TOKEN']
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-logger = logging.getLogger("inventra_bot")
+logger = logging.getLogger("ilbi_bot")
 
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
 
 # Security: Rate limiting in-memory cache {chat_id: last_timestamp}

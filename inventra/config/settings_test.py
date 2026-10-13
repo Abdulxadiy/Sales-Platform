@@ -29,12 +29,21 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env.test", override=True)
 
+# Bootstrap before production settings validate the environment. Tests must also
+# work in CI, where neither a developer's .env nor production secrets exist.
+os.environ["DJANGO_SECRET_KEY"] = "inventra-isolated-tests-only-6d9b914dce3f4bd08761eac0692264e8"
+os.environ["LOCAL_DEMO_LOGIN_ENABLED"] = "False"
+os.environ["ALLOWED_HOSTS"] = "localhost,127.0.0.1,testserver"
+os.environ["USE_MINIO"] = "False"
+
 # NOW it's safe to import settings.py: every env var it needs already
 # exists in os.environ, either from .env.test above or from whatever
 # was already in the shell environment. Its own internal `load_dotenv()`
 # call (for the default .env) runs WITHOUT override=True, so it can't
 # clobber the .env.test values we just set.
-from .settings import *  # noqa: F401,F403  (reuse INSTALLED_APPS, REST_FRAMEWORK, etc.)
+from .settings import *  # noqa: F401,F403,E402  (reuse INSTALLED_APPS, REST_FRAMEWORK, etc.)
+
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 DATABASES = {
     "default": {

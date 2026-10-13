@@ -1,0 +1,639 @@
+{
+  "version": 1,
+  "queue_id": "20261013T221826-830f9a60",
+  "base_sha": "4ce1ccbcb078c5a25069bf6ec48bf1b219892bea",
+  "snapshot_sha": "830f9a60d2de4535f6e083c4477256a66eee4dcf",
+  "created_at": "2026-10-13T22:18:26.058951+05:00",
+  "groups": [
+    {
+      "id": "dependencies",
+      "message": "chore(deps): install spreadsheet and barcode libraries and update environment examples",
+      "paths": [
+        ".env.example",
+        "frontend/inventra/package-lock.json",
+        "frontend/inventra/package.json",
+        "inventra/.env.example",
+        "inventra/pyproject.toml",
+        "inventra/uv.lock",
+        "telegram_bot_sms/.env.example",
+        "telegram_bot_sms/uv.lock"
+      ]
+    },
+    {
+      "id": "account-memberships",
+      "message": "feat(accounts): migrate employees to tenant memberships and owner capabilities",
+      "paths": [
+        "inventra/apps/accounts/migrations/0008_remove_branch_model.py",
+        "inventra/apps/accounts/migrations/0009_remove_employee_unique_employment_per_user_and_more.py",
+        "inventra/apps/accounts/migrations/0010_employee_directory_actions.py",
+        "inventra/apps/accounts/models/employee_model.py",
+        "inventra/apps/accounts/models/user_model.py"
+      ]
+    },
+    {
+      "id": "tenant-permissions",
+      "message": "fix(permissions): enforce active tenant context and granular employee permissions",
+      "paths": [
+        "inventra/api/mixins.py",
+        "inventra/api/permissions.py",
+        "inventra/api/query_params.py",
+        "inventra/api/schema.py",
+        "inventra/api/serializers.py",
+        "inventra/apps/accounts/services/membership_policy.py",
+        "inventra/apps/accounts/services/permission_service.py",
+        "inventra/apps/accounts/services/tenant_context_service.py",
+        "inventra/apps/permissions/constants.py",
+        "inventra/apps/permissions/migrations/0002_cashbox_and_cost_permissions.py"
+      ]
+    },
+    {
+      "id": "account-authentication",
+      "message": "fix(auth): harden OTP login tickets password recovery and account throttling",
+      "paths": [
+        "inventra/apps/accounts/services/demo_access_service.py",
+        "inventra/apps/accounts/services/email_utils.py",
+        "inventra/apps/accounts/services/login_throttle.py",
+        "inventra/apps/accounts/services/login_ticket_service.py",
+        "inventra/apps/accounts/services/otp_services.py",
+        "inventra/apps/accounts/services/password_reset_service.py"
+      ]
+    },
+    {
+      "id": "employee-directory",
+      "message": "feat(employees): add scoped employee management and isolated demo seeding",
+      "paths": [
+        "inventra/api/v1/accounts/views/employee_management_views.py",
+        "inventra/api/v1/accounts/views/employee_views.py",
+        "inventra/apps/accounts/management/commands/seed_demo_platform.py",
+        "inventra/apps/accounts/services/employee_management_service.py",
+        "inventra/apps/accounts/services/employee_service.py"
+      ]
+    },
+    {
+      "id": "account-api",
+      "message": "fix(accounts-api): expose revocable sessions secure profiles and validated recovery routes",
+      "paths": [
+        "inventra/api/v1/accounts/serializers.py",
+        "inventra/api/v1/accounts/urls.py",
+        "inventra/api/v1/accounts/views/admin_login.py",
+        "inventra/api/v1/accounts/views/complete_profile.py",
+        "inventra/api/v1/accounts/views/docs_views.py",
+        "inventra/api/v1/accounts/views/misc.py",
+        "inventra/api/v1/accounts/views/password_reset.py",
+        "inventra/api/v1/accounts/views/profile_views.py",
+        "inventra/api/v1/accounts/views/terms_views.py",
+        "inventra/api/v1/accounts/views/token_refresh.py",
+        "inventra/api/v1/accounts/views/unban.py"
+      ]
+    },
+    {
+      "id": "shops-and-sellers",
+      "message": "feat(tenants): add seller verification shop invitations and Telegram identity binding",
+      "paths": [
+        "inventra/api/v1/tenants/serializers.py",
+        "inventra/api/v1/tenants/urls.py",
+        "inventra/api/v1/tenants/views.py",
+        "inventra/api/v1/tg_bot/serializers.py",
+        "inventra/api/v1/tg_bot/urls.py",
+        "inventra/api/v1/tg_bot/views.py",
+        "inventra/apps/tenants/apps.py",
+        "inventra/apps/tenants/migrations/0008_remove_branch_model.py",
+        "inventra/apps/tenants/migrations/0009_tenant_public_code_alter_tenant_name_and_more.py",
+        "inventra/apps/tenants/migrations/0010_sellerprofile_tenant_seller_profile_and_more.py",
+        "inventra/apps/tenants/migrations/0011_delete_branch_after_scope_removal.py",
+        "inventra/apps/tenants/migrations/0012_tenant_last_daily_report_sent_at.py",
+        "inventra/apps/tenants/models.py",
+        "inventra/apps/tenants/seller_profile_service.py",
+        "inventra/apps/tenants/services.py",
+        "inventra/apps/tenants/signals.py",
+        "inventra/apps/tg_bot/identity.py",
+        "inventra/apps/tg_bot/migrations/0002_telegramcontact_bot_id.py",
+        "inventra/apps/tg_bot/models.py",
+        "inventra/apps/tg_bot/services.py"
+      ]
+    },
+    {
+      "id": "cashbox-ledger",
+      "message": "feat(cashbox): track explicit shifts opening balances debt collections and refunds",
+      "paths": [
+        "inventra/api/v1/cashbox/serializers.py",
+        "inventra/api/v1/cashbox/urls.py",
+        "inventra/api/v1/cashbox/views/cashbox_views.py",
+        "inventra/apps/cashbox/migrations/0003_remove_cashbox_branch.py",
+        "inventra/apps/cashbox/migrations/0004_dailycashreport_opening_cash_usd_and_more.py",
+        "inventra/apps/cashbox/migrations/0005_dailycashreport_collected_debt_cash_usd_and_more.py",
+        "inventra/apps/cashbox/models.py",
+        "inventra/apps/cashbox/services/cashbox_service.py",
+        "inventra/apps/cashbox/tasks.py"
+      ]
+    },
+    {
+      "id": "catalog-import-labels",
+      "message": "feat(catalog): add validated imports generated barcodes and safe catalog editing",
+      "paths": [
+        "inventra/api/v1/catalog/serializers.py",
+        "inventra/api/v1/catalog/urls.py",
+        "inventra/api/v1/catalog/views/category_views.py",
+        "inventra/api/v1/catalog/views/import_views.py",
+        "inventra/api/v1/catalog/views/label_views.py",
+        "inventra/api/v1/catalog/views/product_views.py",
+        "inventra/api/v1/internal/shop/serializers.py",
+        "inventra/api/v1/internal/shop/urls.py",
+        "inventra/api/v1/internal/shop/views.py",
+        "inventra/apps/catalog/management/commands/seed_retail_products.py",
+        "inventra/apps/catalog/management/commands/seed_stress_products.py",
+        "inventra/apps/catalog/migrations/0005_catalogimportjob.py",
+        "inventra/apps/catalog/models/__init__.py",
+        "inventra/apps/catalog/models/import_model.py",
+        "inventra/apps/catalog/models/product_variant_model.py",
+        "inventra/apps/catalog/services/category_service.py",
+        "inventra/apps/catalog/services/import_service.py",
+        "inventra/apps/catalog/services/product_service.py"
+      ]
+    },
+    {
+      "id": "inventory-batches-transfers",
+      "message": "feat(inventory): preserve stock batches expiry dates and physical shop transfers",
+      "paths": [
+        "inventra/api/v1/inventory/serializers.py",
+        "inventra/api/v1/inventory/urls.py",
+        "inventra/api/v1/inventory/views/batch_views.py",
+        "inventra/api/v1/inventory/views/movement_views.py",
+        "inventra/api/v1/inventory/views/stock_views.py",
+        "inventra/api/v1/inventory/views/transfer_views.py",
+        "inventra/apps/inventory/migrations/0006_remove_branches_one_stock_per_variant.py",
+        "inventra/apps/inventory/migrations/0007_seed_transfer_permission.py",
+        "inventra/apps/inventory/migrations/0008_alter_stockmovement_type_tenanttransfer_and_more.py",
+        "inventra/apps/inventory/migrations/0009_tenanttransferitem_original_item_and_more.py",
+        "inventra/apps/inventory/migrations/0010_tenanttransferitem_cost_price_and_more.py",
+        "inventra/apps/inventory/migrations/0011_tenanttransferitem_batch_manifest_stockbatch_and_more.py",
+        "inventra/apps/inventory/migrations/0012_existing_stock_batches.py",
+        "inventra/apps/inventory/models/__init__.py",
+        "inventra/apps/inventory/models/batch_model.py",
+        "inventra/apps/inventory/models/stock_model.py",
+        "inventra/apps/inventory/models/stock_movement_model.py",
+        "inventra/apps/inventory/models/transfer_model.py",
+        "inventra/apps/inventory/services/__init__.py",
+        "inventra/apps/inventory/services/batch_service.py",
+        "inventra/apps/inventory/services/deficit_service.py",
+        "inventra/apps/inventory/services/stock_service.py",
+        "inventra/apps/inventory/services/transfer_service.py",
+        "inventra/apps/inventory/tasks.py"
+      ]
+    },
+    {
+      "id": "sales-debts-returns",
+      "message": "fix(sales): make refunds debt payments and B2B acceptance idempotent and auditable",
+      "paths": [
+        "inventra/api/v1/sales/serializers.py",
+        "inventra/api/v1/sales/urls.py",
+        "inventra/api/v1/sales/views/b2b_views.py",
+        "inventra/api/v1/sales/views/counterparty_views.py",
+        "inventra/api/v1/sales/views/notification_views.py",
+        "inventra/api/v1/sales/views/sale_views.py",
+        "inventra/apps/sales/migrations/0006_remove_sale_branch.py",
+        "inventra/apps/sales/migrations/0007_sale_public_token.py",
+        "inventra/apps/sales/migrations/0008_saleitem_b2b_target_variant.py",
+        "inventra/apps/sales/migrations/0009_b2breturnreceipt_b2breturnreceiptitem_and_more.py",
+        "inventra/apps/sales/migrations/0010_alter_saleitem_status.py",
+        "inventra/apps/sales/migrations/0011_b2breturndiscrepancyclosure_and_more.py",
+        "inventra/apps/sales/migrations/0012_debtpayment_branch.py",
+        "inventra/apps/sales/migrations/0013_salerefund_debtpayment_idempotency_key_and_more.py",
+        "inventra/apps/sales/migrations/0014_bridge_legacy_cash_and_refunds.py",
+        "inventra/apps/sales/models/__init__.py",
+        "inventra/apps/sales/models/b2b_return_receipt_model.py",
+        "inventra/apps/sales/models/debt_payment_model.py",
+        "inventra/apps/sales/models/sale_item_model.py",
+        "inventra/apps/sales/models/sale_model.py",
+        "inventra/apps/sales/quantities.py",
+        "inventra/apps/sales/services/b2b_transfer_service.py",
+        "inventra/apps/sales/services/counterparty_service.py",
+        "inventra/apps/sales/services/debt_service.py",
+        "inventra/apps/sales/services/receipt_token_service.py",
+        "inventra/apps/sales/services/sale_service.py",
+        "inventra/apps/sales/services/void_service.py",
+        "inventra/apps/sales/tasks.py"
+      ]
+    },
+    {
+      "id": "core-exports-analytics",
+      "message": "feat(core): add permission-aware Excel exports immutable audit events and media proxying",
+      "paths": [
+        "inventra/api/v1/analytics/urls.py",
+        "inventra/api/v1/analytics/views/dashboard_views.py",
+        "inventra/api/v1/audit/serializers.py",
+        "inventra/api/v1/audit/urls.py",
+        "inventra/api/v1/audit/views.py",
+        "inventra/api/v1/exports.py",
+        "inventra/apps/analytics/services/analytics_service.py",
+        "inventra/apps/core/management/__init__.py",
+        "inventra/apps/core/management/commands/__init__.py",
+        "inventra/apps/core/management/commands/ensure_media_bucket.py",
+        "inventra/apps/core/media_views.py",
+        "inventra/apps/core/migrations/0002_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0003_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0004_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0005_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0006_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0007_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0008_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0009_tenant_update_action.py",
+        "inventra/apps/core/migrations/0010_employee_directory_actions.py",
+        "inventra/apps/core/migrations/0011_alter_auditlog_action.py",
+        "inventra/apps/core/migrations/0012_alter_auditlog_action.py",
+        "inventra/apps/core/models.py",
+        "inventra/apps/core/services/audit_service.py",
+        "inventra/apps/core/spreadsheets.py",
+        "inventra/apps/core/storage.py"
+      ]
+    },
+    {
+      "id": "frontend-tenant-navigation",
+      "message": "feat(ui): replace branch navigation with scoped shop context and secure sign-in flows",
+      "paths": [
+        "frontend/inventra/src/App.jsx",
+        "frontend/inventra/src/components/auth/TelegramConnectionGate.jsx",
+        "frontend/inventra/src/components/layout/Header.jsx",
+        "frontend/inventra/src/components/layout/Layout.jsx",
+        "frontend/inventra/src/components/layout/Sidebar.jsx",
+        "frontend/inventra/src/context/AuthContext.jsx",
+        "frontend/inventra/src/context/BranchContext.jsx",
+        "frontend/inventra/src/context/TenantContext.jsx",
+        "frontend/inventra/src/hooks/usePersistedState.js",
+        "frontend/inventra/src/pages/Branches.jsx",
+        "frontend/inventra/src/pages/Login.jsx",
+        "frontend/inventra/src/pages/SetupAccount.jsx"
+      ]
+    },
+    {
+      "id": "frontend-catalog-tools",
+      "message": "feat(catalog-ui): connect imports product tools barcode labels and Excel downloads",
+      "paths": [
+        "frontend/inventra/src/api/client.js",
+        "frontend/inventra/src/components/common/CatalogImportModal.jsx",
+        "frontend/inventra/src/components/common/CustomDatePicker.jsx",
+        "frontend/inventra/src/components/common/CustomSelect.jsx",
+        "frontend/inventra/src/components/common/ExcelExportButton.jsx",
+        "frontend/inventra/src/components/common/PhoneInput.jsx",
+        "frontend/inventra/src/components/common/PriceInput.jsx",
+        "frontend/inventra/src/components/common/ProductLabelsModal.jsx",
+        "frontend/inventra/src/components/common/ProductToolsModal.jsx",
+        "frontend/inventra/src/index.css",
+        "frontend/inventra/src/pages/Catalog.jsx",
+        "frontend/inventra/src/utils/downloadFile.js",
+        "frontend/inventra/src/utils/numberFormat.js",
+        "frontend/inventra/src/utils/phoneFormat.js",
+        "frontend/inventra/src/utils/productLabels.js"
+      ]
+    },
+    {
+      "id": "frontend-inventory",
+      "message": "feat(inventory-ui): show expiry warnings batch selection and tenant transfer workflows",
+      "paths": [
+        "frontend/inventra/src/components/inventory/BatchSelector.jsx",
+        "frontend/inventra/src/components/inventory/RapidStockIntakeModal.jsx",
+        "frontend/inventra/src/components/inventory/StockBatchesPanel.jsx",
+        "frontend/inventra/src/components/inventory/StockPriceModal.jsx",
+        "frontend/inventra/src/components/inventory/StockTransferModal.jsx",
+        "frontend/inventra/src/components/inventory/TenantTransfersPanel.jsx",
+        "frontend/inventra/src/pages/Inventory.jsx"
+      ]
+    },
+    {
+      "id": "frontend-sales",
+      "message": "feat(sales-ui): separate debt and B2B pages and retain safe checkout retries",
+      "paths": [
+        "frontend/inventra/src/components/common/InvoiceA4Modal.jsx",
+        "frontend/inventra/src/components/common/ReceiptSlip.jsx",
+        "frontend/inventra/src/pages/B2BTransactions.jsx",
+        "frontend/inventra/src/pages/Debts.jsx",
+        "frontend/inventra/src/pages/POS.jsx",
+        "frontend/inventra/src/pages/PublicReceiptView.jsx",
+        "frontend/inventra/src/pages/Sales.jsx",
+        "frontend/inventra/src/utils/requestKey.js"
+      ]
+    },
+    {
+      "id": "frontend-management",
+      "message": "feat(management-ui): expose owner employee shift seller review and audit controls",
+      "paths": [
+        "frontend/inventra/src/components/common/ShiftReportSlip.jsx",
+        "frontend/inventra/src/components/docs/MarkdownViewer.jsx",
+        "frontend/inventra/src/components/notifications/FloatingNotificationToast.jsx",
+        "frontend/inventra/src/components/notifications/NotificationCard.jsx",
+        "frontend/inventra/src/components/notifications/NotificationParser.js",
+        "frontend/inventra/src/pages/Audit.jsx",
+        "frontend/inventra/src/pages/Dashboard.jsx",
+        "frontend/inventra/src/pages/Documentation.jsx",
+        "frontend/inventra/src/pages/Employees.jsx",
+        "frontend/inventra/src/pages/MyTenants.jsx",
+        "frontend/inventra/src/pages/Profile.jsx",
+        "frontend/inventra/src/pages/SellerProfileReviews.jsx",
+        "frontend/inventra/src/pages/Services.jsx",
+        "frontend/inventra/src/pages/Shifts.jsx",
+        "frontend/inventra/src/pages/Tenants.jsx",
+        "frontend/inventra/src/utils/ownerInvitation.js"
+      ]
+    },
+    {
+      "id": "backend-regressions",
+      "message": "test(backend): cover tenant permissions transfers refunds imports and authentication regressions",
+      "paths": [
+        "inventra/apps/accounts/tests/test_admin_login_views.py",
+        "inventra/apps/accounts/tests/test_demo_mode.py",
+        "inventra/apps/accounts/tests/test_employee_list_view.py",
+        "inventra/apps/accounts/tests/test_employee_management_api.py",
+        "inventra/apps/accounts/tests/test_employee_service.py",
+        "inventra/apps/accounts/tests/test_has_employee_permission.py",
+        "inventra/apps/accounts/tests/test_jwt_claims.py",
+        "inventra/apps/accounts/tests/test_otp_services.py",
+        "inventra/apps/accounts/tests/test_password_reset.py",
+        "inventra/apps/accounts/tests/test_permission_service.py",
+        "inventra/apps/accounts/tests/test_tenant_context_service.py",
+        "inventra/apps/analytics/tests/test_analytics.py",
+        "inventra/apps/cashbox/tests/test_cashbox.py",
+        "inventra/apps/cashbox/tests/test_tasks.py",
+        "inventra/apps/catalog/tests/test_catalog_api.py",
+        "inventra/apps/catalog/tests/test_catalog_queries.py",
+        "inventra/apps/catalog/tests/test_seed_stress_products.py",
+        "inventra/apps/catalog/tests/test_shop_internal_api.py",
+        "inventra/apps/catalog/tests/test_spreadsheets.py",
+        "inventra/apps/core/tests/test_audit_regressions.py",
+        "inventra/apps/core/tests/test_legacy_cash_migration.py",
+        "inventra/apps/core/tests/test_media_proxy.py",
+        "inventra/apps/inventory/tests/test_batches.py",
+        "inventra/apps/inventory/tests/test_tenant_transfer_service.py",
+        "inventra/apps/sales/tests/conftest.py",
+        "inventra/apps/sales/tests/test_b2b_transfer_service.py",
+        "inventra/apps/sales/tests/test_counterparty_service.py",
+        "inventra/apps/sales/tests/test_debt_service.py",
+        "inventra/apps/sales/tests/test_sale_service.py",
+        "inventra/apps/sales/tests/test_sales_api.py",
+        "inventra/apps/tenants/tests/test_my_tenants.py",
+        "inventra/apps/tenants/tests/test_owner_invitation_api.py",
+        "inventra/apps/tenants/tests/test_seller_profile_review_queue.py",
+        "inventra/apps/tenants/tests/test_seller_profiles.py",
+        "inventra/apps/tenants/tests/test_tenant_context_api.py",
+        "inventra/apps/tenants/tests/test_tenant_service.py",
+        "inventra/apps/tenants/tests/test_tenant_settings_permissions_audit.py",
+        "inventra/apps/tg_bot/tests/test_services.py",
+        "inventra/conftest.py",
+        "inventra/tests/factories.py"
+      ]
+    },
+    {
+      "id": "deployment-configuration",
+      "message": "chore(deploy): build static production frontend and configure backend media and service settings",
+      "paths": [
+        "docker-compose.prod.yml",
+        "docker-compose.yml",
+        "frontend/inventra/Dockerfile",
+        "frontend/inventra/nginx.prod.conf",
+        "inventra/api/v1/urls.py",
+        "inventra/config/settings.py",
+        "inventra/config/settings_test.py",
+        "inventra/config/urls.py",
+        "inventra/entrypoint.sh",
+        "nginx/nginx.conf",
+        "telegram_bot_sms/main.py"
+      ]
+    },
+    {
+      "id": "ci-and-client-regressions",
+      "message": "ci(validation): test binary downloads barcode layouts and record the reviewed release queue",
+      "paths": [
+        ".github/workflows/ci.yml",
+        "automation/queue-plan.json",
+        "frontend/inventra/tests/client.test.js",
+        "frontend/inventra/tests/productLabels.test.js",
+        "inventra/.gitignore",
+        "telegram_bot_sms/.gitignore"
+      ]
+    },
+    {
+      "id": "architecture-roadmap",
+      "message": "docs(architecture): update the tenant and shop implementation roadmap",
+      "paths": [
+        "Architectures/inventra-yol-xaritasi.md"
+      ]
+    },
+    {
+      "id": "master-plan",
+      "message": "docs(plan): record completed platform milestones and remaining work",
+      "paths": [
+        "INVENTRA_MASTER_PLAN.md"
+      ]
+    },
+    {
+      "id": "deployment-guide",
+      "message": "docs(readme): document secure setup and production deployment",
+      "paths": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "rebranding-audit",
+      "message": "docs(branding): record the ILBI identity and rebranding audit",
+      "paths": [
+        "REBRANDING_AUDIT_ILBI_UZ.md"
+      ]
+    },
+    {
+      "id": "project-audit",
+      "message": "docs(audit): record project findings and implementation priorities",
+      "paths": [
+        "docs/LOYIHA_AUDITI_VAZIFALAR.md"
+      ]
+    },
+    {
+      "id": "legal-walkthrough",
+      "message": "docs(compliance): document the Uzbekistan project requirements review",
+      "paths": [
+        "docs/OZBEKISTON_QONUNI_WALKTHROUGH.md"
+      ]
+    },
+    {
+      "id": "plan-notes",
+      "message": "docs(progress): record implementation decisions and validation notes",
+      "paths": [
+        "docs/PLAN_NOTES.md"
+      ]
+    },
+    {
+      "id": "scope-guard",
+      "message": "chore(scope): add phase-specific repository change validation",
+      "paths": [
+        "docs/plan_scope.json",
+        "scripts/plan_scope_check.py"
+      ]
+    },
+    {
+      "id": "terms-of-use",
+      "message": "docs(terms): align the published usage rules with the platform identity",
+      "paths": [
+        "docs/hujjatlar/foydalanish_qoidalari.md"
+      ]
+    },
+    {
+      "id": "privacy-policy",
+      "message": "docs(privacy): update the platform privacy policy references",
+      "paths": [
+        "docs/hujjatlar/maxfiylik_siyosati.md"
+      ]
+    },
+    {
+      "id": "public-offer",
+      "message": "docs(offer): align the public offer with current platform naming",
+      "paths": [
+        "docs/hujjatlar/ommaviy_oferta.md"
+      ]
+    },
+    {
+      "id": "owner-guide",
+      "message": "docs(owner): explain imports batches Excel exports and product label printing",
+      "paths": [
+        "docs/qollanmalar/owner_qollanma.md"
+      ]
+    },
+    {
+      "id": "admin-guide",
+      "message": "docs(admin): update the platform administrator guide",
+      "paths": [
+        "docs/qollanmalar/platform_admin_qollanma.md"
+      ]
+    },
+    {
+      "id": "staff-guide",
+      "message": "docs(staff): update the employee usage guide",
+      "paths": [
+        "docs/qollanmalar/staff_qollanma.md"
+      ]
+    },
+    {
+      "id": "telegram-guide",
+      "message": "docs(telegram): document the current bot identity and setup",
+      "paths": [
+        "telegram_bot_sms/README.md"
+      ]
+    },
+    {
+      "id": "license",
+      "message": "docs(license): include the project distribution license",
+      "paths": [
+        "LICENSE"
+      ]
+    },
+    {
+      "id": "brand-avatar-cleanup",
+      "message": "chore(branding): remove superseded Inventra avatar source assets",
+      "paths": [
+        "branding/inventra_avatar_2048.png",
+        "branding/inventra_avatar_exact.svg"
+      ]
+    },
+    {
+      "id": "brand-banner-cleanup",
+      "message": "chore(branding): remove obsolete top-level Inventra promotional banners",
+      "paths": [
+        "branding/inventra_tg_hero_centered_1280x720.png",
+        "branding/inventra_tg_minimal_luxury_1280x720.png",
+        "branding/inventra_tg_split_features_1280x720.png"
+      ]
+    },
+    {
+      "id": "brand-hero-cleanup",
+      "message": "chore(branding): remove superseded Telegram hero exports",
+      "paths": [
+        "branding/telegram_bot/inventra_tg_hero_centered.svg",
+        "branding/telegram_bot/inventra_tg_hero_centered_1280x720.png",
+        "branding/telegram_bot/inventra_tg_hero_centered_1920x1080.png",
+        "branding/telegram_bot/inventra_tg_hero_centered_640x360.jpg",
+        "branding/telegram_bot/inventra_tg_hero_centered_640x360.png"
+      ]
+    },
+    {
+      "id": "brand-minimal-cleanup",
+      "message": "chore(branding): remove superseded Telegram minimal artwork exports",
+      "paths": [
+        "branding/telegram_bot/inventra_tg_minimal_luxury.svg",
+        "branding/telegram_bot/inventra_tg_minimal_luxury_1280x720.png",
+        "branding/telegram_bot/inventra_tg_minimal_luxury_1920x1080.png",
+        "branding/telegram_bot/inventra_tg_minimal_luxury_640x360.jpg",
+        "branding/telegram_bot/inventra_tg_minimal_luxury_640x360.png"
+      ]
+    },
+    {
+      "id": "brand-split-cleanup",
+      "message": "chore(branding): remove superseded Telegram split-layout artwork exports",
+      "paths": [
+        "branding/telegram_bot/inventra_tg_split_features.svg",
+        "branding/telegram_bot/inventra_tg_split_features_1280x720.png",
+        "branding/telegram_bot/inventra_tg_split_features_1920x1080.png",
+        "branding/telegram_bot/inventra_tg_split_features_640x360.jpg",
+        "branding/telegram_bot/inventra_tg_split_features_640x360.png"
+      ]
+    },
+    {
+      "id": "brand-logo-sources",
+      "message": "feat(branding): add the reviewed ILBI logo design source variants",
+      "paths": [
+        "branding/logos/ChatGPT Image Oct 12, 2026, 04_49_55 PM-1.png",
+        "branding/logos/ChatGPT Image Oct 12, 2026, 04_49_57 PM-2.png",
+        "branding/logos/ChatGPT Image Oct 12, 2026, 04_49_59 PM-3.png",
+        "branding/logos/ChatGPT Image Oct 12, 2026, 04_50_00 PM-4.png",
+        "branding/logos/ChatGPT Image Oct 12, 2026, 04_50_01 PM-5.png",
+        "branding/logos/ChatGPT Image Oct 12, 2026, 04_50_03 PM-6.png"
+      ]
+    },
+    {
+      "id": "brand-illustration",
+      "message": "feat(branding): add the platform animation illustration source",
+      "paths": [
+        "branding/animation_in_pic.png"
+      ]
+    },
+    {
+      "id": "brand-reference",
+      "message": "chore(branding): preserve the project visual reference photograph",
+      "paths": [
+        "branding/IMG_0075.JPG"
+      ]
+    },
+    {
+      "id": "repository-hygiene",
+      "message": "chore(repo): remove IDE workspace metadata and committed frontend build artifacts",
+      "paths": [
+        ".directory",
+        "Architectures/.idea/Architectures.iml",
+        "Architectures/.idea/inspectionProfiles/Project_Default.xml",
+        "Architectures/.idea/inspectionProfiles/profiles_settings.xml",
+        "Architectures/.idea/material_theme_project_new.xml",
+        "Architectures/.idea/modules.xml",
+        "Architectures/.idea/workspace.xml",
+        "Architectures/.obsidian/app.json",
+        "Architectures/.obsidian/appearance.json",
+        "Architectures/.obsidian/core-plugins.json",
+        "Architectures/.obsidian/workspace.json",
+        "frontend/inventra/dist_docker/assets/index-CbRswM3o.js",
+        "frontend/inventra/dist_docker/assets/index-DjPR7vbY.css",
+        "frontend/inventra/dist_docker/docs/images/audit_log_screen.png",
+        "frontend/inventra/dist_docker/docs/images/catalog_management.png",
+        "frontend/inventra/dist_docker/docs/images/dashboard_overview.png",
+        "frontend/inventra/dist_docker/docs/images/debts_management.png",
+        "frontend/inventra/dist_docker/docs/images/employees_management.png",
+        "frontend/inventra/dist_docker/docs/images/inventory_intake.png",
+        "frontend/inventra/dist_docker/docs/images/inventory_stock.png",
+        "frontend/inventra/dist_docker/docs/images/login_flow.png",
+        "frontend/inventra/dist_docker/docs/images/pos_payment_modal.png",
+        "frontend/inventra/dist_docker/docs/images/pos_terminal.png",
+        "frontend/inventra/dist_docker/docs/images/product_create_modal.png",
+        "frontend/inventra/dist_docker/docs/images/sales_void_modal.png",
+        "frontend/inventra/dist_docker/docs/images/shift_close_modal.png",
+        "frontend/inventra/dist_docker/docs/images/tenant_create_modal.png",
+        "frontend/inventra/dist_docker/docs/images/tenants_management.png",
+        "frontend/inventra/dist_docker/docs/images/terms_certificate.png",
+        "inventra/.directory"
+      ]
+    }
+  ]
+}

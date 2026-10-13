@@ -1,3 +1,6 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+
 """Views for the one-time magic-link password setup / reset flow.
 
 Both endpoints are intentionally *unauthenticated* — a brand-new employee who
@@ -17,9 +20,9 @@ Flow
    frontend sends the opaque token + desired password (+ optional username for
    first-time setup) to ``POST /api/v1/auth/password-reset/confirm/``.
 
-4. ``PasswordResetService.confirm_password_reset()`` validates the token
-   atomically via Redis pipeline (single-use guarantee), sets the password,
-   and — if a username was provided — sets it too.
+4. Confirm sets the password once. Invitation links can then resume Telegram
+   verification until 2FA login or their original 24-hour expiry; reset links
+   remain single-use.
 """
 
 from rest_framework import status
@@ -28,22 +31,23 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.v1.accounts.serializers import (
+    ChangePasswordWithOldSerializer,
+    InvitationResumeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
-    ChangePasswordWithOldSerializer,
 )
-from apps.accounts.services import password_reset_service, login_throttle
-from apps.accounts.services.phone_utils import mask_phone_number
 from api.v1.accounts.views.misc import (
-    get_telegram_contact_or_error,
-    send_otp_or_error,
+    get_current_telegram_contact,
 )
+from apps.accounts.services import login_throttle, login_ticket_service, password_reset_service
+from apps.accounts.services.phone_utils import mask_phone_number
 
 __all__ = [
     "PasswordResetRequestView",
     "PasswordResetConfirmView",
     "ChangePasswordWithOldView",
     "PasswordResetVerifyView",
+    "PasswordResetResumeView",
 ]
 
 
@@ -59,6 +63,7 @@ class PasswordResetRequestView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(request=PasswordResetRequestSerializer, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,19 +77,31 @@ class PasswordResetRequestView(APIView):
         if reason == "no_email":
             return Response(
                 {
-                    "detail": "Ushbu hisobga email manzili biriktirilmagan. Parolni eski parol orqali yangilashingiz mumkin.",
+                    "detail": (
+                        "Ushbu hisobga email manzili biriktirilmagan. "
+                        "Parolni eski parol orqali yangilashingiz mumkin."
+                    ),
                     "has_email": False,
                     "email_hint": None,
                 },
                 status=status.HTTP_200_OK,
             )
 
+        if not ok:
+            if reason == "cooldown":
+                return Response({"detail": "Yangi havola so‘rashdan oldin 60 soniya kuting."}, status=429)
+            return Response({"detail": "Email yuborilmadi. Keyinroq qayta urinib ko‘ring."}, status=502)
+
         return Response(
             {
                 "detail": (
-                    f"Parolni tiklash havolasi emailingizga ({email_hint}) yuborildi. Agar xat kelmasa, iltimos, 'Spam' papkasini ham tekshiring."
+                    f"Parolni tiklash havolasi emailingizga ({email_hint}) yuborildi. "
+                    "Agar xat kelmasa, iltimos, 'Spam' papkasini ham tekshiring."
                     if email_hint
-                    else "Tiklash havolasi emailingizga yuborildi. Agar xat kelmasa, iltimos, 'Spam' papkasini ham tekshiring."
+                    else (
+                        "Tiklash havolasi emailingizga yuborildi. "
+                        "Agar xat kelmasa, iltimos, 'Spam' papkasini ham tekshiring."
+                    )
                 ),
                 "has_email": bool(email_hint),
                 "email_hint": email_hint,
@@ -102,6 +119,7 @@ class ChangePasswordWithOldView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(request=ChangePasswordWithOldSerializer, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
         serializer = ChangePasswordWithOldSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -140,7 +158,7 @@ class ChangePasswordWithOldView(APIView):
 class PasswordResetConfirmView(APIView):
     """POST /api/v1/auth/password-reset/confirm/
 
-    Consume a one-time token (from the magic link URL) and set a new password.
+    Set the password once using the link. Invitations remain resume-only.
 
     Optional ``username`` field: only needed when the user is setting their
     password for the very first time and has no username yet.  If the user
@@ -155,12 +173,16 @@ class PasswordResetConfirmView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(request=PasswordResetConfirmSerializer, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data["token"]
+        token_info = password_reset_service.peek_reset_token(token)
+        is_invite = bool(token_info and token_info["purpose"] in password_reset_service.INVITE_PURPOSES)
 
         ok, reason, user = password_reset_service.confirm_password_reset(
-            token=serializer.validated_data["token"],
+            token=token,
             new_password=serializer.validated_data["new_password"],
             username=serializer.validated_data.get("username", ""),
         )
@@ -168,24 +190,57 @@ class PasswordResetConfirmView(APIView):
         if not ok:
             return Response({"detail": reason}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Trigger 2FA Telegram OTP right after password setup
-        contact, _err = get_telegram_contact_or_error(user.phone_number)
-        otp_sent = False
-        if contact:
-            send_err = send_otp_or_error(user.phone_number, contact)
-            otp_sent = (send_err is None)
+        ttl = password_reset_service.invitation_ttl(token) if is_invite else 0
+        if is_invite and ttl == 0:
+            # Defensive: do not let a setup ticket outlive its invitation.
+            return Response({"detail": "Havola muddati tugadi. Yangi parol bilan kiring."}, status=400)
 
         return Response(
             {
-                "detail": "Password set successfully. Verification code sent to Telegram.",
+                "detail": "Parol saqlandi. Telegram botga ulanishni tasdiqlang.",
                 "username": user.username or user.phone_number,
-                "phone_number": user.phone_number,
                 "phone_hint": mask_phone_number(user.phone_number),
-                "telegram_linked": contact is not None,
-                "otp_sent": otp_sent,
+                "login_ticket": login_ticket_service.create_ticket(
+                    user,
+                    max_ttl_seconds=ttl if ttl > 0 else None,
+                    invitation_key=password_reset_service._token_key(token) if is_invite else None,
+                ),
+                "telegram_linked": get_current_telegram_contact(user.phone_number) is not None,
+                "otp_sent": False,
             },
             status=status.HTTP_200_OK,
         )
+
+
+class PasswordResetResumeView(APIView):
+    """POST /auth/password-reset/resume/ — resume 2FA without resetting password."""
+
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=InvitationResumeSerializer, responses={200: OpenApiTypes.OBJECT})
+    def post(self, request):
+        serializer = InvitationResumeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data["token"]
+        user = password_reset_service.resume_invitation(token)
+        ttl = password_reset_service.invitation_ttl(token)
+        if user is None or ttl <= 0:
+            return Response(
+                {"detail": "Havola eskirgan yoki hisob allaqachon faollashtirilgan."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({
+            "detail": "Telegram tasdiqlashni davom ettiring.",
+            "username": user.username or user.phone_number,
+            "phone_hint": mask_phone_number(user.phone_number),
+            "login_ticket": login_ticket_service.create_ticket(
+                user,
+                max_ttl_seconds=ttl,
+                invitation_key=password_reset_service._token_key(token),
+            ),
+            "telegram_linked": get_current_telegram_contact(user.phone_number) is not None,
+            "otp_sent": False,
+        })
 
 
 class PasswordResetVerifyView(APIView):
@@ -198,6 +253,7 @@ class PasswordResetVerifyView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
         token = request.query_params.get("token", "").strip()
         if not token:

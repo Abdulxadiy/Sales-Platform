@@ -1,3 +1,6 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
+
 """
 View for restoring access to a permanently-banned account.
 
@@ -24,8 +27,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.permissions import IsPlatformAdmin
-from apps.accounts.services import login_throttle
 from api.v1.accounts.serializers import UnbanSerializer
+from apps.accounts.services import login_throttle
 
 
 class UnbanView(APIView):
@@ -33,6 +36,7 @@ class UnbanView(APIView):
 
     permission_classes = [IsPlatformAdmin]
 
+    @extend_schema(request=UnbanSerializer, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
         serializer = UnbanSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

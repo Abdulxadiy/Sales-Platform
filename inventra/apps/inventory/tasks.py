@@ -2,6 +2,7 @@ import logging
 from calendar import monthrange
 from celery import shared_task
 from django.utils import timezone
+from django.db import transaction
 
 from apps.tenants.models import Tenant
 from apps.inventory.services.deficit_service import DeficitService
@@ -105,7 +106,8 @@ def check_and_send_low_stock_reports_task():
             continue
 
         # Check hour & 5-minute window
-        if not (report_time.hour == current_time.hour and abs(report_time.minute - current_time.minute) <= 5):
+        scheduled = now.replace(hour=report_time.hour, minute=report_time.minute, second=0, microsecond=0)
+        if not 0 <= (now - scheduled).total_seconds() < 300:
             continue
 
         # Check if already sent today
@@ -131,7 +133,13 @@ def check_and_send_low_stock_reports_task():
                 should_send = True
 
         if should_send:
-            send_low_stock_report_for_tenant_task.delay(tenant.id)
-            count += 1
+            with transaction.atomic():
+                locked = Tenant.objects.select_for_update(skip_locked=True).filter(pk=tenant.pk).first()
+                if locked is None or (locked.last_low_stock_report_sent_at and timezone.localtime(locked.last_low_stock_report_sent_at).date() == today):
+                    continue
+                send_low_stock_report_for_tenant_task.delay(locked.id)
+                locked.last_low_stock_report_sent_at = now
+                locked.save(update_fields=['last_low_stock_report_sent_at'])
+                count += 1
 
     return count

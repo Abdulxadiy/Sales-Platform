@@ -13,7 +13,6 @@ import {
   Moon,
   KeyRound,
   RefreshCw,
-  ExternalLink,
   Clock,
   UserCheck,
   Building2,
@@ -22,6 +21,7 @@ import { authApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import TelegramConnectionGate from '../components/auth/TelegramConnectionGate';
 
 const OTP_EXPIRY_SECONDS = 180; // 3 daqiqa
 
@@ -30,7 +30,7 @@ export default function SetupAccount() {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
-  const { loginStep1, loginStep2 } = useAuth();
+  const { loginStep2 } = useAuth();
   const { isDark, toggleTheme } = useTheme();
 
   const token = searchParams.get('token');
@@ -51,7 +51,7 @@ export default function SetupAccount() {
   const [verifyingToken, setVerifyingToken] = useState(Boolean(token));
   const [isTokenExpired, setIsTokenExpired] = useState(false);
 
-  // Step 1 = Set Password (and optional username for new accounts), Step 2 = Telegram 2FA Verification
+  // Step 1 = password, Step 2 = Telegram binding, Step 3 = OTP verification.
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -60,10 +60,10 @@ export default function SetupAccount() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Step 2 state
+  // Telegram and OTP state
   const [accountUsername, setAccountUsername] = useState('');
   const [phoneHint, setPhoneHint] = useState('');
-  const [telegramLinked, setTelegramLinked] = useState(true);
+  const [loginTicket, setLoginTicket] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpTimeLeft, setOtpTimeLeft] = useState(OTP_EXPIRY_SECONDS);
@@ -80,7 +80,7 @@ export default function SetupAccount() {
     setVerifyingToken(true);
 
     authApi.passwordResetVerify(token)
-      .then((res) => {
+      .then(async (res) => {
         if (!isMounted) return;
         if (res && res.valid === false) {
           setIsTokenExpired(true);
@@ -98,11 +98,20 @@ export default function SetupAccount() {
             setVerifiedUserHint(res.email_hint);
           }
           if (res.phone_hint) setPhoneHint(res.phone_hint);
+          if (res.phase === 'pending_2fa') {
+            const resumed = await authApi.passwordResetResume(token);
+            if (!isMounted) return;
+            setAccountUsername(resumed.username || res.username || '');
+            setPhoneHint(resumed.phone_hint || res.phone_hint || '');
+            setLoginTicket(resumed.login_ticket);
+            setStep(2);
+          }
         }
       })
       .catch((err) => {
         if (!isMounted) return;
-        console.warn("Token verification error:", err);
+        setErrorMsg(err.message || 'Havolani tekshirib bo‘lmadi. Sahifani yangilab ko‘ring.');
+        if (err.status === 400 || err.status === 401) setIsTokenExpired(true);
       })
       .finally(() => {
         if (isMounted) setVerifyingToken(false);
@@ -115,7 +124,7 @@ export default function SetupAccount() {
 
   // 2. OTP 3-daqiqa ortga sanash taymeri
   useEffect(() => {
-    if (step !== 2) return;
+    if (step !== 3) return;
     const interval = setInterval(() => {
       setOtpTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
@@ -201,6 +210,26 @@ export default function SetupAccount() {
 
   const HeaderIcon = step === 1 ? config.icon : ShieldCheck;
 
+  const renewSetupTicket = async () => {
+    const resumed = await authApi.passwordResetResume(token);
+    setAccountUsername(resumed.username || accountUsername);
+    setPhoneHint(resumed.phone_hint || phoneHint);
+    setLoginTicket(resumed.login_ticket);
+    setOtpCode('');
+    setStep(2);
+    return resumed;
+  };
+
+  const recoverExpiredTicket = async () => {
+    try {
+      await renewSetupTicket();
+      toast.warning('Tasdiqlash muddati tugadi. Havola orqali qayta davom eting.');
+    } catch {
+      toast.warning('Kirish muddati tugagan. Yangi parolingiz bilan qayta kiring.');
+      navigate('/login', { replace: true });
+    }
+  };
+
   // 4. Submit Step 1
   const handleStep1Submit = async (e) => {
     e.preventDefault();
@@ -230,29 +259,33 @@ export default function SetupAccount() {
       });
 
       const effectiveUsername = res.username || (config.showUsernameField ? username.trim() : accountUsername);
+      if (!res.login_ticket) throw new Error('Hisob yaratildi, ammo kirishni davom ettirib bo‘lmadi. Login sahifasiga o‘ting.');
       setAccountUsername(effectiveUsername);
       setPhoneHint(res.phone_hint || phoneHint);
-      setTelegramLinked(res.telegram_linked);
-
-      // Move directly to Step 2 (Telegram 2FA)
+      setLoginTicket(res.login_ticket);
       setStep(2);
-      setOtpTimeLeft(OTP_EXPIRY_SECONDS);
-
-      if (res.telegram_linked && res.otp_sent) {
-        toast.success("Parol saqlandi! Telegram botingizga 6 xonali tasdiqlash kodi yuborildi.");
-      } else if (!res.telegram_linked) {
-        toast.warning("Parol saqlandi, ammo telefoningiz Telegram botga ulanmagan!");
-      } else {
-        toast.info("Parol saqlandi. Tasdiqlash kodini kiritishingiz mumkin.");
-      }
+      setNewPassword('');
+      setConfirmPassword('');
+      toast.success('Parol saqlandi. Endi Telegram botda telefoningizni ulang.');
     } catch (err) {
-      setErrorMsg(err.message || "Parolni o‘rnatishda xatolik yuz berdi. Havola eskirgan bo‘lishi mumkin.");
+      if (err.data?.detail === 'setup_already_started') {
+        try {
+          await renewSetupTicket();
+          setNewPassword('');
+          setConfirmPassword('');
+          return;
+        } catch (resumeError) {
+          setErrorMsg(resumeError.message || 'Faollashtirishni davom ettirib bo‘lmadi.');
+        }
+      } else {
+        setErrorMsg(err.message || "Parolni o‘rnatishda xatolik yuz berdi. Havola eskirgan bo‘lishi mumkin.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // 5. Submit Step 2 (Telegram 2FA Verify)
+  // 5. Verify the OTP only after the bot binding and code delivery.
   const handleStep2Verify = async (e) => {
     e.preventDefault();
     if (otpTimeLeft === 0) {
@@ -268,11 +301,15 @@ export default function SetupAccount() {
     setErrorMsg('');
     setOtpLoading(true);
     try {
-      await loginStep2(accountUsername, otpCode.trim());
+      await loginStep2(accountUsername, loginTicket, otpCode.trim());
       toast.success(config.step2SuccessMsg);
       navigate('/', { replace: true });
     } catch (err) {
-      setErrorMsg(err.message || "Tasdiqlash kodi noto‘g‘ri yoki muddati o‘tgan.");
+      if (err.data?.error === 'invalid_or_expired_login_ticket') {
+        await recoverExpiredTicket();
+      } else {
+        setErrorMsg(err.message || "Tasdiqlash kodi noto‘g‘ri yoki muddati o‘tgan.");
+      }
     } finally {
       setOtpLoading(false);
     }
@@ -284,15 +321,16 @@ export default function SetupAccount() {
     setErrorMsg('');
     setOtpLoading(true);
     try {
-      const res = await loginStep1(accountUsername, newPassword);
-      setPhoneHint(res.phone_hint || phoneHint);
-      setTelegramLinked(true);
+      await authApi.sendTelegramOtp(loginTicket);
+      setOtpCode('');
       setOtpTimeLeft(OTP_EXPIRY_SECONDS);
       toast.info("Yangi tasdiqlash kodi Telegram orqali yuborildi.");
     } catch (err) {
-      if (err.message?.includes('telegram') || err.status === 404 || err.status === 502) {
-        setTelegramLinked(false);
-        setErrorMsg("Telefon raqamingiz Telegram botga ulanmagan. Iltimos, avval botga kiring.");
+      if (err.data?.error === 'invalid_or_expired_login_ticket') {
+        await recoverExpiredTicket();
+      } else if (err.status === 404 || err.data?.error === 'telegram_contact_not_found') {
+        setStep(2);
+        setErrorMsg("Telegram aloqasi uzilgan. Botda telefoningizni qayta ulang.");
       } else {
         setErrorMsg(err.message || "Kodni qayta yuborishda xatolik yuz berdi.");
       }
@@ -403,7 +441,10 @@ export default function SetupAccount() {
               Havola Muddati Tugagan
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: 13.5, lineHeight: 1.6, margin: '0 0 24px 0' }}>
-              {errorMsg || "Ushbu xavfsizlik havolasi eskirgan yoki undan allaqachon foydalanilgan. Xavfsizlik qoidalariga ko‘ra, havolalar 24 soat amal qiladi va faqat 1 marta ishlatilishi mumkin."}
+              {errorMsg || (purpose === 'reset_password'
+                ? 'Parolni tiklash havolasi 24 soat amal qiladi va parol yangilangach tugaydi.'
+                : 'Faollashtirish havolasi 24 soat amal qiladi; hisobingizga Telegram orqali kirganingizdan keyin tugaydi.')}
+              {' '}Agar parolni saqlagan bo‘lsangiz, login sahifasida yangi parolingiz bilan davom eting.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -412,7 +453,7 @@ export default function SetupAccount() {
                 className="btn btn-primary"
                 style={{ padding: '12px 20px', textDecoration: 'none', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}
               >
-                <span>{purpose === 'reset_password' ? 'Yangi Parol Tiklash So‘rash' : 'Login Sahifasiga Qaytish'}</span>
+                <span>Login sahifasiga o‘tish</span>
                 <ArrowRight size={16} />
               </Link>
             </div>
@@ -421,7 +462,7 @@ export default function SetupAccount() {
           /* Normal Active Token Flow */
           <>
             {/* Brand Icon & Heading tailored to Purpose */}
-            <div style={{ textAlign: 'center', marginBottom: 26 }}>
+            {step !== 2 && <div style={{ textAlign: 'center', marginBottom: 26 }}>
               <div
                 style={{
                   width: 56,
@@ -467,7 +508,7 @@ export default function SetupAccount() {
                   <strong style={{ color: 'var(--primary)', fontWeight: 700 }}>{config.badgeValue}</strong>
                 </div>
               )}
-            </div>
+            </div>}
 
             {errorMsg && (
               <div
@@ -605,8 +646,24 @@ export default function SetupAccount() {
                   </Link>
                 </div>
               </form>
+            ) : step === 2 ? (
+              <TelegramConnectionGate
+                key={loginTicket}
+                loginTicket={loginTicket}
+                phoneHint={phoneHint}
+                onRenew={renewSetupTicket}
+                onOtpSent={() => {
+                  setErrorMsg('');
+                  setOtpCode('');
+                  setOtpTimeLeft(OTP_EXPIRY_SECONDS);
+                  setStep(3);
+                  toast.success('Tasdiqlash kodi Telegram orqali yuborildi.');
+                }}
+                onBack={() => navigate('/login')}
+                backLabel="Login sahifasiga qaytish"
+              />
             ) : (
-              /* Step 2: Telegram 2FA Code Input & Auto-Login */
+              /* Step 3: Telegram OTP code input and login */
               <form onSubmit={handleStep2Verify} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div
                   style={{
@@ -630,42 +687,6 @@ export default function SetupAccount() {
                     </div>
                   )}
                 </div>
-
-                {/* Warning if telegram is not linked */}
-                {!telegramLinked && (
-                  <div
-                    style={{
-                      background: 'rgba(245, 158, 11, 0.12)',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
-                      borderRadius: 14,
-                      padding: '14px',
-                      textAlign: 'left',
-                      fontSize: 12.5,
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, color: 'var(--accent-amber, #f59e0b)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <AlertTriangle size={16} />
-                      Raqamingiz Telegram botga ulanmagan:
-                    </div>
-                    1. Rasmiy botimizga kiring: <strong>@inventraa_bot</strong> (<code>/start</code>).<br />
-                    2. <strong>"📱 Telefon raqamni ulashish"</strong> tugmasini bosing.<br />
-                    3. So‘ngra quyidagi <strong>"Kodni qayta yuborish"</strong> tugmasini bosing.
-                    <div style={{ marginTop: 10 }}>
-                      <a
-                        href="https://t.me/inventraa_bot"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-secondary"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px' }}
-                      >
-                        <ExternalLink size={14} />
-                        <span>Telegram Botni Ochish (@inventraa_bot)</span>
-                      </a>
-                    </div>
-                  </div>
-                )}
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -744,7 +765,7 @@ export default function SetupAccount() {
 
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => navigate('/login')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -754,7 +775,7 @@ export default function SetupAccount() {
                       padding: 0,
                     }}
                   >
-                    Parolni o‘zgartirish
+                    Login sahifasiga qaytish
                   </button>
                 </div>
               </form>

@@ -1,22 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  User,
   Camera,
   Trash2,
   Mail,
   Phone,
   Store,
   Shield,
-  Calendar,
   Save,
   KeyRound,
   CheckCircle2,
-  AlertCircle,
   Lock,
   Eye,
   EyeOff,
-  X,
-  Info,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authApi, resolveAvatarUrl } from '../api/client';
@@ -24,6 +19,8 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import Modal from '../components/common/Modal';
+import PhoneInput from '../components/common/PhoneInput';
+import { formatPhoneUz } from '../utils/phoneFormat';
 
 export default function Profile() {
   const { user, refreshProfile } = useAuth();
@@ -522,7 +519,7 @@ export default function Profile() {
             <input
               type="text"
               disabled
-              value={user?.phone_number || ''}
+              value={formatPhoneUz(user?.phone_number) || user?.phone_number || ''}
               style={{
                 width: '100%',
                 padding: '11px 14px',
@@ -549,13 +546,9 @@ export default function Profile() {
                 color="var(--text-muted)"
                 style={{ position: 'absolute', left: 14, top: 14 }}
               />
-              <input
+              <PhoneInput
                 id="contact-phone"
                 name="tel"
-                type="tel"
-                autoComplete="tel"
-                inputMode="tel"
-                placeholder="+998901234567 (ixtiyoriy)"
                 value={formData.contact_phone}
                 onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                 className="input-field"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * usePersistedState - Custom hook to synchronize React state with localStorage
@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
  * @returns {[any, Function, Function]} [state, setState, resetState]
  */
 export function usePersistedState(key, defaultValue) {
+  // Synchronous initial state from localStorage to avoid hydration flash & extra render
   const [state, setState] = useState(() => {
     try {
       const saved = localStorage.getItem(key);
@@ -15,12 +16,40 @@ export function usePersistedState(key, defaultValue) {
         return JSON.parse(saved);
       }
     } catch (err) {
-      console.warn(`[usePersistedState] Error parsing localStorage key "${key}":`, err);
+      console.warn(`[usePersistedState] Error reading localStorage key "${key}":`, err);
     }
     return typeof defaultValue === 'function' ? defaultValue() : defaultValue;
   });
 
+  const currentKeyRef = useRef(key);
+  const [loadedKey, setLoadedKey] = useState(key);
+  const defaultValueRef = useRef(defaultValue);
+  defaultValueRef.current = defaultValue;
+
+  // Sync state if key changes (e.g. tenant switches)
   useEffect(() => {
+    if (currentKeyRef.current !== key) {
+      currentKeyRef.current = key;
+      setLoadedKey(key);
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved !== null) {
+          setState(JSON.parse(saved));
+          return;
+        }
+      } catch (err) {
+        console.warn(`[usePersistedState] Error reading localStorage key "${key}":`, err);
+      }
+      const def = defaultValueRef.current;
+      setState(typeof def === 'function' ? def() : def);
+    }
+  }, [key]);
+
+  // Persist state to localStorage on changes
+  useEffect(() => {
+    // During a key change this render still holds the previous tenant's state.
+    // The load effect updates the key, so use state plus its key as one value.
+    if (loadedKey !== key) return;
     try {
       if (state === undefined || state === null) {
         localStorage.removeItem(key);
@@ -30,14 +59,15 @@ export function usePersistedState(key, defaultValue) {
     } catch (err) {
       console.warn(`[usePersistedState] Error setting localStorage key "${key}":`, err);
     }
-  }, [key, state]);
+  }, [key, state, loadedKey]);
 
   const resetState = useCallback(() => {
     try {
       localStorage.removeItem(key);
     } catch {}
-    setState(typeof defaultValue === 'function' ? defaultValue() : defaultValue);
-  }, [key, defaultValue]);
+    const def = defaultValueRef.current;
+    setState(typeof def === 'function' ? def() : def);
+  }, [key]);
 
   return [state, setState, resetState];
 }

@@ -163,10 +163,10 @@ export default function CustomDatePicker({
       };
       try {
         onChange(valStr, syntheticEvent);
-      } catch (err) {
+      } catch {
         try {
           onChange(syntheticEvent);
-        } catch (_) {}
+        } catch {}
       }
     }
   };

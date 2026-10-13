@@ -47,7 +47,7 @@ class TestCounterpartyCreate:
         assert cp_a.phone_number == cp_b.phone_number
         assert cp_a.tenant != cp_b.tenant
 
-    def test_auto_link_target_tenant_when_user_is_owner(self, tenant):
+    def test_phone_alone_does_not_link_owner_shop(self, tenant):
         other_owner = OwnerFactory(phone_number="+998911112222")
         other_tenant = TenantFactory(owner=other_owner)
 
@@ -56,9 +56,9 @@ class TestCounterpartyCreate:
             name="Do'kon B",
             phone_number="+998911112222",
         )
-        assert cp.target_tenant == other_tenant
+        assert cp.target_tenant is None
 
-    def test_auto_link_target_tenant_when_user_is_employee(self, tenant, platform_admin):
+    def test_phone_alone_does_not_link_employee_shop(self, tenant, platform_admin):
         other_tenant = TenantFactory()
         staff_user = StaffFactory(phone_number="+998944445555")
         EmployeeFactory(
@@ -73,7 +73,7 @@ class TestCounterpartyCreate:
             name="Do'kon B Xodimi",
             phone_number="+998944445555",
         )
-        assert cp.target_tenant == other_tenant
+        assert cp.target_tenant is None
 
 
 class TestCounterpartyUpdateAndArchive:

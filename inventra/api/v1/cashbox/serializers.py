@@ -1,18 +1,17 @@
 from decimal import Decimal
+
 from rest_framework import serializers
-from apps.cashbox.models import DailyCashReport, CashExpense, CashIncome
+
+from apps.cashbox.models import CashExpense, CashIncome, DailyCashReport
 
 
 class CashExpenseSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.SerializerMethodField()
-    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
 
     class Meta:
         model = CashExpense
         fields = [
             'id',
-            'branch',
-            'branch_name',
             'amount',
             'currency',
             'category',
@@ -23,23 +22,20 @@ class CashExpenseSerializer(serializers.ModelSerializer):
             'note',
             'created_at',
         ]
-        read_only_fields = ['id', 'branch', 'recorded_by', 'shift_report', 'created_at']
+        read_only_fields = ['id', 'recorded_by', 'shift_report', 'created_at']
 
-    def get_recorded_by_name(self, obj):
+    def get_recorded_by_name(self, obj) -> str:
         name_parts = [obj.recorded_by.first_name, obj.recorded_by.last_name]
         return " ".join(p for p in name_parts if p).strip() or obj.recorded_by.username or obj.recorded_by.phone_number
 
 
 class CashIncomeSerializer(serializers.ModelSerializer):
     recorded_by_name = serializers.SerializerMethodField()
-    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
 
     class Meta:
         model = CashIncome
         fields = [
             'id',
-            'branch',
-            'branch_name',
             'amount',
             'currency',
             'source',
@@ -50,15 +46,15 @@ class CashIncomeSerializer(serializers.ModelSerializer):
             'note',
             'created_at',
         ]
-        read_only_fields = ['id', 'branch', 'recorded_by', 'shift_report', 'created_at']
+        read_only_fields = ['id', 'recorded_by', 'shift_report', 'created_at']
 
-    def get_recorded_by_name(self, obj):
+    def get_recorded_by_name(self, obj) -> str:
         name_parts = [obj.recorded_by.first_name, obj.recorded_by.last_name]
         return " ".join(p for p in name_parts if p).strip() or obj.recorded_by.username or obj.recorded_by.phone_number
 
 
 class ShiftCloseSerializer(serializers.Serializer):
-    branch_id = serializers.IntegerField(required=False, allow_null=True)
+    shift_id = serializers.IntegerField(required=False, min_value=1)
     actual_cash_uzs = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0.00'))
     actual_cash_usd = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0.00'))
     discrepancy_reason = serializers.CharField(required=False, allow_blank=True, default='')
@@ -66,8 +62,8 @@ class ShiftCloseSerializer(serializers.Serializer):
 
 
 class DailyCashReportSerializer(serializers.ModelSerializer):
+    tenant_name = serializers.CharField(source="tenant.name", read_only=True)
     closed_by_name = serializers.SerializerMethodField()
-    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
     incomes = CashIncomeSerializer(many=True, read_only=True)
     expenses = CashExpenseSerializer(many=True, read_only=True)
 
@@ -75,9 +71,15 @@ class DailyCashReportSerializer(serializers.ModelSerializer):
         model = DailyCashReport
         fields = [
             'id',
-            'branch',
-            'branch_name',
             'date',
+            'tenant_name',
+            'shift',
+            'opening_cash_uzs',
+            'opening_cash_usd',
+            'collected_debt_cash_uzs',
+            'collected_debt_cash_usd',
+            'refund_cash_uzs',
+            'refund_cash_usd',
             'closed_by',
             'closed_by_name',
             'closed_at',
@@ -105,6 +107,11 @@ class DailyCashReportSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_closed_by_name(self, obj):
+    def get_closed_by_name(self, obj) -> str:
         name_parts = [obj.closed_by.first_name, obj.closed_by.last_name]
         return " ".join(p for p in name_parts if p).strip() or obj.closed_by.username or obj.closed_by.phone_number
+
+
+class ShiftOpenSerializer(serializers.Serializer):
+    opening_cash_uzs = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False)
+    opening_cash_usd = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False)

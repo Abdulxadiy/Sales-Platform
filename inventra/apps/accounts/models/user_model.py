@@ -25,10 +25,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_of_birth = models.DateField(blank=True, null=True)
     avatar = models.ImageField(upload_to="accounts/avatars/", null=True, blank=True)
 
-    tenant = models.ForeignKey(
-        'tenants.Tenant', on_delete=models.CASCADE,
-        null=True, blank=True, related_name='users'
-    )
     role = models.CharField(
         max_length=20, choices=ROLE_CHOICES
     )
@@ -47,11 +43,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = 'phone_number'
     REQUIRED_FIELDS = ['username']
-
-    class Meta:
-        indexes = [
-            models.Index(fields=['tenant', 'role']),
-        ]
 
     def get_full_name(self):
         full_name = f"{self.first_name} {self.last_name}".strip()

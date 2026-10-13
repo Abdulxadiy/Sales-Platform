@@ -22,9 +22,12 @@ Design:
   (see admin_login.py), so guessing usernames behaves identically to
   guessing passwords for a real one.
 """
+import hashlib
+
 import redis
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db.models import F, Q
 
 
 User = get_user_model()
@@ -46,17 +49,28 @@ _BAN_STRIKE_LIMIT = 3
 _STRIKE_COUNTER_TTL = 60 * 60 * 24 * 7 # 7 days: must outlive the 1-day locks. TTL = Time To Live
 
 
+def _subject(identifier: str) -> str:
+    identifier = identifier.strip()
+    phone = User.objects.normalize_phone_number(identifier)
+    user_id = User.objects.filter(
+        Q(username=identifier) | Q(phone_number=phone) | Q(email__iexact=identifier)
+    ).values_list('id', flat=True).first()
+    if user_id is not None:
+        return f'user:{user_id}'
+    return 'unknown:' + hashlib.sha256(identifier.casefold().encode()).hexdigest()
+
+
 def _stage_key(username: str) -> str:
-    return f"admin_login:stage:{username}"
+    return f"admin_login:stage:{_subject(username)}"
 
 def _attempts_key(username: str) -> str:
-    return f"admin_login:attempts:{username}"
+    return f"admin_login:attempts:{_subject(username)}"
 
 def _lock_key(username: str) -> str:
-    return f"admin_login:locked:{username}"
+    return f"admin_login:locked:{_subject(username)}"
 
 def _strikes_key(username: str) -> str:
-    return f"admin_login:strikes:{username}"
+    return f"admin_login:strikes:{_subject(username)}"
 
 
 def is_locked(username: str) -> tuple[bool, int]:
@@ -111,4 +125,8 @@ def register_success(username: str) -> None:
 
 
 def _ban_permanently(username: str) -> None:
-    User.objects.filter(username=username).update(is_active=False)
+    subject = _subject(username)
+    if subject.startswith('user:'):
+        User.objects.filter(pk=int(subject.split(':')[1])).update(
+            is_active=False, token_version=F('token_version') + 1,
+        )

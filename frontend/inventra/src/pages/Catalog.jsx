@@ -9,24 +9,26 @@ import {
   Tag,
   DollarSign,
   Barcode,
-  Layers,
   Sparkles,
   Info,
   Trash2,
   FolderTree,
   X,
-  Check,
   PackagePlus,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { catalogApi, resolveMediaUrl } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { useAuth } from '../context/AuthContext';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import Pagination from '../components/common/Pagination';
+import ProductToolsModal from '../components/common/ProductToolsModal';
+import CatalogImportModal from '../components/common/CatalogImportModal';
+import ProductLabelsModal from '../components/common/ProductLabelsModal';
+import PriceInput from '../components/common/PriceInput';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useTenant } from '../context/TenantContext';
 
 const defaultProductForm = {
   name: '',
@@ -52,9 +54,15 @@ const defaultCategoryForm = {
 };
 
 export default function Catalog() {
+  const { activeTenant } = useTenant();
   const toast = useToast();
   const confirm = useConfirm();
-  const { isAdmin } = useAuth();
+  const canChangeProduct = activeTenant?.is_owner || activeTenant?.permissions?.includes("catalog.change_product");
+  const canArchiveProduct = activeTenant?.is_owner || activeTenant?.permissions?.includes("catalog.archive_product");
+  const [toolsProductId, setToolsProductId] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [labelVariant, setLabelVariant] = useState(null);
+  const canImport = activeTenant?.is_owner || activeTenant?.permissions?.includes('catalog.add_product');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState([]);
@@ -85,13 +93,13 @@ export default function Catalog() {
 
   // Forms - Persisted Drafts
   const [productForm, setProductForm, resetProductForm] = usePersistedState(
-    'inventra_draft_product',
+    `inventra_draft_product:${activeTenant?.id || 'pending'}`,
     defaultProductForm
   );
   const [productImage, setProductImage] = useState(null);
 
   const [categoryForm, setCategoryForm, resetCategoryForm] = usePersistedState(
-    'inventra_draft_category',
+    `inventra_draft_category:${activeTenant?.id || 'pending'}`,
     defaultCategoryForm
   );
 
@@ -134,7 +142,7 @@ export default function Catalog() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [toast]);
 
   const loadVariants = useCallback(async (cat = '', query = '') => {
     setLoading(true);
@@ -190,7 +198,6 @@ export default function Catalog() {
       : `${n.toLocaleString('uz-UZ')} UZS`;
   };
 
-  const formatUZS = (val) => formatPrice(val, 'UZS');
 
   const calculateSuggestedCode = (catId, minPrice) => {
     const cat = categories.find((c) => c.id === parseInt(catId, 10));
@@ -401,7 +408,7 @@ export default function Catalog() {
         price_recommended: parseFloat(priceForm.price_recommended),
         price_min: parseFloat(priceForm.price_min),
         price_partner: parseFloat(priceForm.price_partner),
-        barcode: priceForm.barcode.trim() || undefined,
+        barcode: priceForm.barcode.trim() || null,
       });
 
       toast.success('Tovar narxi muvaffaqiyatli yangilandi!');
@@ -639,6 +646,7 @@ export default function Catalog() {
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {canImport && <button className="btn btn-secondary" onClick={() => setImportOpen(true)}>Fayldan yuklash</button>}
           <button
             onClick={() => setManageCategoriesModalOpen(true)}
             className="btn btn-secondary"
@@ -920,6 +928,15 @@ export default function Catalog() {
                   )}
                 </div>
 
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary" onClick={() => setLabelVariant(v)}><Barcode size={14} /> Yorliq chop etish</button>
+                  {canChangeProduct && <>
+                    <button className="btn btn-secondary" onClick={() => openEditPrice(v)}><DollarSign size={14} /> Narxlar</button>
+                    <button className="btn btn-secondary" onClick={() => setToolsProductId(v.product)}><ImageIcon size={14} /> Rasmlar / variantlar</button>
+                  </>}
+                  {canArchiveProduct && <button className="btn btn-secondary" onClick={() => handleArchive(v.id, v.product_name || v.name)}><Archive size={14} /> Arxivlash</button>}
+                </div>
+
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 6 }}>
                   <button
@@ -957,6 +974,10 @@ export default function Catalog() {
           </div>
         )}
       </div>
+
+      {importOpen && <CatalogImportModal onClose={() => setImportOpen(false)} onSuccess={() => { loadCategories(); loadVariants(selectedCat, search); }} />}
+      {labelVariant && <ProductLabelsModal key={labelVariant.id} variant={labelVariant} canGenerate={canChangeProduct} onClose={() => setLabelVariant(null)} onChanged={() => loadVariants(selectedCat, search)} />}
+      <ProductToolsModal productId={toolsProductId} onClose={() => setToolsProductId(null)} onChanged={() => loadVariants(selectedCat, search)} />
 
       {/* Create Product Modal */}
       <Modal
@@ -1067,9 +1088,8 @@ export default function Catalog() {
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       Hamkor Narxi ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                     </label>
-                    <input
-                      type="number"
-                      placeholder="10000"
+                    <PriceInput
+                      placeholder="10 000"
                       value={productForm.price_partner}
                       onChange={(e) => setProductForm({ ...productForm, price_partner: e.target.value })}
                       className="input-field"
@@ -1084,9 +1104,8 @@ export default function Catalog() {
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       Minimal Narx ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                     </label>
-                    <input
-                      type="number"
-                      placeholder="11000"
+                    <PriceInput
+                      placeholder="11 000"
                       value={productForm.price_min}
                       onChange={(e) => handleProductMinPriceChange(e.target.value)}
                       className="input-field"
@@ -1101,9 +1120,8 @@ export default function Catalog() {
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       Sotuv Narxi ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                     </label>
-                    <input
-                      type="number"
-                      placeholder="13000"
+                    <PriceInput
+                      placeholder="13 000"
                       value={productForm.price_recommended}
                       onChange={(e) => setProductForm({ ...productForm, price_recommended: e.target.value })}
                       className="input-field"
@@ -1214,11 +1232,8 @@ export default function Catalog() {
                           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                             Asl Narx / Tan Narxi ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                           </label>
-                          <input
-                            type="number"
-                            step={cur === 'USD' ? '0.01' : '1'}
-                            min="0"
-                            placeholder={cur === 'USD' ? 'Masalan: 10' : 'Masalan: 45000'}
+                          <PriceInput
+                            placeholder={cur === 'USD' ? '10' : '45 000'}
                             value={productForm.intake_cost_price}
                             onChange={(e) => setProductForm((prev) => ({ ...prev, intake_cost_price: e.target.value }))}
                             className="input-field"
@@ -1527,8 +1542,7 @@ export default function Catalog() {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               Tavsiya Etilgan Sotuv Narxi ({selectedVariant?.currency || 'UZS'}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
-            <input
-              type="number"
+            <PriceInput
               value={priceForm.price_recommended}
               onChange={(e) => setPriceForm({ ...priceForm, price_recommended: e.target.value })}
               className="input-field"
@@ -1541,8 +1555,7 @@ export default function Catalog() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Hamkor Narxi (1-narx) ({selectedVariant?.currency || 'UZS'}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <input
-                type="number"
+              <PriceInput
                 value={priceForm.price_partner}
                 onChange={(e) => setPriceForm({ ...priceForm, price_partner: e.target.value })}
                 className="input-field"
@@ -1553,8 +1566,7 @@ export default function Catalog() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Minimal Chegara Narxi ({selectedVariant?.currency || 'UZS'}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <input
-                type="number"
+              <PriceInput
                 value={priceForm.price_min}
                 onChange={(e) => setPriceForm({ ...priceForm, price_min: e.target.value })}
                 className="input-field"
@@ -2050,8 +2062,7 @@ export default function Catalog() {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                     Hamkor Narxi ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                   </label>
-                  <input
-                    type="number"
+                  <PriceInput
                     value={editProductForm.price_partner}
                     onChange={(e) => setEditProductForm({ ...editProductForm, price_partner: e.target.value })}
                     className="input-field"
@@ -2066,8 +2077,7 @@ export default function Catalog() {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                     Minimal Narx ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                   </label>
-                  <input
-                    type="number"
+                  <PriceInput
                     value={editProductForm.price_min}
                     onChange={(e) => handleEditProductMinPriceChange(e.target.value)}
                     className="input-field"
@@ -2082,8 +2092,7 @@ export default function Catalog() {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                     Sotuv Narxi ({cur}) <span style={{ color: 'var(--accent-rose)' }}>*</span>
                   </label>
-                  <input
-                    type="number"
+                  <PriceInput
                     value={editProductForm.price_recommended}
                     onChange={(e) => setEditProductForm({ ...editProductForm, price_recommended: e.target.value })}
                     className="input-field"

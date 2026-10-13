@@ -33,7 +33,7 @@ Inventra platformasi o'z xizmatlarini sifatli, xavfsiz va qonuniy taqdim etish u
 * **Tug'ilgan sana va Profil surati:** Profilni to'liq shakllantirish uchun (ixtiyoriy).
 
 ### 2.2. Autentifikatsiya va Xavfsizlik Ma'lumotlari:
-* **Telegram `chat_id`:** Telegram boti (`@inventraa_bot`) orqali ikki faktorli (2FA) bir martalik OTP kodlarini yetkazish va avtomatik bildirishnomalarni yuborish uchun;
+* **Telegram `chat_id`:** Telegram boti (`@ilbi_bot`) orqali ikki faktorli (2FA) bir martalik OTP kodlarini yetkazish va avtomatik bildirishnomalarni yuborish uchun;
 * **IP-manzillar va Kirish jurnallari:** Xavfsizlik tahlili, ruxsatsiz urinishlarni to'xtatish (brute-force rate limiting) va audit nazorati uchun;
 * **Parollar:** Hech qachon ochiq holda saqlanmaydi — faqat zamonaviy kriptografik xesh-funksiyalar orqali shifrlanadi.
 
@@ -116,5 +116,5 @@ Maxfiylik siyosati yoki shaxsiy ma'lumotlaringizning himoyasi yuzasidan har qand
 
 * **Mas'ul xizmat:** Inventra Axborot Xavfsizligi Bo'limi  
 * **Elektron pochta:** `privacy@inventra.uz` / `support@inventra.uz`  
-* **Telegram orqali aloqa:** `@inventraa_bot`  
+* **Telegram orqali aloqa:** `@ilbi_bot`  
 * **Veb-sayt:** `https://inventra.uz`

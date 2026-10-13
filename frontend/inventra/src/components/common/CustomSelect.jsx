@@ -107,11 +107,11 @@ export default function CustomSelect({
       try {
         // First try standard callback with direct value and synthetic event as second arg
         onChange(opt.value, syntheticEvent);
-      } catch (err) {
+      } catch {
         // If caller expected (e) => e.target.value and crashed on primitive value:
         try {
           onChange(syntheticEvent);
-        } catch (_) {}
+        } catch {}
       }
     }
   };

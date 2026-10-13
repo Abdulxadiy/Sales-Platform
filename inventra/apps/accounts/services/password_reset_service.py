@@ -3,13 +3,18 @@ Service layer for password setup and reset via secure one-time links sent by ema
 Roadmap reference: Phase 7 (Password reset / setup via email).
 """
 
+import hashlib
+import json
 import logging
 import secrets
 import redis
 from django.db.models import Q
+from django.db import IntegrityError, transaction
 from django.conf import settings
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from apps.accounts.models import Employee
 from apps.accounts.services import login_throttle
@@ -25,8 +30,20 @@ COOLDOWN_SECONDS = 60      # Minimum interval between email dispatch requests
 
 
 def _token_key(token: str) -> str:
-    """Redis key for storing token -> user_id mapping."""
+    """New bearer tokens are stored under their digest, never the URL token."""
+    return f"pwd_reset:{hashlib.sha256(token.encode()).hexdigest()}"
+
+
+def _legacy_token_key(token: str) -> str:
+    """Old emailed links remain usable for the rest of their original TTL."""
     return f"pwd_reset:{token}"
+
+
+def _invitation_index_key(user_id: int) -> str:
+    return f"pwd_reset_invites_user:{user_id}"
+
+
+INVITE_PURPOSES = frozenset(("new_owner", "new_employee", "transfer_owner"))
 
 
 def _cooldown_key(user_id: int) -> str:
@@ -44,8 +61,6 @@ def is_in_cooldown(user_id: int) -> bool:
     return redis_client.exists(_cooldown_key(user_id)) == 1
 
 
-import json
-
 def store_reset_token(
     token: str,
     user_id: int,
@@ -60,9 +75,16 @@ def store_reset_token(
         "user_id": user_id,
         "purpose": purpose,
         "extra_context": extra_context or {},
+        "account_version": User.objects.filter(pk=user_id).values_list("token_version", flat=True).first(),
     }
-    redis_client.set(_token_key(token), json.dumps(payload), ex=TOKEN_TTL_SECONDS)
-    redis_client.set(_cooldown_key(user_id), "1", ex=COOLDOWN_SECONDS)
+    pipe = redis_client.pipeline()
+    pipe.set(_token_key(token), json.dumps(payload), ex=TOKEN_TTL_SECONDS)
+    pipe.set(_cooldown_key(user_id), "1", ex=COOLDOWN_SECONDS)
+    if purpose in INVITE_PURPOSES:
+        index_key = _invitation_index_key(user_id)
+        pipe.sadd(index_key, _token_key(token))
+        pipe.expire(index_key, TOKEN_TTL_SECONDS)
+    pipe.execute()
 
 
 def _parse_token_raw(raw_val: str | None) -> dict | None:
@@ -86,21 +108,40 @@ def _parse_token_raw(raw_val: str | None) -> dict | None:
         return None
 
 
+def _read_token(token: str) -> tuple[str, dict | None]:
+    key = _token_key(token)
+    raw = redis_client.get(key)
+    if raw is None:
+        key = _legacy_token_key(token)
+        raw = redis_client.get(key)
+    return key, _parse_token_raw(raw)
+
+
+def _eligible_user(user) -> bool:
+    return bool(
+        user
+        and user.is_active
+        and user.role in ("staff", "owner", "platform_admin")
+        and (
+            user.role == "platform_admin"
+            or Employee.objects.filter(user=user, is_active=True, tenant__is_active=True).exists()
+        )
+    )
+
+
 def consume_reset_token(token: str) -> int | None:
     """
     Retrieve user_id associated with token and immediately delete it
     to enforce single-use semantics. Returns user_id or None if invalid/expired.
     """
-    key = _token_key(token)
-    pipe = redis_client.pipeline()
-    pipe.get(key)
-    pipe.delete(key)
-    results = pipe.execute()
-
-    raw_val = results[0]
-    parsed = _parse_token_raw(raw_val)
+    if not token:
+        return None
+    key, _ = _read_token(token)
+    parsed = _parse_token_raw(redis_client.getdel(key))
     if not parsed:
         return None
+    if parsed.get("purpose") in INVITE_PURPOSES:
+        redis_client.srem(_invitation_index_key(parsed["user_id"]), _token_key(token))
     return parsed.get("user_id")
 
 
@@ -111,9 +152,7 @@ def peek_reset_token(token: str) -> dict | None:
     """
     if not token:
         return None
-    key = _token_key(token)
-    raw_val = redis_client.get(key)
-    parsed = _parse_token_raw(raw_val)
+    _key, parsed = _read_token(token)
     if not parsed:
         return None
 
@@ -122,18 +161,25 @@ def peek_reset_token(token: str) -> dict | None:
         return None
 
     user = User.objects.filter(id=user_id).first()
-    if not user:
+    if not _eligible_user(user):
+        return None
+    if parsed.get("phase") != "pending_2fa" and parsed.get("account_version") not in (None, user.token_version):
+        return None
+    if parsed.get("phase") == "pending_2fa" and (
+        parsed.get("password_version") != getattr(user, "token_version", 1)
+        or parsed.get("purpose") not in INVITE_PURPOSES
+    ):
         return None
 
     ctx = parsed.get("extra_context") or {}
     tenant_name = ctx.get("tenant_name")
     if not tenant_name:
-        if hasattr(user, "tenant") and user.tenant:
-            tenant_name = user.tenant.name
-        elif hasattr(user, "employees"):
-            emp = user.employees.filter(is_active=True).select_related("tenant").first()
-            if emp and emp.tenant:
-                tenant_name = emp.tenant.name
+        memberships = list(
+            user.employments.filter(is_active=True)
+            .select_related("tenant")[:2]
+        )
+        if len(memberships) == 1:
+            tenant_name = memberships[0].tenant.name
 
     from apps.accounts.services.phone_utils import mask_phone_number
 
@@ -147,7 +193,48 @@ def peek_reset_token(token: str) -> dict | None:
         "tenant_name": tenant_name or "",
         "position": ctx.get("position", ""),
         "role": user.role,
+        "phase": parsed.get("phase", "password_required"),
     }
+
+
+def resume_invitation(token: str):
+    """An unfinished invitation can resume 2FA, but can never reset the password again."""
+    info = peek_reset_token(token)
+    if not info or info["phase"] != "pending_2fa":
+        return None
+    _key, payload = _read_token(token)
+    if not payload or payload.get("phase") != "pending_2fa":
+        return None
+    user = User.objects.filter(pk=payload.get("user_id")).first()
+    if not _eligible_user(user) or payload.get("password_version") != getattr(user, "token_version", 1):
+        return None
+    return user
+
+
+def invitation_ttl(token: str) -> int:
+    """Remaining absolute lifetime; resuming must not start a new 24-hour window."""
+    if not token:
+        return 0
+    key, parsed = _read_token(token)
+    return max(redis_client.ttl(key), 0) if parsed else 0
+
+
+def complete_pending_invitations(user_id: int) -> None:
+    """Successful Telegram 2FA login terminates every outstanding invite for this account."""
+    index_key = _invitation_index_key(user_id)
+    while key := redis_client.spop(index_key):
+        parsed = _parse_token_raw(redis_client.get(key))
+        if parsed and parsed.get("user_id") == user_id and parsed.get("purpose") in INVITE_PURPOSES:
+            redis_client.delete(key)
+
+
+def invalidate_password_links(user_id: int) -> None:
+    """Revoke all setup/reset links, including legacy keys, after an account edit."""
+    for key in redis_client.scan_iter(match="pwd_reset:*"):
+        parsed = _parse_token_raw(redis_client.get(key))
+        if parsed and parsed.get("user_id") == user_id:
+            redis_client.delete(key)
+    redis_client.delete(_invitation_index_key(user_id), _cooldown_key(user_id))
 
 
 def _resolve_email_copy(
@@ -181,8 +268,8 @@ def _resolve_email_copy(
             ),
             "button_text": "Hisobni faollashtirish &rarr;",
             "step_title": "🚀 Boshlash uchun qadamlar:",
-            "step_desc": "1. Shaxsiy parol va username belgilang &rarr; 2. Telegram orqali 2FA kodni tasdiqlang &rarr; 3. Do‘koningiz boshqaruv paneliga to‘g‘ridan-to‘g‘ri kiring.",
-            "security_note": "🔒 Ushbu xavfsiz havola <strong>24 soat</strong> davomida faqat bir marta foydalanish uchun amal qiladi. Xavfsizligingiz uchun parolingizni hech kimga bermang.",
+            "step_desc": "1. Shaxsiy parolni belgilang &rarr; 2. @ilbi_bot da /start bosib telefon kontaktingizni ulang &rarr; 3. Telegram 2FA kodini tasdiqlang.",
+            "security_note": "🔒 Ushbu havola <strong>24 soatgacha</strong> yoki Telegram orqali tizimga kirguningizcha amal qiladi. Parol saqlangach, havola orqali parolni qayta o‘zgartirib bo‘lmaydi.",
         }
 
     elif purpose == "new_employee":
@@ -201,8 +288,8 @@ def _resolve_email_copy(
             ),
             "button_text": "Parol o‘rnatish va kirish &rarr;",
             "step_title": "💡 Keyingi qadam:",
-            "step_desc": "Parol belgilagach, telefoningizga Telegram orqali kelgan 6 xonali tasdiqlash kodini kiritib tizimga kirasiz.",
-            "security_note": "🔒 Ushbu taklif havolasi <strong>24 soat</strong> davomida amal qiladi.",
+            "step_desc": "Parolni belgilang, @ilbi_bot da /start bosib o‘z telefon kontaktingizni ulang, so‘ng Telegram 2FA kodini tasdiqlang.",
+            "security_note": "🔒 Ushbu taklif havolasi <strong>24 soatgacha</strong> yoki Telegram orqali tizimga kirguningizcha amal qiladi. Parol saqlangach, havola orqali parolni qayta o‘zgartirib bo‘lmaydi.",
         }
 
     elif purpose == "transfer_owner":
@@ -220,8 +307,8 @@ def _resolve_email_copy(
             ),
             "button_text": "Boshqaruvni qabul qilish &rarr;",
             "step_title": "💡 Keyingi qadam:",
-            "step_desc": "Parol o‘rnatilgach, Telegram orqali xavfsizlik tasdig‘idan o‘tib, do‘koningizni to‘liq boshqarishni boshlaysiz.",
-            "security_note": "🔒 Ushbu havola <strong>24 soat</strong> davomida faqat bir marta foydalanish uchun amal qiladi.",
+            "step_desc": "Parolni belgilang, @ilbi_bot da /start bosib telefon kontaktingizni ulang, so‘ng Telegram 2FA kodini tasdiqlang.",
+            "security_note": "🔒 Ushbu havola <strong>24 soatgacha</strong> yoki Telegram orqali tizimga kirguningizcha amal qiladi. Parol saqlangach, havola orqali parolni qayta o‘zgartirib bo‘lmaydi.",
         }
 
     else:
@@ -270,13 +357,19 @@ def send_password_reset_email(
     security_note = copy["security_note"]
 
     # Plain text version for non-HTML clients
+    lifetime_note = (
+        "Ushbu taklif havolasi 24 soatgacha yoki Telegram orqali tizimga kirguningizcha amal qiladi. "
+        "Parol saqlangach, havola faqat 2FA bosqichini davom ettiradi."
+        if purpose in INVITE_PURPOSES
+        else "Ushbu parolni tiklash havolasi 24 soat davomida bir marta ishlatiladi."
+    )
     plain_message = (
         f"Assalomu alaykum,\n\n"
         f"{copy['plain_intro']}\n\n"
         f"Tizimga kirish uchun havola:\n"
         f"{reset_url}\n\n"
         f"{step_title} {step_desc}\n\n"
-        f"Ushbu havola 24 soat davomida faqat bir marta foydalanish uchun amal qiladi.\n"
+        f"{lifetime_note}\n"
         f"Agar bu so‘rovni siz yubormagan bo‘lsangiz, xatni e’tiborsiz qoldirishingiz mumkin."
     )
 
@@ -369,12 +462,10 @@ def send_password_reset_email(
     </html>
     """
 
-    logger.warning("=" * 60)
-    logger.warning("EMAIL JO'NATISH [%s, purpose=%s]: %s", user.email, purpose, reset_url)
-    logger.warning("=" * 60)
+    logger.info("Password reset email attempt: user_id=%s purpose=%s", user.id, purpose)
 
     try:
-        send_mail(
+        sent_count = send_mail(
             subject=subject,
             message=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
@@ -382,59 +473,36 @@ def send_password_reset_email(
             html_message=html_message,
             fail_silently=False,
         )
-        logger.info("Email muvaffaqiyatli jo'natildi: %s (purpose=%s)", user.email, purpose)
+        if sent_count != 1:
+            logger.error("Email delivery was not accepted: user_id=%s purpose=%s", user.id, purpose)
+            return False
+        logger.info("Email muvaffaqiyatli jo'natildi: user_id=%s (purpose=%s)", user.id, purpose)
         return True
     except Exception as exc:
-        logger.error("Email jo'natishda xatolik yuz berdi (%s): %s", user.email, exc)
+        logger.error("Email jo'natishda xatolik yuz berdi: user_id=%s error=%s", user.id, type(exc).__name__)
         return False
 
 
-def request_password_reset(
-    email: str = "",
-    identifier: str = "",
-    return_hint: bool = False,
-    purpose: str = "auto",
-    extra_context: dict | None = None,
-) -> tuple[bool, str] | tuple[bool, str, str | None]:
-    """
-    Process request for a password reset / setup link.
-    Supports lookup by email, username, or phone_number.
-
-    Guards against user enumeration by returning success (True, 'sent')
-    even if the user/email is not registered in the system.
-    """
-    ident = (identifier or email or "").strip()
-    if not ident:
-        if return_hint:
-            return False, "identifier_required", None
-        return False, "email_required"
-
-    user = User.objects.filter(
-        Q(email__iexact=ident) | Q(username__iexact=ident) | Q(phone_number=ident)
-    ).first()
-
-    # Generic success response to avoid leaking registered accounts.
-    if user is None or user.role not in ("staff", "owner", "platform_admin"):
-        if return_hint:
-            return True, "sent", None
-        return True, "sent"
-
+@transaction.atomic
+def _request_password_reset_for_user(
+    user, purpose: str, extra_context: dict | None = None,
+) -> tuple[bool, str, str | None]:
+    """Send a setup link to this exact account, without an ambiguous e-mail lookup."""
+    user = User.objects.select_for_update().get(pk=user.pk)
+    if user.role not in ("staff", "owner", "platform_admin"):
+        return False, "invalid_user", None
+    if not user.is_active:
+        return False, "inactive_user", None
     if user.role != "platform_admin" and not Employee.objects.filter(
         user=user, is_active=True
     ).exists():
-        if return_hint:
-            return True, "sent", None
-        return True, "sent"
+        return False, "inactive_user", None
 
     if not user.email:
-        if return_hint:
-            return False, "no_email", None
-        return False, "no_email"
+        return False, "no_email", None
 
     if is_in_cooldown(user.id):
-        if return_hint:
-            return False, "cooldown", None
-        return False, "cooldown"
+        return False, "cooldown", None
 
     # Smart auto-detection of email purpose if caller left as 'auto'
     resolved_purpose = purpose
@@ -464,16 +532,54 @@ def request_password_reset(
         extra_context=extra_context,
     )
     if not sent:
-        # If email delivery fails, clean up the stored token so user can retry
-        redis_client.delete(_token_key(token))
-        if return_hint:
-            return False, "email_send_failed", None
-        return False, "email_send_failed"
+        # A failed attempt must not consume the resend cooldown.
+        redis_client.delete(_token_key(token), _cooldown_key(user.id))
+        redis_client.srem(_invitation_index_key(user.id), _token_key(token))
+        return False, "email_send_failed", None
 
-    email_hint = mask_email(user.email)
+    return True, "sent", mask_email(user.email)
+
+
+def request_password_reset_for_user(
+    user_id: int, purpose: str = "auto", extra_context: dict | None = None,
+) -> tuple[bool, str]:
+    """Internal invitation path: target the account by ID, not by a shared e-mail."""
+    user = User.objects.filter(pk=user_id).first()
+    if user is None:
+        return False, "user_not_found"
+    ok, reason, _ = _request_password_reset_for_user(user, purpose, extra_context)
+    return ok, reason
+
+
+def request_password_reset(
+    email: str = "",
+    identifier: str = "",
+    return_hint: bool = False,
+    purpose: str = "auto",
+    extra_context: dict | None = None,
+) -> tuple[bool, str] | tuple[bool, str, str | None]:
+    """Public reset lookup; unknown accounts get a generic success response."""
+    ident = (identifier or email or "").strip()
+    if not ident:
+        if return_hint:
+            return False, "identifier_required", None
+        return False, "email_required"
+
+    user = User.objects.filter(
+        Q(email__iexact=ident) | Q(username__iexact=ident) | Q(phone_number=ident)
+    ).first()
+    if user is None:
+        if return_hint:
+            return True, "sent", None
+        return True, "sent"
+
+    ok, reason, email_hint = _request_password_reset_for_user(user, purpose, extra_context)
+    # Preserve the generic public response for accounts without an active role.
+    if reason in ("invalid_user", "inactive_user"):
+        ok, reason, email_hint = True, "sent", None
     if return_hint:
-        return True, "sent", email_hint
-    return True, "sent"
+        return ok, reason, email_hint
+    return ok, reason
 
 
 def request_password_reset_with_hint(
@@ -490,6 +596,7 @@ def request_password_reset_with_hint(
     )
 
 
+@transaction.atomic
 def change_password_with_old(login: str, old_password: str, new_password: str) -> tuple[bool, str, User | None]:
     """
     Change password by providing valid old_password when email reset is not accessible.
@@ -506,11 +613,11 @@ def change_password_with_old(login: str, old_password: str, new_password: str) -
         return False, "Yangi parol joriy paroldan farq qilishi kerak.", None
 
     ident = login.strip()
-    user = User.objects.filter(
+    user = User.objects.select_for_update().filter(
         Q(username__iexact=ident) | Q(phone_number=ident) | Q(email__iexact=ident)
     ).first()
 
-    if user is None or not user.check_password(old_password):
+    if user is None or not user.is_active or not user.check_password(old_password):
         return False, "Login yoki eski parol noto‘g‘ri.", None
 
     if user.role not in ("staff", "owner", "platform_admin"):
@@ -521,9 +628,13 @@ def change_password_with_old(login: str, old_password: str, new_password: str) -
     ).exists():
         return False, "Foydalanuvchi faol emas.", None
 
+    try:
+        validate_password(new_password, user)
+    except ValidationError as exc:
+        return False, " ".join(exc.messages), None
     user.set_password(new_password)
     user.token_version = getattr(user, 'token_version', 1) + 1
-    user.save()
+    user.save(update_fields=["password", "token_version"])
 
     try:
         from apps.core.models import AuditAction
@@ -543,38 +654,69 @@ def change_password_with_old(login: str, old_password: str, new_password: str) -
     return True, "Parolingiz muvaffaqiyatli yangilandi! Endi yangi parol bilan kirishingiz mumkin.", user
 
 
+@transaction.atomic
 def confirm_password_reset(
     token: str, new_password: str, username: str = ""
 ) -> tuple[bool, str, User | None]:
     """
-    Validate the one-time token, update username (if provided) and password,
-    and clear any lingering login throttle strikes.
+    Set the password once. Invitation links then become resume-only until OTP
+    login succeeds or the original 24-hour deadline expires.
     """
     if not token or not new_password:
         return False, "missing_fields", None
 
-    user_id = consume_reset_token(token)
-    if not user_id:
-        return False, "invalid_or_expired_token", None
+    lock_key = f"pwd_reset_lock:{hashlib.sha256(token.encode()).hexdigest()}"
+    with redis_client.lock(lock_key, timeout=30, blocking_timeout=5):
+        key, payload = _read_token(token)
+        if not payload or redis_client.ttl(key) <= 0:
+            return False, "invalid_or_expired_token", None
+        if payload.get("phase") == "pending_2fa":
+            return False, "setup_already_started", None
 
-    user = User.objects.filter(id=user_id).first()
-    if not user:
-        return False, "user_not_found", None
+        user = User.objects.select_for_update().filter(id=payload.get("user_id")).first()
+        if not _eligible_user(user):
+            return False, "invalid_or_expired_token", None
+        # A directory edit may revoke this link while the account row was locked.
+        key, payload = _read_token(token)
+        if not payload or payload.get("account_version") not in (None, user.token_version):
+            return False, "invalid_or_expired_token", None
 
-    # Handle username update if provided
-    cleaned_username = username.strip() if username else ""
-    if cleaned_username:
-        if (
-            User.objects.filter(username__iexact=cleaned_username)
-            .exclude(id=user.id)
-            .exists()
-        ):
+        cleaned_username = username.strip() if username else ""
+        if cleaned_username and User.objects.filter(
+            username__iexact=cleaned_username
+        ).exclude(id=user.id).exists():
             return False, "username_taken", None
-        user.username = cleaned_username
 
-    user.set_password(new_password)
-    user.token_version = getattr(user, "token_version", 1) + 1
-    user.save()
+        if cleaned_username:
+            user.username = cleaned_username
+        try:
+            validate_password(new_password, user)
+        except ValidationError as exc:
+            return False, " ".join(exc.messages), None
+        user.set_password(new_password)
+        user.token_version = getattr(user, "token_version", 1) + 1
+        try:
+            user.save()
+        except IntegrityError:
+            return False, "username_taken", None
+
+        if payload.get("purpose") in INVITE_PURPOSES:
+            # Reuse the *remaining* TTL. A page refresh after password setup
+            # can obtain a fresh login ticket but cannot choose another password.
+            ttl = max(redis_client.ttl(key), 1)
+            payload["phase"] = "pending_2fa"
+            payload["password_version"] = user.token_version
+            canonical_key = _token_key(token)
+            index_key = _invitation_index_key(user.id)
+            pipe = redis_client.pipeline()
+            pipe.set(canonical_key, json.dumps(payload), ex=ttl)
+            if key != canonical_key:
+                pipe.delete(key)
+            pipe.sadd(index_key, canonical_key)
+            pipe.expire(index_key, max(redis_client.ttl(index_key), ttl))
+            pipe.execute()
+        else:
+            redis_client.delete(key)
 
     from apps.core.models import AuditAction
     from apps.core.services.audit_service import AuditService

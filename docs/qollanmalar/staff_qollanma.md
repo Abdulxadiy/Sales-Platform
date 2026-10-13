@@ -45,7 +45,7 @@ Do'kon rahbari sizning telefon raqamingizni tizimga kiritgach, elektron pochtang
 
 ### 2.2. Telegram botga ulanish va 2FA orqali kirish
 Inventra tizimida har bir kirish xavfsiz Telegram kodi orqali tasdiqlanadi:
-1. Telegramda rasmiy `@inventraa_bot` ga kiring.
+1. Telegramda rasmiy `@ilbi_bot` ga kiring.
 2. `/start inventra` buyrug'ini yozing.
 3. Bot so'ragan **"Kontaktni ulashish"** (Share Contact) tugmasini bosing.
 4. Brauzerda login va parolingizni kiritganingizda, ushbu botga 6 xonali tasdiqlash kodi keladi. Kodni kiritib ishni boshlaysiz.

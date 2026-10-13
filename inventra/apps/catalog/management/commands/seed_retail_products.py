@@ -1,17 +1,17 @@
-"""Management command to seed ~100 realistic retail products into a tenant's main branch.
+"""Management command to seed ~100 realistic retail products into a tenant's stock.
 Supports idempotent runs: if a product already exists, skips or updates stock.
 """
 
 from decimal import Decimal
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from apps.tenants.models import Tenant
 from apps.accounts.models import User
-from apps.catalog.models import Category, Product, ProductVariant
+from apps.catalog.models import Category, Product
 from apps.catalog.services import ProductService
 from apps.inventory.services import StockService
-
+from apps.tenants.models import Tenant
 
 CATEGORIES_DATA = [
     {
@@ -1231,7 +1231,7 @@ PRODUCTS_DATA = [
 
 
 class Command(BaseCommand):
-    help = "Seed ~100 realistic retail products with positive stock into the main branch"
+    help = "Seed ~100 realistic retail products with positive stock into a tenant"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -1249,18 +1249,13 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"Tenant with ID {tenant_id} not found."))
             return
 
-        main_branch = tenant.get_main_branch()
-        if not main_branch:
-            self.stderr.write(self.style.ERROR(f"Tenant {tenant.name} has no main branch."))
-            return
-
         owner = User.objects.filter(tenant=tenant, role="owner").first()
         if not owner:
             owner = User.objects.filter(tenant=tenant).first()
 
         self.stdout.write(
             self.style.NOTICE(
-                f"--- Seeding for Tenant: '{tenant.name}' (ID: {tenant.id}) | Branch: '{main_branch.name}' (ID: {main_branch.id}) ---"
+                f"--- Seeding for Tenant: '{tenant.name}' (ID: {tenant.id}) ---"
             )
         )
 
@@ -1322,12 +1317,10 @@ class Command(BaseCommand):
             if not variant:
                 continue
 
-            # Check stock in main_branch
-            stock = variant.stocks.filter(branch=main_branch).first()
+            stock = getattr(variant, "stock", None)
             if not stock or stock.quantity <= 0:
                 StockService.intake(
                     tenant=tenant,
-                    branch=main_branch,
                     product_variant=variant,
                     quantity=item["quantity"],
                     cost_price=item["cost_price"],
@@ -1349,6 +1342,6 @@ class Command(BaseCommand):
                 f"- Kirim qilingan partiyalar: {intake_count}\n"
                 f"- Jami ombordagi qoldiq (dona/kg): {total_units}\n"
                 f"- Jami tan narxi qiymati: {total_cost:,.2f} UZS\n"
-                f"- Filial: '{main_branch.name}'\n"
+                f"- Tenant ombori: '{tenant.name}'\n"
             )
         )

@@ -6,14 +6,8 @@ old permissions never survive, which Django's built-in
 user.has_perm() can't guarantee since it doesn't know about
 "active employment").
 
-Deliberately does NOT take a tenant argument -- WHICH tenant a user is
-allowed to act on is a separate concern, already handled by the
-existing object-level permission classes (IsTenantMember,
-IsTenantOwnerOrPlatformAdmin in api/permissions.py) via
-has_object_permission(). This service only answers "does this user
-have this specific action-permission at all", so combine it with a
-tenant-scoping permission class in any view that operates on one
-tenant's data.
+The active tenant and membership are resolved from the database for
+each request. Staff permissions are read from that exact membership.
 
 Role behavior:
 - platform_admin: always allowed, every permission, any tenant.
@@ -34,12 +28,14 @@ from apps.accounts.models import Employee
 
 class PermissionService:
     @staticmethod
-    def has_permission(user, codename: str) -> bool:
+    def has_permission(user, codename: str, tenant=None, employee=None) -> bool:
         """
         :param user: the acting User (request.user).
         :param codename: a Django-style "app_label.codename" string,
             e.g. "catalog.add_product" -- same format as the built-in
             user.has_perm().
+        :param tenant: the active tenant resolved for this request.
+        :param employee: the active membership in that tenant.
         """
         # Validate the codename format unconditionally, before any
         # role/employment short-circuit. A malformed codename is a bug
@@ -63,23 +59,16 @@ class PermissionService:
             # customer, or anything else with no employment concept
             return False
 
-        # Both owner and staff gate on an ACTIVE Employee record. Role
-        # alone is not enough: fire() (Variant A) intentionally leaves
-        # User.role untouched for audit purposes, so a former owner
-        # replaced via TenantService.change_owner() would otherwise keep
-        # role="owner" -- and therefore full permissions -- forever.
-        has_active_employment = Employee.objects.filter(
-            user=user, is_active=True
-        ).exists()
-        if not has_active_employment:
+        if employee is None and tenant is not None:
+            employee = Employee.objects.filter(
+                user=user, tenant=tenant, is_active=True
+            ).first()
+        if employee is None or not employee.is_active:
             return False
 
-        if user.role == "owner":
+        if employee.is_owner and employee.tenant_id == getattr(tenant, "id", None):
             return True
 
-        return Employee.objects.filter(
-            user=user,
-            is_active=True,
-            permissions__category=category,
-            permissions__codename=short_codename,
+        return employee.permissions.filter(
+            category=category, codename=short_codename
         ).exists()

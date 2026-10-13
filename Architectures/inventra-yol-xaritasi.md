@@ -729,8 +729,9 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
   - **`Catalog.jsx`:** Kategoriyalar (2 daraja), mahsulotlar va variantlar, narxlar ierarxiyasi (tavsiya, min, 1-narx), 3 darajali avtomat kodlar, rasmlar yuklash.
   - **`Inventory.jsx`:** Ombor qoldiqlari, filiallar bo'yicha filtr, partiya kirimi, filiallararo tovar transferlari, kamomadlar (deficits) monitoringi, harakatlar auditi, ixcham bitta qatorli filtr.
   - **`RapidStockIntakeModal.jsx`:** Kassa-skaner uslubidagi ommaviy partiya kirimi ish maydoni, jadvalda narxlar va miqdorlar tahriri, LocalStorage qoralamalari persistensiyasi (`inventra_stock_intake_full_draft_v1`).
-  - **`Sales.jsx`:** Sotuvlar tarixi, cheklar ro'yxati, 7 kunlik universal Void (to'liq yoki qisman qaytarish).
-  - **`Counterparties.jsx`:** Mijozlar va kontragentlar, UZS va USD mustaqil qarzlari, qarz to'lovlari kiritish va tuzatishlar.
+  - **`Sales.jsx`:** Sotuvlar tarixi, cheklar ro'yxati, kunlik guruhlash, termal kassa cheki (58mm/80mm), 7 kunlik universal Void (to'liq yoki qisman qaytarish) va A4 faktura chop etish.
+  - **`Debts.jsx`:** Mustaqil "Mijoz Nasiyalari" sahifasi (`/debts`), kontragentlar KPI ko'rsatkichlari, qarz to'lash (filial tanlovi va oxirgi to'lov ma'lumoti bilan), mijoz haqqini qaytarish, to'lovlar va xaridlar tarixi auditi.
+  - **`B2BTransactions.jsx`:** Mustaqil "B2B Tranzaksiyalar" sahifasi (`/b2b`), kiruvchi B2B fakturalar (Inbox), qabul qilish (kategoriya va variant xaritalash), rad etish, jo'natilgan B2B o'tkazmalar, tovar qaytishlarini qabul qilish va tafovutlarni yopish.
   - **`Shifts.jsx`:** Smena ochish/yopish, kunlik kassa chiqimlari va kirimlari, Z-Hisobot modal va bosma chek, xavfsiz imzo chizish (o'chirish taqiqlangan).
   - **`Analytics.jsx`:** Kengaytirilgan sotuv va moliya hisobotlari, davrlar va filiallar filtri.
   - **`Branches.jsx`:** Filiallar CRUD, asosiy filialni belgilash, filiallararo tovar transferlarini qabul qilish/bekor qilish.
@@ -809,6 +810,8 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 |**AB**|~~Elektron imzolar xavfsizligi (Imzoni yangilash va o'chirish taqiqlangan)~~|✅ **YOPILDI** — Hisob-faktura (A4) imzolangach yangilash/o'zgartirish butunlay yopildi va qulflanadi; smena imzosini tozalash (Clear) butunlay olib tashlangan, audit daxlsizligi to'liq ta'minlandi|
 |**AC**|~~Ommaviy partiya kirimi (Rapid Barcode Intake) & LocalStorage qoralamalari~~|✅ **YOPILDI** — Kassa-skaner uslubidagi partiya kiritish jadvali, narxlar va miqdorlarni qatorda tahrirlash, `inventra_stock_intake_full_draft_v1` kaliti bilan qoralamalar saqlanishi|
 |**AD**|~~Kamomad (Deficits) dinamik algoritmi~~|✅ **YOPILDI** — Oxirgi 30 kunlik sotuvi >= 10 va qoldig'i <= 5 tovarlar avtomatik kamomadga tushadi, kirim bo'lishi bilan (>5) avtomatik chiqadi. Filial bo'yicha filterlanadi va Telegramga yuboriladi|
+|**AE**|~~Qarz to'lovida oxirgi to'lov auditi va Filial tanlovi~~|✅ **YOPILDI** — Har bir kontragent bo'yicha oxirgi to'langan summa, valyuta, sana va filial ma'lumotlari (`last_payment`) prefetched holda chiqariladi; qarz to'lash modalida oxirgi to'lov axborot banneri va to'lov qabul qilinayotgan filial (`branch_id`) tanlash imkoniyati to'liq joriy qilindi|
+|**AF**|~~Mijoz Nasiyalari va B2B Tranzaksiyalarining alohida sidebar bo'limlariga ajratilishi~~|✅ **YOPILDI** — Savdolar (`/sales`), Mijoz Nasiyalari (`/debts`), va B2B Tranzaksiyalari (`/b2b`) bitta sahifadagi tablardan to'liq mustaqil, ixtisoslashtirilgan SPA sahifalariga va Sidebar bo'limlariga ajratildi. Eskirgan linklar (`?tab=counterparties` va `?tab=b2b`) avtomatik tegishli yangi sahifalarga redirect qilinadi|
 
 ---
 

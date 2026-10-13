@@ -1,11 +1,15 @@
-from decimal import Decimal
 from datetime import datetime, time
-from django.db import transaction
-from django.utils import timezone
-from django.db.models import Sum
+from decimal import Decimal
 
-from apps.cashbox.models import DailyCashReport, CashExpense, CashIncome
-from apps.sales.models import Sale, Notification
+from django.db import transaction
+from django.db.models import Q, Sum
+from django.utils import timezone
+
+from apps.cashbox.models import CashExpense, CashIncome, CashShift, DailyCashReport
+from apps.sales.models import Notification, Sale
+from apps.sales.models.sale_model import SaleRefund
+from apps.sales.models import DebtPayment
+from apps.tenants.models import Tenant
 from apps.tg_bot.models import TelegramContact
 from apps.tg_bot.services import send_telegram_message
 
@@ -16,6 +20,7 @@ class CashboxServiceError(Exception):
 
 class CashboxService:
     @classmethod
+    @transaction.atomic
     def record_expense(
         cls,
         *,
@@ -25,7 +30,6 @@ class CashboxService:
         currency: str = CashExpense.CURRENCY_UZS,
         category: str,
         note: str = "",
-        branch = None,
         date=None,
     ) -> CashExpense:
         if amount <= Decimal("0.00"):
@@ -35,21 +39,19 @@ class CashboxService:
         if not category or not category.strip():
             raise CashboxServiceError("Xarajat kategoriyasi kiritilishi shart.")
 
-        if branch is None:
-            branch = tenant.get_main_branch()
-
+        shift = cls.lock_open_shift(tenant)
         return CashExpense.objects.create(
-            tenant=tenant,
-            branch=branch,
+            tenant=tenant, shift=shift,
             recorded_by=user,
             amount=amount,
             currency=currency,
             category=category.strip(),
             note=note.strip() if note else "",
-            date=date or timezone.now().date(),
+            date=date or timezone.localdate(),
         )
 
     @classmethod
+    @transaction.atomic
     def record_income(
         cls,
         *,
@@ -59,7 +61,6 @@ class CashboxService:
         currency: str = CashIncome.CURRENCY_UZS,
         source: str,
         note: str = "",
-        branch = None,
         date=None,
     ) -> CashIncome:
         if amount <= Decimal("0.00"):
@@ -69,131 +70,91 @@ class CashboxService:
         if not source or not source.strip():
             raise CashboxServiceError("Kirim manbasi kiritilishi shart.")
 
-        if branch is None:
-            branch = tenant.get_main_branch()
-
+        shift = cls.lock_open_shift(tenant)
         return CashIncome.objects.create(
-            tenant=tenant,
-            branch=branch,
+            tenant=tenant, shift=shift,
             recorded_by=user,
             amount=amount,
             currency=currency,
             source=source.strip(),
             note=note.strip() if note else "",
-            date=date or timezone.now().date(),
+            date=date or timezone.localdate(),
         )
 
+    @staticmethod
+    def lock_open_shift(tenant):
+        # Every cash writer and close uses this order: tenant, then shift.
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
+        shift = CashShift.objects.select_for_update().filter(tenant=tenant, closed_at__isnull=True).first()
+        if shift is None:
+            raise CashboxServiceError("Avval smenani oching va boshlang‘ich naqd pulni kiriting (0 ham mumkin).")
+        return shift
+
+    @staticmethod
+    @transaction.atomic
+    def open_shift(*, tenant, user, opening_cash_uzs=None, opening_cash_usd=None):
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
+        last = DailyCashReport.objects.filter(tenant=tenant).first()
+        if opening_cash_uzs is None:
+            opening_cash_uzs = last.actual_cash_uzs if last else Decimal("0")
+        if opening_cash_usd is None:
+            opening_cash_usd = last.actual_cash_usd if last else Decimal("0")
+        if opening_cash_uzs < 0 or opening_cash_usd < 0:
+            raise CashboxServiceError("Boshlang‘ich naqd pul manfiy bo‘lmaydi.")
+        if CashShift.objects.filter(tenant=tenant, closed_at__isnull=True).exists():
+            raise CashboxServiceError("Smena allaqachon ochilgan.")
+        return CashShift.objects.create(tenant=tenant, opened_by=user,
+                                       opening_cash_uzs=opening_cash_uzs, opening_cash_usd=opening_cash_usd)
+
     @classmethod
-    def get_current_shift_status(cls, tenant, branch=None) -> dict:
-        if branch is None:
-            branch = tenant.get_main_branch()
-
-        last_report = DailyCashReport.objects.filter(tenant=tenant, branch=branch).order_by("-closed_at").first()
-        if last_report:
-            shift_start_dt = last_report.closed_at
+    def get_current_shift_status(cls, tenant) -> dict:
+        shift = CashShift.objects.filter(tenant=tenant, closed_at__isnull=True).first()
+        values = {name: Decimal("0.00") for name in (
+            "total_sale_cash_uzs", "total_sale_cash_usd", "total_sale_card_uzs", "total_sale_card_usd",
+            "total_sale_debt_uzs", "total_sale_debt_usd", "total_extra_income_uzs", "total_extra_income_usd",
+            "total_expenses_uzs", "total_expenses_usd", "opening_cash_uzs", "opening_cash_usd",
+            "collected_debt_cash_uzs", "collected_debt_cash_usd", "refund_cash_uzs", "refund_cash_usd",
+        )}
+        if shift is not None:
+            values["opening_cash_uzs"] = shift.opening_cash_uzs
+            values["opening_cash_usd"] = shift.opening_cash_usd
+            sales = Sale.objects.filter(tenant=tenant).filter(
+                Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)
+            )
+            for sale in sales:
+                values[f"total_sale_{sale.payment_type}_{sale.currency.lower()}"] += sale.total_amount
+            incomes = CashIncome.objects.filter(tenant=tenant, shift_report__isnull=True).filter(
+                Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)
+            )
+            expenses = CashExpense.objects.filter(tenant=tenant, shift_report__isnull=True).filter(
+                Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)
+            )
+            for currency in ("UZS", "USD"):
+                suffix = currency.lower()
+                values[f"total_extra_income_{suffix}"] = incomes.filter(currency=currency).aggregate(s=Sum("amount"))["s"] or Decimal("0")
+                values[f"total_expenses_{suffix}"] = expenses.filter(currency=currency).aggregate(s=Sum("amount"))["s"] or Decimal("0")
+                values[f"collected_debt_cash_{suffix}"] = DebtPayment.objects.filter(
+                    shift=shift, currency=currency, payment_type="cash",
+                ).aggregate(s=Sum("amount"))["s"] or Decimal("0")
+                values[f"refund_cash_{suffix}"] = SaleRefund.objects.filter(
+                    shift=shift, currency=currency, payment_type="cash",
+                ).aggregate(s=Sum("amount"))["s"] or Decimal("0")
         else:
-            today = timezone.now().date()
-            shift_start_dt = timezone.make_aware(datetime.combine(today, time.min))
-
-        now_dt = timezone.now()
-
-        # Sales during current shift
-        valid_statuses = [
-            Sale.STATUS_COMPLETED,
-            Sale.STATUS_PARTIALLY_VOIDED,
-            Sale.STATUS_B2B_ACCEPTED,
-            Sale.STATUS_B2B_PARTIALLY_ACCEPTED,
-            Sale.STATUS_B2B_PENDING,
-        ]
-
-        sales = Sale.objects.filter(
-            tenant=tenant,
-            branch=branch,
-            status__in=valid_statuses,
-            created_at__gte=shift_start_dt,
-            created_at__lte=now_dt,
-        ).prefetch_related("items")
-
-        total_sale_cash_uzs = Decimal("0.00")
-        total_sale_cash_usd = Decimal("0.00")
-        total_sale_card_uzs = Decimal("0.00")
-        total_sale_card_usd = Decimal("0.00")
-        total_sale_debt_uzs = Decimal("0.00")
-        total_sale_debt_usd = Decimal("0.00")
-
-        for s in sales:
-            if s.status == Sale.STATUS_PARTIALLY_VOIDED:
-                sale_amt = sum((it.quantity - it.voided_quantity) * it.unit_price for it in s.items.all())
-            else:
-                sale_amt = s.total_amount
-
-            if s.currency == Sale.CURRENCY_UZS:
-                if s.payment_type == Sale.PAYMENT_CASH:
-                    total_sale_cash_uzs += sale_amt
-                elif s.payment_type == Sale.PAYMENT_CARD:
-                    total_sale_card_uzs += sale_amt
-                elif s.payment_type == Sale.PAYMENT_DEBT:
-                    total_sale_debt_uzs += sale_amt
-            else:
-                if s.payment_type == Sale.PAYMENT_CASH:
-                    total_sale_cash_usd += sale_amt
-                elif s.payment_type == Sale.PAYMENT_CARD:
-                    total_sale_card_usd += sale_amt
-                elif s.payment_type == Sale.PAYMENT_DEBT:
-                    total_sale_debt_usd += sale_amt
-
-        # Incomes unlinked to a shift report
-        incomes = CashIncome.objects.filter(tenant=tenant, branch=branch, shift_report__isnull=True)
-        total_extra_income_uzs = incomes.filter(currency=CashIncome.CURRENCY_UZS).aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
-        total_extra_income_usd = incomes.filter(currency=CashIncome.CURRENCY_USD).aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
-
-        # Expenses unlinked to a shift report
-        expenses = CashExpense.objects.filter(tenant=tenant, branch=branch, shift_report__isnull=True)
-        total_expenses_uzs = expenses.filter(currency=CashExpense.CURRENCY_UZS).aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
-        total_expenses_usd = expenses.filter(currency=CashExpense.CURRENCY_USD).aggregate(s=Sum("amount"))["s"] or Decimal("0.00")
-
-        expected_cash_uzs = total_sale_cash_uzs + total_extra_income_uzs - total_expenses_uzs
-        expected_cash_usd = total_sale_cash_usd + total_extra_income_usd - total_expenses_usd
-
-        has_activity = sales.exists() or incomes.exists() or expenses.exists()
-        is_open = (last_report is None) or has_activity
-        status_str = "OPEN" if is_open else "CLOSED"
-
-        return {
-            "is_open": is_open,
-            "status": status_str,
-            "shift_start": shift_start_dt.strftime("%Y-%m-%d %H:%M:%S"),
-            "total_sale_cash_uzs": total_sale_cash_uzs,
-            "total_sale_cash_usd": total_sale_cash_usd,
-            "total_sale_card_uzs": total_sale_card_uzs,
-            "total_sale_card_usd": total_sale_card_usd,
-            "total_sale_debt_uzs": total_sale_debt_uzs,
-            "total_sale_debt_usd": total_sale_debt_usd,
-            "total_extra_income_uzs": total_extra_income_uzs,
-            "total_extra_income_usd": total_extra_income_usd,
-            "total_expenses_uzs": total_expenses_uzs,
-            "total_expenses_usd": total_expenses_usd,
-            "expected_cash_uzs": expected_cash_uzs,
-            "expected_cash_usd": expected_cash_usd,
-            "incomes": [
-                {
-                    "source": inc.source,
-                    "amount": str(inc.amount),
-                    "currency": inc.currency,
-                    "note": inc.note,
-                }
-                for inc in incomes
-            ],
-            "expenses": [
-                {
-                    "category": exp.category,
-                    "amount": str(exp.amount),
-                    "currency": exp.currency,
-                    "note": exp.note,
-                }
-                for exp in expenses
-            ],
-        }
+            incomes = CashIncome.objects.none()
+            expenses = CashExpense.objects.none()
+        for suffix in ("uzs", "usd"):
+            values[f"expected_cash_{suffix}"] = (
+                values[f"opening_cash_{suffix}"] + values[f"total_sale_cash_{suffix}"]
+                + values[f"total_extra_income_{suffix}"] + values[f"collected_debt_cash_{suffix}"]
+                - values[f"total_expenses_{suffix}"] - values[f"refund_cash_{suffix}"]
+            )
+        last_report = DailyCashReport.objects.filter(tenant=tenant).first() if shift is None else None
+        return {**values, "suggested_opening_cash_uzs": last_report.actual_cash_uzs if last_report else Decimal("0"),
+                "suggested_opening_cash_usd": last_report.actual_cash_usd if last_report else Decimal("0"), "shift_id": shift.pk if shift else None,
+                "is_open": shift is not None, "status": "OPEN" if shift else "CLOSED",
+                "shift_start": timezone.localtime(shift.opened_at).isoformat() if shift else None,
+                "incomes": [{"source": row.source, "amount": str(row.amount), "currency": row.currency, "note": row.note} for row in incomes],
+                "expenses": [{"category": row.category, "amount": str(row.amount), "currency": row.currency, "note": row.note} for row in expenses]}
 
     @classmethod
     def close_shift(
@@ -203,23 +164,25 @@ class CashboxService:
         user,
         actual_cash_uzs: Decimal,
         actual_cash_usd: Decimal,
-        branch = None,
         discrepancy_reason: str = "",
         staff_notes: str = "",
+        shift_id=None,
     ) -> DailyCashReport:
         if actual_cash_uzs < Decimal("0.00") or actual_cash_usd < Decimal("0.00"):
             raise CashboxServiceError("Amaldagi naqd pul manfiy bo'lishi mumkin emas.")
 
-        if branch is None:
-            if hasattr(user, 'employments'):
-                emp = user.employments.filter(tenant=tenant, is_active=True).first()
-                if emp and emp.branch:
-                    branch = emp.branch
-        if branch is None:
-            branch = tenant.get_main_branch()
-
         with transaction.atomic():
-            status = cls.get_current_shift_status(tenant, branch=branch)
+            Tenant.objects.select_for_update().get(pk=tenant.pk)
+            if shift_id:
+                existing = DailyCashReport.objects.filter(tenant=tenant, shift_id=shift_id).first()
+                if existing:
+                    if existing.actual_cash_uzs != actual_cash_uzs or existing.actual_cash_usd != actual_cash_usd:
+                        raise CashboxServiceError("Bu smena boshqa sanalgan summa bilan allaqachon yopilgan.")
+                    return existing
+            shift = cls.lock_open_shift(tenant)
+            if shift_id and shift.pk != shift_id:
+                raise CashboxServiceError("Tanlangan smena joriy smenaga mos emas.")
+            status = cls.get_current_shift_status(tenant)
 
             expected_uzs = status["expected_cash_uzs"]
             expected_usd = status["expected_cash_usd"]
@@ -236,9 +199,9 @@ class CashboxService:
 
             report = DailyCashReport.objects.create(
                 tenant=tenant,
-                branch=branch,
-                closed_by=user,
-                date=timezone.now().date(),
+                closed_by=user, shift=shift,
+                opening_cash_uzs=shift.opening_cash_uzs, opening_cash_usd=shift.opening_cash_usd,
+                date=timezone.localdate(),
                 total_sale_cash_uzs=status["total_sale_cash_uzs"],
                 total_sale_cash_usd=status["total_sale_cash_usd"],
                 total_sale_card_uzs=status["total_sale_card_uzs"],
@@ -247,6 +210,10 @@ class CashboxService:
                 total_sale_debt_usd=status["total_sale_debt_usd"],
                 total_extra_income_uzs=status["total_extra_income_uzs"],
                 total_extra_income_usd=status["total_extra_income_usd"],
+                collected_debt_cash_uzs=status["collected_debt_cash_uzs"],
+                collected_debt_cash_usd=status["collected_debt_cash_usd"],
+                refund_cash_uzs=status["refund_cash_uzs"],
+                refund_cash_usd=status["refund_cash_usd"],
                 total_expenses_uzs=status["total_expenses_uzs"],
                 total_expenses_usd=status["total_expenses_usd"],
                 expected_cash_uzs=expected_uzs,
@@ -261,8 +228,11 @@ class CashboxService:
             )
 
             # Link unclosed income & expense rows
-            CashIncome.objects.filter(tenant=tenant, branch=branch, shift_report__isnull=True).update(shift_report=report)
-            CashExpense.objects.filter(tenant=tenant, branch=branch, shift_report__isnull=True).update(shift_report=report)
+            CashIncome.objects.filter(tenant=tenant, shift_report__isnull=True).filter(Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)).update(shift_report=report, shift=shift)
+            CashExpense.objects.filter(tenant=tenant, shift_report__isnull=True).filter(Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)).update(shift_report=report, shift=shift)
+
+            shift.closed_at = report.closed_at
+            shift.save(update_fields=["closed_at", "updated_at"])
 
             if has_discrepancy:
                 from apps.core.models import AuditAction
@@ -286,6 +256,7 @@ class CashboxService:
                 )
 
 
+            owner = tenant.owner
             # Send Notification to owner (web interface) if enabled
             if getattr(tenant, "notify_web_reports", True):
                 owner = tenant.owner
@@ -313,7 +284,8 @@ class CashboxService:
                 if dest_chat_ids:
                     telegram_msg = cls.format_daily_telegram_report(report)
                     for c_id in dest_chat_ids:
-                        send_telegram_message(c_id, telegram_msg)
+                        from apps.sales.tasks import send_async_telegram_message_task
+                        transaction.on_commit(lambda chat_id=c_id, text=telegram_msg: send_async_telegram_message_task.delay(chat_id, text), robust=True)
 
             return report
 
@@ -343,10 +315,13 @@ class CashboxService:
         lines = [
             "📊 *KUNLIK Z-HISOBOT (SMENA YOPILDI)*",
             f"🏢 *Do'kon:* {report.tenant.name}",
-            f"📅 *Sana:* {report.date} | {report.closed_at.strftime('%H:%M')}",
+            f"📅 *Sana:* {report.date} | {timezone.localtime(report.closed_at).strftime('%H:%M')}",
             f"👤 *Smenani yopdi:* {seller_name}",
             "",
             "💵 *KASSA NAQD PULI:*",
+            f"• Boshlang‘ich: `{_fmt_uzs(report.opening_cash_uzs)}` | `{_fmt_usd(report.opening_cash_usd)}`",
+            f"• Qarzdan naqd kirim: `{_fmt_uzs(report.collected_debt_cash_uzs)}` | `{_fmt_usd(report.collected_debt_cash_usd)}`",
+            f"• Naqd qaytarish: `{_fmt_uzs(report.refund_cash_uzs)}` | `{_fmt_usd(report.refund_cash_usd)}`",
             f"• Kutilgan: `{_fmt_uzs(report.expected_cash_uzs)}` | `{_fmt_usd(report.expected_cash_usd)}`",
             f"• Haqiqiy: `{_fmt_uzs(report.actual_cash_uzs)}` | `{_fmt_usd(report.actual_cash_usd)}`",
         ]
@@ -447,10 +422,13 @@ class CashboxService:
         lines = [
             "📊 *KUNLIK Z-HISOBOT (SMENA YOPILDI)*",
             f"🏢 *Do'kon:* {report.tenant.name}",
-            f"📅 *Sana:* {report.date} | {report.closed_at.strftime('%H:%M')}",
+            f"📅 *Sana:* {report.date} | {timezone.localtime(report.closed_at).strftime('%H:%M')}",
             f"👤 *Smenani yopdi:* {seller_name}",
             "",
             "💵 *KASSA NAQD PULI:*",
+            f"• Boshlang‘ich: `{_fmt_uzs(report.opening_cash_uzs)}` | `{_fmt_usd(report.opening_cash_usd)}`",
+            f"• Qarzdan naqd kirim: `{_fmt_uzs(report.collected_debt_cash_uzs)}` | `{_fmt_usd(report.collected_debt_cash_usd)}`",
+            f"• Naqd qaytarish: `{_fmt_uzs(report.refund_cash_uzs)}` | `{_fmt_usd(report.refund_cash_usd)}`",
             f"• Kutilgan: `{_fmt_line_amounts(report.expected_cash_uzs, report.expected_cash_usd)}`",
             f"• Haqiqiy: `{_fmt_line_amounts(report.actual_cash_uzs, report.actual_cash_usd)}`",
         ]

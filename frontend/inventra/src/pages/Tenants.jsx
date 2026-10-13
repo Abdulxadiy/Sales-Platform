@@ -5,28 +5,32 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  Clock,
-  ShieldAlert,
   Power,
   PowerOff,
   User,
   Building,
   Edit2,
-  Trash2,
-  AlertTriangle,
+  Mail,
 } from 'lucide-react';
 import { tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
+import PhoneInput from '../components/common/PhoneInput';
+import PriceInput from '../components/common/PriceInput';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
 export default function Tenants() {
   const toast = useToast();
+  const confirm = useConfirm();
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState('');
   const [search, setSearch] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [inviteLoadingId, setInviteLoadingId] = useState(null);
 
   // Edit tenant state
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -41,11 +45,6 @@ export default function Tenants() {
     new_owner_email: '',
   });
 
-  // Delete tenant state
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingTenant, setDeletingTenant] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-
   const [form, setForm] = useState({
     name: '',
     owner_phone_number: '',
@@ -55,12 +54,12 @@ export default function Tenants() {
 
   const loadTenants = useCallback(async () => {
     setLoading(true);
+    setListError('');
     try {
-      const res = await tenantApi.getTenants();
-      const list = Array.isArray(res) ? res : res.results || [];
-      setTenants(list);
+      setTenants(await tenantApi.getAllTenants());
     } catch (err) {
-      toast.error('Do‘konlar ro‘yxatini yuklashda xatolik: ' + err.message);
+      setTenants([]);
+      setListError('Do‘konlar ro‘yxatini yuklab bo‘lmadi: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -87,7 +86,7 @@ export default function Tenants() {
         description: form.description.trim() || undefined,
       });
 
-      toast.success(`"${created.name}" do‘koni ro‘yxatdan o‘tkazildi! Parol havolasi ${email} ga yuborildi (Spam papkasini ham tekshiring).`);
+      showOwnerInvitationResult(toast, created.name, email, created.owner_invitation?.status);
       setCreateModalOpen(false);
       setForm({ name: '', owner_phone_number: '', owner_email: '', description: '' });
       loadTenants();
@@ -99,6 +98,14 @@ export default function Tenants() {
   };
 
   const handleToggleStatus = async (tenant) => {
+    const accepted = await confirm({
+      title: tenant.is_active ? 'Do‘konni to‘xtatish' : 'Do‘konni faollashtirish',
+      message: `“${tenant.name}” do‘konining holatini ${tenant.is_active ? 'to‘xtatish' : 'faollashtirish'}ni tasdiqlaysizmi?`,
+      confirmText: tenant.is_active ? 'To‘xtatish' : 'Faollashtirish',
+      cancelText: 'Bekor qilish',
+      type: tenant.is_active ? 'danger' : 'default',
+    });
+    if (!accepted) return;
     setActionLoadingId(tenant.id);
     try {
       if (tenant.is_active) {
@@ -113,6 +120,24 @@ export default function Tenants() {
       toast.error(err.message || 'Holatni o‘zgartirishda xatolik');
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  const handleResendOwnerInvite = async (tenant) => {
+    setInviteLoadingId(tenant.id);
+    try {
+      const result = await tenantApi.resendOwnerInvite(tenant.id);
+      showOwnerInvitationResult(
+        toast,
+        tenant.name,
+        tenant.owner_details?.email || 'egasi',
+        result.owner_invitation?.status,
+        'resend'
+      );
+    } catch (err) {
+      toast.error(err.message || 'Parol havolasini qayta yuborib bo‘lmadi');
+    } finally {
+      setInviteLoadingId(null);
     }
   };
 
@@ -159,13 +184,11 @@ export default function Tenants() {
       // 2. Transfer ownership if requested
       if (editForm.changeOwner && editForm.new_owner_phone_number.trim()) {
         const ownerEmail = editForm.new_owner_email.trim();
-        await tenantApi.changeOwner(editingTenant.id, {
+        const ownerChange = await tenantApi.changeOwner(editingTenant.id, {
           new_owner_phone_number: editForm.new_owner_phone_number.trim(),
           new_owner_email: ownerEmail,
         });
-        toast.success(
-          `"${updated.name}" saqlandi va egasi almashtirildi! Parol havolasi ${ownerEmail} ga yuborildi (Spam papkasini ham tekshiring).`
-        );
+        showOwnerInvitationResult(toast, updated.name, ownerEmail, ownerChange.owner_invitation?.status, 'change_owner');
       } else {
         toast.success(`"${updated.name}" do‘koni muvaffaqiyatli tahrirlandi!`);
       }
@@ -177,27 +200,6 @@ export default function Tenants() {
       toast.error(err.message || 'Do‘konni tahrirlashda xatolik yuz berdi');
     } finally {
       setUpdating(false);
-    }
-  };
-
-  const handleOpenDelete = (tenant) => {
-    setDeletingTenant(tenant);
-    setDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingTenant) return;
-    setDeleting(true);
-    try {
-      await tenantApi.deleteTenant(deletingTenant.id);
-      toast.success(`"${deletingTenant.name}" do‘koni butunlay o‘chirildi`);
-      setDeleteModalOpen(false);
-      setDeletingTenant(null);
-      loadTenants();
-    } catch (err) {
-      toast.error(err.message || 'Do‘konni o‘chirishda xatolik yuz berdi');
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -253,7 +255,7 @@ export default function Tenants() {
             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Jami Do‘konlar</span>
             <Store size={18} color="var(--primary)" />
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{tenants.length} ta</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{loading || listError ? '—' : `${tenants.length} ta`}</div>
         </div>
 
         <div className="glass-card" style={{ padding: '18px 20px' }}>
@@ -262,7 +264,7 @@ export default function Tenants() {
             <CheckCircle2 size={18} color="var(--accent-emerald)" />
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent-emerald)' }}>
-            {activeCount} ta
+            {loading || listError ? '—' : `${activeCount} ta`}
           </div>
         </div>
 
@@ -272,12 +274,13 @@ export default function Tenants() {
             <XCircle size={18} color="var(--accent-rose)" />
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent-rose)' }}>
-            {inactiveCount} ta
+            {loading || listError ? '—' : `${inactiveCount} ta`}
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
+      {listError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{listError} <button className="btn btn-secondary" onClick={loadTenants}>Qayta urinish</button></div>}
       <div
         style={{
           display: 'flex',
@@ -344,9 +347,9 @@ export default function Tenants() {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                     <Building size={40} color="var(--text-muted)" />
                     <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      {search ? 'Qidiruv bo‘yicha do‘kon topilmadi' : 'Hozircha birorta ham do‘kon mavjud emas'}
+                      {listError ? 'Ro‘yxat yuklanmadi' : search ? 'Qidiruv bo‘yicha do‘kon topilmadi' : 'Hozircha birorta ham do‘kon mavjud emas'}
                     </span>
-                    {!search && (
+                    {!search && !listError && (
                       <button
                         onClick={() => setCreateModalOpen(true)}
                         className="btn btn-secondary"
@@ -441,6 +444,17 @@ export default function Tenants() {
                   </td>
                   <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => handleResendOwnerInvite(t)}
+                        disabled={inviteLoadingId === t.id || !t.owner_details?.email}
+                        title={t.owner_details?.email ? 'Egaga parol havolasini qayta yuborish' : 'Egaga email biriktirilmagan'}
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      >
+                        <Mail size={13} />
+                        <span>{inviteLoadingId === t.id ? 'Yuborilmoqda...' : 'Havolani yuborish'}</span>
+                      </button>
+
                       {/* Edit Button */}
                       <button
                         onClick={() => handleOpenEdit(t)}
@@ -499,28 +513,6 @@ export default function Tenants() {
                         )}
                       </button>
 
-                      {/* Delete Button */}
-                      <button
-                        onClick={() => handleOpenDelete(t)}
-                        title="Do‘konni tizimdan butunlay o‘chirish"
-                        style={{
-                          padding: '6px 10px',
-                          borderRadius: 'var(--radius-xs)',
-                          border: '1px solid rgba(239, 68, 68, 0.25)',
-                          background: 'rgba(239, 68, 68, 0.08)',
-                          color: 'var(--accent-rose)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          transition: 'all var(--transition-fast)',
-                        }}
-                      >
-                        <Trash2 size={13} />
-                        <span>O‘chirish</span>
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -559,14 +551,10 @@ export default function Tenants() {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               Egasi (Owner) Telefon Raqami <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
-            <input
+            <PhoneInput
               id="owner-phone"
               name="tel"
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
               className="input-field"
-              placeholder="+998901234567"
               value={form.owner_phone_number}
               onChange={(e) => setForm({ ...form, owner_phone_number: e.target.value })}
               required
@@ -656,10 +644,9 @@ export default function Tenants() {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               Ichki Dollar Kursi (USD Rate, UZS)
             </label>
-            <input
-              type="number"
-              step="0.01"
+            <PriceInput
               className="input-field"
+              placeholder="12 800"
               value={editForm.usd_rate}
               onChange={(e) => setEditForm({ ...editForm, usd_rate: e.target.value })}
             />
@@ -762,14 +749,10 @@ export default function Tenants() {
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                     Yangi Egasining Telefon Raqami <span style={{ color: 'var(--accent-rose)' }}>*</span>
                   </label>
-                  <input
+                  <PhoneInput
                     id="new-owner-phone"
                     name="tel"
-                    type="tel"
-                    autoComplete="tel"
-                    inputMode="tel"
                     className="input-field"
-                    placeholder="+998901234567"
                     value={editForm.new_owner_phone_number}
                     onChange={(e) => setEditForm({ ...editForm, new_owner_phone_number: e.target.value })}
                     required={editForm.changeOwner}
@@ -822,67 +805,6 @@ export default function Tenants() {
         </form>
       </Modal>
 
-      {/* Delete Tenant Modal */}
-      <Modal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          setDeleteModalOpen(false);
-          setDeletingTenant(null);
-        }}
-        title="Do‘konni Butunlay O‘chirish"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div
-            style={{
-              padding: '16px',
-              borderRadius: 14,
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 12,
-            }}
-          >
-            <AlertTriangle size={24} color="var(--accent-rose)" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-rose)', marginBottom: 4 }}>
-                Diqqat: Ushbu amalni ortga qaytarib bo‘lmaydi!
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Siz haqiqatan ham <strong>"{deletingTenant?.name}"</strong> (#{deletingTenant?.id}) do‘konini tizimdan butunlay o‘chirmoqchimisiz? Ushbu do‘konga tegishli barcha ma’lumotlar butunlay o‘chiriladi.
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => {
-                setDeleteModalOpen(false);
-                setDeletingTenant(null);
-              }}
-              className="btn btn-secondary"
-            >
-              Bekor Qilish
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmDelete}
-              className="btn btn-danger"
-              disabled={deleting}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontWeight: 700,
-              }}
-            >
-              <Trash2 size={16} />
-              <span>{deleting ? 'O‘chirilmoqda...' : 'Ha, Butunlay O‘chirish'}</span>
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

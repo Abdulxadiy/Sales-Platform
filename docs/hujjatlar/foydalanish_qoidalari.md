@@ -76,4 +76,4 @@ Mazkur Foydalanish qoidalariga rioya qilmaslik quyidagi oqibatlarga olib kelishi
 
 Qoidalar yuzasidan savollar yoki aniqlangan zaifliklar (bug bounty) haqida xabar berish uchun:
 * **Email:** `security@inventra.uz`
-* **Telegram:** `@inventraa_bot`
+* **Telegram:** `@ilbi_bot`

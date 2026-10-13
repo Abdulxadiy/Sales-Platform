@@ -1,25 +1,19 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ScanBarcode,
-  Search,
   Plus,
   Minus,
   Trash2,
   PackagePlus,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Layers,
-  ArrowRight,
-  Sparkles,
-  Info,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../common/Modal';
+import PriceInput from '../common/PriceInput';
 import { inventoryApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { useTenant } from '../../context/TenantContext';
 
 const EMPTY_DRAFT = {
   supplier: '',
@@ -33,16 +27,16 @@ export default function RapidStockIntakeModal({
   onClose,
   onSuccess,
   variants = [],
-  categories = [],
   preselectedVariantId = null,
 }) {
   const toast = useToast();
+  const { activeTenant } = useTenant();
   const confirm = useConfirm();
   const navigate = useNavigate();
 
   // Persisted Draft in localStorage: survives navigation, tab switches, and reloads
   const [draft, setDraft, resetDraft] = usePersistedState(
-    'inventra_stock_intake_full_draft_v1',
+    `inventra_stock_intake_full_draft_v1:${activeTenant?.id || 'pending'}`,
     EMPTY_DRAFT
   );
 
@@ -131,18 +125,18 @@ export default function RapidStockIntakeModal({
 
   // Add or increment item in draft
   const addItemToDraft = useCallback(
-    (variant) => {
+    (variant, forceNew = false) => {
       if (!variant || !variant.id) return;
 
       const variantId = variant.id;
       const info = getVariantInfo(variant);
-      const rowId = `row-${variantId}-${Date.now()}`;
+      const rowId = `row-${variantId}-${crypto.randomUUID()}`;
 
       setDraft((prevDraft) => {
         const currentItems = Array.isArray(prevDraft?.items) ? prevDraft.items : [];
         const existingIdx = currentItems.findIndex((it) => String(it.variantId) === String(variantId));
 
-        if (existingIdx >= 0) {
+        if (existingIdx >= 0 && !forceNew) {
           // Increment quantity if already exists
           const updatedItems = [...currentItems];
           const currQty = parseFloat(updatedItems[existingIdx].quantity) || 0;
@@ -180,6 +174,8 @@ export default function RapidStockIntakeModal({
             quantity: '1',
             cost_price: info.costPrice ? String(info.costPrice) : '',
             note: '',
+            batch_code: '',
+            expires_on: '',
           };
 
           setLastAddedRowId(rowId);
@@ -394,6 +390,8 @@ export default function RapidStockIntakeModal({
           quantity: parseFloat(it.quantity),
           cost_price: parseFloat(it.cost_price),
           note: it.note ? it.note.trim() : '',
+          batch_code: (it.batch_code || '').trim(),
+          expires_on: it.expires_on || null,
         })),
       });
 
@@ -933,6 +931,11 @@ export default function RapidStockIntakeModal({
                               </div>
                             </div>
                           </div>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                            <input aria-label="Partiya raqami" placeholder="Partiya (ixtiyoriy)" maxLength={80} value={item.batch_code || ''} onChange={e => handleUpdateItem(item.id, 'batch_code', e.target.value)} style={{ width: 140 }} />
+                            <input aria-label="Yaroqlilik sanasi" title="Yaroqlilik sanasi — ixtiyoriy" type="date" value={item.expires_on || ''} onChange={e => handleUpdateItem(item.id, 'expires_on', e.target.value)} />
+                            <button type="button" className="btn btn-secondary" onClick={() => addItemToDraft(variants.find(v => String(v.id) === String(item.variantId)), true)}>Yana partiya</button>
+                          </div>
                         </td>
 
                         {/* Current Stock */}
@@ -1024,11 +1027,8 @@ export default function RapidStockIntakeModal({
                         {/* Cost Price */}
                         <td style={{ padding: '8px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <input
+                            <PriceInput
                               ref={(el) => (rowInputRefs.current[`${item.id}_cost`] = el)}
-                              type="number"
-                              step={currency === 'USD' ? '0.01' : '1'}
-                              min="0"
                               placeholder="0"
                               value={item.cost_price}
                               onChange={(e) => handleUpdateItem(item.id, 'cost_price', e.target.value)}

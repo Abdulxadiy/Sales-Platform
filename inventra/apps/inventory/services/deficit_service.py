@@ -5,8 +5,8 @@ from django.utils import timezone
 from django.db.models import Sum, F, DecimalField, Q
 
 from apps.sales.models import Sale, SaleItem
+from apps.sales.quantities import effective_quantity_expression
 from apps.catalog.models import ProductVariant
-from apps.inventory.models import Stock
 
 logger = logging.getLogger(__name__)
 
@@ -39,25 +39,19 @@ class DeficitService:
             Sale.STATUS_PARTIALLY_VOIDED,
             Sale.STATUS_B2B_ACCEPTED,
             Sale.STATUS_B2B_PARTIALLY_ACCEPTED,
+            Sale.STATUS_B2B_RETURN_PENDING,
         ]
-        valid_item_statuses = [
-            SaleItem.STATUS_ACTIVE,
-            SaleItem.STATUS_PARTIALLY_VOIDED,
-            SaleItem.STATUS_B2B_ACCEPTED,
-        ]
-
         # 1. Aggregate effective sold quantities per product_variant over the last 30 days
         sales_qs = (
             SaleItem.objects.filter(
                 sale__tenant=tenant,
                 sale__created_at__gte=thirty_days_ago,
                 sale__status__in=valid_sale_statuses,
-                status__in=valid_item_statuses,
             )
             .values("product_variant_id")
             .annotate(
                 total_sold=Sum(
-                    F("quantity") - F("voided_quantity") - F("b2b_rejected_quantity"),
+                    effective_quantity_expression(),
                     output_field=DecimalField(max_digits=14, decimal_places=3),
                 )
             )
@@ -78,8 +72,7 @@ class DeficitService:
                 is_active=True,
                 product__is_active=True,
             )
-            .select_related("product", "product__category")
-            .prefetch_related("stocks")
+            .select_related("product", "product__category", "stock")
             .order_by("product__name", "name")
         )
 
@@ -136,7 +129,7 @@ class DeficitService:
 
     @classmethod
     def format_telegram_deficit_report(cls, tenant, deficit_items: list[dict]) -> str:
-        now_str = timezone.now().strftime("%Y-%m-%d | %H:%M")
+        now_str = timezone.localtime().strftime("%Y-%m-%d | %H:%M")
         lines = [
             "⚠️ *KAMAYIB QOLGAN TOVARLAR (DEFITSIT HISOBOTI)*",
             f"🏢 *Do'kon:* {tenant.name}",

@@ -51,13 +51,13 @@ export function ReceiptQRCode({ value = '', size = 84 }) {
       >
         <img
           src={dataUrl}
-          alt="E-Chek QR Code"
+          alt="Elektron savdo nusxasi QR kodi"
           width={size}
           height={size}
           style={{ display: 'block', margin: '0 auto', imageRendering: 'pixelated' }}
         />
         <div style={{ fontSize: 8.5, fontWeight: 700, color: '#000000', marginTop: 4, letterSpacing: '0.02em', whiteSpace: 'nowrap', fontFamily: "'JetBrains Mono', monospace" }}>
-          E-Chek: Skaner qiling
+          Savdo nusxasi: skaner qiling
         </div>
       </div>
     </div>
@@ -465,19 +465,19 @@ export default function ReceiptSlip({
               >
                 {store}
               </div>
-              {sale?.branch_name && (
+              {sale?.tenant_name && (
                 <div style={{ fontSize: is58mm ? 9.5 : 10.5, fontWeight: 600, color: '#000000', marginTop: 1 }}>
-                  Filial: {sale.branch_name}
+                  {sale.tenant_name}
                 </div>
               )}
-              {sale?.branch_address && (
+              {sale?.tenant_address && (
                 <div style={{ fontSize: is58mm ? 8.5 : 9.5, color: '#000000', marginTop: 1 }}>
-                  {sale.branch_address}
+                  {sale.tenant_address}
                 </div>
               )}
-              {sale?.branch_phone && (
+              {sale?.tenant_phone && (
                 <div style={{ fontSize: is58mm ? 8.5 : 9.5, color: '#000000', marginTop: 1 }}>
-                  Tel: {sale.branch_phone}
+                  Tel: {sale.tenant_phone}
                 </div>
               )}
               <div
@@ -489,7 +489,10 @@ export default function ReceiptSlip({
                   marginTop: 2,
                 }}
               >
-                *** SAVDO CHEKI ***
+                *** INVENTRA SAVDO NUSXASI ***
+              </div>
+              <div style={{ fontSize: is58mm ? 8 : 8.5, fontWeight: 700, color: '#000000', marginTop: 2 }}>
+                FISKAL CHEK EMAS
               </div>
             </div>
 
@@ -507,12 +510,6 @@ export default function ReceiptSlip({
                 <span>Chek:</span>
                 <span style={{ fontWeight: 700 }}>#{receiptNo}</span>
               </div>
-              {sale?.branch_name && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span>Filial:</span>
-                  <span style={{ fontWeight: 600 }}>{sale.branch_name}</span>
-                </div>
-              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span>Sana:</span>
                 <span>{formatDate(sale?.created_at)}</span>
@@ -633,6 +630,11 @@ export default function ReceiptSlip({
                 </span>
               </div>
 
+              {Number(sale?.refunded_amount || 0) > 0 && <>
+                <div>Qaytarilgan: {formatMoney(sale.refunded_amount, cur)}</div>
+                <div><strong>Qaytarishdan keyingi summa: {formatMoney(sale.net_amount ?? totalAmount - Number(sale.refunded_amount), cur)}</strong></div>
+              </>}
+
               {/* Optional Cash & Change Breakdown */}
               {sale?.payment_type === 'cash' && (isUsd ? paidAmountUSD : paidAmountUZS) && (
                 <div
@@ -670,15 +672,12 @@ export default function ReceiptSlip({
                 <ReceiptQRCode
                   value={
                     typeof window !== 'undefined'
-                      ? `${window.location.origin}/r/${receiptNo}`
-                      : `https://app.inventra.uz/r/${receiptNo}`
+                      ? `${window.location.origin}/r/${sale?.public_token || ''}`
+                      : `https://app.inventra.uz/r/${sale?.public_token || ''}`
                   }
                   size={is58mm ? 84 : 105}
                 />
               )}
-
-              {/* Barcode */}
-              <ReceiptBarcode value={receiptNo} width={is58mm ? 145 : 180} />
 
               <div style={{ textAlign: 'center', marginTop: 8, fontSize: 9, color: '#000000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <div style={{ fontWeight: 700 }}>XARIDINGIZ UCHUN RAHMAT!</div>

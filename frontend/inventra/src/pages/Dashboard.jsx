@@ -10,31 +10,32 @@ import {
   Award,
   Store,
   Plus,
-  Building2,
   CheckCircle2,
   XCircle,
-  Server,
-  Users,
   ShieldCheck,
   Lock,
   Search,
   ExternalLink,
   Unlock,
-  AlertTriangle,
   BookOpen,
   Package,
-  Layers,
+  Power,
+  PowerOff,
 } from 'lucide-react';
-import { analyticsApi, tenantApi, authApi } from '../api/client';
+import { analyticsApi, tenantApi, authApi, auditApi } from '../api/client';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/common/Modal';
 import RevenueCostAnalyticsChart from '../components/dashboard/RevenueCostAnalyticsChart';
 import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
+import PhoneInput from '../components/common/PhoneInput';
+import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const toast = useToast();
+  const confirm = useConfirm();
   const { isAdmin } = useAuth();
 
   const [period, setPeriod] = useState('today');
@@ -44,10 +45,15 @@ export default function Dashboard() {
   // Platform admin tenant management state
   const [tenants, setTenants] = useState([]);
   const [tenantsLoaded, setTenantsLoaded] = useState(false);
+  const [tenantError, setTenantError] = useState('');
   const [tenantSearch, setTenantSearch] = useState('');
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [unbanUserId, setUnbanUserId] = useState('');
   const [unbanning, setUnbanning] = useState(false);
+  const [pendingReviews, setPendingReviews] = useState(null);
+  const [auditTotal, setAuditTotal] = useState(null);
+  const [recentAdminLogs, setRecentAdminLogs] = useState([]);
+  const [overviewError, setOverviewError] = useState('');
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -61,12 +67,12 @@ export default function Dashboard() {
   // Load tenants list for platform admin
   const loadTenants = useCallback(async () => {
     if (!isAdmin) return;
+    setTenantsLoaded(false);
+    setTenantError('');
     try {
-      const res = await tenantApi.getTenants();
-      const list = Array.isArray(res) ? res : res.results || [];
-      setTenants(list);
+      setTenants(await tenantApi.getAllTenants());
     } catch (err) {
-      toast.error('Do‘konlar ro‘yxatini yuklashda xatolik: ' + err.message);
+      setTenantError('Do‘konlar ro‘yxatini yuklab bo‘lmadi: ' + err.message);
     } finally {
       setTenantsLoaded(true);
     }
@@ -77,6 +83,26 @@ export default function Dashboard() {
       loadTenants();
     }
   }, [isAdmin, loadTenants]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    Promise.allSettled([
+      tenantApi.getSellerProfilesForReview({ status: 'pending', page_size: 1 }),
+      auditApi.getLogs({ page: 1 }),
+    ]).then(([reviews, audit]) => {
+      if (cancelled) return;
+      if (reviews.status === 'fulfilled') setPendingReviews(Number(reviews.value.count || 0));
+      if (audit.status === 'fulfilled') {
+        setAuditTotal(Number(audit.value.count || 0));
+        setRecentAdminLogs((audit.value.results || []).slice(0, 5));
+      }
+      if (reviews.status === 'rejected' || audit.status === 'rejected') {
+        setOverviewError('Ayrim boshqaruv ko‘rsatkichlarini yuklab bo‘lmadi. Sahifalarni alohida ochib tekshiring.');
+      }
+    });
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   // Fetch financial dashboard for store owners ONLY (never called for platform_admin)
   const fetchDashboard = useCallback(
@@ -93,7 +119,7 @@ export default function Dashboard() {
         setLoading(false);
       }
     },
-    [isAdmin]
+    [isAdmin, toast]
   );
 
   useEffect(() => {
@@ -119,7 +145,7 @@ export default function Dashboard() {
         description: tenantForm.description.trim() || undefined,
       });
 
-      toast.success(`"${newTenant.name}" do‘koni muvaffaqiyatli yaratildi! Parol o‘rnatish havolasi ${email} ga yuborildi.`);
+      showOwnerInvitationResult(toast, newTenant.name, email, newTenant.owner_invitation?.status);
       setCreateModalOpen(false);
       setTenantForm({ name: '', owner_phone_number: '', owner_email: '', description: '' });
       loadTenants();
@@ -131,6 +157,14 @@ export default function Dashboard() {
   };
 
   const handleToggleTenantStatus = async (tenant) => {
+    const accepted = await confirm({
+      title: tenant.is_active ? 'Do‘konni to‘xtatish' : 'Do‘konni faollashtirish',
+      message: `“${tenant.name}” do‘konining holatini ${tenant.is_active ? 'to‘xtatish' : 'faollashtirish'}ni tasdiqlaysizmi?`,
+      confirmText: tenant.is_active ? 'To‘xtatish' : 'Faollashtirish',
+      cancelText: 'Bekor qilish',
+      type: tenant.is_active ? 'danger' : 'default',
+    });
+    if (!accepted) return;
     setToggleLoadingId(tenant.id);
     try {
       if (tenant.is_active) {
@@ -207,7 +241,7 @@ export default function Dashboard() {
   ];
 
   // =========================================================================
-  // 1. PLATFORM ADMIN VIEW (System Settings, Infrastructure, Tenant Management)
+  // 1. PLATFORM ADMIN VIEW (verified operational data only)
   // Strictly NO tenant financial data (revenue, profit, debts, sales) shown!
   // =========================================================================
   if (isAdmin) {
@@ -220,7 +254,7 @@ export default function Dashboard() {
               Platforma Administratori Boshqaruv Markazi
             </h2>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-              Inventra SaaS tizim boshqaruvi, sozlamalar, do‘konlar (tenants) nazorati va ma’lumotlar xavfsizligi
+              Do‘konlar, xodimlar, sotuvchi profillari va audit amallarini boshqarish
             </p>
           </div>
 
@@ -232,6 +266,14 @@ export default function Dashboard() {
             >
               <Plus size={16} />
               <span>Yangi Do‘kon</span>
+            </button>
+            <button
+              onClick={() => navigate('/seller-profiles/review')}
+              className="btn btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontSize: 13 }}
+            >
+              <ShieldCheck size={16} />
+              <span>Profil tekshiruvlari{pendingReviews === null ? '' : ` (${pendingReviews})`}</span>
             </button>
             <button
               onClick={() => navigate('/audit')}
@@ -271,69 +313,69 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>
-              {tenants.length} ta
+              {tenantsLoaded && !tenantError ? `${tenants.length} ta` : '—'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>{activeCount} ta faol</span> · {inactiveCount} ta to‘xtatilgan
+              {tenantsLoaded && !tenantError ? <><span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>{activeCount} ta faol</span> · {inactiveCount} ta to‘xtatilgan</> : 'Ro‘yxat yuklanmoqda yoki xatolik yuz berdi'}
             </div>
           </div>
 
-          {/* Card 2: Infratuzilma Holati */}
+          {/* Card 2: Suspended tenants */}
           <div className="glass-card" style={{ padding: '20px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Tizim Infratuzilmasi
+                To‘xtatilgan do‘konlar
               </span>
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Server size={18} color="var(--accent-emerald)" />
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <PowerOff size={18} color="var(--accent-rose)" />
               </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent-emerald)' }}>
-              100% Barqaror
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent-rose)' }}>
+              {tenantsLoaded && !tenantError ? `${inactiveCount} ta` : '—'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              PostgreSQL, Redis, MinIO, Celery
+              Holatini do‘konlar sahifasida boshqaring
             </div>
           </div>
 
-          {/* Card 3: Xavfsizlik & Audit */}
+          {/* Card 3: Seller profile reviews */}
           <div className="glass-card" style={{ padding: '20px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Xavfsizlik & Nazorat
+                Kutilayotgan sotuvchi profillari
               </span>
               <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(6, 182, 212, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShieldCheck size={18} color="var(--accent-cyan)" />
               </div>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>
-              Himoyalangan
+              {pendingReviews === null ? '—' : `${pendingReviews} ta`}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              O‘zgarmas AuditLog va 2FA faol
+              POS ruxsatini berishdan oldin hujjatlarni tekshiring
             </div>
           </div>
 
-          {/* Card 4: Tijorat Maxfiyligi */}
+          {/* Card 4: recorded audit events */}
           <div className="glass-card" style={{ padding: '20px 22px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                Tijorat Maxfiyligi
+                Audit yozuvlari
               </span>
               <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Lock size={18} color="var(--accent-amber)" />
+                <ShieldCheck size={18} color="var(--accent-amber)" />
               </div>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--accent-amber)' }}>
-              100% Izolatsiya
+              {auditTotal === null ? '—' : `${auditTotal} ta`}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              Do‘kon moliyaviy sirlari yopiq
+              So‘nggi amallar audit jurnalida ko‘rinadi
             </div>
           </div>
         </div>
 
-        {/* Data Privacy & Confidentiality Guarantee Banner */}
+        {/* Scope and loading state */}
         <div
           style={{
             padding: '14px 18px',
@@ -350,9 +392,10 @@ export default function Dashboard() {
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
             <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 2 }}>
-              🛡️ Tijorat Sirlari va Ma’lumotlar Daxlsizligi Kafolati
+              Platforma boshqaruvi
             </strong>
-            Inventra SaaS maxfiylik siyosatiga muvofiq, do‘konlarning ichki moliyaviy ko‘rsatkichlari (tushum, sof foyda, tovar tannarxi, qarz qoldiqlari, kassirlar savdosi) faqat do‘kon egalari (Owner) uchun ochiq. Platforma administratori faqat infratuzilma, xavfsizlik va ro‘yxatga olish sozlamalarini boshqaradi.
+            Do‘konlar va ularning xodimlari, sotuvchi profili tasdiqlari hamda audit yozuvlari shu panelda boshqariladi. Tijorat hisobotlari do‘kon egasi vakolatida qoladi.
+            {overviewError && <span role="alert" style={{ display: 'block', color: 'var(--accent-rose)', marginTop: 5 }}>{overviewError}</span>}
           </div>
         </div>
 
@@ -400,14 +443,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {filteredTenants.length > 0 ? (
+          {tenantError && <div role="alert" style={{ padding: 16, color: 'var(--accent-rose)' }}>{tenantError} <button className="btn btn-secondary" onClick={loadTenants}>Qayta urinish</button></div>}
+          {!tenantsLoaded ? (
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Do‘konlar yuklanmoqda...</div>
+          ) : filteredTenants.length > 0 ? (
             <div className="table-responsive">
               <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                     <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Do‘kon Nomi</th>
                     <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Do‘kon Egasi (Owner)</th>
-                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Valyuta Kursi</th>
+                    <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Xodimlar</th>
                     <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Holati</th>
                     <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Yaratilgan</th>
                     <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amallar</th>
@@ -425,7 +471,7 @@ export default function Dashboard() {
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.owner_details?.phone_number || t.owner_details?.email || ''}</div>
                       </td>
                       <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
-                        1$ = {Number(t.usd_rate || 12800).toLocaleString()} UZS
+                        <button className="btn btn-secondary" style={{ padding: '5px 9px', fontSize: 12 }} onClick={() => navigate(`/employees?tenant_id=${t.id}`)}>Jamoani ko‘rish</button>
                       </td>
                       <td style={{ padding: '12px 14px' }}>
                         <span
@@ -446,7 +492,7 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td style={{ padding: '12px 14px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                        {t.created_at ? new Date(t.created_at).toLocaleDateString('uz-UZ') : '—'}
+                        {t.created_at ? new Date(t.created_at).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent' }) : '—'}
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: 8 }}>
@@ -494,7 +540,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
-              {tenantSearch ? 'Qidiruv bo‘yicha do‘kon topilmadi' : 'Hali do‘konlar yaratilmagan'}
+              {tenantError ? 'Ro‘yxat yuklanmadi' : tenantSearch ? 'Qidiruv bo‘yicha do‘kon topilmadi' : 'Hali do‘konlar yaratilmagan'}
             </div>
           )}
         </div>
@@ -550,40 +596,28 @@ export default function Dashboard() {
             </form>
           </div>
 
-          {/* Panel B: Global System Configuration */}
+          {/* Panel B: Recent audited actions */}
           <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Server size={18} color="var(--primary)" />
+                <ShieldCheck size={18} color="var(--primary)" />
               </div>
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
-                  Global Tizim Konfiguratsiyasi & Standartlari
+                  So‘nggi audit amallari
                 </h3>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                  Inventra platformasi operatsion holati
+                  Tizimda qayd etilgan haqiqiy hodisalar
                 </p>
               </div>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Valyuta rejimi:</span>
-                <strong style={{ color: 'var(--text-primary)' }}>Dual-Valyuta (UZS va USD)</strong>
+            {recentAdminLogs.length ? recentAdminLogs.map((log) => (
+              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, paddingBottom: 8, borderBottom: '1px solid var(--border-subtle)', fontSize: 12 }}>
+                <span style={{ color: 'var(--text-primary)' }}>{String(log.action || 'amal').replaceAll('_', ' ')} · {log.tenant ? `Do‘kon #${log.tenant}` : 'Platforma'}</span>
+                <time style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{new Date(log.created_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}</time>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Telegram Bot xizmati:</span>
-                <strong style={{ color: 'var(--accent-emerald)' }}>Ulangan (@Inventra_bot)</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Kesh & Xotira (Redis):</span>
-                <strong style={{ color: 'var(--accent-emerald)' }}>Faol (6379 port)</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Fayllar xotirasi (MinIO):</span>
-                <strong style={{ color: 'var(--accent-emerald)' }}>Ulangan (S3 mos)</strong>
-              </div>
-            </div>
+            )) : <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13 }}>Hozircha yozuv yo‘q yoki yuklanmadi.</p>}
+            <button className="btn btn-secondary" onClick={() => navigate('/audit')}>Audit jurnalini ochish</button>
           </div>
         </div>
 
@@ -612,10 +646,8 @@ export default function Dashboard() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
                 Egasi (Owner) Telefon Raqami <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <input
-                type="tel"
+              <PhoneInput
                 className="input-field"
-                placeholder="+998901234567"
                 value={tenantForm.owner_phone_number}
                 onChange={(e) => setTenantForm({ ...tenantForm, owner_phone_number: e.target.value })}
                 required

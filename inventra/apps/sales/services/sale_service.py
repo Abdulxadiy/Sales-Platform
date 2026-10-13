@@ -1,13 +1,17 @@
 from decimal import Decimal
 from datetime import timedelta
 from collections import defaultdict
+import hashlib
+import json
 from django.db import transaction
 from django.utils import timezone
+from django.conf import settings
 
 from apps.catalog.models import ProductVariant
 from apps.inventory.services import StockService, StockServiceError
 from apps.sales.models import Sale, SaleItem, Counterparty, Notification
 from apps.sales.services.debt_service import DebtService
+from apps.tenants.models import SellerProfile
 
 
 class SaleServiceError(Exception):
@@ -20,12 +24,22 @@ class InsufficientStockError(SaleServiceError, StockServiceError):
 
 class SaleService:
     @staticmethod
+    def _assert_seller_ready(tenant):
+        profile = tenant.seller_profile
+        if profile is None or profile.owner_id != tenant.owner_id:
+            raise SaleServiceError("POS uchun do‘konga tegishli sotuvchi profili kerak.")
+        if profile.status != SellerProfile.STATUS_APPROVED:
+            raise SaleServiceError("POS faqat tekshiruvdan o‘tgan sotuvchi profiliga ochiladi.")
+        if profile.expires_at is None or profile.expires_at <= timezone.now():
+            raise SaleServiceError("Sotuvchi profili tekshiruv muddati tugagan. Yangilash uchun ownerga murojaat qiling.")
+
+    @staticmethod
     def _next_receipt_number(tenant) -> str:
         from apps.tenants.models import Tenant
         # Row-level lock on tenant serializes receipt number generation per tenant
-        Tenant.objects.select_for_update().get(pk=tenant.pk)
+        tenant = Tenant.objects.select_for_update(of=("self",)).select_related("seller_profile").get(pk=tenant.pk)
 
-        today_str = timezone.now().strftime('%Y%m%d')
+        today_str = timezone.localtime().strftime('%Y%m%d')
         prefix = f"POS-{today_str}-"
         
         last_sale = (
@@ -51,37 +65,72 @@ class SaleService:
         tenant,
         user,
         items_data: list,
-        branch = None,
         payment_type: str = 'cash',
         counterparty: Counterparty = None,
         is_partner_sale: bool = False,
         idempotency_key: str = None,
     ) -> list[Sale]:
         """
-        Creates sale(s). If items belong to both UZS and USD categories,
-        splits them into 2 separate Sale instances within 1 atomic transaction.
+        Creates a POS sale in UZS. USD catalog values remain outside retail checkout.
         """
-        if branch is None:
-            if hasattr(user, 'employments'):
-                emp = user.employments.filter(tenant=tenant, is_active=True).first()
-                if emp and emp.branch:
-                    branch = emp.branch
-        if branch is None:
-            branch = tenant.get_main_branch()
-
+        from apps.tenants.models import Tenant
+        # A stable row exists even on a shop's first sale. Acquire it BEFORE the
+        # replay lookup so simultaneous requests cannot both miss the same key.
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
+        canonical = {
+            "payment_type": payment_type, "counterparty": getattr(counterparty, "pk", None),
+            "partner": is_partner_sale,
+            "items": sorted([
+                {"variant": int(item['product_variant_id']),
+                 "quantity": str(Decimal(str(item['quantity'])).normalize()),
+                 "price": str(Decimal(str(item['unit_price'])).normalize()) if item.get('unit_price') is not None else None}
+                for item in items_data
+            ], key=lambda item: (item['variant'], item['quantity'], str(item['price']))),
+        }
+        fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
+        idempotency_key = (idempotency_key or "").strip() or None
         if idempotency_key:
             existing_sales = list(Sale.objects.filter(tenant=tenant, idempotency_key=idempotency_key))
             if existing_sales:
+                if any(sale.request_fingerprint != fingerprint for sale in existing_sales):
+                    raise SaleServiceError("Idempotency kaliti boshqa savat uchun ishlatilgan.")
                 return existing_sales
 
         if not items_data:
             raise SaleServiceError("Savatda kamida bitta tovar bo'lishi shart.")
 
+        cls._assert_seller_ready(tenant)
+
+        is_b2b_sale = bool(counterparty and counterparty.target_tenant)
+        if is_b2b_sale:
+            target_tenant = counterparty.target_tenant
+            cls._assert_seller_ready(target_tenant)
+            if tenant.seller_profile_id == target_tenant.seller_profile_id:
+                raise SaleServiceError("Bir xil sotuvchi profilidagi do‘konlar ichki transferdan foydalanadi, B2B savdodan emas.")
+
         if len(items_data) > 100:
             raise SaleServiceError("Bitta chekda ko'pi bilan 100 ta tovar bo'lishi mumkin.")
+        if len({item["product_variant_id"] for item in items_data}) != len(items_data):
+            raise SaleServiceError("Bir variant savatda takrorlanmasligi kerak; miqdorlarini birlashtiring.")
+
+        if not settings.DEBUG:
+            raise SaleServiceError(
+                "Retail POS production savdosi yopiq: Soliq/OFD tasdig‘i va fiskal provayder integratsiyasi tayyor emas."
+            )
 
         if payment_type == Sale.PAYMENT_DEBT and not counterparty:
             raise SaleServiceError("Qarz (nasiya) savdosi uchun kontragent tanlanishi shart.")
+        if counterparty:
+            if counterparty.tenant_id != tenant.id or not counterparty.is_active:
+                raise SaleServiceError("Kontragent faol va shu do‘konga tegishli bo‘lishi kerak.")
+            counterparty = Counterparty.objects.select_for_update().get(pk=counterparty.pk)
+            if not counterparty.is_active:
+                raise SaleServiceError("Kontragent arxivlangan.")
+        from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
+        try:
+            shift = CashboxService.lock_open_shift(tenant)
+        except CashboxServiceError as exc:
+            raise SaleServiceError(str(exc)) from exc
 
         # Load all variants
         variant_ids = [item['product_variant_id'] for item in items_data]
@@ -94,28 +143,31 @@ class SaleService:
         if len(variants_by_id) != len(set(variant_ids)):
             raise SaleServiceError("Ayrim tovarlar topilmadi yoki nofaol holatda.")
 
-        # Group items by currency
+        # Retain the grouping boundary for future provider-specific sale types;
+        # the current retail POS gate accepts UZS only.
         items_by_currency = defaultdict(list)
-        for item in items_data:
+        for item in sorted(items_data, key=lambda entry: entry['product_variant_id']):
             variant = variants_by_id[item['product_variant_id']]
             qty = Decimal(str(item['quantity']))
             if qty <= 0:
                 raise SaleServiceError(f"{variant.name} uchun miqdor 0 dan katta bo'lishi shart.")
+            if variant.currency != Sale.CURRENCY_UZS:
+                raise SaleServiceError("POS savdosi faqat UZS’da rasmiylashtiriladi. USD kurs kalkulyatori savdoga qo‘shilmaydi.")
 
-            # Branch-aware price validation
+            # One stock and one catalog price per variant per tenant.
             from apps.inventory.models import Stock
-            stock_rec = Stock.objects.filter(tenant=tenant, branch=branch, product_variant=variant).first()
+            stock_rec = Stock.objects.select_for_update().filter(tenant=tenant, product_variant=variant).first()
 
             if is_partner_sale:
-                effective_partner = stock_rec.effective_price_partner if stock_rec else variant.price_partner
+                effective_partner = variant.price_partner
                 if effective_partner is None or effective_partner <= 0:
                     raise SaleServiceError(
                         f"{variant.product.name} ({variant.name}) uchun 1-narx belgilanmagan. To'ldirish majburiy."
                     )
                 unit_price = Decimal(str(item.get('unit_price', effective_partner)))
             else:
-                effective_rec = stock_rec.effective_price_recommended if stock_rec else variant.price_recommended
-                effective_min = stock_rec.effective_price_min if stock_rec else variant.price_min
+                effective_rec = variant.price_recommended
+                effective_min = variant.price_min
                 unit_price = Decimal(str(item.get('unit_price', effective_rec or effective_min)))
 
             if unit_price <= 0:
@@ -141,7 +193,7 @@ class SaleService:
 
             sale = Sale.objects.create(
                 tenant=tenant,
-                branch=branch,
+                shift=shift,
                 receipt_number=receipt_number,
                 sold_by=user,
                 counterparty=counterparty,
@@ -153,6 +205,7 @@ class SaleService:
                 b2b_target_tenant=counterparty.target_tenant if is_b2b else None,
                 b2b_expires_at=b2b_expires_at,
                 idempotency_key=idempotency_key,
+                request_fingerprint=fingerprint,
             )
 
             total_amount = Decimal('0.00')
@@ -162,13 +215,12 @@ class SaleService:
                 qty = item['quantity']
                 price = item['unit_price']
                 st_rec = item['stock_rec']
-                line_total = qty * price
+                line_total = (qty * price).quantize(Decimal('0.01'))
 
                 # Reduce stock & link to sale
                 try:
-                    movement = StockService._apply_movement(
+                    StockService.apply_movement(
                         tenant=tenant,
-                        branch=branch,
                         product_variant=variant,
                         type='sotuv',
                         direction='out',
@@ -180,7 +232,7 @@ class SaleService:
                 except StockServiceError as err:
                     stock_qty = Decimal('0')
                     try:
-                        st = Stock.objects.filter(tenant=tenant, branch=branch, product_variant=variant).first()
+                        st = Stock.objects.filter(tenant=tenant, product_variant=variant).first()
                         if st:
                             stock_qty = st.quantity
                     except Exception:
@@ -230,9 +282,13 @@ class SaleService:
                     type=Notification.TYPE_B2B_REQUEST,
                     title="Yangi B2B tovar o'tkazmasi",
                     message=f"{tenant.name} dan {total_amount:,.2f} {currency} qiymatida tovarlar yuborildi.",
-                    link=f"/sales/b2b/inbox/",
+                    link="/b2b",
                 )
 
             created_sales.append(sale)
+
+            if tenant.notify_on_sale:
+                from apps.sales.tasks import notify_sale_task
+                transaction.on_commit(lambda sale_id=sale.pk: notify_sale_task.delay(sale_id), robust=True)
 
         return created_sales

@@ -1,32 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Printer,
   Download,
   CheckCircle,
   Share2,
-  Calendar,
-  User,
   CreditCard,
-  ShieldCheck,
   AlertTriangle,
   RotateCcw,
   Store,
 } from 'lucide-react';
 import { salesApi } from '../api/client';
-import { ReceiptBarcode } from '../components/common/ReceiptSlip';
 import InventraLogo from '../components/common/InventraLogo';
 
 export default function PublicReceiptView() {
-  const { receiptNumber } = useParams();
+  const { token } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!receiptNumber) {
-      setError('Chek raqami ko‘rsatilmadi');
+    if (!token) {
+      setError('Chek havolasi noto‘g‘ri');
       setLoading(false);
       return;
     }
@@ -34,7 +30,7 @@ export default function PublicReceiptView() {
     setLoading(true);
     setError(null);
     salesApi
-      .getPublicReceipt(receiptNumber)
+      .getPublicReceipt(token)
       .then((data) => {
         setReceipt(data);
       })
@@ -44,7 +40,7 @@ export default function PublicReceiptView() {
       .finally(() => {
         setLoading(false);
       });
-  }, [receiptNumber]);
+  }, [token]);
 
   const handlePrint = () => {
     window.print();
@@ -160,7 +156,7 @@ export default function PublicReceiptView() {
       <div className="no-print" style={{ maxWidth: 520, margin: '0 auto 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>Rasmiy E-Chek Tizimi</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>Savdo nusxasi</span>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -209,7 +205,7 @@ export default function PublicReceiptView() {
         </div>
       </div>
 
-      {/* Main Official Receipt Card */}
+      {/* Customer copy of the sale record; this is not a fiscal receipt. */}
       <div
         className="public-receipt-container"
         style={{
@@ -230,19 +226,14 @@ export default function PublicReceiptView() {
           <h1 style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 4px', color: '#0f172a' }}>
             {receipt.store_name || 'INVENTRA SAVDO MARKAZI'}
           </h1>
-          {receipt.branch_name && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', marginBottom: 2 }}>
-              Filial: {receipt.branch_name}
-            </div>
-          )}
-          {(receipt.branch_address || receipt.branch_phone) && (
+          {(receipt.store_address || receipt.store_phone) && (
             <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>
-              {[receipt.branch_address, receipt.branch_phone && `Tel: ${receipt.branch_phone}`].filter(Boolean).join(' • ')}
+              {[receipt.store_address, receipt.store_phone && `Tel: ${receipt.store_phone}`].filter(Boolean).join(' • ')}
             </div>
           )}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: '#f1f5f9', fontSize: 12, color: '#475569', fontWeight: 600 }}>
-            <ShieldCheck size={14} color="#22c55e" />
-            <span>Rasmiy Elektron Savdo Cheki (E-Chek)</span>
+            <Store size={14} color="#64748b" />
+            <span>Elektron savdo nusxasi — fiskal chek emas</span>
           </div>
 
           {/* Status Badge */}
@@ -330,25 +321,24 @@ export default function PublicReceiptView() {
             })}
           </div>
 
+          {Number(receipt.refunded_amount || 0) > 0 && <p>Chekning asl summasi: {formatMoney(receipt.total_amount, cur)} · Qaytarilgan: {formatMoney(receipt.refunded_amount, cur)}</p>}
           {/* Grand Total */}
           <div style={{ marginTop: 20, paddingTop: 14, borderTop: '2px solid #0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <span style={{ fontSize: 15, fontWeight: 900, textTransform: 'uppercase', color: '#0f172a' }}>
               JAMI TO‘LOV:
             </span>
             <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>
-              {formatMoney(receipt.total_amount, cur)}
+              {formatMoney(receipt.net_amount ?? receipt.total_amount, cur)}
             </span>
           </div>
         </div>
 
-        {/* Digital Verification & Barcode */}
+        {/* Printable customer copy footer */}
         <div style={{ padding: '20px 28px', background: '#f8fafc', borderTop: '1px dashed #cbd5e1', textAlign: 'center' }}>
-          <ReceiptBarcode value={receipt.receipt_number} />
-
           <div style={{ marginTop: 14, fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
             <div style={{ fontWeight: 700, color: '#0f172a' }}>XARIDINGIZ UCHUN TASHAKKUR!</div>
-            <div>Ushbu elektron chek Inventra platformasida rasmiy ro‘yxatga olingan.</div>
-            <div style={{ marginTop: 4, color: '#94a3b8', fontSize: 10 }}>ID: {receipt.receipt_number} • www.inventra.uz</div>
+            <div>Ushbu nusxa savdo ma’lumotlarini ko‘rsatadi va rasmiy fiskal chek o‘rnini bosmaydi.</div>
+            <div style={{ marginTop: 4, color: '#94a3b8', fontSize: 10 }}>Chek raqami: {receipt.receipt_number}</div>
           </div>
         </div>
       </div>

@@ -7,9 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
+    "jsbarcode": "^3.12.3",
     "lucide-react": "^1.48.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

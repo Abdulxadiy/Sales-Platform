@@ -25,20 +25,23 @@ Covers
     * Both endpoints are accessible without authentication.
 """
 
+import json
+from unittest.mock import patch
+
 import pytest
 from django.core import mail
-from unittest.mock import patch, MagicMock
 
-from apps.accounts.services import password_reset_service
+from apps.accounts.services import login_ticket_service, otp_services, password_reset_service
+from apps.tg_bot.identity import current_bot_id
+from apps.tg_bot.models import TelegramContact
 from tests.factories import (
-    StaffFactory,
+    EmployeeFactory,
     OwnerFactory,
     PlatformAdminFactory,
-    UserFactory,
-    EmployeeFactory,
+    StaffFactory,
     TenantFactory,
+    UserFactory,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -126,8 +129,7 @@ class TestRequestPasswordReset:
         actually hired -- e.g. a half-finished hire()) must also be
         denied, the same as a fired one."""
 
-        never_hired = UserFactory(
-            role="staff", email="ghost-staff@example.com")
+        UserFactory(role="staff", email="ghost-staff@example.com")
 
 
         ok, reason = password_reset_service.request_password_reset(
@@ -228,6 +230,7 @@ class TestConfirmPasswordReset:
     def test_first_login_sets_username(self, db):
         """When a username is supplied and the user has none yet, it should be saved."""
         user = StaffFactory(username=None)
+        EmployeeFactory(user=user, tenant=TenantFactory(), is_active=True)
         token = self._store_token_for(user)
 
         ok, _, returned_user = password_reset_service.confirm_password_reset(
@@ -245,6 +248,7 @@ class TestConfirmPasswordReset:
         StaffFactory(username="taken_user")
 
         user = StaffFactory(username=None)
+        EmployeeFactory(user=user, tenant=TenantFactory(), is_active=True)
         token = self._store_token_for(user)
 
         ok, reason, _ = password_reset_service.confirm_password_reset(
@@ -254,6 +258,7 @@ class TestConfirmPasswordReset:
         )
         assert ok is False
         assert reason == "username_taken"
+        assert password_reset_service.peek_reset_token(token) is not None
 
     def test_missing_new_password_is_rejected(self, staff_with_email):
         """Passing an empty new_password must return (False, 'missing_fields')."""
@@ -326,14 +331,30 @@ class TestPasswordResetConfirmView:
         return token
 
     def test_valid_token_returns_200(self, client, staff_with_email):
-        """Consuming a valid token with a strong password should return 200."""
+        """Account setup returns a gate ticket without sending an OTP."""
         token = self._valid_token_for(staff_with_email)
-        response = client.post(
-            self.CONFIRM_URL,
-            data={"token": token, "new_password": "NewPass12345!"},
+        with patch("api.v1.accounts.views.misc.send_telegram_message") as send_message:
+            response = client.post(
+                self.CONFIRM_URL,
+                data={"token": token, "new_password": "NewPass12345!"},
+                content_type="application/json",
+            )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["login_ticket"]
+        assert body["telegram_linked"] is False
+        assert body["otp_sent"] is False
+        assert staff_with_email.phone_number not in str(body)
+        send_message.assert_not_called()
+        # The e-mail setup token was single-use, but its login ticket remains usable.
+        assert password_reset_service.peek_reset_token(token) is None
+        status_response = client.post(
+            "/api/v1/auth/admin-login/telegram-status/",
+            data={"login_ticket": body["login_ticket"]},
             content_type="application/json",
         )
-        assert response.status_code == 200
+        assert status_response.status_code == 200
+        assert status_response.json()["telegram_linked"] is False
 
     def test_invalid_token_returns_400(self, client, db):
         """An invalid token must produce a 400 response."""
@@ -368,6 +389,7 @@ class TestPasswordResetConfirmView:
         """Requesting a username that's already taken must return 400."""
         StaffFactory(username="existing_user")
         user = StaffFactory(username=None)
+        EmployeeFactory(user=user, tenant=TenantFactory(), is_active=True)
         token = self._valid_token_for(user)
 
         response = client.post(
@@ -480,3 +502,182 @@ class TestPasswordResetEnhancements:
         assert password_reset_service.peek_reset_token(token) is None
         res_after = client.get(VERIFY_URL + f"?token={token}")
         assert res_after.json()["valid"] is False
+
+
+@pytest.mark.django_db
+class TestInvitationResume:
+    """An invite survives password setup, but loses password-write authority."""
+
+    @pytest.fixture(autouse=True)
+    def clean_redis(self):
+        password_reset_service.redis_client.flushdb()
+        yield
+        password_reset_service.redis_client.flushdb()
+
+    def _invite(self, user):
+        token = password_reset_service.generate_reset_token()
+        password_reset_service.store_reset_token(token, user.id, purpose="new_employee")
+        return token
+
+    def test_link_resumes_telegram_without_replacing_password(self, client, staff_with_email):
+        token = self._invite(staff_with_email)
+        first = client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"token": token, "new_password": "FirstPassword123!"},
+            content_type="application/json",
+        )
+        assert first.status_code == 200
+        assert first.json()["login_ticket"]
+        assert password_reset_service.peek_reset_token(token)["phase"] == "pending_2fa"
+
+        reopened = client.get(f"/api/v1/auth/password-reset/verify/?token={token}")
+        assert reopened.json()["valid"] is True
+        assert reopened.json()["phase"] == "pending_2fa"
+        resumed = client.post(
+            "/api/v1/auth/password-reset/resume/", {"token": token},
+            content_type="application/json",
+        )
+        assert resumed.status_code == 200
+        assert resumed.json()["login_ticket"] != first.json()["login_ticket"]
+
+        replay = client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"token": token, "new_password": "AttackerReplacement123!"},
+            content_type="application/json",
+        )
+        assert replay.status_code == 400
+        assert replay.json()["detail"] == "setup_already_started"
+        staff_with_email.refresh_from_db()
+        assert staff_with_email.check_password("FirstPassword123!")
+
+    def test_original_deadline_caps_resumed_ticket(self, client, staff_with_email):
+        token = self._invite(staff_with_email)
+        key = password_reset_service._token_key(token)
+        password_reset_service.redis_client.expire(key, 95)
+        assert client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"token": token, "new_password": "FirstPassword123!"},
+            content_type="application/json",
+        ).status_code == 200
+        assert 0 < password_reset_service.redis_client.ttl(key) <= 95
+
+        resumed = client.post(
+            "/api/v1/auth/password-reset/resume/", {"token": token},
+            content_type="application/json",
+        )
+        assert resumed.status_code == 200
+        ticket_key = login_ticket_service._ticket_key(resumed.json()["login_ticket"])
+        assert 0 < password_reset_service.redis_client.ttl(ticket_key) <= 95
+
+        password_reset_service.redis_client.delete(key)
+        assert client.get(f"/api/v1/auth/password-reset/verify/?token={token}").json()["valid"] is False
+        assert client.post(
+            "/api/v1/auth/admin-login/telegram-status/",
+            {"login_ticket": resumed.json()["login_ticket"]},
+            content_type="application/json",
+        ).status_code == 401
+        assert client.post(
+            "/api/v1/auth/password-reset/resume/", {"token": token},
+            content_type="application/json",
+        ).status_code == 400
+
+    def test_existing_emailed_raw_key_is_migrated_without_expiry_reset(self, client, staff_with_email):
+        token = password_reset_service.generate_reset_token()
+        legacy = password_reset_service._legacy_token_key(token)
+        password_reset_service.redis_client.set(
+            legacy, json.dumps({"user_id": staff_with_email.id, "purpose": "new_employee"}), ex=100,
+        )
+        response = client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"token": token, "new_password": "FirstPassword123!"},
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        assert password_reset_service.redis_client.exists(legacy) == 0
+        assert 0 < password_reset_service.invitation_ttl(token) <= 100
+
+    def test_successful_2fa_login_completes_invitation(self, client, staff_with_email, settings):
+        settings.TELEGRAM_BOT_TOKEN = "123456789:unit-test-token"
+        TelegramContact.objects.create(
+            phone_number=staff_with_email.phone_number,
+            chat_id="12345",
+            bot_id=current_bot_id(),
+        )
+        token = self._invite(staff_with_email)
+        confirmed = client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"token": token, "new_password": "FirstPassword123!"},
+            content_type="application/json",
+        )
+        assert confirmed.status_code == 200
+        ticket = confirmed.json()["login_ticket"]
+        second_ticket = client.post(
+            "/api/v1/auth/password-reset/resume/", {"token": token},
+            content_type="application/json",
+        ).json()["login_ticket"]
+
+        with patch("api.v1.accounts.views.misc.send_telegram_message", return_value=True) as send:
+            sent = client.post(
+                "/api/v1/auth/admin-login/send-otp/", {"login_ticket": ticket},
+                content_type="application/json",
+            )
+        assert sent.status_code == 200
+        send.assert_called_once()
+        code = otp_services.redis_client.get(otp_services._otp_key(staff_with_email.phone_number))
+        verified = client.post(
+            "/api/v1/auth/admin-login/verify-otp/",
+            {"login_ticket": ticket, "verification_code": code},
+            content_type="application/json",
+        )
+        assert verified.status_code == 200
+        assert verified.json()["access"]
+        assert password_reset_service.peek_reset_token(token) is None
+        assert client.post(
+            "/api/v1/auth/admin-login/telegram-status/",
+            {"login_ticket": second_ticket},
+            content_type="application/json",
+        ).status_code == 401
+        assert client.post(
+            "/api/v1/auth/password-reset/resume/", {"token": token},
+            content_type="application/json",
+        ).status_code == 400
+
+    def test_normal_password_login_also_completes_pending_invitation(self, client, staff_with_email, settings):
+        settings.TELEGRAM_BOT_TOKEN = "123456789:unit-test-token"
+        TelegramContact.objects.create(
+            phone_number=staff_with_email.phone_number,
+            chat_id="12346",
+            bot_id=current_bot_id(),
+        )
+        token = self._invite(staff_with_email)
+        confirmed = client.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {"token": token, "new_password": "FirstPassword123!"},
+            content_type="application/json",
+        )
+        assert confirmed.status_code == 200
+
+        # A second, still-unused invitation for the same account must also
+        # end when the user completes a normal password + OTP login.
+        unused_token = self._invite(staff_with_email)
+
+        logged_in = client.post(
+            "/api/v1/auth/admin-login/",
+            {"username": staff_with_email.username, "password": "FirstPassword123!"},
+            content_type="application/json",
+        )
+        assert logged_in.status_code == 200
+        ticket = logged_in.json()["login_ticket"]
+        with patch("api.v1.accounts.views.misc.send_telegram_message", return_value=True):
+            assert client.post(
+                "/api/v1/auth/admin-login/send-otp/", {"login_ticket": ticket},
+                content_type="application/json",
+            ).status_code == 200
+        code = otp_services.redis_client.get(otp_services._otp_key(staff_with_email.phone_number))
+        assert client.post(
+            "/api/v1/auth/admin-login/verify-otp/",
+            {"login_ticket": ticket, "verification_code": code},
+            content_type="application/json",
+        ).status_code == 200
+        assert password_reset_service.peek_reset_token(token) is None
+        assert password_reset_service.peek_reset_token(unused_token) is None

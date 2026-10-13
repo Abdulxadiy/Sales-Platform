@@ -12,9 +12,9 @@ attempt-limit lockout, and the cooldown flag — i.e. everything in
 apps/accounts/services/otp_services.py.
 """
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from django.conf import settings
 
 from apps.accounts.services import otp_services as otp
 
@@ -90,6 +90,14 @@ def test_verify_code_is_single_use():
     second = otp.verify_code(PHONE, code)
     assert second[0] is False
     assert second[1] == "Expired"
+
+
+def test_parallel_verification_accepts_a_code_once():
+    code = otp.generate_code()
+    otp.store_code(PHONE, code)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        outcomes = list(pool.map(lambda _: otp.verify_code(PHONE, code), range(8)))
+    assert sum(valid for valid, _reason in outcomes) == 1
 
 
 def test_verify_without_any_stored_code_is_expired():

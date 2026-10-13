@@ -140,7 +140,7 @@ Quyida bayon etilgan shartlarni qabul qilish (akseptlash) orqali Foydalanuvchi m
 
 **"Inventra" Axborot Texnologiyalari Platformasi**  
 * Rasmiy veb-sayt: `https://inventra.uz`  
-* Texnik qo'llab-quvvatlash Telegram boti: `@inventraa_bot`  
+* Texnik qo'llab-quvvatlash Telegram boti: `@ilbi_bot`  
 * Elektron pochta: `support@inventra.uz` / `admin@inventra.uz`  
 * Yurisdiksiya: O'zbekiston Respublikasi, Toshkent shahri  
 

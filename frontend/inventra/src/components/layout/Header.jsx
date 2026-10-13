@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Shield, Menu, GitBranch, Store } from 'lucide-react';
+import { Clock, Shield, Menu, Store } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { useBranch } from '../../context/BranchContext';
+import { useTenant } from '../../context/TenantContext';
 import CustomSelect from '../common/CustomSelect';
 
 export default function Header({
@@ -13,10 +13,14 @@ export default function Header({
   onOpenMobileMenu,
 }) {
   const navigate = useNavigate();
-  const { isAdmin, isOwner } = useAuth();
-  const { branches, activeBranch, setActiveBranch } = useBranch();
+  const { isAdmin } = useAuth();
+  const { tenants, activeTenant, selectTenant } = useTenant();
+  const canViewCashbox = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.view_cashbox");
+  const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.manage_shift");
   const [time, setTime] = useState(new Date());
   const [shift, setShift] = useState(null);
+  const tenantIdRef = useRef(activeTenant?.id);
+  tenantIdRef.current = activeTenant?.id;
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -24,27 +28,28 @@ export default function Header({
   }, []);
 
   const fetchShift = useCallback(() => {
-    if (isAdmin) return;
+    if (isAdmin || !canViewCashbox || !activeTenant?.id) return;
     cashboxApi
-      .getCurrentShift(activeBranch?.id)
-      .then((data) => setShift(data))
-      .catch(() => setShift(null));
-  }, [isAdmin, activeBranch?.id]);
+      .getCurrentShift(activeTenant?.id)
+      .then((data) => { if (tenantIdRef.current === activeTenant?.id) setShift(data); })
+      .catch(() => { if (tenantIdRef.current === activeTenant?.id) setShift(null); });
+  }, [isAdmin, activeTenant?.id, canViewCashbox]);
 
   useEffect(() => {
+    setShift(null);
     fetchShift();
 
     const handleShiftEvent = () => fetchShift();
     window.addEventListener('shift_status_changed', handleShiftEvent);
     window.addEventListener('refresh_notifications', handleShiftEvent);
-    window.addEventListener('branch_changed', handleShiftEvent);
+    window.addEventListener('tenant_changed', handleShiftEvent);
 
     const interval = setInterval(fetchShift, 10000);
 
     return () => {
       window.removeEventListener('shift_status_changed', handleShiftEvent);
       window.removeEventListener('refresh_notifications', handleShiftEvent);
-      window.removeEventListener('branch_changed', handleShiftEvent);
+      window.removeEventListener('tenant_changed', handleShiftEvent);
       clearInterval(interval);
     };
   }, [fetchShift]);
@@ -78,22 +83,18 @@ export default function Header({
       </div>
 
       <div className="header-actions-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {!isAdmin && activeBranch && (
-          isOwner && branches.length > 1 ? (
+        {!isAdmin && activeTenant && (
+          isOwner && tenants.length > 1 ? (
             <CustomSelect
-              value={activeBranch.id}
-              onChange={(newBranchId) => {
-                const sel = branches.find((b) => String(b.id) === String(newBranchId));
-                if (sel) setActiveBranch(sel);
+              value={activeTenant.id}
+              onChange={(newTenantId) => {
+                const selected = tenants.find((tenant) => String(tenant.id) === String(newTenantId));
+                if (selected) selectTenant(selected);
               }}
-              options={branches.map((b) => ({
-                value: b.id,
-                label: b.name,
-                badge: b.is_main ? 'Asosiy' : null,
-              }))}
-              icon={GitBranch}
+              options={tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))}
+              icon={Store}
               size="sm"
-              title="Faol filialni almashtirish"
+              title="Faol do‘konni almashtirish"
               style={{
                 borderRadius: 10,
                 background: 'var(--bg-chip)',
@@ -120,10 +121,10 @@ export default function Header({
                 fontWeight: 600,
                 color: 'var(--text-primary)',
               }}
-              title={`Faol filial: ${activeBranch.name}`}
+              title={`Faol do‘kon: ${activeTenant.name}`}
             >
               <Store size={14} color="var(--primary)" />
-              <span>{activeBranch.name}</span>
+              <span>{activeTenant.name}</span>
             </div>
           )
         )}
@@ -153,10 +154,10 @@ export default function Header({
               Platforma Nazorati
             </span>
           </div>
-        ) : (
+        ) : canViewCashbox ? (
           <div
             onClick={() => {
-              if (isShiftOpen && onOpenShiftModal) {
+              if (isShiftOpen && canManageShift && onOpenShiftModal) {
                 onOpenShiftModal();
               } else {
                 navigate('/shifts');
@@ -205,7 +206,7 @@ export default function Header({
               {isShiftOpen ? 'Smena Ochiq' : 'Smena Yopiq'}
             </span>
           </div>
-        )}
+        ) : null}
 
         {/* Live Clock with Synthetic Lime Accent */}
         <div

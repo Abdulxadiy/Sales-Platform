@@ -1,22 +1,7 @@
-"""Shared tenant-context resolution for tenant-scoped API views.
+"""Resolve a selected tenant from an authenticated user's active membership.
 
-Design background (see Architectures/inventra-yol-xaritasi.md, 8-bosqich):
-
-- This is deliberately NOT a Django `MIDDLEWARE` entry. Django middleware
-  runs before DRF authenticates the request (DRF authenticates lazily,
-  the first time `request.user` is touched -- typically inside
-  `APIView.initial()`), so a real middleware has no reliable access to
-  `request.user` or JWT claims. Re-decoding the JWT a second time inside
-  a separate middleware would duplicate `JWTAuthentication`'s validation
-  logic and risk the two falling out of sync.
-- Instead, tenant context is resolved inside `initial()`, AFTER
-  `super().initial()` has run authentication and permission checks. Any
-  view using this mixin can assume `request.user` is authenticated by
-  the time `self.tenant` is set.
-- Tenant is always derived from `request.user.tenant` (a fresh DB read
-  through the authenticated user), never from a JWT claim, a query
-  parameter, or a request body field. JWT claims can go stale between
-  issuance and use (e.g. after a fire()); the DB read cannot.
+Tenant selection is request-scoped via X-Tenant-ID, validated against the
+database on every request, and never trusted from the JWT or request body.
 """
 
 from django.shortcuts import get_object_or_404
@@ -24,6 +9,10 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.views import APIView
 
 from apps.tenants.models import Tenant
+from apps.accounts.services.tenant_context_service import (
+    TENANT_HEADER,
+    resolve_active_context,
+)
 
 
 class TenantContextMixin:
@@ -31,14 +20,14 @@ class TenantContextMixin:
     Mixin for DRF views that need to know which tenant a request is
     acting on.
 
-    Sets `self.tenant` during `initial()`:
-      - staff / owner    -> `request.user.tenant` (DB, always fresh).
+    Sets `self.tenant` during permission evaluation:
+      - staff / owner    -> active membership selected from the database.
       - platform_admin   -> `None` (platform_admin is not scoped to any
         single tenant by default).
 
     Views whose URL carries an explicit `tenant_id` (sub-resource
     endpoints like hire/fire, and future 9-bosqich business endpoints)
-    should additionally call `resolve_tenant_from_url()` and use ITS
+    should additionally call `resolve_tenant_from_url()` and use its
     return value as the acting tenant -- `self.tenant` alone is not
     enough there, since it is `None` for platform_admin even when the
     URL names a specific tenant.
@@ -48,24 +37,16 @@ class TenantContextMixin:
     # that use resolve_tenant_from_url(). Override on the view if the
     # URL conf names it differently.
     tenant_url_kwarg = "tenant_id"
+    tenant = None
+    employee = None
 
-    def initial(self, request, *args, **kwargs):
-        # Runs authentication + permission checks + throttling first,
-        # via DRF's own APIView.initial(). Only after this returns can
-        # we trust request.user.
-        super().initial(request, *args, **kwargs)
-        self.tenant = self._resolve_tenant_from_user(request)
-        self._ensure_tenant_active(self.tenant)
-
-    @staticmethod
-    def _resolve_tenant_from_user(request):
-        """Derive the acting tenant strictly from the authenticated user."""
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return None
-        if user.role in ("staff", "owner"):
-            return user.tenant
-        return None
+    def check_permissions(self, request):
+        context = resolve_active_context(
+            request.user, request.META.get(TENANT_HEADER)
+        )
+        self.tenant = request.tenant = context.tenant
+        self.employee = request.employee = context.employee
+        super().check_permissions(request)
 
     def resolve_tenant_from_url(self, request, tenant_id=None):
         """
@@ -75,10 +56,8 @@ class TenantContextMixin:
 
         Authority rules:
           - platform_admin: may act on ANY tenant named in the URL.
-          - owner: may act only on the tenant they own.
-          - staff: never resolves a tenant via URL -- staff act on their
-            own tenant only (`self.tenant`), so reaching this method as
-            staff is always a 403.
+          - owner: may act only on the selected tenant they own.
+          - staff: may act only on the tenant in their active employment.
 
         Raises (both handled by DRF's default exception handler into a
         `{"detail": "..."}` response, matching prior behaviour):
@@ -94,7 +73,7 @@ class TenantContextMixin:
 
         if user.role == "platform_admin":
             pass
-        elif user.role == "owner" and tenant.owner_id == user.id:
+        elif self.tenant is not None and tenant.id == self.tenant.id:
             pass
         else:
             raise PermissionDenied("You don't have authority over this tenant.")
@@ -107,7 +86,7 @@ class TenantContextMixin:
         """A deactivated tenant is closed for business: no action on its
         behalf is allowed, regardless of who is asking."""
         if tenant is not None and not tenant.is_active:
-            raise PermissionDenied("This tenant is deactivated.")
+            raise PermissionDenied("Bu do‘kon faol emas.")
 
 
 class OwnerStaffOnlyAPIView(TenantContextMixin, APIView):

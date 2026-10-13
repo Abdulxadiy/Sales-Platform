@@ -9,6 +9,8 @@ if [ "$1" = "gunicorn" ] || [ "$RUN_MIGRATIONS" = "true" ]; then
     echo "==> Running migrations..."
     python manage.py migrate --noinput
 
+    python manage.py ensure_media_bucket
+
     echo "==> Collecting static files..."
     python manage.py collectstatic --noinput
 fi

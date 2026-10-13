@@ -1,6 +1,6 @@
 import React from 'react';
 import InventraLogo from './InventraLogo';
-import { ReceiptBarcode, ReceiptQRCode } from './ReceiptSlip';
+import { ReceiptBarcode } from './ReceiptSlip';
 import { useAuth } from '../../context/AuthContext';
 
 /**
@@ -221,6 +221,12 @@ export default function ShiftReportSlip({
       </div>
 
       {/* Section 2: Qo'shimcha Kirimlar (agar mavjud bo'lsa) */}
+      <div style={{ borderTop: '1px dashed #333', paddingTop: 8, marginBottom: 8 }}>
+        <div>Boshlang‘ich naqd: {formatDual(report.opening_cash_uzs, report.opening_cash_usd)}</div>
+        <div>Qarzdan naqd kirim: {formatDual(report.collected_debt_cash_uzs, report.collected_debt_cash_usd, { prefix: '+' })}</div>
+        <div>Naqd qaytarish: {formatDual(-Number(report.refund_cash_uzs || 0), -Number(report.refund_cash_usd || 0))}</div>
+      </div>
+
       {(extraIncomeUzs > 0 || extraIncomeUsd > 0 || (report.incomes && report.incomes.length > 0)) && (
         <>
           <div style={{ borderTop: '1px dashed #000000', margin: '6px 0 5px' }} />

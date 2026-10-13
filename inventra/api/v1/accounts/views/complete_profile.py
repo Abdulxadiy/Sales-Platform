@@ -1,13 +1,17 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from api.v1.accounts.serializers import CompleteProfileSerializer
 
 
 class CompleteProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=CompleteProfileSerializer, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
         serializer = CompleteProfileSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -29,5 +33,7 @@ class CompleteProfileView(APIView):
                 user.contact_phone = None
 
         user.profile_completed = True
-        user.save()
+        user.save(update_fields=[
+            "first_name", "last_name", "email", "date_of_birth", "contact_phone", "profile_completed",
+        ])
         return Response(status=status.HTTP_200_OK)

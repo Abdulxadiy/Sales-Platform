@@ -1,11 +1,15 @@
 import pytest
 from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
+from django.test import override_settings
 
 from apps.catalog.models import Category, Product, ProductVariant
 from apps.inventory.services import StockService, StockServiceError
 from apps.inventory.models import StockMovement
 from apps.sales.models import Sale, SaleItem, Notification
 from apps.sales.services import SaleService, SaleServiceError
+from apps.tenants.models import SellerProfile
 from tests.factories import (
     TenantFactory,
     OwnerFactory,
@@ -62,6 +66,48 @@ def usd_variant(tenant, owner):
 
 
 class TestSaleServiceCreation:
+    @override_settings(DEBUG=False)
+    def test_production_pos_is_closed_without_fiscal_integration(self, tenant, staff, uzs_variant):
+        with pytest.raises(SaleServiceError, match="fiskal provayder integratsiyasi tayyor emas"):
+            SaleService.create_sale(
+                tenant=tenant, user=staff,
+                items_data=[{"product_variant_id": uzs_variant.id, "quantity": "1"}],
+                payment_type="cash",
+            )
+
+    def test_pos_rejects_tenant_without_seller_profile(self, tenant, staff, uzs_variant):
+        tenant.seller_profile = None
+        tenant.save(update_fields=["seller_profile"])
+
+        with pytest.raises(SaleServiceError, match="sotuvchi profili kerak"):
+            SaleService.create_sale(
+                tenant=tenant, user=staff,
+                items_data=[{"product_variant_id": uzs_variant.id, "quantity": "1"}],
+                payment_type="cash",
+            )
+
+    def test_pos_requires_a_currently_approved_seller_profile(self, tenant, staff, uzs_variant):
+        tenant.seller_profile.status = SellerProfile.STATUS_PENDING
+        tenant.seller_profile.save(update_fields=["status"])
+
+        with pytest.raises(SaleServiceError, match="tekshiruvdan o‘tgan"):
+            SaleService.create_sale(
+                tenant=tenant, user=staff,
+                items_data=[{"product_variant_id": uzs_variant.id, "quantity": "1"}],
+                payment_type="cash",
+            )
+
+    def test_pos_rejects_expired_seller_profile(self, tenant, staff, uzs_variant):
+        tenant.seller_profile.expires_at = timezone.now() - timedelta(seconds=1)
+        tenant.seller_profile.save(update_fields=["expires_at"])
+
+        with pytest.raises(SaleServiceError, match="muddati tugagan"):
+            SaleService.create_sale(
+                tenant=tenant, user=staff,
+                items_data=[{"product_variant_id": uzs_variant.id, "quantity": "1"}],
+                payment_type="cash",
+            )
+
     def test_single_currency_sale_creates_one_receipt(self, tenant, staff, uzs_variant):
         sales = SaleService.create_sale(
             tenant=tenant,
@@ -98,32 +144,22 @@ class TestSaleServiceCreation:
         uzs_variant.stock.refresh_from_db()
         assert uzs_variant.stock.quantity == Decimal("48.000")
 
-    def test_multi_currency_cart_auto_splits_into_two_receipts(self, tenant, staff, uzs_variant, usd_variant):
-        sales = SaleService.create_sale(
-            tenant=tenant,
-            user=staff,
-            items_data=[
-                {"product_variant_id": uzs_variant.id, "quantity": "3", "unit_price": "12000.00"},
-                {"product_variant_id": usd_variant.id, "quantity": "1", "unit_price": "20.00"},
-            ],
-            payment_type="cash",
-        )
-
-        assert len(sales) == 2
-        currencies = {s.currency for s in sales}
-        assert currencies == {"UZS", "USD"}
-
-        uzs_sale = next(s for s in sales if s.currency == "UZS")
-        usd_sale = next(s for s in sales if s.currency == "USD")
-
-        assert uzs_sale.total_amount == Decimal("36000.00")
-        assert usd_sale.total_amount == Decimal("20.00")
-        assert uzs_sale.receipt_number != usd_sale.receipt_number
-
+    def test_usd_category_cannot_be_sold_at_pos(self, tenant, staff, uzs_variant, usd_variant):
+        with pytest.raises(SaleServiceError, match="POS savdosi faqat UZS"):
+            SaleService.create_sale(
+                tenant=tenant,
+                user=staff,
+                items_data=[
+                    {"product_variant_id": uzs_variant.id, "quantity": "3", "unit_price": "12000.00"},
+                    {"product_variant_id": usd_variant.id, "quantity": "1", "unit_price": "20.00"},
+                ],
+                payment_type="cash",
+            )
+        assert not Sale.objects.filter(tenant=tenant).exists()
         uzs_variant.stock.refresh_from_db()
         usd_variant.stock.refresh_from_db()
-        assert uzs_variant.stock.quantity == Decimal("47.000")
-        assert usd_variant.stock.quantity == Decimal("29.000")
+        assert uzs_variant.stock.quantity == Decimal("50.000")
+        assert usd_variant.stock.quantity == Decimal("30.000")
 
     def test_empty_cart_fails(self, tenant, staff):
         with pytest.raises(SaleServiceError, match="kamida bitta tovar"):
@@ -152,22 +188,21 @@ class TestSaleServiceCreation:
                 counterparty=None,
             )
 
-    def test_debt_sale_updates_counterparty_balance(self, tenant, staff, uzs_variant, usd_variant):
+    def test_debt_sale_updates_uzs_counterparty_balance(self, tenant, staff, uzs_variant):
         cp = CounterpartyFactory(tenant=tenant)
         sales = SaleService.create_sale(
             tenant=tenant,
             user=staff,
             items_data=[
                 {"product_variant_id": uzs_variant.id, "quantity": "2", "unit_price": "10000.00"},
-                {"product_variant_id": usd_variant.id, "quantity": "3", "unit_price": "20.00"},
             ],
             payment_type="debt",
             counterparty=cp,
         )
-        assert len(sales) == 2
+        assert len(sales) == 1
         cp.refresh_from_db()
         assert cp.debt_balance_uzs == Decimal("20000.00")
-        assert cp.debt_balance_usd == Decimal("60.00")
+        assert cp.debt_balance_usd == Decimal("0.00")
 
     def test_partner_sale_enforces_1_narx(self, tenant, staff, uzs_variant):
         # When 1-narx is 0, fails

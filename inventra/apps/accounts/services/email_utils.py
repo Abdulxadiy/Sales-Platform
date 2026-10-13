@@ -8,7 +8,7 @@ def mask_email(email: str) -> str:
     Mask an email address for safe display in API responses without leaking the full address.
 
     Examples:
-    'abdulxadiyabduraximov@gmail.com' -> 'ab***ov@gmail.com'
+    'john.doe@example.com' -> 'jo***oe@example.com'
     'alice@example.com' -> 'al***ce@example.com'
     'john@gmail.com' -> 'j*n@gmail.com'
     'me@domain.uz' -> 'm*@domain.uz'

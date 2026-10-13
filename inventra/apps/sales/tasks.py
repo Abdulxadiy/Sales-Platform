@@ -30,4 +30,20 @@ def send_async_telegram_message_task(chat_id: str, text: str):
     success = send_telegram_message(chat_id=chat_id, text=text)
     if not success:
         logger.warning(f"Telegram message delivery failed for {chat_id}")
+        raise RuntimeError('Telegram xabari yetkazilmadi; qayta yuboriladi.')
     return success
+
+
+@shared_task(name='apps.sales.tasks.notify_sale_task')
+def notify_sale_task(sale_id):
+    from apps.sales.models import Sale
+    from apps.tg_bot.models import TelegramContact
+    sale = Sale.objects.select_related('tenant__owner').filter(pk=sale_id).first()
+    if sale is None or not sale.tenant.notify_on_sale:
+        return False
+    contact = TelegramContact.objects.filter(phone_number=sale.tenant.owner.phone_number).first()
+    if contact is None:
+        return False
+    text = f"🧾 Yangi savdo: {sale.tenant.name}\nChek: {sale.receipt_number}\nSumma: {sale.total_amount:,.2f} {sale.currency}\nTo‘lov: {sale.get_payment_type_display()}"
+    send_async_telegram_message_task.delay(contact.chat_id, text)
+    return True

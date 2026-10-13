@@ -1,31 +1,35 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { BranchProvider } from './context/BranchContext';
+import { TenantProvider } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/layout/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import POS from './pages/POS';
-import Catalog from './pages/Catalog';
-import Inventory from './pages/Inventory';
-import Sales from './pages/Sales';
-import Shifts from './pages/Shifts';
-import Branches from './pages/Branches';
-import Audit from './pages/Audit';
-import Tenants from './pages/Tenants';
-import Employees from './pages/Employees';
-import Services from './pages/Services';
-import Profile from './pages/Profile';
-import SetupAccount from './pages/SetupAccount';
-import AcceptTerms from './pages/AcceptTerms';
-import Documentation from './pages/Documentation';
-import PublicReceiptView from './pages/PublicReceiptView';
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const POS = lazy(() => import('./pages/POS'));
+const Catalog = lazy(() => import('./pages/Catalog'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Sales = lazy(() => import('./pages/Sales'));
+const Debts = lazy(() => import('./pages/Debts'));
+const B2BTransactions = lazy(() => import('./pages/B2BTransactions'));
+const Shifts = lazy(() => import('./pages/Shifts'));
+const Audit = lazy(() => import('./pages/Audit'));
+const Tenants = lazy(() => import('./pages/Tenants'));
+const SellerProfileReviews = lazy(() => import('./pages/SellerProfileReviews'));
+const MyTenants = lazy(() => import('./pages/MyTenants'));
+const Employees = lazy(() => import('./pages/Employees'));
+const Services = lazy(() => import('./pages/Services'));
+const Profile = lazy(() => import('./pages/Profile'));
+const SetupAccount = lazy(() => import('./pages/SetupAccount'));
+const AcceptTerms = lazy(() => import('./pages/AcceptTerms'));
+const Documentation = lazy(() => import('./pages/Documentation'));
+const PublicReceiptView = lazy(() => import('./pages/PublicReceiptView'));
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
+  if (loading) return <div style={{ padding: 24 }}>Sessiya tekshirilmoqda...</div>;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -36,7 +40,8 @@ function ProtectedRoute({ children }) {
 }
 
 function RoleProtectedRoute({ children, allowedRoles }) {
-  const { role, isAuthenticated, user } = useAuth();
+  const { role, isAuthenticated, user, loading } = useAuth();
+  if (loading) return <div style={{ padding: 24 }}>Sessiya tekshirilmoqda...</div>;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -51,19 +56,20 @@ function RoleProtectedRoute({ children, allowedRoles }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter useTransitions={false}>
       <ThemeProvider>
         <AuthProvider>
-          <BranchProvider>
+          <TenantProvider>
             <ToastProvider>
               <ConfirmProvider>
+                <Suspense fallback={<div style={{ padding: 24 }}>Sahifa yuklanmoqda...</div>}>
                 <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/setup-account" element={<SetupAccount />} />
                 <Route path="/reset-password" element={<SetupAccount />} />
                 <Route path="/accept-terms" element={<AcceptTerms />} />
-                <Route path="/r/:receiptNumber" element={<PublicReceiptView />} />
-                <Route path="/receipt/:receiptNumber" element={<PublicReceiptView />} />
+                <Route path="/r/:token" element={<PublicReceiptView />} />
+                <Route path="/receipt/:token" element={<PublicReceiptView />} />
 
                 <Route
                   path="/"
@@ -78,20 +84,30 @@ export default function App() {
                   <Route path="catalog" element={<Catalog />} />
                   <Route path="inventory" element={<Inventory />} />
                   <Route path="sales" element={<Sales />} />
+                  <Route path="debts" element={<Debts />} />
+                  <Route path="b2b" element={<B2BTransactions />} />
                   <Route path="shifts" element={<Shifts />} />
-                  <Route
-                    path="branches"
-                    element={
-                      <RoleProtectedRoute allowedRoles={['owner', 'platform_admin']}>
-                        <Branches />
-                      </RoleProtectedRoute>
-                    }
-                  />
                   <Route
                     path="tenants"
                     element={
                       <RoleProtectedRoute allowedRoles={['platform_admin']}>
                         <Tenants />
+                      </RoleProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="seller-profiles/review"
+                    element={
+                      <RoleProtectedRoute allowedRoles={['platform_admin']}>
+                        <SellerProfileReviews />
+                      </RoleProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="my-tenants"
+                    element={
+                      <RoleProtectedRoute allowedRoles={['owner']}>
+                        <MyTenants />
                       </RoleProtectedRoute>
                     }
                   />
@@ -125,9 +141,10 @@ export default function App() {
 
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+                </Suspense>
             </ConfirmProvider>
           </ToastProvider>
-        </BranchProvider>
+        </TenantProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

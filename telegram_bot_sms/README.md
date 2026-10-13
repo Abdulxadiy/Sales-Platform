@@ -158,7 +158,7 @@ The bot reads its configuration from environment variables.
 The application requires three environment variables:
 
 ```env
-BOT_TOKEN=your_telegram_bot_token
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 INVENTRA_INTERNAL_URL=https://your-internal-service.example/api/...
 INTERNAL_SERVICE_TOKEN=your_internal_service_token
 ```
@@ -167,7 +167,7 @@ INTERNAL_SERVICE_TOKEN=your_internal_service_token
 
 | Variable | Description | Required |
 |---|---|---|
-| `BOT_TOKEN` | Telegram Bot API token | ✅ |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API token | ✅ |
 | `INVENTRA_INTERNAL_URL` | Internal authentication service endpoint | ✅ |
 | `INTERNAL_SERVICE_TOKEN` | Token used to authenticate internal API requests | ✅ |
 
@@ -290,7 +290,7 @@ Because this service is involved in authentication-related workflows, security s
 ### Recommended Practices
 
 - 🔒 Never hard-code secrets in source code.
-- 🔑 Store `BOT_TOKEN` and `INTERNAL_SERVICE_TOKEN` in environment variables.
+- 🔑 Store `TELEGRAM_BOT_TOKEN` and `INTERNAL_SERVICE_TOKEN` in environment variables.
 - 🌐 Use HTTPS for remote internal services.
 - 🛡️ Authenticate all internal API requests.
 - 🚦 Implement rate limiting on the backend.

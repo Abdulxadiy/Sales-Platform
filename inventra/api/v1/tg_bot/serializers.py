@@ -1,4 +1,6 @@
 ﻿from rest_framework import serializers
+
+from apps.tg_bot.identity import current_bot_id
 from apps.tg_bot.models import TelegramContact
 
 
@@ -9,8 +11,11 @@ class TelegramContactSerializer(serializers.Serializer):
     def save(self, **kwargs):
         phone_number = self.validated_data['phone_number']
         chat_id = self.validated_data['chat_id']
+        bot_id = current_bot_id()
+        if not bot_id:
+            raise serializers.ValidationError("Telegram bot sozlanmagan.")
         obj, created = TelegramContact.objects.update_or_create(
             phone_number=phone_number,
-            defaults={'chat_id': chat_id},
+            defaults={'chat_id': chat_id, 'bot_id': bot_id},
         )
         return obj

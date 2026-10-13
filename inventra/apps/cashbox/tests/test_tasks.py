@@ -32,7 +32,7 @@ def test_send_daily_report_for_tenant_task_with_contact(mock_delay, tenant, owne
 
 @patch("apps.cashbox.tasks.send_daily_report_for_tenant_task.delay")
 def test_check_and_send_daily_reports_task(mock_tenant_task_delay, tenant):
-    now = timezone.now()
+    now = timezone.localtime()
     # Set tenant daily_report_time to current time
     tenant.daily_report_time = time(now.hour, now.minute)
     tenant.save(update_fields=["daily_report_time"])

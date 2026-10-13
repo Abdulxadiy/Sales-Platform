@@ -1,17 +1,21 @@
 from datetime import datetime, time
+
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from api.permissions import IsOwnerOrPlatformAdmin
+from api.mixins import TenantContextMixin
 from api.pagination import StandardResultsSetPagination
-from apps.core.models import AuditLog
+from api.permissions import IsOwnerOrPlatformAdmin
+from api.schema import optional_pagination
 from api.v1.audit.serializers import AuditLogSerializer
+from apps.core.models import AuditLog
 
 
-class AuditLogListView(APIView):
+class AuditLogListView(TenantContextMixin, APIView):
     """
     GET /api/v1/audit/logs/
     List audit logs. Accessible only to owner (scoped to their tenant)
@@ -20,6 +24,7 @@ class AuditLogListView(APIView):
     """
     permission_classes = [IsOwnerOrPlatformAdmin]
 
+    @extend_schema(request=None, responses={200: optional_pagination(AuditLogSerializer)})
     def get(self, request):
         user = request.user
 
@@ -29,7 +34,7 @@ class AuditLogListView(APIView):
             if tenant_id:
                 queryset = queryset.filter(tenant_id=tenant_id)
         elif user.role == "owner":
-            tenant = getattr(user, "tenant", None)
+            tenant = self.tenant
             if not tenant:
                 return Response(
                     {"detail": "No tenant associated with this owner account."},

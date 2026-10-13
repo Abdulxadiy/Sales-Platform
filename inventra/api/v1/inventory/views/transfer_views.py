@@ -1,146 +1,118 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
 
 from api.permissions import HasEmployeePermission
-from apps.inventory.models import StockTransfer
-from apps.inventory.services import StockTransferService, StockTransferServiceError
-from apps.catalog.models import ProductVariant
-from apps.tenants.models import Branch
 from api.v1.inventory.serializers import (
-    StockTransferOutputSerializer,
-    StockTransferCreateSerializer,
+    TenantTransferCreateSerializer,
+    TenantTransferDiscrepancyCloseSerializer,
+    TenantTransferOutputSerializer,
+    TenantTransferReceiveSerializer,
+    TenantTransferReturnSerializer,
 )
+from apps.inventory.models import TenantTransfer
+from apps.inventory.services.transfer_service import TenantTransferError, TenantTransferService
+
 from ._base import InventoryAPIView
 
 
-class StockTransferListCreateView(InventoryAPIView):
+class TenantTransferListCreateView(InventoryAPIView):
     permission_classes = [HasEmployeePermission]
-    required_permission = "inventory.view_stock"
+    required_permission = "inventory.transfer_stock"
 
+    @extend_schema(request=None, responses={200: TenantTransferOutputSerializer(many=True)})
     def get(self, request):
-        qs = (
-            StockTransfer.objects.filter(tenant=self.tenant)
-            .select_related("from_branch", "to_branch", "sent_by", "resolved_by")
-            .prefetch_related("items__product_variant__product")
-        )
+        transfers = TenantTransfer.objects.filter(
+            source_tenant=self.tenant
+        ) | TenantTransfer.objects.filter(destination_tenant=self.tenant)
+        transfers = transfers.select_related(
+            "source_tenant", "destination_tenant", "created_by", "received_by"
+        ).prefetch_related(
+            "items__source_variant__product", "items__destination_variant__product"
+        ).distinct()
+        return Response(TenantTransferOutputSerializer(transfers, many=True).data)
 
-        status_param = request.query_params.get("status")
-        if status_param:
-            qs = qs.filter(status=status_param)
-
-        branch_id = request.query_params.get("branch_id")
-        if branch_id:
-            qs = qs.filter(from_branch_id=branch_id) | qs.filter(to_branch_id=branch_id)
-        elif hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch and request.user != self.tenant.owner and not request.user.is_superuser:
-                qs = qs.filter(from_branch=emp.branch) | qs.filter(to_branch=emp.branch)
-
-        return Response(StockTransferOutputSerializer(qs, many=True).data)
-
+    @extend_schema(request=TenantTransferCreateSerializer, responses={201: TenantTransferOutputSerializer})
     def post(self, request):
-        serializer = StockTransferCreateSerializer(data=request.data)
+        serializer = TenantTransferCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        from_branch = get_object_or_404(Branch, pk=data["from_branch_id"], tenant=self.tenant)
-        to_branch = get_object_or_404(Branch, pk=data["to_branch_id"], tenant=self.tenant)
-
-        # Check permission: if staff, cannot transfer from branch other than their assigned branch
-        if hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch and request.user != self.tenant.owner and not request.user.is_superuser:
-                if from_branch != emp.branch:
-                    return Response(
-                        {"detail": "Faqat o'z filialingizdan boshqa filialga transfer jo'natishingiz mumkin."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-
-        # Owner transfer can auto_accept if confirmed
-        is_owner = (request.user == self.tenant.owner or request.user.is_superuser)
-        auto_accept = is_owner and data.get("auto_accept", False)
-
-        items = []
-        for it in data["items"]:
-            variant = get_object_or_404(ProductVariant, pk=it["product_variant_id"], tenant=self.tenant)
-            items.append({
-                "product_variant": variant,
-                "quantity": it["quantity"],
-            })
-
+        values = serializer.validated_data
         try:
-            transfer = StockTransferService.create_transfer(
-                tenant=self.tenant,
-                from_branch=from_branch,
-                to_branch=to_branch,
-                items=items,
-                created_by=request.user,
-                note=data.get("note", ""),
-                auto_accept=auto_accept,
+            transfer = TenantTransferService.dispatch(
+                source=self.tenant,
+                destination_id=values["destination_tenant_id"],
+                actor=request.user,
+                request_key=values["request_key"],
+                items=values["items"],
+                note=values.get("note", ""),
             )
-            return Response(StockTransferOutputSerializer(transfer).data, status=status.HTTP_201_CREATED)
-        except (StockTransferServiceError, Exception) as exc:
+        except TenantTransferError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(TenantTransferOutputSerializer(transfer).data, status=status.HTTP_201_CREATED)
 
 
-class StockTransferDetailView(InventoryAPIView):
+class TenantTransferReceiveView(InventoryAPIView):
     permission_classes = [HasEmployeePermission]
-    required_permission = "inventory.view_stock"
+    required_permission = "inventory.transfer_stock"
 
-    def get(self, request, pk):
-        transfer = get_object_or_404(
-            StockTransfer.objects.select_related("from_branch", "to_branch", "sent_by", "resolved_by")
-            .prefetch_related("items__product_variant__product"),
-            pk=pk,
-            tenant=self.tenant,
-        )
-        return Response(StockTransferOutputSerializer(transfer).data)
-
-
-class StockTransferAcceptView(InventoryAPIView):
-    permission_classes = [HasEmployeePermission]
-    required_permission = "inventory.adjust_stock"
-
-    def post(self, request, pk):
-        transfer = get_object_or_404(StockTransfer, pk=pk, tenant=self.tenant)
-        # Check that user belongs to target branch or is owner
-        if hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch and request.user != self.tenant.owner and not request.user.is_superuser:
-                if transfer.to_branch != emp.branch:
-                    return Response(
-                        {"detail": "Transferni faqat qabul qiluvchi filial xodimi qabul qilishi mumkin."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-
+    @extend_schema(request=TenantTransferReceiveSerializer, responses={200: TenantTransferOutputSerializer})
+    def post(self, request, transfer_id):
+        serializer = TenantTransferReceiveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         try:
-            transfer = StockTransferService.accept_transfer(transfer=transfer, user=request.user)
-            return Response(StockTransferOutputSerializer(transfer).data)
-        except (StockTransferServiceError, Exception) as exc:
+            transfer = TenantTransferService.receive(
+                transfer_id=transfer_id,
+                destination=self.tenant,
+                actor=request.user,
+                items=serializer.validated_data["items"],
+            )
+        except TenantTransfer.DoesNotExist:
+            return Response({"detail": "Transfer topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        except TenantTransferError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(TenantTransferOutputSerializer(transfer).data)
 
 
-class StockTransferRejectView(InventoryAPIView):
+class TenantTransferReturnView(InventoryAPIView):
     permission_classes = [HasEmployeePermission]
-    required_permission = "inventory.adjust_stock"
+    required_permission = "inventory.transfer_stock"
 
-    def post(self, request, pk):
-        transfer = get_object_or_404(StockTransfer, pk=pk, tenant=self.tenant)
-        reason = request.data.get("reason", "").strip()
-
-        # Check that user belongs to target branch or is owner
-        if hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch and request.user != self.tenant.owner and not request.user.is_superuser:
-                if transfer.to_branch != emp.branch:
-                    return Response(
-                        {"detail": "Transferni faqat qabul qiluvchi filial xodimi rad qilishi mumkin."},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-
+    @extend_schema(request=TenantTransferReturnSerializer, responses={201: TenantTransferOutputSerializer})
+    def post(self, request, transfer_id):
+        serializer = TenantTransferReturnSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
         try:
-            transfer = StockTransferService.reject_transfer(transfer=transfer, user=request.user, reason=reason)
-            return Response(StockTransferOutputSerializer(transfer).data)
-        except (StockTransferServiceError, Exception) as exc:
+            transfer = TenantTransferService.start_return(
+                transfer_id=transfer_id,
+                source=self.tenant,
+                actor=request.user,
+                request_key=values["request_key"],
+                items=values["items"],
+                note=values.get("note", ""),
+            )
+        except TenantTransfer.DoesNotExist:
+            return Response({"detail": "Asl transfer topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        except TenantTransferError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(TenantTransferOutputSerializer(transfer).data, status=status.HTTP_201_CREATED)
+
+
+class TenantTransferCloseDiscrepancyView(InventoryAPIView):
+    permission_classes = [HasEmployeePermission]
+    required_permission = "inventory.transfer_stock"
+
+    @extend_schema(request=TenantTransferDiscrepancyCloseSerializer, responses={200: TenantTransferOutputSerializer})
+    def post(self, request, transfer_id):
+        serializer = TenantTransferDiscrepancyCloseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            transfer = TenantTransferService.close_discrepancy(
+                transfer_id=transfer_id, tenant=self.tenant, actor=request.user,
+                reason=serializer.validated_data["reason"]
+            )
+        except TenantTransfer.DoesNotExist:
+            return Response({"detail": "Transfer topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        except TenantTransferError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(TenantTransferOutputSerializer(transfer).data)

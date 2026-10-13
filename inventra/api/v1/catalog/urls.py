@@ -1,21 +1,27 @@
 from django.urls import path
+from .views.import_views import CatalogImportTemplateView, CatalogImportPreviewView, CatalogImportCommitView
+from .views.label_views import GenerateVariantBarcodeView
 
 from .views import (
-    CategoryListCreateView,
-    CategoryDetailView,
     CategoryArchiveView,
-    ProductListCreateView,
-    ProductDetailView,
+    CategoryDetailView,
+    CategoryListCreateView,
     ProductArchiveView,
-    ProductVariantListView,
+    ProductDetailView,
+    ProductImageDeleteView,
+    ProductImageUploadView,
+    ProductListCreateView,
+    ProductVariantArchiveView,
     ProductVariantCreateView,
     ProductVariantDetailView,
-    ProductVariantArchiveView,
-    ProductImageUploadView,
-    ProductImageDeleteView,
+    ProductVariantListView,
 )
 
 urlpatterns = [
+    path("import/template/", CatalogImportTemplateView.as_view(), name="catalog-import-template"),
+    path("import/preview/", CatalogImportPreviewView.as_view(), name="catalog-import-preview"),
+    path("import/<int:job_id>/commit/", CatalogImportCommitView.as_view(), name="catalog-import-commit"),
+    path("variants/<int:pk>/barcode/", GenerateVariantBarcodeView.as_view(), name="variant-generate-barcode"),
     path("categories/", CategoryListCreateView.as_view(), name="category-list-create"),
     path("categories/<int:pk>/", CategoryDetailView.as_view(), name="category-detail"),
     path("categories/<int:pk>/archive/", CategoryArchiveView.as_view(), name="category-archive"),

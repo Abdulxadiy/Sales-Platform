@@ -1,11 +1,13 @@
 from decimal import Decimal
+
 from rest_framework import serializers
 
+from api.serializers import SensitiveCostSerializerMixin
 from apps.catalog.models import ProductVariant
-from apps.inventory.models import Stock, StockMovement, StockTransfer, StockTransferItem
+from apps.inventory.models import Stock, StockMovement, TenantTransfer, TenantTransferItem
 
 
-class StockOutputSerializer(serializers.ModelSerializer):
+class StockOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
     product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
     variant_name = serializers.CharField(source="product_variant.name", read_only=True)
     sku = serializers.CharField(source="product_variant.sku", read_only=True)
@@ -15,50 +17,27 @@ class StockOutputSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="product_variant.product.category.name", read_only=True)
     unit = serializers.CharField(source="product_variant.unit", read_only=True)
     currency = serializers.CharField(source="product_variant.currency", read_only=True)
-    branch_name = serializers.CharField(source="branch.name", read_only=True, default="")
-
-    base_price_recommended = serializers.DecimalField(source="product_variant.price_recommended", max_digits=12, decimal_places=2, read_only=True)
-    base_price_min = serializers.DecimalField(source="product_variant.price_min", max_digits=12, decimal_places=2, read_only=True)
-    base_price_partner = serializers.DecimalField(source="product_variant.price_partner", max_digits=12, decimal_places=2, read_only=True)
-
-    effective_price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    effective_price_min = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    effective_price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-
     class Meta:
         model = Stock
         fields = [
-            "id", "branch", "branch_name", "product_variant", "quantity", "last_cost_price",
-            "custom_price_recommended", "custom_price_min", "custom_price_partner",
-            "base_price_recommended", "base_price_min", "base_price_partner",
-            "effective_price_recommended", "effective_price_min", "effective_price_partner",
+            "id", "product_variant", "quantity", "last_cost_price",
             "product_name", "variant_name", "sku", "code", "barcode",
             "category_id", "category_name", "unit", "currency",
         ]
         read_only_fields = fields
 
 
-class StockPriceUpdateSerializer(serializers.Serializer):
-    branch_id = serializers.IntegerField(required=False, allow_null=True)
-    custom_price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
-    custom_price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
-    custom_price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
-
-
-class StockMovementOutputSerializer(serializers.ModelSerializer):
+class StockMovementOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
     variant_name = serializers.CharField(source="product_variant.name", read_only=True)
     code = serializers.CharField(source="product_variant.code", read_only=True)
     unit = serializers.CharField(source="product_variant.unit", read_only=True)
     currency = serializers.CharField(source="product_variant.currency", read_only=True)
-    branch_name = serializers.CharField(source="branch.name", read_only=True, default="")
-    transfer_number = serializers.CharField(source="transfer.transfer_number", read_only=True, default=None)
-
     class Meta:
         model = StockMovement
         fields = [
-            "id", "branch", "branch_name", "transfer", "transfer_number",
+            "id",
             "product_variant", "product_name", "variant_name", "code", "unit", "currency",
             "type", "direction", "quantity", "cost_price", "note", "created_by", "created_by_name", "created_at",
         ]
@@ -69,8 +48,6 @@ class _BaseMovementInputSerializer(serializers.Serializer):
     product_variant_id = serializers.PrimaryKeyRelatedField(
         queryset=ProductVariant.objects.all(), source="product_variant"
     )
-    branch_id = serializers.IntegerField(required=False, allow_null=True)
-
     def validate_product_variant_id(self, value):
         tenant = self.context.get("tenant")
         if tenant and value.tenant_id != tenant.id:
@@ -79,14 +56,26 @@ class _BaseMovementInputSerializer(serializers.Serializer):
             )
         return value
 
+    def validate(self, attrs):
+        batch_id = attrs.get('batch_id')
+        if batch_id:
+            from apps.inventory.models import StockBatch
+            if not StockBatch.objects.filter(pk=batch_id, tenant=self.context.get('tenant'), product_variant=attrs.get('product_variant')).exists():
+                raise serializers.ValidationError({'batch_id': 'Partiya ushbu do‘kon va mahsulotga tegishli bo‘lishi kerak.'})
+        return attrs
+
 
 class IntakeCreateSerializer(_BaseMovementInputSerializer):
+    batch_code = serializers.CharField(max_length=80, required=False, allow_blank=True, default="")
+    expires_on = serializers.DateField(required=False, allow_null=True)
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     cost_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class BatchIntakeItemInputSerializer(serializers.Serializer):
+    batch_code = serializers.CharField(max_length=80, required=False, allow_blank=True, default="")
+    expires_on = serializers.DateField(required=False, allow_null=True)
     product_variant_id = serializers.PrimaryKeyRelatedField(
         queryset=ProductVariant.objects.all(), source="product_variant"
     )
@@ -102,7 +91,6 @@ class BatchIntakeItemInputSerializer(serializers.Serializer):
 
 
 class BatchIntakeCreateSerializer(serializers.Serializer):
-    branch_id = serializers.IntegerField(required=False, allow_null=True)
     items = BatchIntakeItemInputSerializer(many=True)
     supplier = serializers.CharField(required=False, allow_blank=True, default="")
     faktura_number = serializers.CharField(required=False, allow_blank=True, default="")
@@ -117,58 +105,107 @@ class BatchIntakeCreateSerializer(serializers.Serializer):
 
 
 class SimpleMovementCreateSerializer(_BaseMovementInputSerializer):
+    batch_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class AdjustCreateSerializer(_BaseMovementInputSerializer):
+class AdjustCreateSerializer(SimpleMovementCreateSerializer):
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     direction = serializers.ChoiceField(choices=StockMovement.DIRECTION_CHOICES)
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class StockTransferItemOutputSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
-    variant_name = serializers.CharField(source="product_variant.name", read_only=True)
-    code = serializers.CharField(source="product_variant.code", read_only=True)
-    sku = serializers.CharField(source="product_variant.sku", read_only=True)
-    unit = serializers.CharField(source="product_variant.unit", read_only=True)
-
-    class Meta:
-        model = StockTransferItem
-        fields = [
-            "id", "product_variant", "product_name", "variant_name",
-            "code", "sku", "unit", "quantity",
-        ]
-        read_only_fields = fields
+class TenantTransferLineInputSerializer(serializers.Serializer):
+    source_variant_id = serializers.IntegerField(min_value=1)
+    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
+    destination_variant_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    destination_category_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
 
 
-class StockTransferOutputSerializer(serializers.ModelSerializer):
-    from_branch_name = serializers.CharField(source="from_branch.name", read_only=True)
-    to_branch_name = serializers.CharField(source="to_branch.name", read_only=True)
-    sent_by_name = serializers.CharField(source="sent_by.username", read_only=True)
-    resolved_by_name = serializers.CharField(source="resolved_by.username", read_only=True, default=None)
-    items = StockTransferItemOutputSerializer(many=True, read_only=True)
+class TenantTransferCreateSerializer(serializers.Serializer):
+    request_key = serializers.UUIDField()
+    destination_tenant_id = serializers.IntegerField(min_value=1)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+    items = TenantTransferLineInputSerializer(many=True)
 
-    class Meta:
-        model = StockTransfer
-        fields = [
-            "id", "transfer_number", "from_branch", "from_branch_name",
-            "to_branch", "to_branch_name", "status", "sent_by",
-            "sent_by_name", "sent_at", "resolved_by", "resolved_by_name",
-            "resolved_at", "note", "reject_reason", "items", "created_at",
-        ]
-        read_only_fields = fields
+    def validate_items(self, items):
+        if not 1 <= len(items) <= 100:
+            raise serializers.ValidationError("Transferda 1 dan 100 tagacha mahsulot bo‘lishi kerak.")
+        return items
 
 
-class StockTransferItemInputSerializer(serializers.Serializer):
-    product_variant_id = serializers.IntegerField()
+class TenantTransferReceiveLineSerializer(serializers.Serializer):
+    item_id = serializers.IntegerField(min_value=1)
+    received_quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0"))
+    destination_variant_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    destination_category_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    discrepancy_reason = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class TenantTransferReceiveSerializer(serializers.Serializer):
+    items = TenantTransferReceiveLineSerializer(many=True)
+
+    def validate_items(self, items):
+        if not items:
+            raise serializers.ValidationError("Kamida bitta qabul qatori yuboring.")
+        item_ids = [item["item_id"] for item in items]
+        if len(item_ids) != len(set(item_ids)):
+            raise serializers.ValidationError("Qabul qatori takrorlanmasligi kerak.")
+        return items
+
+
+class TenantTransferReturnLineSerializer(serializers.Serializer):
+    original_item_id = serializers.IntegerField(min_value=1)
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
 
 
-class StockTransferCreateSerializer(serializers.Serializer):
-    from_branch_id = serializers.IntegerField()
-    to_branch_id = serializers.IntegerField()
-    items = StockTransferItemInputSerializer(many=True)
+class TenantTransferReturnSerializer(serializers.Serializer):
+    request_key = serializers.UUIDField()
     note = serializers.CharField(required=False, allow_blank=True, default="")
-    auto_accept = serializers.BooleanField(required=False, default=False)
+    items = TenantTransferReturnLineSerializer(many=True)
+
+    def validate_items(self, items):
+        if not items:
+            raise serializers.ValidationError("Qaytariladigan mahsulotlarni kiriting.")
+        ids = [item["original_item_id"] for item in items]
+        if len(ids) != len(set(ids)):
+            raise serializers.ValidationError("Asl transfer qatori takrorlanmasligi kerak.")
+        return items
+
+
+class TenantTransferDiscrepancyCloseSerializer(serializers.Serializer):
+    reason = serializers.CharField(min_length=3, max_length=2000, trim_whitespace=True)
+
+
+class TenantTransferItemOutputSerializer(serializers.ModelSerializer):
+    source_product_name = serializers.CharField(source="source_variant.product.name", read_only=True)
+    source_variant_name = serializers.CharField(source="source_variant.name", read_only=True)
+    source_sku = serializers.CharField(source="source_variant.sku", read_only=True)
+    destination_product_name = serializers.CharField(source="destination_variant.product.name", read_only=True, allow_null=True)
+    destination_variant_name = serializers.CharField(source="destination_variant.name", read_only=True, allow_null=True)
+
+    class Meta:
+        model = TenantTransferItem
+        fields = [
+            "id", "source_variant", "source_product_name", "source_variant_name", "source_sku",
+            "destination_variant", "destination_product_name", "destination_variant_name",
+            "destination_category", "quantity_sent", "quantity_received", "discrepancy_reason",
+            "quantity_returned", "quantity_return_in_transit", "original_item",
+        ]
+        read_only_fields = fields
+
+
+class TenantTransferOutputSerializer(serializers.ModelSerializer):
+    source_tenant_name = serializers.CharField(source="source_tenant.name", read_only=True)
+    destination_tenant_name = serializers.CharField(source="destination_tenant.name", read_only=True)
+    items = TenantTransferItemOutputSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = TenantTransfer
+        fields = [
+            "id", "request_key", "source_tenant", "source_tenant_name", "destination_tenant",
+            "destination_tenant_name", "kind", "status", "created_by", "received_by", "return_of",
+            "note", "sent_at", "received_at", "items",
+        ]
+        read_only_fields = fields

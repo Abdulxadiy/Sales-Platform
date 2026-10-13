@@ -1,9 +1,17 @@
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.schema import AvatarUploadInputSerializer, PasswordChangeInputSerializer
+from apps.core.utils.image_optimizer import optimize_image
 from api.v1.accounts.serializers import (
     UserProfileSerializer,
     UserProfileUpdateSerializer,
@@ -17,10 +25,12 @@ class UserProfileView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=None, responses={200: UserProfileSerializer})
     def get(self, request):
         serializer = UserProfileSerializer(request.user, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(request=UserProfileUpdateSerializer, responses={200: UserProfileSerializer})
     def patch(self, request):
         serializer = UserProfileUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -44,7 +54,7 @@ class UserProfileView(APIView):
                 user.contact_phone = None
 
         user.profile_completed = True
-        user.save()
+        user.save(update_fields=[*data.keys(), "profile_completed"])
 
         out = UserProfileSerializer(user, context={'request': request})
         return Response(out.data, status=status.HTTP_200_OK)
@@ -58,6 +68,7 @@ class UserAvatarUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
+    @extend_schema(request=AvatarUploadInputSerializer, responses={200: UserProfileSerializer})
     def post(self, request):
         if 'avatar' not in request.FILES:
             return Response(
@@ -65,7 +76,12 @@ class UserAvatarUploadView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        avatar_file = request.FILES['avatar']
+        serializer = AvatarUploadInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            avatar_file = optimize_image(serializer.validated_data['avatar'], max_dimension=640)
+        except ValidationError as exc:
+            return Response({'avatar': exc.messages}, status=400)
         user = request.user
 
         # Delete old avatar if present
@@ -76,11 +92,12 @@ class UserAvatarUploadView(APIView):
                 pass
 
         user.avatar = avatar_file
-        user.save()
+        user.save(update_fields=["avatar"])
 
         out = UserProfileSerializer(user, context={'request': request})
         return Response(out.data, status=status.HTTP_200_OK)
 
+    @extend_schema(request=None, responses={200: UserProfileSerializer})
     def delete(self, request):
         user = request.user
         if user.avatar:
@@ -89,7 +106,7 @@ class UserAvatarUploadView(APIView):
             except Exception:
                 pass
             user.avatar = None
-            user.save()
+            user.save(update_fields=["avatar"])
 
         out = UserProfileSerializer(user, context={'request': request})
         return Response(out.data, status=status.HTTP_200_OK)
@@ -102,6 +119,8 @@ class ChangePasswordView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=PasswordChangeInputSerializer, responses={200: OpenApiTypes.OBJECT})
+    @transaction.atomic
     def post(self, request):
         old_password = request.data.get('old_password')
         new_password = request.data.get('new_password')
@@ -118,16 +137,22 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user = request.user
+        user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        if not user.is_active or user.token_version != request.user.token_version:
+            return Response({'detail': 'Sessiya bekor qilingan.'}, status=status.HTTP_401_UNAUTHORIZED)
         if not user.check_password(old_password):
             return Response(
                 {'error': 'Joriy parol noto‘g‘ri kiritildi.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        try:
+            validate_password(new_password, user)
+        except ValidationError as exc:
+            return Response({'new_password': exc.messages}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(new_password)
         user.token_version = getattr(user, 'token_version', 1) + 1
-        user.save()
+        user.save(update_fields=["password", "token_version"])
 
         # Audit log
         try:

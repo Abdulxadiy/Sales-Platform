@@ -45,17 +45,16 @@ class TestHirePermissions:
     def test_platform_admin_can_hire_owner(self, platform_admin, tenant):
         # Only platform_admin may assign role="owner" (see
         # _check_hire_permission: role == "owner" branch).
-        target = UserFactory()
+        target = OwnerFactory()
         employee = EmployeeService.hire(
             target_user=target, tenant=tenant, hired_by=platform_admin,
             role="owner", position="Owner",
         )
         assert employee.is_active is True
         target.refresh_from_db()
-        # hire() must update both the User row (role/tenant) and create
-        # the Employee row — this checks the User side landed correctly.
+        # Role is identity-wide; tenant access is represented by employment.
         assert target.role == "owner"
-        assert target.tenant_id == tenant.id
+        assert Employee.objects.filter(user=target, tenant=tenant, is_owner=True).exists()
 
     def test_owner_cannot_hire_owner(self, owner, tenant):
         # An owner is not allowed to promote someone else to owner —
@@ -64,6 +63,13 @@ class TestHirePermissions:
         with pytest.raises(PermissionDeniedError):
             EmployeeService.hire(
                 target_user=target, tenant=tenant, hired_by=owner, role="owner",
+            )
+
+    def test_owner_cannot_be_hired_as_staff(self, owner, tenant):
+        with pytest.raises(EmployeeServiceError, match="egasi"):
+            EmployeeService.hire(
+                target_user=owner, tenant=tenant, hired_by=tenant.owner,
+                role="staff",
             )
 
     def test_owner_can_hire_staff(self, owner, tenant):
@@ -90,11 +96,11 @@ class TestHirePermissions:
         user = employee.user
         assert user.phone_number == phone
         assert user.role == "staff"
-        assert user.tenant_id == tenant.id
+        assert Employee.objects.filter(user=user, tenant=tenant, is_active=True).exists()
 
     def test_staff_cannot_hire_staff(self, tenant):
         # staff has no hiring authority at all, regardless of tenant.
-        acting_staff = StaffFactory(tenant=tenant)
+        acting_staff = StaffFactory()
         target = UserFactory()
         with pytest.raises(PermissionDeniedError):
             EmployeeService.hire(
@@ -144,7 +150,7 @@ class TestHireActiveEmploymentBlocking:
         """Platform admin cannot hire a user who already has an active Employee record."""
         old_tenant = TenantFactory()
         new_tenant = TenantFactory()
-        target = StaffFactory(tenant=old_tenant)
+        target = StaffFactory()
         old_employment = EmployeeFactory(user=target, tenant=old_tenant, is_active=True)
 
         with pytest.raises(EmployeeServiceError) as exc_info:
@@ -152,21 +158,19 @@ class TestHireActiveEmploymentBlocking:
                 target_user=target, tenant=new_tenant, hired_by=platform_admin, role="staff",
             )
 
-        assert "already has an active employment" in str(exc_info.value)
+        assert "faol ishlayapti" in str(exc_info.value)
 
         # Ensure old employment record is still active and untouched
         old_employment.refresh_from_db()
         assert old_employment.is_active is True
         assert old_employment.tenant_id == old_tenant.id
 
-        # Target user tenant remains unchanged
-        target.refresh_from_db()
-        assert target.tenant_id == old_tenant.id
+        assert Employee.objects.filter(user=target, tenant=old_tenant, is_active=True).exists()
 
     def test_owner_cannot_hire_user_employed_at_another_tenant(self, owner, tenant):
         """An owner cannot hire someone who is currently employed elsewhere."""
         other_tenant = TenantFactory()
-        target = StaffFactory(tenant=other_tenant)
+        target = StaffFactory()
         EmployeeFactory(user=target, tenant=other_tenant, is_active=True)
 
         with pytest.raises(EmployeeServiceError):
@@ -178,7 +182,7 @@ class TestHireActiveEmploymentBlocking:
         """If hire() raises due to active employment, no mutation occurs."""
         other_tenant = TenantFactory()
         new_tenant = TenantFactory()
-        target = StaffFactory(tenant=other_tenant)
+        target = StaffFactory()
         EmployeeFactory(user=target, tenant=other_tenant, is_active=True)
 
         with pytest.raises(EmployeeServiceError):
@@ -187,7 +191,7 @@ class TestHireActiveEmploymentBlocking:
             )
 
         target.refresh_from_db()
-        assert target.tenant_id == other_tenant.id
+        assert Employee.objects.filter(user=target, tenant=other_tenant, is_active=True).exists()
         assert target.role == "staff"
         assert Employee.objects.filter(user=target, is_active=True).count() == 1
 
@@ -202,7 +206,7 @@ class TestFire:
         # platform_admin bypasses every other check in
         # _check_fire_permission (`if fired_by.role == "platform_admin":
         # return`) — can fire staff or owners, in any tenant.
-        target = StaffFactory(tenant=tenant)
+        target = StaffFactory()
         employment = EmployeeFactory(user=target, tenant=tenant, is_active=True)
 
         EmployeeService.fire(target_user=target, fired_by=platform_admin)
@@ -221,7 +225,7 @@ class TestFire:
     def test_owner_can_fire_own_staff(self, owner, tenant):
         # An owner may fire staff within their OWN tenant — this is the
         # normal "let an employee go" flow.
-        target = StaffFactory(tenant=tenant)
+        target = StaffFactory()
         EmployeeFactory(user=target, tenant=tenant, is_active=True)
 
         EmployeeService.fire(target_user=target, fired_by=owner)
@@ -235,7 +239,7 @@ class TestFire:
         # employee.tenant == fired_by.tenant — an owner has zero
         # authority outside their own tenant.
         other_tenant = TenantFactory()
-        target = StaffFactory(tenant=other_tenant)
+        target = StaffFactory()
         EmployeeFactory(user=target, tenant=other_tenant, is_active=True)
 
         with pytest.raises(PermissionDeniedError):
@@ -250,7 +254,7 @@ class TestFire:
         acting_owner = tenant.owner
         # A second "owner"-role user incorrectly placed in the same tenant
         # (shouldn't normally happen, but the guard must hold regardless).
-        other_owner = OwnerFactory(tenant=tenant)
+        other_owner = OwnerFactory()
         EmployeeFactory(user=other_owner, tenant=tenant, is_active=True, position="Owner")
 
         with pytest.raises(PermissionDeniedError):
@@ -260,8 +264,8 @@ class TestFire:
         # staff falls through every branch of _check_fire_permission to
         # the final `raise PermissionDeniedError` — no firing authority
         # whatsoever.
-        acting_staff = StaffFactory(tenant=tenant)
-        target = StaffFactory(tenant=tenant)
+        acting_staff = StaffFactory()
+        target = StaffFactory()
         EmployeeFactory(user=target, tenant=tenant, is_active=True)
 
         with pytest.raises(PermissionDeniedError):
@@ -282,7 +286,7 @@ class TestFire:
         touched. User.role is never used for access control; PermissionService
         and friends gate exclusively on Employee.is_active, so retaining the
         stale role here cannot grant the fired user anything."""
-        target = StaffFactory(tenant=tenant, username="old_staff")
+        target = StaffFactory(username="old_staff")
         EmployeeFactory(user=target, tenant=tenant, is_active=True)
 
         EmployeeService.fire(target_user=target, fired_by=platform_admin)
@@ -292,7 +296,7 @@ class TestFire:
         # fire() -- they stay on the row so historical Employee records
         # still resolve to a meaningful "who/where/what" even after the
         # person is no longer active there.
-        assert target.tenant_id == tenant.id
+        assert Employee.objects.filter(user=target, tenant=tenant, is_active=False).exists()
         assert target.username == "old_staff"
         assert target.role == "staff"
         assert target.has_usable_password() is False

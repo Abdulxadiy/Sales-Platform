@@ -44,7 +44,7 @@ sequenceDiagram
     actor Admin as Platform Admin
     participant UI as Inventra Web UI
     participant API as Inventra API
-    participant Bot as Telegram Bot (@inventra_bot)
+    participant Bot as Telegram Bot (@ilbi_bot)
     participant Redis as Redis Cache
 
     Admin->>UI: Login (username + password)

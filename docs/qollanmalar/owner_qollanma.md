@@ -16,11 +16,15 @@ Ushbu qo'llanma **Inventra Sales Platform** tizimidagi **Do'kon Egasi (Owner)** 
    - [4.1. Kategoriyalar va Valyuta tanlovi (UZS / USD)](#41-kategoriyalar-va-valyuta-tanlovi-uzs--usd)
    - [4.2. Mahsulotlar va Mahsulot Variantlari](#42-mahsulotlar-va-mahsulot-variantlari)
    - [4.3. Uch xil narx tizimi (Tavsiya, Minimal, 1-narx)](#43-uch-xil-narx-tizimi-tavsiya-minimal-1-narx)
+   - [4.4. Excel yoki CSV fayldan yuklash](#44-excel-yoki-csv-fayldan-yuklash)
+   - [4.5. Shtrix-kod yorlig‘ini chop etish](#45-shtrix-kod-yorligini-chop-etish)
 5. [Ombor (Inventory) va Qoldiqlar Harakati](#5-ombor-inventory-va-qoldiqlar-harakati)
    - [5.1. Qoldiqlar monitoringi](#51-qoldiqlar-monitoringi)
    - [5.2. Tovar kirimi (Intake) va Tannarx](#52-tovar-kirimi-intake-va-tannarx)
    - [5.3. Qoldiqni to'g'rilash (Adjust) va Spisanie (Write-off)](#53-qoldiqni-togrilash-adjust-va-spisanie-write-off)
    - [5.4. Tovarlarni qaytarishlar](#54-tovarlarni-qaytarishlar)
+   - [5.5. Partiyalar va yaroqlilik muddati](#55-partiyalar-va-yaroqlilik-muddati)
+   - [5.6. Excelga eksport](#56-excelga-eksport)
 6. [Tezkor Kassa (POS) va Savdo Jarayoni](#6-tezkor-kassa-pos-va-savdo-jarayoni)
    - [6.1. Shtrix-kod va Savat bilan ishlash](#61-shtrix-kod-va-savat-bilan-ishlash)
    - [6.2. 1-narx galochkasi (Partner Price)](#62-1-narx-galochkasi-partner-price)
@@ -61,7 +65,7 @@ Platform Administratori sizning do'koningizni tizimda ro'yxatdan o'tkazgach, ko'
 
 ### 2.2. Telegram botga ulanish va 2FA
 Inventra tizimiga har bir kirish Telegram orqali yuboriladigan bir martalik tasdiqlash kodi (OTP) bilan himoyalangan.
-1. Telegram qidiruvidan rasmiy `@inventraa_bot` ni oching.
+1. Telegram qidiruvidan rasmiy `@ilbi_bot` ni oching.
 2. Botga `/start inventra` buyrug'ini yuboring.
 3. Bot so'ragan **"Kontaktni ulashish"** (Share Contact) tugmasini bosing (telefon raqamingiz tizimda ro'yxatdan o'tgan raqam bilan bir xil bo'lishi shart).
 4. Shundan so'ng tizimga kirishda kiritilgan har bir login/paroldan keyin ushbu botga 6 xonali OTP kod keladi.
@@ -124,6 +128,20 @@ Inventra katalogida moslashuvchan savdo uchun 3 ta narx ko'zda tutilgan:
 2. **`price_min` (Minimal narx):** Kassir sotishi mumkin bo'lgan eng past chegara bo'yicha maslahat narxi.
 3. **`price_partner` (1-narx / Hamkor narxi):** Ulgurji xaridorlar, hamkor do'konlar va yaqin mijozlar uchun belgilangan maxsus arzon narx.
 
+### 4.4. Excel yoki CSV fayldan yuklash
+
+Katalogning yuqori qismidagi **Fayldan yuklash** tugmasi orqali shablonni yuklang. Majburiy ustunlar: `mahsulot`, `kategoriya`, `sotuv_narxi`. Qolgan ustunlarda variant, birlik, shtrix-kod, narxlar, valyuta, boshlang‘ich miqdor, tannarx, partiya va yaroqlilik sanasini kiritish mumkin. Sana `YYYY-MM-DD` ko‘rinishida, CSV esa UTF-8 formatida bo‘lsin. Shtrix-kodni Excelda matn sifatida saqlang, shunda boshidagi nollar yo‘qolmaydi.
+
+Bir faylda ko‘pi bilan 1 000 qator va 8 MB bo‘lishi mumkin. **Qatorlarni tekshirish** katalogni o‘zgartirmaydi: xatolar va takrorlar avval ko‘rsatiladi. Barcha qatorlar to‘g‘ri bo‘lgach **Tasdiqlash va saqlash**ni bosing. Biror qator xato bo‘lsa, importning hech bir qatori saqlanmaydi. Mavjud variant va shtrix-kodlar ustiga yozilmaydi. Boshlang‘ich miqdor kiritilsa tannarx ham kerak; tannarx 0 bo‘lishi mumkin. Tekshirish natijasi bir soat amal qiladi.
+
+Xodimga mahsulot qo‘shish ruxsati kerak. Yangi kategoriya, mavjud mahsulotga yangi variant yoki boshlang‘ich ombor kirimi uchun tegishli qo‘shimcha ruxsatlar ham tekshiriladi.
+
+### 4.5. Shtrix-kod yorlig‘ini chop etish
+
+Mahsulot kartasidagi **Yorliq chop etish** tugmasini bosing. A4 varaq yoki yorliq printerini tanlang, yorliqning millimetrdagi o‘lchami va nusxalar sonini kiriting. **Mahsulot nomi** va **Sotuv narxi** belgilarini mustaqil yoqish yoki o‘chirish mumkin. Ikkalasini o‘chirsangiz, faqat shtrix-kod va uning raqami chop etiladi.
+
+Shtrix-kodi yo‘q mahsulot uchun tahrirlash ruxsatiga ega foydalanuvchi **Shtrix-kod yaratish**ni bosadi; yaratilgan kod katalogda saqlanadi va POS skaneri orqali topiladi. Chop etishda 100% masshtabni tanlang, brauzer sahifa sarlavhasi va pastki yozuvlarini o‘chiring. Printer qog‘ozi o‘lchami oynadagi o‘lchamga mos bo‘lsin.
+
 ---
 
 ## 5. Ombor (Inventory) va Qoldiqlar Harakati
@@ -146,6 +164,18 @@ Yangi tovar kelganda:
 ### 5.4. Tovarlarni qaytarishlar
 * **Ta'minotchiga qaytarish (Supplier Return):** Sifatsiz tovar ta'minotchiga qaytarilganda ombor qoldig'ini kamaytirish.
 * **Mijozdan qaytarib olish (Customer Return):** Mijoz qaytargan tovarni omborga kirim qilish.
+
+### 5.5. Partiyalar va yaroqlilik muddati
+
+Kirim oynasida har bir qatorga ixtiyoriy **Partiya** raqami va **Yaroqlilik sanasi** kiritiladi. Bir xil mahsulotning boshqa partiyasini kiritish uchun **Yana partiya**ni bosing. Muddatsiz mahsulotlarda sanani bo‘sh qoldirish mumkin.
+
+Omborning **Partiyalar va yaroqlilik** oynasida har bir partiya qoldig‘i, muddati o‘tgan va 30 kun ichida tugaydigan partiyalar ko‘rinadi. Sotuvda avval muddati ertaroq tugaydigan partiya sarflanadi; sanasiz partiyalar keyin keladi. Kassada muddati o‘tgan partiya haqida ogohlantirish chiqadi va sotuvni davom ettirish mumkin. Chek bo‘yicha qaytarishda tovar asl partiyasiga va asl sanasi bilan qaytadi. Ichki transfer va B2B qabulida ham partiya sanasi saqlanadi.
+
+Qoldiqni tuzatish, ta’minotchiga qaytarish yoki hisobdan chiqarishda kerakli partiyani tanlash mumkin. Cheksiz mijoz qaytarishida ma’lum partiyani tanlang yoki yangi, sanasiz partiya yarating. Oldingi qoldiqlar migratsiyada miqdori va tannarxi saqlangan sanasiz partiyalarga o‘tkaziladi.
+
+### 5.6. Excelga eksport
+
+**Ombor → Qoldiqlar**, **Savdolar** va **Qarzlar** oynalaridagi **Excelga yuklash** tugmasi joriy qidiruv va filtrlarga mos barcha qatorlarni `.xlsx` faylga yuklaydi. Bu faqat ochiq sahifadagi qatorlar bilan cheklanmaydi. Bir eksportda ko‘pi bilan 20 000 qator bo‘lsin; kattaroq ro‘yxat uchun filtrni toraytiring. Xodimda tannarxni ko‘rish ruxsati bo‘lmasa, ombor eksportida tannarx ustuni bo‘lmaydi.
 
 ---
 

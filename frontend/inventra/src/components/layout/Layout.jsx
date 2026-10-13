@@ -3,10 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Modal from '../common/Modal';
+import PriceInput from '../common/PriceInput';
 import { cashboxApi, salesApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { useBranch } from '../../context/BranchContext';
+import { useTenant } from '../../context/TenantContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import NotificationCard from '../notifications/NotificationCard';
@@ -17,8 +18,8 @@ export default function Layout() {
   const location = useLocation();
   const toast = useToast();
   const confirm = useConfirm();
-  const { isAdmin } = useAuth();
-  const { activeBranch } = useBranch();
+  const { isAdmin, user } = useAuth();
+  const { activeTenant } = useTenant();
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [shiftData, setShiftData] = useState(null);
   const [cashCounted, setCashCounted] = useState('');
@@ -64,9 +65,14 @@ export default function Layout() {
     setNotifModalOpen(true);
   };
 
+  const notificationTenantRef = useRef(activeTenant?.id);
+  notificationTenantRef.current = activeTenant?.id;
   const loadNotifications = async (triggerToast = false) => {
+    const tenantId = activeTenant?.id;
+    if (!tenantId) return;
     try {
       const res = await salesApi.getNotifications();
+      if (notificationTenantRef.current !== tenantId) return;
       const list = Array.isArray(res) ? res : res.results || [];
       setNotifications(list);
       const unread = list.filter((n) => !n.is_read);
@@ -91,6 +97,11 @@ export default function Layout() {
 
   useEffect(() => {
     if (isAdmin) return;
+    setNotifications([]);
+    setUnreadCount(0);
+    setFloatingNotifs([]);
+    knownIdsRef.current = new Set();
+    isInitialLoadRef.current = true;
     loadNotifications(false);
 
     // Poll every 10 seconds for new notifications
@@ -110,7 +121,17 @@ export default function Layout() {
       window.removeEventListener('refresh_notifications', handleRefresh);
       window.removeEventListener('shift_closed', handleRefresh);
     };
-  }, [isAdmin]);
+  }, [isAdmin, activeTenant?.id]);
+
+  useEffect(() => {
+    setShiftModalOpen(false);
+    setShiftData(null);
+    setCashCounted('');
+    setCashCountedUsd('0');
+    setDiscrepancyReason('');
+    setNotes('');
+    setNotifModalOpen(false);
+  }, [activeTenant?.id]);
 
   const handleMarkRead = async (id) => {
     try {
@@ -193,15 +214,25 @@ export default function Layout() {
         };
       case '/sales':
         return {
-          title: 'Savdolar Tarixi & Nasiyalar',
-          subtitle: 'Cheklar, bekor qilishlar, kontragent qarzlari va B2B fakturalar',
+          title: 'Savdolar Tarixi',
+          subtitle: 'Cheklar, sotuvlar jurnali, bekor qilishlar va kassa tushumlari',
+        };
+      case '/debts':
+        return {
+          title: 'Mijoz Nasiyalari & Qarzdorlik',
+          subtitle: 'Kontragentlar, qarz to‘lovlari, filial tanlovi va xaridlar tarixi',
+        };
+      case '/b2b':
+        return {
+          title: 'B2B Tranzaksiyalar & Hamkorlik',
+          subtitle: 'Kiruvchi B2B fakturalar, qabul qilish, rad etish va tovar qaytishlari',
         };
       case '/shifts':
         return {
           title: 'Kassa Smenalari & Z-Hisobotlar',
           subtitle: 'Chiqim va kirimlar, smena yopish jurnali',
         };
-      case '/branches':
+      case '/my-tenants':
         return {
           title: 'Filiallar Boshqaruvi',
           subtitle: 'Do‘konning barcha filiallari, manzillari va savdo nuqtalari',
@@ -245,11 +276,11 @@ export default function Layout() {
 
   useEffect(() => {
     if (shiftModalOpen && !isAdmin) {
-      cashboxApi.getCurrentShift(activeBranch?.id)
+      cashboxApi.getCurrentShift(activeTenant?.id)
         .then((data) => setShiftData(data))
         .catch(() => setShiftData(null));
     }
-  }, [shiftModalOpen, isAdmin, activeBranch?.id]);
+  }, [shiftModalOpen, isAdmin, activeTenant?.id]);
 
   const expectedUzs = Number(shiftData?.expected_cash_uzs || 0);
   const expectedUsd = Number(shiftData?.expected_cash_usd || 0);
@@ -267,7 +298,7 @@ export default function Layout() {
     setClosing(true);
     try {
       await cashboxApi.closeShift({
-        branch_id: activeBranch?.id,
+        shift_id: shiftData?.shift_id,
         actual_cash_uzs: parseFloat(cashCounted),
         actual_cash_usd: parseFloat(cashCountedUsd || '0'),
         discrepancy_reason: discrepancyReason,
@@ -318,9 +349,13 @@ export default function Layout() {
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
         <main style={{ marginTop: 24, position: 'relative', zIndex: 1 }}>
-          <div className="animate-fade-in" key={location.pathname}>
-            <Outlet />
-          </div>
+          <React.Suspense fallback={null}>
+            <div className="animate-fade-in" key={location.pathname}>
+            {!isAdmin && !activeTenant && !['/my-tenants', '/profile', '/docs'].includes(location.pathname)
+              ? <div className="glass-card" style={{ padding: 24 }}>Yuqoridagi menyudan do‘konni tanlang.</div>
+              : <Outlet key={`${user?.id}:${activeTenant?.id || 'platform'}`} />}
+            </div>
+          </React.Suspense>
         </main>
       </div>
 
@@ -359,11 +394,9 @@ export default function Layout() {
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 5 }}>
               Kassada sanab olingan haqiqiy naqd pul (UZS) <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
-            <input
-              type="number"
-              step="0.01"
+            <PriceInput
               className="input-field"
-              placeholder="Masalan: 1200000"
+              placeholder="Masalan: 1 200 000"
               value={cashCounted}
               onChange={(e) => setCashCounted(e.target.value)}
               required
@@ -375,9 +408,7 @@ export default function Layout() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 5 }}>
                 Kassada sanab olingan haqiqiy naqd pul (USD) <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
-              <input
-                type="number"
-                step="0.01"
+              <PriceInput
                 className="input-field"
                 placeholder="0.00"
                 value={cashCountedUsd}

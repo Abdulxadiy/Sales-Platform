@@ -1,7 +1,23 @@
 from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
+
 from apps.core.models import BaseModel
+
+
+class CashShift(BaseModel):
+    opened_by = models.ForeignKey('accounts.User', on_delete=models.PROTECT, related_name='opened_cash_shifts')
+    opened_at = models.DateTimeField(default=timezone.now)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    opening_cash_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    opening_cash_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['tenant'], condition=models.Q(closed_at__isnull=True), name='one_open_cash_shift_per_tenant'),
+            models.CheckConstraint(condition=models.Q(opening_cash_uzs__gte=0, opening_cash_usd__gte=0), name='cash_shift_opening_nonnegative'),
+        ]
 
 
 class DailyCashReport(BaseModel):
@@ -9,9 +25,9 @@ class DailyCashReport(BaseModel):
     Kassa Z-Hisoboti (Smena yopilish hisoboti).
     """
     date = models.DateField(default=timezone.now)
-    branch = models.ForeignKey(
-        'tenants.Branch', null=True, blank=True, on_delete=models.PROTECT, related_name='daily_reports'
-    )
+    shift = models.OneToOneField(CashShift, null=True, blank=True, on_delete=models.PROTECT, related_name='report')
+    opening_cash_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
+    opening_cash_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0'))
     closed_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='closed_shifts'
     )
@@ -24,6 +40,11 @@ class DailyCashReport(BaseModel):
     total_sale_card_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
     total_sale_debt_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
     total_sale_debt_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
+
+    collected_debt_cash_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    collected_debt_cash_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    refund_cash_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    refund_cash_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
 
     # Kassa qo'shimcha kirim va chiqimlari
     total_extra_income_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
@@ -69,11 +90,9 @@ class CashExpense(BaseModel):
     ]
 
     amount = models.DecimalField(max_digits=14, decimal_places=2)
+    shift = models.ForeignKey(CashShift, null=True, blank=True, on_delete=models.PROTECT, related_name='expenses')
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_UZS)
     category = models.CharField(max_length=100)
-    branch = models.ForeignKey(
-        'tenants.Branch', null=True, blank=True, on_delete=models.PROTECT, related_name='cash_expenses'
-    )
     recorded_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='cash_expenses'
     )
@@ -102,11 +121,9 @@ class CashIncome(BaseModel):
     ]
 
     amount = models.DecimalField(max_digits=14, decimal_places=2)
+    shift = models.ForeignKey(CashShift, null=True, blank=True, on_delete=models.PROTECT, related_name='incomes')
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_UZS)
     source = models.CharField(max_length=100)
-    branch = models.ForeignKey(
-        'tenants.Branch', null=True, blank=True, on_delete=models.PROTECT, related_name='cash_incomes'
-    )
     recorded_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='cash_incomes'
     )

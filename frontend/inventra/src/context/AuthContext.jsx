@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getAccessToken, setTokens, clearTokens, parseJwt, isTokenExpired, authApi } from '../api/client';
+import { getAccessToken, getRefreshToken, refreshAccessToken, setTokens, clearTokens, parseJwt, isTokenExpired, authApi } from '../api/client';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     const current = getAccessToken();
-    if (!current || isTokenExpired(current)) {
+    if (!current || (isTokenExpired(current) && isTokenExpired(getRefreshToken()))) {
       return null;
     }
     return current;
@@ -14,7 +14,7 @@ export function AuthProvider({ children }) {
 
   const [user, setUser] = useState(() => {
     const currentToken = getAccessToken();
-    if (!currentToken || isTokenExpired(currentToken)) {
+    if (!currentToken || (isTokenExpired(currentToken) && isTokenExpired(getRefreshToken()))) {
       return null;
     }
     const saved = localStorage.getItem('inventra_user') || sessionStorage.getItem('inventra_user');
@@ -28,15 +28,18 @@ export function AuthProvider({ children }) {
     return parseJwt(currentToken);
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(getAccessToken()));
 
   useEffect(() => {
+    const updateToken = (event) => setToken(event.detail);
+    window.addEventListener('auth:token', updateToken);
     const current = getAccessToken();
     if (current && isTokenExpired(current)) {
-      clearTokens();
-      setToken(null);
-      setUser(null);
+      refreshAccessToken().then(setToken).catch(() => {}).finally(() => setLoading(false));
+    } else if (!current) {
+      setLoading(false);
     }
+    return () => window.removeEventListener('auth:token', updateToken);
   }, []);
 
   useEffect(() => {
@@ -52,8 +55,10 @@ export function AuthProvider({ children }) {
 
   const refreshProfile = async () => {
     if (!getAccessToken()) return;
+    const requestedUserId = parseJwt(getAccessToken())?.user_id;
     try {
       const profile = await authApi.getProfile();
+      if (String(parseJwt(getAccessToken())?.user_id) !== String(requestedUserId) || String(profile.id) !== String(requestedUserId)) return;
       setUser((prev) => {
         const merged = { ...prev, ...profile };
         if (localStorage.getItem('inventra_access_token')) {
@@ -65,7 +70,7 @@ export function AuthProvider({ children }) {
       });
       return profile;
     } catch (err) {
-      if (err.status === 401) {
+      if (err.status === 401 && String(parseJwt(getAccessToken())?.user_id) === String(requestedUserId)) {
         clearTokens();
         setToken(null);
         setUser(null);
@@ -75,42 +80,50 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (token) {
-      refreshProfile();
+      refreshProfile().finally(() => setLoading(false));
     }
   }, [token]);
 
-  const loginStep1 = async (username, password) => {
+  useEffect(() => {
+    const handleProfileRefresh = () => refreshProfile();
+    window.addEventListener('profile:refresh', handleProfileRefresh);
+    return () => window.removeEventListener('profile:refresh', handleProfileRefresh);
+  }, []);
+
+  const completeLogin = (username, res, remember) => {
+    setTokens(res.access, res.refresh, remember);
+    setToken(res.access);
+    const userData = { ...parseJwt(res.access), username };
+    setUser(userData);
+    if (remember) {
+      localStorage.setItem('inventra_user', JSON.stringify(userData));
+      sessionStorage.removeItem('inventra_user');
+    } else {
+      sessionStorage.setItem('inventra_user', JSON.stringify(userData));
+      localStorage.removeItem('inventra_user');
+    }
+    refreshProfile();
+    return userData;
+  };
+
+  const loginStep1 = async (username, password, remember = true) => {
     setLoading(true);
     try {
       const res = await authApi.adminLogin(username, password);
-      return res; // { detail: 'Verification code sent.', phone_hint: '...' }
+      if (res.demo_login === true && res.access && res.refresh) {
+        completeLogin(username, res, remember);
+      }
+      return res;
     } finally {
       setLoading(false);
     }
   };
 
-  const loginStep2 = async (username, code, remember = true) => {
+  const loginStep2 = async (username, loginTicket, code, remember = true) => {
     setLoading(true);
     try {
-      const res = await authApi.verifyOtp(username, code);
-      // res contains { access, refresh }
-      setTokens(res.access, res.refresh, remember);
-      setToken(res.access);
-      const parsed = parseJwt(res.access);
-      const userData = {
-        ...parsed,
-        username,
-      };
-      setUser(userData);
-      if (remember) {
-        localStorage.setItem('inventra_user', JSON.stringify(userData));
-        sessionStorage.removeItem('inventra_user');
-      } else {
-        sessionStorage.setItem('inventra_user', JSON.stringify(userData));
-        localStorage.removeItem('inventra_user');
-      }
-      refreshProfile();
-      return userData;
+      const res = await authApi.verifyOtp(loginTicket, code);
+      return completeLogin(username, res, remember);
     } finally {
       setLoading(false);
     }

@@ -9,10 +9,14 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-from datetime import timedelta
-from dotenv import load_dotenv
-from pathlib import Path
+import importlib.metadata
 import os
+import tomllib
+from datetime import timedelta
+from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -26,12 +30,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY or SECRET_KEY.startswith('django-insecure'):
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY is required and must not start with 'django-insecure'.")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't', 'yes')
 
-_raw_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,*")
+# Explicit local opt-in; this must never be enabled on a production server.
+LOCAL_DEMO_LOGIN_ENABLED = os.getenv('LOCAL_DEMO_LOGIN_ENABLED', 'False').lower() in ('true', '1', 'yes')
+if LOCAL_DEMO_LOGIN_ENABLED and not DEBUG:
+    raise ImproperlyConfigured("LOCAL_DEMO_LOGIN_ENABLED requires DJANGO_DEBUG=True; disable it in production.")
+
+_raw_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1")
 ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(",") if h.strip()]
+if not DEBUG and (not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS):
+    raise ImproperlyConfigured("Production ALLOWED_HOSTS must list explicit domains or IP addresses.")
 
 
 # Application definition
@@ -131,7 +144,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tashkent'
+MAX_TENANTS_PER_OWNER = 10
 
 USE_I18N = True
 
@@ -149,15 +163,39 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'api.schema.InventraAutoSchema',
+    'DEFAULT_THROTTLE_RATES': {
+        'tenant_create': '5/day',
+    },
 }
+
+try:
+    APP_VERSION = importlib.metadata.version("inventra")
+except importlib.metadata.PackageNotFoundError:
+    try:
+        with open(BASE_DIR / "pyproject.toml", "rb") as _f:
+            APP_VERSION = tomllib.load(_f).get("project", {}).get("version", "0.13.1")
+    except Exception:
+        APP_VERSION = "0.13.1"
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Inventra Sales Platform API',
-    'DESCRIPTION': "Inventra savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari.",
-    'VERSION': '0.9.2',
+    'DESCRIPTION': (
+        "Inventra savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari."
+    ),
+    'VERSION': APP_VERSION,
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+    'ENUM_NAME_OVERRIDES': {
+        'SaleStatusEnum': 'apps.sales.models.Sale.STATUS_CHOICES',
+        'SaleItemStatusEnum': 'apps.sales.models.SaleItem.STATUS_CHOICES',
+        'TransferStatusEnum': 'apps.inventory.models.TenantTransfer.STATUS_CHOICES',
+        'SellerProfileStatusEnum': 'apps.tenants.models.SellerProfile.STATUS_CHOICES',
+        'ShiftStatusEnum': ['OPEN', 'CLOSED'],
+        'SalePaymentTypeEnum': 'apps.sales.models.Sale.PAYMENT_CHOICES',
+        'DebtPaymentTypeEnum': [('cash', 'Naqd'), ('card', 'Karta'), ('none', 'Hisob tuzatish')],
+        'ReportTargetEnum': 'apps.tenants.models.Tenant.TARGET_CHOICES',
+    },
 }
 
 SIMPLE_JWT = {
@@ -222,7 +260,7 @@ if USE_MINIO:
     AWS_S3_FILE_OVERWRITE = False
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "apps.core.storage.MediaS3Storage",
         },
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",

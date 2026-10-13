@@ -28,8 +28,8 @@ class TestPlatformAdminAndOwner:
     def test_owner_always_allowed(self):
         owner = OwnerFactory()
         tenant = TenantFactory(owner=owner)
-        EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
-        assert PermissionService.has_permission(owner, CODENAME) is True
+        employee = EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
+        assert PermissionService.has_permission(owner, CODENAME, tenant, employee) is True
 
     def test_owner_allowed_even_with_no_matching_grant_anywhere(self, some_permission):
         # Owners bypass the Employee.permissions check entirely --
@@ -37,15 +37,17 @@ class TestPlatformAdminAndOwner:
         # grant lookup that happens to match.
         owner = OwnerFactory()
         tenant = TenantFactory(owner=owner)
-        EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
-        assert PermissionService.has_permission(owner, "accounts.nonexistent_codename") is True
+        employee = EmployeeFactory(user=owner, tenant=tenant, position="Owner", is_active=True)
+        assert PermissionService.has_permission(
+            owner, "accounts.nonexistent_codename", tenant, employee
+        ) is True
 
     def test_owner_without_active_employee_record_denied(self):
         # A bare OwnerFactory() with no Employee row at all -- e.g. an
         # owner whose tenant creation partially failed, or any state
         # where role="owner" was set without a matching employment.
         owner = OwnerFactory()
-        assert PermissionService.has_permission(owner, CODENAME) is False
+        assert PermissionService.has_permission(owner, CODENAME, TenantFactory()) is False
 
     def test_former_owner_denied_after_change_owner(self):
         # Regression test: TenantService.change_owner() fires the old
@@ -60,7 +62,7 @@ class TestPlatformAdminAndOwner:
             user=old_owner, tenant=tenant, position="Owner", is_active=False
         )
         assert old_owner.role == "owner"
-        assert PermissionService.has_permission(old_owner, CODENAME) is False
+        assert PermissionService.has_permission(old_owner, CODENAME, tenant) is False
 
 
 class TestStaff:
@@ -70,15 +72,15 @@ class TestStaff:
         employee = EmployeeFactory(user=staff, tenant=tenant, is_active=True)
         employee.permissions.add(some_permission)
 
-        assert PermissionService.has_permission(staff, CODENAME) is True
+        assert PermissionService.has_permission(staff, CODENAME, tenant, employee) is True
 
     def test_staff_without_granted_permission_denied(self, some_permission):
         staff = StaffFactory()
         tenant = TenantFactory()
-        EmployeeFactory(user=staff, tenant=tenant, is_active=True)
+        employee = EmployeeFactory(user=staff, tenant=tenant, is_active=True)
         # Permission exists but was never granted to this employee.
 
-        assert PermissionService.has_permission(staff, CODENAME) is False
+        assert PermissionService.has_permission(staff, CODENAME, tenant, employee) is False
 
     def test_fired_staff_denied_even_though_old_grant_still_exists_on_the_row(self, some_permission):
         staff = StaffFactory()

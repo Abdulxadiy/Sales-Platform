@@ -31,11 +31,10 @@ def api_client():
 def create_tenant_with_owner(platform_admin):
     owner_user = OwnerFactory()
     t = TenantFactory(owner=owner_user)
-    owner_user.tenant = t
-    owner_user.save(update_fields=["tenant"])
     EmployeeFactory(
         user=owner_user,
         tenant=t,
+        is_owner=True,
         is_active=True,
         position="Owner",
         hired_by=platform_admin,

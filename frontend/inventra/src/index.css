@@ -1587,3 +1587,18 @@ dialog.confirm-dialog-native[open] .confirm-dialog-card {
 }
 
 
+/* Spreadsheet and batch dialogs share the same fields and table spacing. */
+.form-input {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  margin-top: 5px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+}
+.data-table { border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); text-align: left; vertical-align: top; }
+.data-table th { background: var(--bg-card); color: var(--text-secondary); }

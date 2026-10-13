@@ -24,6 +24,8 @@ class CategoryService:
         locks the tenant's existing rows (select_for_update) and walks
         forward past any collision.
         """
+        from apps.tenants.models import Tenant
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
         existing = set(
             Category.objects.select_for_update()
             .filter(tenant=tenant)
@@ -45,6 +47,8 @@ class CategoryService:
         Create a Category. `kod` can be provided by the caller or auto-assigned
         (see _next_kod). Subcategories automatically inherit the parent's currency.
         """
+        from apps.tenants.models import Tenant
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
         if parent is not None:
             if parent.tenant_id != tenant.id:
                 raise CategoryServiceError("parent must belong to the same tenant.")
@@ -84,6 +88,18 @@ class CategoryService:
         currency: str = None,
     ) -> Category:
         """Owner-driven edit of name, kod, parent, and/or currency."""
+        from apps.tenants.models import Tenant
+        from apps.catalog.models import ProductVariant
+        from django.db.models import Q
+        Tenant.objects.select_for_update().get(pk=category.tenant_id)
+        category = Category.objects.select_for_update().get(pk=category.pk)
+        if parent is not None:
+            parent = Category.objects.get(pk=parent.pk)
+        next_currency = parent.currency if parent is not None else (currency or category.currency)
+        if next_currency != category.currency:
+            variants = ProductVariant.objects.filter(Q(product__category=category) | Q(product__category__parent=category))
+            if variants.filter(Q(stock__quantity__gt=0) | Q(stock_movements__isnull=False) | Q(sale_items__isnull=False) | Q(transfer_source_lines__isnull=False)).exists():
+                raise CategoryServiceError("Harakat tarixi yoki qoldig‘i bor kategoriya valyutasini o‘zgartirib bo‘lmaydi.")
         if name is not None and name.strip():
             category.name = name.strip()
 

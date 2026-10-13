@@ -41,7 +41,13 @@ export default function Documentation() {
   const [saving, setSaving] = useState(false);
 
   // Tab definitions filtered by role
-  const allTabs = [
+  const [availableDocs, setAvailableDocs] = useState(null);
+  useEffect(() => {
+    let active = true;
+    docsApi.getDocsList().then((data) => { if (active) setAvailableDocs(data.documents); }).catch((error) => { if (active) toast.error(error.message); });
+    return () => { active = false; };
+  }, [user?.id, user?.role, toast]);
+  const fallbackTabs = [
     // 1. Amaliy Vizual Qo'llanmalar (Rasmlar bilan)
     ...(isAdmin
       ? [
@@ -127,6 +133,11 @@ export default function Documentation() {
       category: 'certificate',
     },
   ];
+  const allTabs = availableDocs ? availableDocs.map((doc) => ({
+    ...(fallbackTabs.find((tab) => tab.key === doc.key) || { icon: FileText }),
+    key: doc.key, label: doc.title, category: doc.category,
+  })) : fallbackTabs;
+
 
   // Fetch active document content
   const loadDoc = async (key) => {

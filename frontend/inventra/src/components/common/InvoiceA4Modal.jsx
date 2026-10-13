@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import { useAuth } from '../../context/AuthContext';
+import { useTenant } from '../../context/TenantContext';
 import { numberToWordsUzbek } from '../../utils/numberToWordsUzbek';
 
 /**
@@ -399,6 +400,7 @@ export default function InvoiceA4Modal({
   tenantName = null,
 }) {
   const { user } = useAuth();
+  const { activeTenant } = useTenant();
 
   // Signature state
   const [signingModalOpen, setSigningModalOpen] = useState(false);
@@ -416,7 +418,7 @@ export default function InvoiceA4Modal({
       setSignatures({ sender: null, receiver: null, signedAt: null });
       return;
     }
-    const saved = localStorage.getItem(`inventra_invoice_signatures_${sale.id}`);
+    const saved = localStorage.getItem(`inventra_invoice_signatures_${activeTenant?.id || 'pending'}_${sale.id}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -427,7 +429,7 @@ export default function InvoiceA4Modal({
     } else {
       setSignatures({ sender: null, receiver: null, signedAt: null });
     }
-  }, [sale?.id]);
+  }, [sale?.id, activeTenant?.id]);
 
   if (!isOpen || !sale) return null;
 
@@ -484,7 +486,7 @@ export default function InvoiceA4Modal({
 
   const items = Array.isArray(sale.items) ? sale.items : [];
   const currency = String(sale.currency || 'UZS').toUpperCase();
-  const totalAmount = Number(sale.total_amount || 0);
+  const totalAmount = Number(sale.net_amount ?? sale.total_amount ?? 0);
 
   const totalQuantity = items.reduce((sum, it) => sum + Number(it.quantity || 0), 0);
   const wordsAmount = numberToWordsUzbek(totalAmount, currency);
@@ -518,7 +520,7 @@ export default function InvoiceA4Modal({
     };
     setSignatures(finalSigs);
     if (sale?.id) {
-      localStorage.setItem(`inventra_invoice_signatures_${sale.id}`, JSON.stringify(finalSigs));
+    localStorage.setItem(`inventra_invoice_signatures_${activeTenant?.id || 'pending'}_${sale.id}`, JSON.stringify(finalSigs));
     }
     setSigningModalOpen(false);
   };
@@ -900,6 +902,7 @@ export default function InvoiceA4Modal({
               }}
             >
               <div style={{ fontSize: 12, marginBottom: 4 }}>
+                {Number(sale.refunded_amount || 0) > 0 && <div>Chekning asl summasi: {sale.total_amount} {currency} · Qaytarilgan: {sale.refunded_amount} {currency}</div>}
                 <strong style={{ color: '#111827' }}>Jami to‘lanishi lozim bo‘lgan summa:</strong>{' '}
                 <span style={{ fontSize: 14, fontWeight: 800, color: '#111827' }}>
                   {totalAmount.toLocaleString()} {currency}

@@ -13,22 +13,29 @@ import {
   Printer,
   FileText,
 } from 'lucide-react';
-import { catalogApi, salesApi } from '../api/client';
+import { catalogApi, salesApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import Pagination from '../components/common/Pagination';
+import PriceInput from '../components/common/PriceInput';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { useBranch } from '../context/BranchContext';
+import { useTenant } from '../context/TenantContext';
+import { getOrCreateRequestKey } from '../utils/requestKey';
+import { useAuth } from '../context/AuthContext';
 import { usePersistedState } from '../hooks/usePersistedState';
+
+const EMPTY_CART = [];
 
 export default function POS() {
   const toast = useToast();
   const confirm = useConfirm();
-  const { activeBranch } = useBranch();
+  const { activeTenant } = useTenant();
   const searchInputRef = useRef(null);
+  const { user } = useAuth();
+  const checkoutStorageKey = `inventra_checkout:${user?.id}:${activeTenant?.id}`;
 
   // Catalog State
   const [categories, setCategories] = useState([]);
@@ -37,14 +44,24 @@ export default function POS() {
   const [allVariants, setAllVariants] = useState([]);
   const allVariantsRef = useRef([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [usdRate, setUsdRate] = useState(0);
+  const [usdCalculatorOpen, setUsdCalculatorOpen] = useState(false);
+  const [usdCalculatorAmount, setUsdCalculatorAmount] = useState('');
+  const [usdCalculatorSaleTotalUzs, setUsdCalculatorSaleTotalUzs] = useState('');
   const [posPage, setPosPage] = useState(1);
   const POS_PAGE_SIZE = 20;
 
   // 1-Narx (Partner Price) Switcher - Persisted
-  const [isPartnerSale, setIsPartnerSale] = usePersistedState('inventra_pos_partner_sale', false);
+  const [isPartnerSale, setIsPartnerSale] = usePersistedState(
+    `inventra_pos_partner_sale:${activeTenant?.id || 'pending'}`,
+    false,
+  );
 
   // Cart State - Persisted across routes and refreshes
-  const [cart, setCart, resetCart] = usePersistedState('inventra_pos_cart', []);
+  const [cart, setCart, resetCart] = usePersistedState(
+    `inventra_pos_cart:${activeTenant?.id || 'pending'}`,
+    EMPTY_CART,
+  );
 
   // Checkout Modal State
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -61,6 +78,22 @@ export default function POS() {
   const [posInvoiceModalOpen, setPosInvoiceModalOpen] = useState(false);
   const [selectedPosInvoiceSale, setSelectedPosInvoiceSale] = useState(null);
   const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
+
+  useEffect(() => {
+    let active = true;
+    tenantApi.getCurrentTenant().then((data) => {
+      if (active) setUsdRate(Number(data.usd_rate || 0));
+    }).catch(() => setUsdRate(0));
+    return () => { active = false; };
+  }, [activeTenant?.id]);
+
+  const previousTenantId = useRef(null);
+  useEffect(() => {
+    if (previousTenantId.current && String(previousTenantId.current) !== String(activeTenant?.id)) {
+      resetCart();
+    }
+    previousTenantId.current = activeTenant?.id || null;
+  }, [activeTenant?.id, resetCart]);
 
   const handleOpenPosInvoice = (saleToOpen = null) => {
     const target = saleToOpen || (completedSales && completedSales.length > 0 ? completedSales[0] : null);
@@ -104,7 +137,6 @@ export default function POS() {
     setLoadingProducts(true);
     try {
       const params = {};
-      if (activeBranch?.id) params.branch_id = activeBranch.id;
       const res = await catalogApi.getVariants(params);
       const items = res.results || res;
       const list = Array.isArray(items) ? items : [];
@@ -116,7 +148,7 @@ export default function POS() {
     } finally {
       setLoadingProducts(false);
     }
-  }, [activeBranch?.id]);
+  }, [activeTenant?.id]);
 
   // Load initial categories and variants
   useEffect(() => {
@@ -168,6 +200,10 @@ export default function POS() {
   };
 
   const addToCart = useCallback((variant) => {
+    if (variant.currency && variant.currency !== 'UZS') {
+      toast.warning('POS faqat UZS’da ishlaydi. USD kalkulyator alohida va savdoga yozilmaydi.');
+      return false;
+    }
     const available = Number(variant.stock_quantity ?? 0);
     if (available <= 0) {
       toast.warning(`"${variant.product_name || variant.name || 'Ushbu tovar'}" bazada tugagan! (Ombordagi qoldiq: 0)`);
@@ -360,6 +396,11 @@ export default function POS() {
     [cart]
   );
 
+  const expiredCartItems = cart.flatMap(item => {
+    const variant = allVariants.find(v => v.id === item.variant.id) || item.variant;
+    return (variant.expired_batches || []).length ? [{ variant, batches: variant.expired_batches }] : [];
+  });
+
   // Open Checkout
   const handleOpenCheckout = async () => {
     if (cart.length === 0) {
@@ -367,9 +408,25 @@ export default function POS() {
       return;
     }
 
-    // Check each cart item against stock
+    if (cart.some((item) => item.variant.currency && item.variant.currency !== 'UZS')) {
+      toast.error('Savatda USD narxli tovar bor. POS savdosi faqat UZS’da rasmiylashtiriladi; USD tovarini katalogda UZS narxiga o‘tkazing.');
+      return;
+    }
+
+    let currentVariants;
+    try {
+      const data = await catalogApi.getVariants();
+      currentVariants = Array.isArray(data) ? data : data.results || [];
+      setAllVariants(currentVariants);
+      allVariantsRef.current = currentVariants;
+    } catch (error) {
+      toast.error(error.message || 'Joriy ombor qoldig‘ini tekshirib bo‘lmadi.');
+      return;
+    }
+    // Refresh both stock and expiry information before taking payment.
     for (const item of cart) {
-      const available = Number(item.variant.stock_quantity ?? 0);
+      const currentVariant = currentVariants.find(variant => variant.id === item.variant.id);
+      const available = Number(currentVariant?.stock_quantity ?? 0);
       const qty = Number(item.quantity) || 0;
       if (available <= 0) {
         toast.error(`"${item.variant.product_name || item.variant.name || 'Tovar'}" bazada tugagan (qoldiq: 0). Sotuv qilish uchun savatdan o‘chiring.`);
@@ -395,6 +452,10 @@ export default function POS() {
   // Complete Sale
   const handleConfirmSale = async (e) => {
     e.preventDefault();
+    if (cart.some((item) => item.variant.currency && item.variant.currency !== 'UZS')) {
+      toast.error('USD narxli mahsulotni POS savdosiga qo‘shib bo‘lmaydi.');
+      return;
+    }
     if (paymentMethod === 'DEBT' && !selectedCounterparty) {
       toast.warning('Nasiya uchun kontragent (mijoz)ni tanlash majburiy');
       return;
@@ -417,19 +478,20 @@ export default function POS() {
     setSubmittingSale(true);
     try {
       const salePayload = {
-        branch_id: activeBranch?.id,
         payment_type: paymentMethod.toLowerCase(), // 'cash' | 'card' | 'debt'
         is_partner_sale: isPartnerSale,
         counterparty_id: selectedCounterparty ? parseInt(selectedCounterparty, 10) : null,
         items: cart.map((i) => ({
           product_variant_id: i.variant.id,
-          quantity: Number(i.quantity) || 1,
+          quantity: Number(i.quantity),
           unit_price: getItemEffectivePrice(i),
         })),
       };
 
+      salePayload.idempotency_key = getOrCreateRequestKey(checkoutStorageKey, salePayload);
       const res = await salesApi.createSale(salePayload);
       const salesList = Array.isArray(res) ? res : [res];
+      localStorage.removeItem(checkoutStorageKey);
       setCompletedSales(salesList);
       resetCart();
       loadVariants();
@@ -511,7 +573,27 @@ export default function POS() {
               }}
             />
           </button>
+          <button type="button" className="btn-secondary" onClick={() => setUsdCalculatorOpen((open) => !open)}>
+            <Banknote size={16} /> USD kalkulyator
+          </button>
         </div>
+
+        {usdCalculatorOpen && <section style={{ display: 'flex', alignItems: 'end', flexWrap: 'wrap', gap: 10, padding: 12, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
+          <label style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 11 }}>Ichki kurs (ma’lumot uchun)
+            <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>1 USD = {usdRate.toLocaleString('uz-UZ')} UZS</strong>
+          </label>
+          <label style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 11 }}>Jami (UZS)
+            <PriceInput value={usdCalculatorSaleTotalUzs} onChange={(event) => setUsdCalculatorSaleTotalUzs(event.target.value)} placeholder="549 000" />
+          </label>
+          <label style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 11 }}>Mijoz bergan USD
+            <PriceInput value={usdCalculatorAmount} onChange={(event) => setUsdCalculatorAmount(event.target.value)} placeholder="100" />
+          </label>
+          <div style={{ color: 'var(--text-primary)', fontSize: 13 }}>
+            USD qiymati: <strong>{(Number(usdCalculatorAmount || 0) * usdRate).toLocaleString('uz-UZ')} UZS</strong>
+            {Number(usdCalculatorAmount) * usdRate >= Number(usdCalculatorSaleTotalUzs) && Number(usdCalculatorSaleTotalUzs) > 0 && <span> · Hisobiy qaytim: <strong>{(Number(usdCalculatorAmount || 0) * usdRate - Number(usdCalculatorSaleTotalUzs || 0)).toLocaleString('uz-UZ')} UZS</strong></span>}
+          </div>
+          <small style={{ flexBasis: '100%', color: 'var(--text-muted)' }}>Faqat alohida ma’lumot kalkulyatori: valyutani POS to‘lovi sifatida qabul qilmaydi va savdo/tender/fiskal chekga yozilmaydi.</small>
+        </section>}
 
         {/* Category Pills Bar */}
         <div
@@ -582,19 +664,20 @@ export default function POS() {
             paginatedVariants.map((v) => {
               const activePrice = getDefaultPrice(v);
               const inStock = Number(v.stock_quantity || 0) > 0;
+              const sellableAtPos = !v.currency || v.currency === 'UZS';
               return (
                 <div
                   key={v.id}
                   onClick={() => addToCart(v)}
-                  className={`glass-card ${inStock ? 'interactive' : ''}`}
+                  className={`glass-card ${inStock && sellableAtPos ? 'interactive' : ''}`}
                   style={{
                     padding: 14,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    cursor: inStock ? 'pointer' : 'not-allowed',
-                    opacity: inStock ? 1 : 0.55,
-                    filter: inStock ? 'none' : 'grayscale(0.35)',
+                    cursor: inStock && sellableAtPos ? 'pointer' : 'not-allowed',
+                    opacity: inStock && sellableAtPos ? 1 : 0.55,
+                    filter: inStock && sellableAtPos ? 'none' : 'grayscale(0.35)',
                     position: 'relative',
                     userSelect: 'none',
                   }}
@@ -611,7 +694,7 @@ export default function POS() {
                           fontWeight: 700,
                         }}
                       >
-                        {inStock ? `${formatQuantity(v.stock_quantity, v.unit)} ${v.unit || 'ta'}` : 'Tugagan'}
+                        {!sellableAtPos ? 'POS uchun UZS narxi kerak' : inStock ? `${formatQuantity(v.stock_quantity, v.unit)} ${v.unit || 'ta'}` : 'Tugagan'}
                       </span>
                       {v.code && (
                         <span style={{ fontSize: 10, color: 'var(--primary)', fontFamily: 'monospace', fontWeight: 700 }}>
@@ -938,10 +1021,7 @@ export default function POS() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 6, borderTop: '1px dashed var(--border-subtle)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Narx ({isUSD ? '$' : 'UZS'}):</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step={isUSD ? "0.01" : "500"}
+                      <PriceInput
                         value={item.customPrice ?? ''}
                         onChange={(e) => updateItemPrice(item.variant.id, e.target.value)}
                         style={{
@@ -1056,6 +1136,11 @@ export default function POS() {
         maxWidth={isSplitCheckout ? 840 : 540}
       >
         <form onSubmit={handleConfirmSale} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {expiredCartItems.length > 0 && <div role="alert" style={{ padding: 14, border: '1px solid var(--accent-amber)', borderRadius: 8, background: 'rgba(245,158,11,.1)' }}>
+            <strong>Diqqat: yaroqlilik muddati o‘tgan partiya bor.</strong>
+            {expiredCartItems.map(({ variant, batches }) => <div key={variant.id}>{variant.product_name || variant.name}: {batches.map(batch => `${batch.batch_code || 'Partiya'} — ${batch.expires_on}`).join('; ')}</div>)}
+            <div>Sotuvni davom ettirish mumkin.</div>
+          </div>}
           {/* Payment Method Selector */}
           <div>
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
@@ -1253,9 +1338,7 @@ export default function POS() {
                     <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                       Mijozdan qabul qilingan summa ($)
                     </label>
-                    <input
-                      type="number"
-                      step="any"
+                    <PriceInput
                       value={paidAmountUSD}
                       onChange={(e) => setPaidAmountUSD(e.target.value)}
                       placeholder="0"
@@ -1385,9 +1468,7 @@ export default function POS() {
                     <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                       Mijozdan qabul qilingan summa (UZS)
                     </label>
-                    <input
-                      type="number"
-                      step="any"
+                    <PriceInput
                       value={paidAmountUZS}
                       onChange={(e) => setPaidAmountUZS(e.target.value)}
                       placeholder="0"
@@ -1439,11 +1520,10 @@ export default function POS() {
                       <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
                         Mijozdan qabul qilingan summa ($)
                       </label>
-                      <input
-                        type="number"
-                        step="any"
+                      <PriceInput
                         value={paidAmountUSD}
                         onChange={(e) => setPaidAmountUSD(e.target.value)}
+                        placeholder="0"
                         style={{
                           width: '100%',
                           padding: '12px 14px',
@@ -1487,11 +1567,10 @@ export default function POS() {
                       <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
                         Mijozdan qabul qilingan summa (UZS)
                       </label>
-                      <input
-                        type="number"
-                        step="any"
+                      <PriceInput
                         value={paidAmountUZS}
                         onChange={(e) => setPaidAmountUZS(e.target.value)}
+                        placeholder="0"
                         style={{
                           width: '100%',
                           padding: '12px 14px',

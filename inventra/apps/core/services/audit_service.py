@@ -46,15 +46,17 @@ class AuditService:
             if tenant is None:
                 if getattr(request, "tenant", None):
                     tenant = request.tenant
-                elif actor is not None and getattr(actor, "tenant", None):
-                    tenant = actor.tenant
+                elif actor is not None:
+                    membership = actor.employments.filter(is_active=True).select_related("tenant").first()
+                    tenant = membership.tenant if membership else None
             if not ip_address:
                 ip_address = get_client_ip(request)
             if not user_agent:
                 user_agent = get_user_agent(request)
 
-        if tenant is None and actor is not None and getattr(actor, "tenant", None):
-            tenant = actor.tenant
+        if tenant is None and actor is not None:
+            membership = actor.employments.filter(is_active=True).select_related("tenant").first()
+            tenant = membership.tenant if membership else None
 
         return AuditLog.objects.create(
             tenant=tenant,

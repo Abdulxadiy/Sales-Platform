@@ -11,15 +11,36 @@ class BaseModel(models.Model):
 
 
 class AuditAction(models.TextChoices):
+    CATALOG_IMPORT = "catalog_import", "Catalog import"
+    BARCODE_GENERATE = "barcode_generate", "Barcode generated"
     PRICE_CHANGE = "price_change", "Price Change"
     EMPLOYEE_HIRE = "employee_hire", "Employee Hire"
     EMPLOYEE_FIRE = "employee_fire", "Employee Fire"
+    EMPLOYEE_UPDATE = "employee_update", "Employee Update"
+    EMPLOYEE_BLOCK = "employee_block", "Employee Block"
+    EMPLOYEE_UNBLOCK = "employee_unblock", "Employee Unblock"
+    EMPLOYEE_ARCHIVE = "employee_archive", "Employee Archive"
+    EMPLOYEE_RESTORE = "employee_restore", "Employee Restore"
+    EMPLOYEE_INVITE = "employee_invite", "Employee Invite"
     OWNER_TRANSFER = "owner_transfer", "Owner Transfer"
+    TENANT_CREATE = "tenant_create", "Tenant Create"
+    TENANT_UPDATE = "tenant_update", "Tenant Update"
     VOID_SALE = "void_sale", "Void Sale"
     STOCK_ADJUSTMENT = "stock_adjustment", "Stock Adjustment"
     CASH_DISCREPANCY = "cash_discrepancy", "Cash Discrepancy"
     LOGIN_ATTEMPT = "login_attempt", "Login Attempt"
     PASSWORD_RESET = "password_reset", "Password Reset"
+    RECEIPT_TOKEN_ROTATE = "receipt_token_rotate", "Receipt Token Rotate"
+    SELLER_PROFILE_SUBMIT = "seller_profile_submit", "Seller Profile Submit"
+    SELLER_PROFILE_REVIEW = "seller_profile_review", "Seller Profile Review"
+    SELLER_PROFILE_BINDING = "seller_profile_binding", "Seller Profile Binding"
+    TENANT_TRANSFER_DISPATCH = "tenant_transfer_dispatch", "Tenant Transfer Dispatch"
+    TENANT_TRANSFER_RECEIVE = "tenant_transfer_receive", "Tenant Transfer Receive"
+    TENANT_TRANSFER_DISCREPANCY = "tenant_transfer_discrepancy", "Tenant Transfer Discrepancy"
+    TENANT_TRANSFER_RETURN = "tenant_transfer_return", "Tenant Transfer Return"
+    B2B_RETURN_PENDING = "b2b_return_pending", "B2B Return Pending"
+    B2B_RETURN_RECEIVE = "b2b_return_receive", "B2B Return Receive"
+    B2B_RETURN_DISCREPANCY_CLOSE = "b2b_return_discrepancy_close", "B2B Return Discrepancy Close"
 
 
 class ImmutableAuditLogQuerySet(models.QuerySet):

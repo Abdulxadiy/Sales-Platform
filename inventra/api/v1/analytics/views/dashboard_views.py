@@ -1,13 +1,16 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from api.mixins import TenantContextMixin
 from api.permissions import IsOwner
 from apps.analytics.services.analytics_service import AnalyticsService, AnalyticsServiceError
 
 
-class DashboardView(APIView):
+class DashboardView(TenantContextMixin, APIView):
     """
     Savdo Analitikasi va Boshqaruv Paneli (Dashboard).
     Faqat do'kon egasi (owner) ko'rishi mumkin.
@@ -16,6 +19,7 @@ class DashboardView(APIView):
     """
     permission_classes = [IsOwner]
 
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
         user = request.user
         if user.role == "platform_admin":
@@ -23,7 +27,7 @@ class DashboardView(APIView):
                 "Do'konning tijorat sirlari va moliyaviy hisobotlari platforma administratori uchun yopiq."
             )
 
-        tenant = user.tenant
+        tenant = self.tenant
         if not tenant or not tenant.is_active:
             raise PermissionDenied("Do'kon faol emas yoki mavjud emas.")
 

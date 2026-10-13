@@ -1,7 +1,9 @@
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+
 from apps.accounts.services import otp_services
+from apps.tg_bot.identity import current_bot_id
 from apps.tg_bot.models import TelegramContact
 from apps.tg_bot.services import send_telegram_message
 
@@ -10,45 +12,48 @@ def issue_tokens(user):
     """
     Generate JWT access and refresh tokens with custom claims for the user.
 
-    Custom claims attached to both access and refresh tokens:
-    - role: The user's role string (e.g. 'staff', 'owner', 'platform_admin').
-    - tenant_id: The primary key of the tenant the user belongs to if the
-      role is 'staff' or 'owner'; None for 'platform_admin' (unscoped).
+    Tenant access is resolved from active database memberships per request;
+    a tenant id in a JWT would go stale and is not authoritative.
     """
     refresh = RefreshToken.for_user(user)
 
-    tenant_id = user.tenant_id if user.role in ("staff", "owner") and user.tenant_id else None
-
     # Attach custom claims to refresh token
     refresh["role"] = user.role
-    refresh["tenant_id"] = tenant_id
     refresh["token_version"] = getattr(user, "token_version", 1)
-    refresh["terms_accepted"] = getattr(user, "terms_accepted", False)
 
     # Attach custom claims to access token
     access = refresh.access_token
     access["role"] = user.role
-    access["tenant_id"] = tenant_id
     access["token_version"] = getattr(user, "token_version", 1)
-    access["terms_accepted"] = getattr(user, "terms_accepted", False)
 
     return {
         "access": str(access),
         "refresh": str(refresh),
     }
 
+def get_current_telegram_contact(phone_number):
+    """Only a contact registered through the configured bot counts as linked."""
+    bot_id = current_bot_id()
+    if not bot_id:
+        return None
+    return TelegramContact.objects.filter(phone_number=phone_number, bot_id=bot_id).first()
+
+
 def get_telegram_contact_or_error(phone_number):
     """
     Common for both flows (register/login): telegram_not_linked
     Removed because the check and cooldown check are the same.
     """
-    try:
-        contact = TelegramContact.objects.get(phone_number=phone_number)
-    except TelegramContact.DoesNotExist:
+    contact = get_current_telegram_contact(phone_number)
+    if contact is None:
         return None, Response(
             {
                 'error': 'telegram_contact_not_found',
-                'detail': "Telefon raqamingiz Telegram botga ulanmagan. Iltimos, Telegramda @inventraa_bot botiga kirib, /start bosing va telefon raqamingizni ulang.",
+                'detail': (
+                    "Telefon raqamingiz Telegram botga ulanmagan. "
+                    "Iltimos, Telegramda @ilbi_bot botiga kirib, /start bosing "
+                    "va telefon raqamingizni ulang."
+                ),
             },
             status=status.HTTP_404_NOT_FOUND,
         )
@@ -86,7 +91,11 @@ def send_otp_or_error(phone_number, contact):
         return Response(
             {
                 'error': 'telegram_send_failed',
-                'detail': "Telegram bot orqali tasdiqlash kodini yuborib bo‘lmadi. Iltimos, Telegramda @inventraa_bot ga kirib, /start bosing va telefon raqamingizni yangilang.",
+                'detail': (
+                    "Telegram bot orqali tasdiqlash kodini yuborib bo‘lmadi. "
+                    "Iltimos, Telegramda @ilbi_bot ga kirib, /start bosing "
+                    "va telefon raqamingizni yangilang."
+                ),
             },
             status=status.HTTP_502_BAD_GATEWAY,
         )

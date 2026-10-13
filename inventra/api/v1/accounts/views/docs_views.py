@@ -1,10 +1,14 @@
 from pathlib import Path
+
 from django.conf import settings
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.schema import DocumentUpdateInputSerializer
 
 DOCS_MAP = {
     # 1. Amaliy Vizual Qo'llanmalar (Rasmlar bilan)
@@ -102,6 +106,7 @@ class DocumentationView(APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
         user = request.user
         role = getattr(user, "role", None) if user.is_authenticated else "public"
@@ -161,6 +166,7 @@ class DocumentationView(APIView):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(request=DocumentUpdateInputSerializer, responses={200: OpenApiTypes.OBJECT})
     def put(self, request):
         user = request.user
         if not user.is_authenticated or getattr(user, "role", None) != "platform_admin":

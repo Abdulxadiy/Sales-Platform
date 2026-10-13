@@ -6,30 +6,25 @@ import {
   Receipt,
   Cpu,
   Save,
-  CheckCircle2,
-  AlertCircle,
   HelpCircle,
   Clock,
   Sparkles,
   Store,
   RefreshCw,
-  Bell,
-  Smartphone,
   Info,
-  DollarSign,
   ArrowRight,
-  ShieldCheck,
   Check,
   AlertTriangle,
-  Calendar,
 } from 'lucide-react';
 import { tenantApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import CustomSelect from '../components/common/CustomSelect';
+import PriceInput from '../components/common/PriceInput';
+import PhoneInput from '../components/common/PhoneInput';
 
 export default function Services() {
-  const { user, isAdmin, isOwner } = useAuth();
+  const { user, isAdmin } = useAuth();
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('currency'); // 'currency' | 'telegram' | 'receipt' | 'automation'
@@ -37,10 +32,12 @@ export default function Services() {
   const [selectedTenantId, setSelectedTenantId] = useState(user?.tenant_id || null);
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [sendingReportNow, setSendingReportNow] = useState(false);
   const [sendingLowStockReportNow, setSendingLowStockReportNow] = useState(false);
+  const [previewDate] = useState(() => new Date());
 
   // Quick Calculator State (USD <-> UZS)
   const [calcUsd, setCalcUsd] = useState('100');
@@ -65,7 +62,7 @@ export default function Services() {
     notify_on_sale: false,
     notify_on_debt: false,
     receipt_header: 'Xaridingiz uchun rahmat!',
-    receipt_footer: 'Tovarlar 14 kun ichida almashtiriladi.',
+    receipt_footer: '',
     receipt_phone: '',
   });
 
@@ -73,21 +70,24 @@ export default function Services() {
   useEffect(() => {
     if (isAdmin) {
       tenantApi
-        .getTenants()
-        .then((res) => {
-          const list = Array.isArray(res) ? res : res.results || [];
+        .getAllTenants()
+        .then((list) => {
           setTenants(list);
-          if (list.length > 0 && !selectedTenantId) {
-            setSelectedTenantId(list[0].id);
-          }
+          setSelectedTenantId((current) => current || list[0]?.id || null);
         })
-        .catch(() => {});
+        .catch((err) => toast.error('Do‘konlar ro‘yxatini yuklab bo‘lmadi: ' + err.message));
     }
-  }, [isAdmin]);
+  }, [isAdmin, toast]);
 
   // Load current tenant settings
   const loadTenantData = useCallback(async () => {
+    if (isAdmin && !selectedTenantId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setLoadError('');
+    setTenant(null);
     try {
       const params = isAdmin && selectedTenantId ? { tenant_id: selectedTenantId } : {};
       const data = await tenantApi.getCurrentTenant(params);
@@ -110,7 +110,7 @@ export default function Services() {
         notify_on_sale: Boolean(data.notify_on_sale),
         notify_on_debt: Boolean(data.notify_on_debt),
         receipt_header: data.receipt_header || 'Xaridingiz uchun rahmat!',
-        receipt_footer: data.receipt_footer || 'Tovarlar 14 kun ichida almashtiriladi.',
+        receipt_footer: data.receipt_footer || '',
         receipt_phone: data.receipt_phone || '',
       });
 
@@ -118,11 +118,11 @@ export default function Services() {
       const rate = parseFloat(data.usd_rate) || 12800;
       setCalcUzs((100 * rate).toLocaleString('uz-UZ'));
     } catch (err) {
-      toast.error('Do‘kon sozlamalarini yuklashda xatolik: ' + err.message);
+      setLoadError('Do‘kon sozlamalarini yuklab bo‘lmadi: ' + err.message);
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, selectedTenantId, toast]);
+  }, [isAdmin, selectedTenantId]);
 
   useEffect(() => {
     loadTenantData();
@@ -232,6 +232,19 @@ export default function Services() {
     );
   }
 
+  if (!tenant) {
+    return (
+      <div className="glass-card" role={loadError ? 'alert' : undefined} style={{ padding: 28, color: loadError ? 'var(--accent-rose)' : 'var(--text-muted)' }}>
+        {loadError || (isAdmin ? 'Sozlamalarni ko‘rish uchun do‘kon tanlang.' : 'Do‘kon sozlamalari topilmadi.')}
+        {isAdmin && tenants.length > 0 && (
+          <CustomSelect value={selectedTenantId || ''} onChange={(value) => setSelectedTenantId(Number(value))}
+            options={tenants.map((item) => ({ value: item.id, label: `${item.name} (#${item.id})` }))} style={{ marginTop: 12, minWidth: 240 }} />
+        )}
+        {selectedTenantId && <button type="button" className="btn btn-secondary" onClick={loadTenantData} style={{ marginTop: 12 }}>Qayta urinish</button>}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
       {/* Top Header Card */}
@@ -266,7 +279,7 @@ export default function Services() {
               Xizmatlar & Do‘kon Sozlamalari
             </h2>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-              Do‘koningizning ichki valyuta kursi, Telegram integratsiyasi, chek sozlamalari va xizmatlari
+              {isAdmin ? 'Tanlangan do‘konning' : 'Do‘koningizning'} kurs kalkulyatori, Telegram va chek sozlamalari
             </div>
           </div>
         </div>
@@ -363,7 +376,7 @@ export default function Services() {
                   Ichki Valyuta Kursi (1 USD / UZS)
                 </h3>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                  Kassa, sotuv narxlari va tovarlar hisob-kitoblarida 1 AQSH dollari uchun qo‘llaniladigan baza kursi
+                  Faqat ichki ma’lumot va alohida kalkulyator uchun. POS narxi va to‘lovi UZS’da yuritiladi.
                 </div>
               </div>
               <div
@@ -386,10 +399,7 @@ export default function Services() {
                   Baza Dollar Kursi (so‘mda)
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <input
-                    type="number"
-                    step="50"
-                    min="1"
+                  <PriceInput
                     value={formData.usd_rate}
                     onChange={(e) => {
                       setFormData({ ...formData, usd_rate: e.target.value });
@@ -399,6 +409,7 @@ export default function Services() {
                         setCalcUzs((num * rate).toLocaleString('uz-UZ'));
                       }
                     }}
+                    placeholder="12 800"
                     style={{
                       flex: 1,
                       padding: '11px 14px',
@@ -453,8 +464,7 @@ export default function Services() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>USD ($)</div>
-                    <input
-                      type="number"
+                    <PriceInput
                       value={calcUsd}
                       onChange={(e) => handleUsdChange(e.target.value)}
                       placeholder="USD"
@@ -617,7 +627,7 @@ export default function Services() {
                     1
                   </div>
                   <div>
-                    Telegram qidiruvidan <strong style={{ color: 'var(--primary)' }}>@inventraa_bot</strong> botimizni toping va uni guruhingiz yoki kanalingizga a’zo qilib qo‘shing.
+                    Telegram qidiruvidan <strong style={{ color: 'var(--primary)' }}>@ilbi_bot</strong> botimizni toping va uni guruhingiz yoki kanalingizga a’zo qilib qo‘shing.
                   </div>
                 </div>
 
@@ -1063,7 +1073,7 @@ export default function Services() {
               </label>
               <textarea
                 rows={3}
-                placeholder="Masalan: Tovarlar 14 kun ichida almashtiriladi. Xaridingiz barakali bo‘lsin!"
+                placeholder="Qaytarish shartlarini tegishli tovar toifasiga mos yozing"
                 value={formData.receipt_footer}
                 onChange={(e) => setFormData({ ...formData, receipt_footer: e.target.value })}
                 style={{
@@ -1084,9 +1094,7 @@ export default function Services() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Chekda Ko‘rsatiladigan Telefon
               </label>
-              <input
-                type="text"
-                placeholder="Masalan: +998 90 123 45 67"
+              <PhoneInput
                 value={formData.receipt_phone}
                 onChange={(e) => setFormData({ ...formData, receipt_phone: e.target.value })}
                 style={{
@@ -1151,7 +1159,7 @@ export default function Services() {
                   </div>
                 )}
                 <div style={{ fontSize: 10.5, color: '#71717a' }}>
-                  Sana: {new Date().toLocaleDateString('uz-UZ')} {new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })} | Chek #1042
+                  Namuna: {previewDate.toLocaleDateString('uz-UZ')} {previewDate.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })} | Chek #1042
                 </div>
               </div>
 
@@ -1498,84 +1506,11 @@ export default function Services() {
             </button>
           </div>
 
-          {/* Card: System Diagnostics */}
-          <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-              Tizim Xizmatlari Holati (Diagnostika)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-              <div
-                style={{
-                  padding: '14px 16px',
-                  borderRadius: 12,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <div style={{ width: 10, height: 10, borderRadius: 999, background: 'var(--accent-emerald, #10b981)' }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Telegram Bot</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>@inventraa_bot (Faol)</div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '14px 16px',
-                  borderRadius: 12,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <div style={{ width: 10, height: 10, borderRadius: 999, background: 'var(--accent-emerald, #10b981)' }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Celery Beat Planner</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Avtomatik rejalashtiruvchi</div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '14px 16px',
-                  borderRadius: 12,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <div style={{ width: 10, height: 10, borderRadius: 999, background: 'var(--accent-emerald, #10b981)' }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Redis Kesh & Navbat</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Xabarlar navbati ulangan</div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '14px 16px',
-                  borderRadius: 12,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <div style={{ width: 10, height: 10, borderRadius: 999, background: 'var(--accent-emerald, #10b981)' }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>O‘zgarmas Audit</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Xavfsizlik protokoli faol</div>
-                </div>
-              </div>
-            </div>
+          <div className="glass-card" style={{ padding: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px', color: 'var(--text-primary)' }}>Xizmatlar holati</h3>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+              Bu sahifada Redis, Celery va Telegram uchun jonli diagnostika mavjud emas. Xizmat holatini server monitoringi orqali tekshiring.
+            </p>
           </div>
         </div>
       )}

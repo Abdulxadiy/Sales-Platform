@@ -5,9 +5,7 @@ import {
   ArrowRightLeft,
   AlertTriangle,
   X,
-  ExternalLink,
   ChevronRight,
-  Clock,
 } from 'lucide-react';
 import { parseZReport } from './NotificationParser';
 

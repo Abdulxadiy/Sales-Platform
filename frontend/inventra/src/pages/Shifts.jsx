@@ -5,11 +5,7 @@ import {
   ArrowUpCircle,
   Lock,
   FileText,
-  Calendar,
-  DollarSign,
   Printer,
-  AlertCircle,
-  CheckCircle2,
   TrendingDown,
   TrendingUp,
   CreditCard,
@@ -18,16 +14,17 @@ import {
 } from 'lucide-react';
 import { cashboxApi } from '../api/client';
 import Modal from '../components/common/Modal';
+import PriceInput from '../components/common/PriceInput';
 import { useToast } from '../context/ToastContext';
-import { useBranch } from '../context/BranchContext';
-import InventraLogo from '../components/common/InventraLogo';
+import { useTenant } from '../context/TenantContext';
+
 import ShiftReportSlip from '../components/common/ShiftReportSlip';
 import ZReportModernView from '../components/common/ZReportModernView';
 import { printReceiptSlip } from '../components/common/ReceiptSlip';
 import usePersistedState from '../hooks/usePersistedState';
 
-const STORAGE_KEY_EXPENSES = 'inventra_custom_expense_categories';
-const STORAGE_KEY_INCOMES = 'inventra_custom_income_sources';
+const expenseStorageKey = (tenantId) => `inventra_custom_expense_categories:${tenantId || 'pending'}`;
+const incomeStorageKey = (tenantId) => `inventra_custom_income_sources:${tenantId || 'pending'}`;
 
 // Universal neutral starter categories for ANY type of business
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -50,7 +47,14 @@ const DEFAULT_INCOME_SOURCES = [
 
 export default function Shifts() {
   const toast = useToast();
-  const { activeBranch } = useBranch();
+  const canRecordIncome = activeTenant?.is_owner || activeTenant?.permissions?.includes('cashbox.record_income');
+  const canRecordExpense = activeTenant?.is_owner || activeTenant?.permissions?.includes('cashbox.record_expense');
+  const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes('cashbox.manage_shift');
+  const [openShiftModal, setOpenShiftModal] = useState(false);
+  const [openingCashUzs, setOpeningCashUzs] = useState('0');
+  const [openingCashUsd, setOpeningCashUsd] = useState('0');
+  const [openingShift, setOpeningShift] = useState(false);
+  const { activeTenant } = useTenant();
   const [activeTab, setActiveTab] = useState('reports'); // 'reports' | 'expenses' | 'income'
   const [shiftStatus, setShiftStatus] = useState(null);
   const [reports, setReports] = useState([]);
@@ -65,7 +69,7 @@ export default function Shifts() {
   const [reportDetailModalOpen, setReportDetailModalOpen] = useState(false);
   const [selectedReportDetail, setSelectedReportDetail] = useState(null);
   const [reportViewMode, setReportViewMode] = useState('modern'); // 'modern' | 'slip'
-  const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
+  const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState(`inventra_receipt_paper_width:${activeTenant?.id || 'pending'}`, '58mm');
 
   // Shift Close Form
   const [actualCashUzs, setActualCashUzs] = useState('');
@@ -77,7 +81,7 @@ export default function Shifts() {
   // Saved Custom Categories & Persistence
   const [savedExpenseCategories, setSavedExpenseCategories] = useState(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_EXPENSES);
+      const stored = localStorage.getItem(expenseStorageKey(activeTenant?.id));
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -90,7 +94,7 @@ export default function Shifts() {
 
   const [savedIncomeSources, setSavedIncomeSources] = useState(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_INCOMES);
+      const stored = localStorage.getItem(incomeStorageKey(activeTenant?.id));
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -100,6 +104,23 @@ export default function Shifts() {
     }
     return DEFAULT_INCOME_SOURCES;
   });
+
+  useEffect(() => {
+    const loadTenantCategories = (key, fallback) => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || 'null');
+        return Array.isArray(saved) && saved.length ? saved : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const expensesForTenant = loadTenantCategories(expenseStorageKey(activeTenant?.id), DEFAULT_EXPENSE_CATEGORIES);
+    const incomesForTenant = loadTenantCategories(incomeStorageKey(activeTenant?.id), DEFAULT_INCOME_SOURCES);
+    setSavedExpenseCategories(expensesForTenant);
+    setSavedIncomeSources(incomesForTenant);
+    setExpenseCategory(expensesForTenant[0] || 'Xarajat');
+    setIncomeSource(incomesForTenant[0] || 'Qo‘shimcha kirim');
+  }, [activeTenant?.id]);
 
   // Expense Form
   const [expenseAmount, setExpenseAmount] = useState('');
@@ -119,7 +140,7 @@ export default function Shifts() {
     const updated = savedExpenseCategories.filter((c) => c !== catToDelete);
     setSavedExpenseCategories(updated);
     try {
-      localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(updated));
+      localStorage.setItem(expenseStorageKey(activeTenant?.id), JSON.stringify(updated));
     } catch {}
     if (expenseCategory === catToDelete) {
       setExpenseCategory(updated[0] || '');
@@ -130,7 +151,7 @@ export default function Shifts() {
     const updated = savedIncomeSources.filter((s) => s !== srcToDelete);
     setSavedIncomeSources(updated);
     try {
-      localStorage.setItem(STORAGE_KEY_INCOMES, JSON.stringify(updated));
+      localStorage.setItem(incomeStorageKey(activeTenant?.id), JSON.stringify(updated));
     } catch {}
     if (incomeSource === srcToDelete) {
       setIncomeSource(updated[0] || '');
@@ -140,19 +161,19 @@ export default function Shifts() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const statusRes = await cashboxApi.getCurrentShift(activeBranch?.id).catch(() => null);
+      const statusRes = await cashboxApi.getCurrentShift(activeTenant?.id).catch(() => null);
       setShiftStatus(statusRes);
 
       if (activeTab === 'reports') {
-        const res = await cashboxApi.getReports(1, activeBranch?.id);
+        const res = await cashboxApi.getReports(1, activeTenant?.id);
         const list = res.results || res;
         setReports(Array.isArray(list) ? list : []);
       } else if (activeTab === 'expenses') {
-        const res = await cashboxApi.getExpenses(activeBranch?.id);
+        const res = await cashboxApi.getExpenses(activeTenant?.id);
         const list = res.results || res;
         setExpenses(Array.isArray(list) ? list : []);
       } else if (activeTab === 'income') {
-        const res = await cashboxApi.getIncome(activeBranch?.id);
+        const res = await cashboxApi.getIncome(activeTenant?.id);
         const list = res.results || res;
         setIncomes(Array.isArray(list) ? list : []);
       }
@@ -161,11 +182,24 @@ export default function Shifts() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, activeBranch?.id, toast]);
+  }, [activeTab, activeTenant?.id, toast]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleOpenShift = async (event) => {
+    event.preventDefault();
+    setOpeningShift(true);
+    try {
+      await cashboxApi.openShift({ opening_cash_uzs: openingCashUzs, opening_cash_usd: openingCashUsd });
+      setOpenShiftModal(false);
+      toast.success('Smena ochildi.');
+      window.dispatchEvent(new Event('shift_status_changed'));
+      loadData();
+    } catch (error) { toast.error(error.message); }
+    finally { setOpeningShift(false); }
+  };
 
   // Handle Shift Close (Z-Report generation)
   const handleCloseShiftSubmit = async (e) => {
@@ -177,7 +211,7 @@ export default function Shifts() {
     setSubmittingClose(true);
     try {
       const rep = await cashboxApi.closeShift({
-        branch_id: activeBranch?.id,
+        shift_id: shiftStatus?.shift_id,
         actual_cash_uzs: parseFloat(actualCashUzs),
         actual_cash_usd: parseFloat(actualCashUsd || '0'),
         discrepancy_reason: discrepancyReason,
@@ -218,7 +252,6 @@ export default function Shifts() {
     setSubmittingExpense(true);
     try {
       await cashboxApi.createExpense({
-        branch_id: activeBranch?.id,
         amount: parseFloat(expenseAmount),
         currency: expenseCurrency,
         category: cleanCategory,
@@ -230,7 +263,7 @@ export default function Shifts() {
         const updated = [...savedExpenseCategories, cleanCategory];
         setSavedExpenseCategories(updated);
         try {
-          localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(updated));
+          localStorage.setItem(expenseStorageKey(activeTenant?.id), JSON.stringify(updated));
         } catch {}
       }
 
@@ -263,7 +296,6 @@ export default function Shifts() {
     setSubmittingIncome(true);
     try {
       await cashboxApi.createIncome({
-        branch_id: activeBranch?.id,
         amount: parseFloat(incomeAmount),
         currency: incomeCurrency,
         source: cleanSource,
@@ -275,7 +307,7 @@ export default function Shifts() {
         const updated = [...savedIncomeSources, cleanSource];
         setSavedIncomeSources(updated);
         try {
-          localStorage.setItem(STORAGE_KEY_INCOMES, JSON.stringify(updated));
+          localStorage.setItem(incomeStorageKey(activeTenant?.id), JSON.stringify(updated));
         } catch {}
       }
 
@@ -360,7 +392,7 @@ export default function Shifts() {
                   ? (shiftStatus?.shift_start
                       ? `Boshlangan vaqti: ${new Date(shiftStatus.shift_start).toLocaleString('uz-UZ')}`
                       : 'Smena faol')
-                  : 'Smena yopilgan. Yangi savdo yoki kirim qilinganda avtomatik ochiladi.'}
+                  : 'Smena yopilgan. Savdodan oldin boshlang‘ich qoldiqni kiritib smenani oching.'}
               </p>
             </div>
           </div>
@@ -368,6 +400,7 @@ export default function Shifts() {
           {/* Quick Action Buttons */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
+              disabled={!canRecordIncome || !isShiftOpen}
               onClick={() => {
                 setIncomeAmount('');
                 setIncomeNote('');
@@ -393,6 +426,7 @@ export default function Shifts() {
             </button>
 
             <button
+              disabled={!canRecordExpense || !isShiftOpen}
               onClick={() => {
                 setExpenseAmount('');
                 setExpenseNote('');
@@ -419,6 +453,7 @@ export default function Shifts() {
 
             {isShiftOpen ? (
               <button
+                disabled={!canManageShift}
                 onClick={() => {
                   setActualCashUzs(String(expectedUzs));
                   setActualCashUsd(String(expectedUsd));
@@ -444,11 +479,11 @@ export default function Shifts() {
               </button>
             ) : (
               <button
+                disabled={!canManageShift}
                 onClick={() => {
-                  setIncomeAmount('');
-                  setIncomeNote('Kassa smenasini ochish');
-                  setIncomeSource('Kassa to‘ldirish (Qaytim)');
-                  setIncomeModalOpen(true);
+                  setOpeningCashUzs(String(shiftStatus?.suggested_opening_cash_uzs || '0'));
+                  setOpeningCashUsd(String(shiftStatus?.suggested_opening_cash_usd || '0'));
+                  setOpenShiftModal(true);
                 }}
                 style={{
                   padding: '9px 18px',
@@ -754,6 +789,14 @@ export default function Shifts() {
       </div>
 
       {/* Modal 1: Shift Close (Z-Report confirmation) */}
+      <Modal isOpen={openShiftModal} onClose={() => setOpenShiftModal(false)} title="Smenani ochish">
+        <form onSubmit={handleOpenShift} style={{ display: 'grid', gap: 14 }}>
+          <p>Kassada hozir mavjud naqd pulni kiriting. Kassa bo‘sh bo‘lsa, 0 kiriting.</p>
+          <label>Boshlang‘ich naqd pul (UZS)<PriceInput required value={openingCashUzs} onChange={(event) => setOpeningCashUzs(event.target.value)} /></label>
+          <label>Boshlang‘ich naqd pul (USD)<PriceInput required value={openingCashUsd} onChange={(event) => setOpeningCashUsd(event.target.value)} /></label>
+          <button className="btn btn-primary" disabled={openingShift || !canManageShift}>{openingShift ? 'Ochilmoqda...' : 'Smenani ochish'}</button>
+        </form>
+      </Modal>
       <Modal isOpen={closeShiftModalOpen} onClose={() => setCloseShiftModalOpen(false)} title="Smenani Yopish & Z-Hisobot">
         <form onSubmit={handleCloseShiftSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ padding: 14, background: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)' }}>
@@ -774,11 +817,10 @@ export default function Shifts() {
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Kassadagi haqiqiy sanalgan naqd pul (UZS) *
             </label>
-            <input
-              type="number"
-              step="0.01"
+            <PriceInput
               value={actualCashUzs}
               onChange={(e) => setActualCashUzs(e.target.value)}
+              placeholder="0"
               required
               style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, outline: 'none' }}
             />
@@ -789,11 +831,10 @@ export default function Shifts() {
               <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Kassadagi haqiqiy sanalgan naqd pul (USD) *
               </label>
-              <input
-                type="number"
-                step="0.01"
+              <PriceInput
                 value={actualCashUsd}
                 onChange={(e) => setActualCashUsd(e.target.value)}
+                placeholder="0"
                 required
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 15, outline: 'none' }}
               />
@@ -879,10 +920,8 @@ export default function Shifts() {
               </div>
             </div>
             <div style={{ position: 'relative' }}>
-              <input
-                type="number"
-                step="0.01"
-                placeholder={expenseCurrency === 'USD' ? 'Masalan: 50.00' : 'Masalan: 50000'}
+              <PriceInput
+                placeholder={expenseCurrency === 'USD' ? 'Masalan: 50.00' : 'Masalan: 50 000'}
                 value={expenseAmount}
                 onChange={(e) => setExpenseAmount(e.target.value)}
                 required
@@ -1063,10 +1102,8 @@ export default function Shifts() {
               </div>
             </div>
             <div style={{ position: 'relative' }}>
-              <input
-                type="number"
-                step="0.01"
-                placeholder={incomeCurrency === 'USD' ? 'Masalan: 100.00' : 'Masalan: 100000'}
+              <PriceInput
+                placeholder={incomeCurrency === 'USD' ? 'Masalan: 100.00' : 'Masalan: 100 000'}
                 value={incomeAmount}
                 onChange={(e) => setIncomeAmount(e.target.value)}
                 required

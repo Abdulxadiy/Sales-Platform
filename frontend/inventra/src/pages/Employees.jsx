@@ -1,402 +1,534 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Users, UserPlus, UserX, Shield, Phone, Mail, CheckCircle, AlertTriangle, KeyRound } from 'lucide-react';
-import { tenantApi, authApi } from '../api/client';
+import React, { useEffect, useState } from 'react';
+import { Search, UserPlus, UserX, Users, Mail, Pencil, Ban, ShieldCheck, Trash2, RotateCcw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { tenantApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useTenant } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
+import PhoneInput from '../components/common/PhoneInput';
+
+const PAGE_SIZE = 50;
+
+function employeeName(employee) {
+  return [employee.first_name, employee.last_name].filter(Boolean).join(' ')
+    || employee.username || employee.phone_number || 'Xodim #' + employee.id;
+}
+
+function employeeStatus(employee) {
+  if (employee.archived_at) return { label: 'O‘chirilgan', color: 'var(--text-muted)' };
+  if (!employee.is_active) return { label: 'Ishdan bo‘shatilgan', color: 'var(--text-muted)' };
+  if (!employee.account_active) return { label: 'Bloklangan', color: 'var(--accent-rose)' };
+  if (!employee.password_set) return { label: 'Faollashmagan', color: '#b7791f' };
+  return { label: 'Faol', color: 'var(--accent-emerald)' };
+}
 
 export default function Employees() {
-  const { user, isAdmin, isOwner } = useAuth();
+  const { isAdmin } = useAuth();
+  const { activeTenant } = useTenant();
+  const [searchParams] = useSearchParams();
+  const requestedTenantId = Number(searchParams.get('tenant_id'));
   const toast = useToast();
   const confirm = useConfirm();
 
+  const [permissionChoices, setPermissionChoices] = useState([]);
   const [tenants, setTenants] = useState([]);
-  const [selectedTenantId, setSelectedTenantId] = useState(user?.tenant_id || null);
-  const [loading, setLoading] = useState(true);
+  const [adminTenantId, setAdminTenantId] = useState(null);
+  const [tenantLoading, setTenantLoading] = useState(isAdmin);
+  const [tenantError, setTenantError] = useState('');
+  const selectedTenantId = isAdmin ? adminTenantId : (activeTenant?.id ?? null);
+  const [employees, setEmployees] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [listError, setListError] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('true');
+  const [pageState, setPageState] = useState({ tenantId: null, page: 1 });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const page = pageState.tenantId === selectedTenantId ? pageState.page : 1;
+  const requestKey = [selectedTenantId, page, statusFilter, search, reloadVersion].join(':');
+  const [loadedKey, setLoadedKey] = useState('');
+  const setPage = (next) => setPageState((previous) => {
+    const currentPage = previous.tenantId === selectedTenantId ? previous.page : 1;
+    return {
+      tenantId: selectedTenantId,
+      page: typeof next === 'function' ? next(currentPage) : next,
+    };
+  });
   const [hireModalOpen, setHireModalOpen] = useState(false);
   const [hiring, setHiring] = useState(false);
-
-  // Hire Form
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', contact_phone: '', position: '' });
+  const [editing, setEditing] = useState(false);
+  const [accountAction, setAccountAction] = useState(null);
+  const [actionReason, setActionReason] = useState('');
+  const [actionSubmitting, setActionSubmitting] = useState(false);
   const [hireForm, setHireForm] = useState({
-    phone_number: '',
-    role: 'staff',
-    position: 'Kassir',
-    first_name: '',
-    last_name: '',
+    phone_number: '', email: '', position: 'Kassir', first_name: '', last_name: '', permission_ids: [],
   });
 
-  // Action state
-  const [actionLoadingId, setActionLoadingId] = useState(null);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      if (isAdmin) {
-        const res = await tenantApi.getTenants();
-        const list = Array.isArray(res) ? res : res.results || [];
-        setTenants(list);
-        if (list.length > 0 && !selectedTenantId) {
-          setSelectedTenantId(list[0].id);
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let cancelled = false;
+    async function loadTenants() {
+      setTenantLoading(true);
+      setTenantError('');
+      try {
+        const all = [];
+        let pageNumber = 1;
+        // The API is paginated; the first page alone hides later stores.
+        while (true) {
+          const response = await tenantApi.getTenants({ page: pageNumber, page_size: 100 });
+          const rows = Array.isArray(response) ? response : response.results || [];
+          all.push(...rows);
+          if (Array.isArray(response) || !response.next) break;
+          pageNumber += 1;
         }
-      } else {
-        setSelectedTenantId(user?.tenant_id || 1);
+        if (cancelled) return;
+        setTenants(all);
+        setAdminTenantId((previous) => {
+          if (Number.isInteger(requestedTenantId) && requestedTenantId > 0
+              && all.some((tenant) => tenant.id === requestedTenantId)) {
+            return requestedTenantId;
+          }
+          return all.some((tenant) => tenant.id === previous) ? previous : (all[0]?.id ?? null);
+        });
+      } catch (error) {
+        if (!cancelled) setTenantError(error.message || 'Do‘konlarni yuklab bo‘lmadi.');
+      } finally {
+        if (!cancelled) setTenantLoading(false);
       }
-    } catch (err) {
-      toast.error('Ma’lumotlarni yuklashda xatolik: ' + err.message);
-    } finally {
-      setLoading(false);
     }
-  }, [isAdmin, user, selectedTenantId]);
+    loadTenants();
+    return () => { cancelled = true; };
+  }, [isAdmin, requestedTenantId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPageState({ tenantId: selectedTenantId, page: 1 });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, selectedTenantId]);
 
-  const handleHireSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
     if (!selectedTenantId) {
-      toast.warning('Do‘kon tanlanmagan');
-      return;
+      return undefined;
     }
-    if (!hireForm.phone_number.trim()) {
-      toast.warning('Telefon raqamini kiriting');
-      return;
+    let cancelled = false;
+    async function loadEmployees() {
+      setLoading(true);
+      setListError('');
+      setEmployees([]);
+      try {
+        const response = await tenantApi.getEmployees(selectedTenantId, {
+          page, page_size: PAGE_SIZE,
+          active: statusFilter === 'archived' ? 'all' : statusFilter,
+          archived: statusFilter === 'archived' ? 'true' : 'false',
+          ...(search ? { search } : {}),
+        });
+        if (cancelled) return;
+        const rows = Array.isArray(response) ? response : response.results || [];
+        setEmployees(rows);
+        setTotal(Array.isArray(response) ? rows.length : response.count || 0);
+        setLoadedKey(requestKey);
+      } catch (error) {
+        if (cancelled) return;
+        setTotal(0);
+        setListError(error.message || 'Xodimlarni yuklab bo‘lmadi.');
+        setLoadedKey(requestKey);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
+    loadEmployees();
+    return () => { cancelled = true; };
+  }, [selectedTenantId, page, statusFilter, search, reloadVersion, requestKey]);
 
+  useEffect(() => {
+    if (!selectedTenantId) return undefined;
+    let cancelled = false;
+    tenantApi.getEmployeePermissions(selectedTenantId).then((choices) => {
+      if (!cancelled) setPermissionChoices(choices);
+    }).catch((error) => { if (!cancelled) toast.error(error.message); });
+    return () => { cancelled = true; };
+  }, [selectedTenantId, toast]);
+
+  const renderPermissions = (form, setForm) => (
+    <fieldset style={{ border: '1px solid var(--border-card)', borderRadius: 8, padding: 12 }}>
+      <legend>Xodim ruxsatlari</legend>
+      <div style={{ display: 'grid', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+        {permissionChoices.map((permission) => <label key={permission.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+          <input type="checkbox" checked={(form.permission_ids || []).includes(permission.id)}
+            onChange={(event) => setForm({ ...form, permission_ids: event.target.checked
+              ? [...(form.permission_ids || []), permission.id]
+              : (form.permission_ids || []).filter((id) => id !== permission.id) })} />
+          {permission.name}
+        </label>)}
+      </div>
+    </fieldset>
+  );
+
+  const refreshList = () => setReloadVersion((version) => version + 1);
+
+  const handleInvite = async (employee) => {
+    setActionLoadingId(employee.id);
+    try {
+      const result = await tenantApi.resendEmployeeInvite(selectedTenantId, employee.id);
+      toast.success(result.detail || 'Emailga havola yuborildi.');
+      refreshList();
+    } catch (error) {
+      if (error.status === 429) toast.warning(error.message);
+      else toast.error(error.message || 'Email yuborilmadi.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const openEdit = (employee) => {
+    setEditTarget({ employee, tenantId: selectedTenantId });
+    setEditForm({
+      first_name: employee.first_name || '', last_name: employee.last_name || '',
+      email: employee.email || '', contact_phone: employee.contact_phone || '', position: employee.position || '', permission_ids: employee.permission_ids || [],
+    });
+  };
+
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+    if (!editTarget) return;
+    setEditing(true);
+    try {
+      await tenantApi.updateEmployee(editTarget.tenantId, editTarget.employee.id, editForm);
+      toast.success('Hisob ma’lumotlari saqlandi.');
+      setEditTarget(null);
+      refreshList();
+    } catch (error) {
+      toast.error(error.message || 'Tahrirni saqlab bo‘lmadi.');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const openAccountAction = (employee, type) => {
+    setAccountAction({ employee, type, tenantId: selectedTenantId });
+    setActionReason('');
+  };
+
+  const handleAccountAction = async (event) => {
+    event.preventDefault();
+    if (!accountAction || !actionReason.trim()) return;
+    setActionSubmitting(true);
+    const { employee, type, tenantId } = accountAction;
+    try {
+      if (type === 'archive') await tenantApi.archiveEmployee(tenantId, employee.id, actionReason.trim());
+      else if (type === 'restore') await tenantApi.restoreEmployee(tenantId, employee.id, actionReason.trim());
+      else await tenantApi.setEmployeeBlocked(tenantId, employee.id, type === 'block', actionReason.trim());
+      toast.success(type === 'archive' ? 'Xodim o‘chirildi; tarix saqlandi.' : type === 'restore' ? 'Yozuv tiklandi. Ishga qayta olish alohida bajariladi.' : type === 'block' ? 'Hisob bloklandi.' : 'Hisob blokdan chiqarildi.');
+      setAccountAction(null);
+      if (type === 'restore') { setStatusFilter('false'); setPage(1); }
+      refreshList();
+    } catch (error) {
+      toast.error(error.message || 'Amalni bajarib bo‘lmadi.');
+    } finally {
+      setActionSubmitting(false);
+    }
+  };
+
+  const handleHireSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedTenantId) return;
     setHiring(true);
     try {
-      await tenantApi.hireEmployee(selectedTenantId, {
+      const result = await tenantApi.hireEmployee(selectedTenantId, {
         phone_number: hireForm.phone_number.trim(),
-        role: hireForm.role,
+        email: hireForm.email.trim(),
         position: hireForm.position.trim(),
-        first_name: hireForm.first_name.trim() || undefined,
-        last_name: hireForm.last_name.trim() || undefined,
+        first_name: hireForm.first_name.trim(),
+        last_name: hireForm.last_name.trim(),
+        permission_ids: hireForm.permission_ids || [],
       });
-
-      toast.success('Yangi xodim muvaffaqiyatli qabul qilindi!');
+      if (result.onboarding_invitation?.sent) {
+        toast.success('Xodim qo‘shildi va faollashtirish havolasi yuborildi.');
+      } else if (result.onboarding_invitation?.reason === 'existing_account') {
+        toast.success('Mavjud hisob xodim sifatida qo‘shildi.');
+      } else {
+        toast.warning('Xodim qo‘shildi, lekin faollashtirish xabari yuborilmadi. Email sozlamasini tekshiring.');
+      }
       setHireModalOpen(false);
-      setHireForm({ phone_number: '', role: 'staff', position: 'Kassir', first_name: '', last_name: '' });
-      loadData();
-    } catch (err) {
-      toast.error(err.message || 'Xodimni ishga olishda xatolik');
+      setHireForm({ phone_number: '', email: '', position: 'Kassir', first_name: '', last_name: '', permission_ids: [] });
+      setStatusFilter('true');
+      setSearchInput('');
+      setSearch('');
+      setPage(1);
+      refreshList();
+    } catch (error) {
+      toast.error(error.message || 'Xodimni ishga olishda xatolik.');
     } finally {
       setHiring(false);
     }
   };
 
-  const handleFireEmployee = async (targetUserId) => {
-    const isConfirmed = await confirm({
+  const handleFireEmployee = async (employee) => {
+    const accepted = await confirm({
       title: 'Xodimni ishdan bo‘shatish',
-      message: 'Haqiqatan ham bu xodimni ishdan bo‘shatmoqchimisiz? Uning tizimga kirish huquqi to‘xtatiladi.',
+      message: employeeName(employee) + ' ishini tugatmoqchimisiz? Uning tizimga kirish huquqi to‘xtatiladi.',
       confirmText: 'Ishdan bo‘shatish',
       cancelText: 'Bekor qilish',
       type: 'danger',
     });
-    if (!isConfirmed) return;
-    setActionLoadingId(targetUserId);
+    if (!accepted) return;
+    setActionLoadingId(employee.id);
     try {
-      await tenantApi.fireEmployee(selectedTenantId, targetUserId);
-      toast.warning('Xodim ishdan bo‘shatildi');
-      loadData();
-    } catch (err) {
-      toast.error(err.message || 'Ishdan bo‘shatishda xatolik');
+      await tenantApi.fireEmployee(selectedTenantId, employee.user);
+      toast.success('Xodim ishdan bo‘shatildi.');
+      refreshList();
+    } catch (error) {
+      toast.error(error.message || 'Ishdan bo‘shatishda xatolik.');
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleUnban = async (targetUserId) => {
-    setActionLoadingId(targetUserId);
-    try {
-      await authApi.unban(targetUserId);
-      toast.success('Foydalanuvchi blokdan chiqarildi');
-    } catch (err) {
-      toast.error(err.message || 'Blokdan chiqarishda xatolik');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
+  const isCurrentList = loadedKey === requestKey;
+  const visibleEmployees = isCurrentList ? employees : [];
+  const visibleTotal = isCurrentList ? total : 0;
+  const displayLoading = Boolean(selectedTenantId) && (loading || !isCurrentList);
+  const pages = Math.max(1, Math.ceil(visibleTotal / PAGE_SIZE));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Top Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center', gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-            Xodimlar & Jamoa Boshqaruvi
-          </h2>
+          <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Xodimlar va jamoa</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            Do‘koningizdagi barcha xodimlar, lavozimlar va tizimga kirish huquqlari
+            {isAdmin ? 'Tanlangan do‘kon xodimlari va hisoblar holati'
+              : (activeTenant?.name || 'Do‘kon') + ' jamoasi va kirish huquqlari'}
           </p>
         </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {isAdmin && tenants.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {isAdmin && (
             <CustomSelect
-              value={selectedTenantId || ''}
-              onChange={(val) => setSelectedTenantId(Number(val))}
-              options={tenants.map((t) => ({ value: t.id, label: t.name }))}
+              value={adminTenantId || ''}
+              onChange={(value) => { setAdminTenantId(Number(value)); setPage(1); }}
+              options={tenants.map((tenant) => ({ value: tenant.id, label: tenant.name + ' (#' + tenant.id + ')' }))}
+              placeholder={tenantLoading ? 'Do‘konlar yuklanmoqda...' : 'Do‘kon tanlang'}
               size="md"
-              style={{ minWidth: 200 }}
+              style={{ minWidth: 220 }}
             />
           )}
-
-          <button
-            onClick={() => setHireModalOpen(true)}
-            className="btn btn-primary"
-          >
-            <UserPlus size={16} />
-            <span>+ Yangi Xodim Yollash</span>
+          <button className="btn btn-primary" onClick={() => setHireModalOpen(true)} disabled={!selectedTenantId}>
+            <UserPlus size={16} /> Xodim qo‘shish
           </button>
         </div>
       </div>
 
-      {/* Info Card */}
-      <div
-        className="glass-card"
-        style={{
-          padding: '20px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          background: 'var(--primary-light)',
-          borderColor: 'var(--border-subtle)',
-        }}
-      >
-        <Users size={28} color="var(--primary)" />
-        <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
-            Avtomatlashtirilgan Xodimlar Integratsiyasi
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-            Yangi yollangan xodim Telegram boti orqali birinchi marta 2FA kodini tasdiqlab, o‘z parolini belgilashi bilan POS kassa va savdo qilish imkoniyatiga ega bo‘ladi.
-          </p>
+      {tenantError && <div role="alert" className="glass-card" style={{ padding: 16, color: 'var(--accent-rose)' }}>{tenantError}</div>}
+
+      <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Users size={22} color="var(--primary)" />
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>{displayLoading ? 'Yuklanmoqda...' : visibleTotal.toLocaleString('uz-UZ') + ' ta xodim'}</strong>
+          {' '}— {statusFilter === 'true' ? 'faol' : statusFilter === 'false' ? 'ishdan bo‘shatilgan' : statusFilter === 'archived' ? 'o‘chirilgan' : 'barcha holatlar'}.
+          Yangi xodim email havolasi orqali parol o‘rnatadi, so‘ng Telegram kontaktini ulaydi.
         </div>
       </div>
 
-      {/* Staff List Table */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 280px' }}>
+          <Search size={17} style={{ position: 'absolute', left: 13, top: 13, color: 'var(--text-muted)' }} />
+          <input
+            aria-label="Xodimlarni qidirish"
+            className="input-field"
+            placeholder="Ism, telefon, login yoki lavozim bo‘yicha qidiring"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            style={{ paddingLeft: 40, width: '100%' }}
+          />
+        </div>
+        <CustomSelect
+          value={statusFilter}
+          onChange={(value) => { setStatusFilter(value); setPage(1); }}
+          options={[
+            { value: 'true', label: 'Faol xodimlar' },
+            { value: 'all', label: 'Barcha xodimlar' },
+            { value: 'false', label: 'Ishdan bo‘shatilganlar' },
+            { value: 'archived', label: 'O‘chirilganlar' },
+          ]}
+          size="md"
+          style={{ minWidth: 205 }}
+        />
+      </div>
+
       <div className="glass-card" style={{ overflow: 'hidden', padding: 0 }}>
         <div className="table-responsive">
-          <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table style={{ width: '100%', minWidth: 820, borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
-              <tr
-                style={{
-                  borderBottom: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-chip)',
-                  fontSize: 12,
-                  color: 'var(--text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Xodim</th>
-                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Lavozimi</th>
-                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Roli</th>
-                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Aloqa</th>
-                <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Holat</th>
-                <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Amallar</th>
+              <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-chip)', color: 'var(--text-muted)', fontSize: 12, textTransform: 'uppercase' }}>
+                <th style={{ padding: '14px 20px' }}>Xodim</th>
+                <th style={{ padding: '14px 20px' }}>Lavozimi</th>
+                <th style={{ padding: '14px 20px' }}>Roli</th>
+                <th style={{ padding: '14px 20px' }}>Aloqa</th>
+                <th style={{ padding: '14px 20px' }}>Holat</th>
+                <th style={{ padding: '14px 20px', textAlign: 'right' }}>Amallar</th>
               </tr>
             </thead>
-          <tbody>
-            <tr
-              style={{
-                borderBottom: '1px solid var(--border-subtle)',
-              }}
-            >
-              <td style={{ padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 12,
-                      background: 'var(--primary-light)',
-                      color: 'var(--primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: 13,
-                    }}
-                  >
-                    US
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Asosiy Mas’ul Xodim
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      {user?.username || 'Kassir'}
-                    </div>
-                  </div>
-                </div>
-              </td>
-              <td style={{ padding: '16px 20px', fontSize: 13, fontWeight: 500 }}>
-                Katta Kassir & Administrator
-              </td>
-              <td style={{ padding: '16px 20px' }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '3px 9px',
-                    borderRadius: 999,
-                    background: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                    border: '1px solid var(--border-subtle)',
-                  }}
-                >
-                  {user?.role || 'staff'}
-                </span>
-              </td>
-              <td style={{ padding: '16px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>
-                Telegram 2FA Ulangan
-              </td>
-              <td style={{ padding: '16px 20px' }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: '3px 9px',
-                    borderRadius: 999,
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    color: 'var(--accent-emerald)',
-                  }}
-                >
-                  Faol
-                </span>
-              </td>
-              <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Asosiy akkaunt</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            <tbody>
+              {visibleEmployees.map((employee) => {
+                const name = employeeName(employee);
+                const state = employeeStatus(employee);
+                const initials = name.split(' ').slice(0, 2).map((word) => word[0]?.toUpperCase()).join('');
+                return (
+                  <tr key={employee.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    <td style={{ padding: '14px 20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 12 }}>{initials}</div>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            {employee.username || 'Foydalanuvchi'}{isAdmin && ` · User ID: ${employee.user}`}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '14px 20px', fontSize: 13 }}>{employee.position || '—'}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13 }}>{employee.is_owner ? 'Do‘kon egasi' : 'Xodim'}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 12 }}>
+                      <div>{employee.contact_phone || employee.phone_number || '—'}</div>
+                      {employee.email && <div style={{ color: 'var(--text-muted)' }}>{employee.email}</div>}
+                    </td>
+                    <td style={{ padding: '14px 20px', fontSize: 12, fontWeight: 700, color: state.color }}>{state.label}</td>
+                    <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 6, minWidth: 290 }}>
+                      {!employee.archived_at && <>
+                        <button className="btn btn-secondary" onClick={() => handleInvite(employee)} disabled={actionLoadingId === employee.id || !employee.actions?.invite}
+                          title={!employee.email ? 'Avval email kiriting' : !employee.account_active ? 'Avval hisobni blokdan chiqaring' : employee.password_set ? 'Parol/kirish havolasini emailga yuborish' : 'Faollashtirish havolasini emailga yuborish'}>
+                          <Mail size={15} /> {actionLoadingId === employee.id ? 'Kutilmoqda...' : 'Emailga yuborish'}
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => openEdit(employee)} disabled={!employee.actions?.edit || actionLoadingId === employee.id} title="Ma’lumotlarni tahrirlash" aria-label={`${name}: tahrirlash`}><Pencil size={15} /></button>
+                        <button className="btn btn-secondary" onClick={() => openAccountAction(employee, employee.account_active ? 'block' : 'unblock')} disabled={!employee.actions?.block || actionLoadingId === employee.id}
+                          title={employee.account_active ? 'Hisobni bloklash' : 'Hisobni blokdan chiqarish'} aria-label={`${name}: ${employee.account_active ? 'bloklash' : 'blokdan chiqarish'}`}>
+                          {employee.account_active ? <Ban size={15} /> : <ShieldCheck size={15} />}
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => openAccountAction(employee, 'archive')} disabled={!employee.actions?.archive || actionLoadingId === employee.id}
+                          style={{ color: 'var(--accent-rose)' }} title={employee.is_owner ? 'Avval Tenants sahifasida egalikni boshqa hisobga o‘tkazing' : 'Xodimni o‘chirish (tarix saqlanadi)'} aria-label={`${name}: o‘chirish`}><Trash2 size={15} /></button>
+                      </>}
+                      {employee.actions?.restore && <button className="btn btn-secondary" onClick={() => openAccountAction(employee, 'restore')}><RotateCcw size={15} /> Tiklash</button>}
+                      {employee.is_active && !employee.is_owner && !employee.archived_at ? (
+                        <button className="btn btn-secondary" onClick={() => handleFireEmployee(employee)}
+                          disabled={actionLoadingId === employee.id} title="Xodimni ishdan bo‘shatish">
+                          <UserX size={15} /> Ishdan bo‘shatish
+                        </button>
+                      ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!displayLoading && visibleEmployees.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  {(isCurrentList && listError) || (selectedTenantId ? 'Bu tanlov bo‘yicha xodim topilmadi.' : 'Avval do‘kon tanlang.')}
+                </td></tr>
+              )}
+              {displayLoading && <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)' }}>Xodimlar yuklanmoqda...</td></tr>}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Hire Employee Modal */}
-      <Modal
-        isOpen={hireModalOpen}
-        onClose={() => setHireModalOpen(false)}
-        title="Yangi Xodim Yollash"
-      >
-        <form onSubmit={handleHireSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-              Telefon Raqami (Telegram 2FA uchun) <span style={{ color: 'var(--accent-rose)' }}>*</span>
+      {pages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
+          <button className="btn btn-secondary" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1 || displayLoading}>Oldingi</button>
+          <span style={{ fontSize: 13 }}>{page} / {pages}</span>
+          <button className="btn btn-secondary" onClick={() => setPage((value) => Math.min(pages, value + 1))} disabled={page >= pages || displayLoading}>Keyingi</button>
+        </div>
+      )}
+
+      <Modal isOpen={hireModalOpen} onClose={() => setHireModalOpen(false)} title="Xodim ishga olish">
+        <form onSubmit={handleHireSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {renderPermissions(hireForm, setHireForm)}
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            Telefon va email kiriting. Yangi hisobga parol o‘rnatish havolasi email orqali yuboriladi.
+          </p>
+          <label style={{ fontSize: 13, fontWeight: 600 }}>Telefon raqami
+            <PhoneInput className="input-field" name="tel" required value={hireForm.phone_number} onChange={(event) => setHireForm({ ...hireForm, phone_number: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
+          </label>
+          <label style={{ fontSize: 13, fontWeight: 600 }}>Email
+            <input className="input-field" type="email" name="email" autoComplete="email" placeholder="xodim@example.com" required value={hireForm.email} onChange={(event) => setHireForm({ ...hireForm, email: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ fontSize: 13, fontWeight: 600 }}>Ismi
+              <input className="input-field" type="text" name="given-name" autoComplete="given-name" value={hireForm.first_name} onChange={(event) => setHireForm({ ...hireForm, first_name: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
             </label>
-            <input
-              id="employee-phone"
-              name="tel"
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              placeholder="+998901234567"
-              value={hireForm.phone_number}
-              onChange={(e) => setHireForm({ ...hireForm, phone_number: e.target.value })}
-              className="input-field"
-              required
-            />
+            <label style={{ fontSize: 13, fontWeight: 600 }}>Familiyasi
+              <input className="input-field" type="text" name="family-name" autoComplete="family-name" value={hireForm.last_name} onChange={(event) => setHireForm({ ...hireForm, last_name: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
+            </label>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                Ismi
-              </label>
-              <input
-                id="employee-first-name"
-                name="given-name"
-                autoComplete="given-name"
-                type="text"
-                placeholder="Ali"
-                value={hireForm.first_name}
-                onChange={(e) => setHireForm({ ...hireForm, first_name: e.target.value })}
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                Familiyasi
-              </label>
-              <input
-                id="employee-last-name"
-                name="family-name"
-                autoComplete="family-name"
-                type="text"
-                placeholder="Valiyev"
-                value={hireForm.last_name}
-                onChange={(e) => setHireForm({ ...hireForm, last_name: e.target.value })}
-                className="input-field"
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                Tizimdagi Roli
-              </label>
-              <CustomSelect
-                id="employee-role"
-                name="role"
-                value={hireForm.role}
-                onChange={(val) => setHireForm({ ...hireForm, role: val })}
-                options={[
-                  { value: 'staff', label: 'Kassir / Xodim (Staff)' },
-                  ...(isAdmin ? [{ value: 'owner', label: 'Do‘kon Egasi (Owner)' }] : []),
-                ]}
-                fullWidth
-                size="md"
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                Lavozimi
-              </label>
-              <input
-                id="employee-position"
-                name="organization-title"
-                autoComplete="organization-title"
-                type="text"
-                placeholder="Masalan: Bosh Kassir"
-                value={hireForm.position}
-                onChange={(e) => setHireForm({ ...hireForm, position: e.target.value })}
-                className="input-field"
-                required
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={() => setHireModalOpen(false)}
-              className="btn btn-secondary"
-            >
-              Bekor Qilish
-            </button>
-            <button
-              type="submit"
-              disabled={hiring}
-              className="btn btn-primary"
-            >
-              {hiring ? 'Yollanmoqda...' : 'Ishga Qabul Qilish'}
-            </button>
+          <label style={{ fontSize: 13, fontWeight: 600 }}>Lavozimi
+            <input className="input-field" type="text" name="organization-title" autoComplete="organization-title" placeholder="Masalan: Kassir" required value={hireForm.position} onChange={(event) => setHireForm({ ...hireForm, position: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setHireModalOpen(false)}>Bekor qilish</button>
+            <button type="submit" className="btn btn-primary" disabled={hiring}>{hiring ? 'Qo‘shilmoqda...' : 'Ishga olish'}</button>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={Boolean(editTarget)} onClose={() => { if (!editing) setEditTarget(null); }} title="Hisob ma’lumotlarini tahrirlash">
+        {editTarget && <form onSubmit={handleEditSubmit} style={{ display: 'grid', gap: 14 }}>
+          {!editTarget.employee.is_owner && renderPermissions(editForm, setEditForm)}
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
+            {employeeName(editTarget.employee)} · Login raqami: {editTarget.employee.phone_number}
+            {editTarget.employee.is_owner && ' · Ism va email egasining barcha do‘konlarida yangilanadi.'}
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Ismi
+              <input className="input-field" maxLength={50} value={editForm.first_name} onChange={(event) => setEditForm({ ...editForm, first_name: event.target.value })} />
+            </label>
+            <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Familiyasi
+              <input className="input-field" maxLength={50} value={editForm.last_name} onChange={(event) => setEditForm({ ...editForm, last_name: event.target.value })} />
+            </label>
+          </div>
+          <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Email
+            <input className="input-field" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} />
+          </label>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12 }}>Email o‘zgarsa, oldingi faollashtirish/parol havolalari bekor qilinadi. Yangi manzilga havolani alohida yuboring.</p>
+          <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Aloqa telefon raqami
+            <PhoneInput className="input-field" value={editForm.contact_phone} onChange={(event) => setEditForm({ ...editForm, contact_phone: event.target.value })} />
+          </label>
+          <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Lavozimi
+            <input className="input-field" maxLength={100} value={editForm.position} onChange={(event) => setEditForm({ ...editForm, position: event.target.value })} />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button type="button" className="btn btn-secondary" disabled={editing} onClick={() => setEditTarget(null)}>Bekor qilish</button>
+            <button type="submit" className="btn btn-primary" disabled={editing}>{editing ? 'Saqlanmoqda...' : 'Saqlash'}</button>
+          </div>
+        </form>}
+      </Modal>
+
+      <Modal isOpen={Boolean(accountAction)} onClose={() => { if (!actionSubmitting) setAccountAction(null); }}
+        title={accountAction?.type === 'archive' ? 'Xodimni o‘chirish' : accountAction?.type === 'restore' ? 'Yozuvni tiklash' : accountAction?.type === 'block' ? 'Hisobni bloklash' : 'Hisobni blokdan chiqarish'}>
+        {accountAction && <form onSubmit={handleAccountAction} style={{ display: 'grid', gap: 15 }}>
+          <strong>{employeeName(accountAction.employee)}</strong>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            {accountAction.type === 'archive' ? 'Xodim odatiy ro‘yxatdan olib tashlanadi va shu do‘konga kirish huquqi bekor qilinadi. Savdo hamda audit tarixi saqlanadi.'
+              : accountAction.type === 'restore' ? 'Yozuv ishdan bo‘shatilganlar ro‘yxatiga qaytariladi. Kirish huquqi faqat alohida ishga qayta olinganda beriladi.'
+              : accountAction.type === 'block' ? `Hisobning tizimga kirishi darhol to‘xtatiladi.${accountAction.employee.is_owner ? ' Bu egaga tegishli barcha do‘konlarga ta’sir qiladi.' : ''}`
+              : 'Hisob qayta kirishi mumkin bo‘ladi. Ishdan bo‘shatilgan xodimga bu amal ishga qayta olish huquqini bermaydi.'}
+          </p>
+          <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Sabab
+            <textarea className="input-field" rows={3} maxLength={500} value={actionReason} onChange={(event) => setActionReason(event.target.value)} required />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button type="button" className="btn btn-secondary" disabled={actionSubmitting} onClick={() => setAccountAction(null)}>Bekor qilish</button>
+            <button type="submit" className="btn btn-primary" disabled={actionSubmitting || !actionReason.trim()}>
+              {actionSubmitting ? 'Bajarilmoqda...' : accountAction.type === 'archive' ? 'O‘chirish' : accountAction.type === 'restore' ? 'Tiklash' : accountAction.type === 'block' ? 'Bloklash' : 'Blokdan chiqarish'}
+            </button>
+          </div>
+        </form>}
       </Modal>
     </div>
   );

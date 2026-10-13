@@ -1,44 +1,88 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Eye } from 'lucide-react';
-import { auditApi } from '../api/client';
+import { auditApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Audit() {
   const toast = useToast();
+  const { isAdmin } = useAuth();
   const [logs, setLogs] = useState([]);
   const [selectedAction, setSelectedAction] = useState('');
+  const [selectedTenant, setSelectedTenant] = useState('');
+  const [tenants, setTenants] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [viewLog, setViewLog] = useState(null);
 
-  const loadLogs = useCallback(async (action = '') => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
-      const res = await auditApi.getLogs({ action: action || undefined });
+      const res = await auditApi.getLogs({
+        action: selectedAction || undefined,
+        tenant_id: isAdmin && selectedTenant ? selectedTenant : undefined,
+        page,
+      });
       const list = res.results || res;
       setLogs(Array.isArray(list) ? list : []);
-    } catch {
-      toast.error('Audit jurnali yuklanmadi');
+      setTotal(Number(res.count ?? list.length ?? 0));
+    } catch (error) {
+      setLogs([]);
+      setTotal(0);
+      setLoadError(error.message || 'Audit jurnali yuklanmadi');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin, page, selectedAction, selectedTenant]);
 
   useEffect(() => {
-    loadLogs(selectedAction);
-  }, [selectedAction, loadLogs]);
+    loadLogs();
+  }, [loadLogs]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    tenantApi.getAllTenants().then(setTenants).catch(() => toast.error('Do‘konlar filtri yuklanmadi'));
+  }, [isAdmin, toast]);
 
 
   const actionLabels = {
-    PRICE_CHANGE: 'Narx O‘zgarishi',
-    EMPLOYEE_HIRE: 'Xodim Qabul Qilindi',
-    EMPLOYEE_FIRE: 'Xodim Bo‘shatildi',
-    OWNER_TRANSFER: 'Egalik O‘tkazildi',
-    VOID_SALE: 'Chek Bekor Qilindi',
-    STOCK_ADJUSTMENT: 'Ombor Tuzatildi',
-    CASH_DISCREPANCY: 'Kassa Tafovuti',
-    PASSWORD_RESET: 'Parol Yangilandi',
+    catalog_import: 'Katalog fayldan yuklandi',
+    barcode_generate: 'Shtrix-kod yaratildi',
+    price_change: 'Narx o‘zgarishi',
+    employee_hire: 'Xodim qabul qilindi',
+    employee_fire: 'Xodim bo‘shatildi',
+    employee_update: 'Xodim tahrirlandi',
+    employee_block: 'Hisob bloklandi',
+    employee_unblock: 'Hisob blokdan chiqarildi',
+    employee_archive: 'Xodim o‘chirildi',
+    employee_restore: 'Xodim yozuvi tiklandi',
+    employee_invite: 'Email havolasi yuborish',
+    owner_transfer: 'Egalik o‘tkazildi',
+    tenant_create: 'Do‘kon yaratildi',
+    void_sale: 'Savdo bekor qilindi',
+    stock_adjustment: 'Ombor tuzatildi',
+    cash_discrepancy: 'Kassa tafovuti',
+    login_attempt: 'Kirish urinishi',
+    password_reset: 'Parol yangilandi',
+    receipt_token_rotate: 'Chek havolasi yangilandi',
+    seller_profile_submit: 'Sotuvchi profili yuborildi',
+    seller_profile_review: 'Sotuvchi profili tekshirildi',
+    seller_profile_binding: 'Sotuvchi profili bog‘landi',
+    tenant_transfer_dispatch: 'Transfer jo‘natildi',
+    tenant_transfer_receive: 'Transfer qabul qilindi',
+    tenant_transfer_discrepancy: 'Transfer tafovuti',
+    tenant_transfer_return: 'Transfer qaytdi',
+    b2b_return_pending: 'B2B qaytish kutilmoqda',
+    b2b_return_receive: 'B2B qaytish qabul qilindi',
+    b2b_return_discrepancy_close: 'B2B tafovuti yopildi',
   };
+
+  const tenantNames = Object.fromEntries(tenants.map((tenant) => [tenant.id, tenant.name]));
+  const pageCount = Math.max(1, Math.ceil(total / 20));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -57,10 +101,10 @@ export default function Audit() {
         <ShieldCheck size={26} color="var(--primary)" />
         <div>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>
-            O‘zgarmas (Append-Only) Audit Tizimi
+            Audit jurnali
           </h3>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-            Ushbu jurnaldagi barcha yozuvlar qat’iy himoyalangan bo‘lib, ularni o‘chirib yoki tahrirlab bo‘lmaydi.
+            Amallar ilova darajasida append-only saqlanadi. Muhim o‘zgarishlar, ijrochi va vaqtini shu yerda kuzating.
           </p>
         </div>
       </div>
@@ -68,7 +112,7 @@ export default function Audit() {
       {/* Filter Tabs */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
         <button
-          onClick={() => setSelectedAction('')}
+          onClick={() => { setSelectedAction(''); setPage(1); }}
           style={{
             padding: '6px 14px',
             borderRadius: 'var(--radius-full)',
@@ -88,7 +132,7 @@ export default function Audit() {
           return (
             <button
               key={key}
-              onClick={() => setSelectedAction(key)}
+              onClick={() => { setSelectedAction(key); setPage(1); }}
               style={{
                 padding: '6px 14px',
                 borderRadius: 'var(--radius-full)',
@@ -107,6 +151,18 @@ export default function Audit() {
         })}
       </div>
 
+      {isAdmin && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+          Do‘kon bo‘yicha:
+          <select className="input-field" value={selectedTenant} onChange={(event) => { setSelectedTenant(event.target.value); setPage(1); }} style={{ width: 'min(360px, 100%)' }}>
+            <option value="">Barcha do‘konlar</option>
+            {tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name} (#{tenant.id})</option>)}
+          </select>
+        </label>
+      )}
+
+      {loadError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{loadError} <button className="btn btn-secondary" onClick={loadLogs}>Qayta urinish</button></div>}
+
       {/* Audit Log Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">
@@ -114,6 +170,7 @@ export default function Audit() {
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
                 <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Amal</th>
+                {isAdmin && <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Do‘kon</th>}
                 <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Bajargan Shaxs</th>
                 <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Tafsilot / Tavsif</th>
                 <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>IP Manzil</th>
@@ -124,7 +181,7 @@ export default function Audit() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                <td colSpan={isAdmin ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
               </tr>
             ) : logs.length > 0 ? (
               logs.map((log) => (
@@ -143,6 +200,7 @@ export default function Audit() {
                       {actionLabels[log.action] || log.action}
                     </span>
                   </td>
+                  {isAdmin && <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{tenantNames[log.tenant] || (log.tenant ? `#${log.tenant}` : 'Platforma')}</td>}
                   <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {log.actor_name || log.actor?.username || `Foydalanuvchi #${log.actor || 'Tizim'}`}
                   </td>
@@ -150,10 +208,10 @@ export default function Audit() {
                     {log.description || `${log.target_model || ''} #${log.target_id || ''}`}
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 12, fontFamily: 'monospace' }}>
-                    {log.ip_address || '127.0.0.1'}
+                    {log.ip_address || '—'}
                   </td>
                   <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 12 }}>
-                    {new Date(log.created_at).toLocaleString('uz-UZ')}
+                    {new Date(log.created_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}
                   </td>
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                     {log.changes && Object.keys(log.changes).length > 0 ? (
@@ -183,11 +241,19 @@ export default function Audit() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Audit yozuvlari mavjud emas</td>
+                <td colSpan={isAdmin ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Audit yozuvlari mavjud emas</td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--text-muted)' }}>
+        <span>{total} ta yozuv · {page}/{pageCount} sahifa</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" disabled={loading || page <= 1} onClick={() => setPage((value) => value - 1)}>Oldingi</button>
+          <button className="btn btn-secondary" disabled={loading || page >= pageCount} onClick={() => setPage((value) => value + 1)}>Keyingi</button>
         </div>
       </div>
 

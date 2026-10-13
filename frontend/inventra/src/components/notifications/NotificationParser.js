@@ -71,16 +71,16 @@ export function parseZReport(text) {
   const seller = getMatch(/👤\s*\*Smenani yopdi:\*\s*(.+)/);
 
   // Cash expected / actual / diff
-  const expectedMatch = text.match(/[•\-]\s*Kutilgan:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
-  const actualMatch = text.match(/[•\-]\s*Haqiqiy:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
-  const diffMatch = text.match(/[•\-]\s*Tafovut(?:\s*\(Farq\))?:\s*`?([^`—_|\n]+)`?(?:\s*\|\s*`?([^`—_|\n]+)`?)?/);
+  const expectedMatch = text.match(/[•-]\s*Kutilgan:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
+  const actualMatch = text.match(/[•-]\s*Haqiqiy:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
+  const diffMatch = text.match(/[•-]\s*Tafovut(?:\s*\(Farq\))?:\s*`?([^`—_|\n]+)`?(?:\s*\|\s*`?([^`—_|\n]+)`?)?/);
   const diffStatus = getMatch(/[✅⚠️]\s*\*Tafovut holati:\*\s*(.+)/);
   const diffReason = getMatch(/⚠️\s*\*Tafovut izohi:\*\s*(.+)/);
 
   // Sales
-  const saleCash = text.match(/[•\-]\s*Naqd:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
-  const saleCard = text.match(/[•\-]\s*Karta:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
-  const saleDebt = text.match(/[•\-]\s*Nasiya:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
+  const saleCash = text.match(/[•-]\s*Naqd:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
+  const saleCard = text.match(/[•-]\s*Karta:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
+  const saleDebt = text.match(/[•-]\s*Nasiya:\s*`([^`]+)`(?:\s*\|\s*`([^`]+)`)?/);
 
   // Incomes total & items
   const incomeTotalMatch = text.match(/📥\s*\*(?:QO['’]SHIMCHA KIRIMLAR|Qo['’]shimcha kirim):\*\s*(?:`([^`]+)`|([^\n|]+))(?:\s*\|\s*(?:`([^`]+)`|([^\n]+)))?/);
@@ -92,7 +92,7 @@ export function parseZReport(text) {
   if (incomeSectionMatch) {
     const lines = incomeSectionMatch[0].split('\n').slice(1);
     for (const l of lines) {
-      const im = l.trim().match(/^[•\-]\s*\*([^*:]+):?\*?:?\s*`?([^`—_]+)`?(?:\s*—\s*_([^_\n]+)_)?/);
+      const im = l.trim().match(/^[•-]\s*\*([^*:]+):?\*?:?\s*`?([^`—_]+)`?(?:\s*—\s*_([^_\n]+)_)?/);
       if (im) {
         incomeItems.push({
           name: im[1].trim(),
@@ -109,7 +109,7 @@ export function parseZReport(text) {
   if (expenseSectionMatch) {
     const lines = expenseSectionMatch[0].split('\n').slice(1);
     for (const l of lines) {
-      const em = l.trim().match(/^[•\-]\s*\*([^*:]+):?\*?:?\s*`?([^`—_]+)`?(?:\s*—\s*_([^_\n]+)_)?/);
+      const em = l.trim().match(/^[•-]\s*\*([^*:]+):?\*?:?\s*`?([^`—_]+)`?(?:\s*—\s*_([^_\n]+)_)?/);
       if (em) {
         expenseItems.push({
           name: em[1].trim(),

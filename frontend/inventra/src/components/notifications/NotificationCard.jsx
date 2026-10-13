@@ -468,7 +468,7 @@ function MinimalGeneralMarkdownView({ text }) {
         }
 
         const isBullet = trimmed.startsWith('•') || trimmed.startsWith('-');
-        const contentStr = isBullet ? trimmed.replace(/^[•\-]\s*/, '') : trimmed;
+        const contentStr = isBullet ? trimmed.replace(/^[•-]\s*/, '') : trimmed;
         const tokens = formatMarkdownLine(contentStr);
 
         return (

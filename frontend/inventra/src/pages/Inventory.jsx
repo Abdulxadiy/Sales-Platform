@@ -9,32 +9,24 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Info,
-  Clock,
-  CheckCircle2,
-  Filter,
-  Layers,
   ArrowUpDown,
   CalendarDays,
   AlertTriangle,
-  Plus,
-  ArrowRightLeft,
-  Tag,
-  Check,
-  X,
   Store,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { inventoryApi, catalogApi } from '../api/client';
+import { inventoryApi, catalogApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
+import ExcelExportButton from '../components/common/ExcelExportButton';
 import RapidStockIntakeModal from '../components/inventory/RapidStockIntakeModal';
-import StockTransferModal from '../components/inventory/StockTransferModal';
-import StockPriceModal from '../components/inventory/StockPriceModal';
+import TenantTransfersPanel from '../components/inventory/TenantTransfersPanel';
+import StockBatchesPanel from '../components/inventory/StockBatchesPanel';
+import BatchSelector from '../components/inventory/BatchSelector';
 import CustomSelect from '../components/common/CustomSelect';
 import Pagination from '../components/common/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../context/AuthContext';
-import { useBranch } from '../context/BranchContext';
+import { useTenant } from '../context/TenantContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 const DEFAULT_INVENTORY_FILTERS = {
@@ -49,14 +41,13 @@ const DEFAULT_INVENTORY_FILTERS = {
 export default function Inventory() {
   const toast = useToast();
   const confirm = useConfirm();
-  const navigate = useNavigate();
-  const { isOwner, isAdmin, user } = useAuth();
-  const { branches, activeBranch } = useBranch();
+  const { isOwner } = useAuth();
+  const { activeTenant } = useTenant();
 
   const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'transfers' | 'deficits' | 'movements'
   const [stockList, setStockList] = useState([]);
   const [transfers, setTransfers] = useState([]);
-  const [transferFilter, setTransferFilter] = useState('all'); // 'all' | 'pending' | 'completed' | 'rejected'
+  const [transferTargets, setTransferTargets] = useState([]);
   const [movements, setMovements] = useState([]);
   const [deficitsList, setDeficitsList] = useState([]);
   const [deficitCount, setDeficitCount] = useState(0);
@@ -69,7 +60,7 @@ export default function Inventory() {
   const [movementPage, setMovementPage] = useState(1);
   const MOVEMENT_PAGE_SIZE = 25;
   const [inventoryFilters, setInventoryFilters, resetInventoryFilters] = usePersistedState(
-    'inventra_inventory_filters_v2',
+    `inventra_inventory_filters_v2:${activeTenant?.id || 'pending'}`,
     DEFAULT_INVENTORY_FILTERS
   );
 
@@ -83,25 +74,23 @@ export default function Inventory() {
   const [selectedStockDetail, setSelectedStockDetail] = useState(null);
 
   // Transfer & Price Modal states
-  const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [selectedVariantForTransfer, setSelectedVariantForTransfer] = useState(null);
-  const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [selectedStockForPrice, setSelectedStockForPrice] = useState(null);
 
   // Rapid Stock Intake state
   const [selectedVariantForIntake, setSelectedVariantForIntake] = useState(null);
 
   // Form states for Other Modals (Adjust, Return, Write-off)
-  const [selectedVariantId, setSelectedVariantId] = usePersistedState('inventra_draft_stock_variant', '');
-  const [formQuantity, setFormQuantity] = usePersistedState('inventra_draft_stock_qty', '');
+  const [selectedVariantId, setSelectedVariantId] = usePersistedState(`inventra_draft_stock_variant:${activeTenant?.id || 'pending'}`, '');
+  const [formQuantity, setFormQuantity] = usePersistedState(`inventra_draft_stock_qty:${activeTenant?.id || 'pending'}`, '');
   const [formDirection, setFormDirection] = useState('in');
-  const [formNote, setFormNote] = usePersistedState('inventra_draft_stock_note', '');
+  const [selectedBatch, setSelectedBatch] = useState('');
+  const [formNote, setFormNote] = usePersistedState(`inventra_draft_stock_note:${activeTenant?.id || 'pending'}`, '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
     setSelectedVariantId('');
     setFormQuantity('');
     setFormDirection('in');
+    setSelectedBatch('');
     setFormNote('');
   };
 
@@ -124,23 +113,23 @@ export default function Inventory() {
     setLoading(true);
     try {
       if (activeTab === 'stock') {
-        const res = await inventoryApi.getStock({ branch_id: activeBranch?.id });
+        const res = await inventoryApi.getStock({});
         const list = res.results || res;
         setStockList(Array.isArray(list) ? list : []);
       } else if (activeTab === 'transfers') {
-        const res = await inventoryApi.getTransfers({
-          branch_id: activeBranch?.id,
-          status: transferFilter !== 'all' ? transferFilter : undefined,
-        });
+        const [res, availableTargets] = await Promise.all([
+          inventoryApi.getTransfers(), tenantApi.getTransferTargets(),
+        ]);
         const list = res.results || res;
         setTransfers(Array.isArray(list) ? list : []);
+        setTransferTargets(Array.isArray(availableTargets) ? availableTargets : []);
       } else if (activeTab === 'deficits') {
         const res = await inventoryApi.getDeficits(deficitSearch);
         const list = res.results || res;
         const arr = Array.isArray(list) ? list : [];
         setDeficitsList(arr);
         setDeficitCount(arr.length);
-      } else {
+      } else if (activeTab === 'movements') {
         const res = await inventoryApi.getMovements();
         const list = res.results || res;
         setMovements(Array.isArray(list) ? list : []);
@@ -150,39 +139,7 @@ export default function Inventory() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, activeBranch?.id, transferFilter, deficitSearch, toast]);
-
-  const handleAcceptTransfer = async (transferId) => {
-    const isConfirmed = await confirm({
-      title: 'Transferni qabul qilish',
-      message: 'Ushbu transferdagi tovarlarni qabul qilishni va fililalingiz omboriga kirim qilishni tasdiqlaysizmi?',
-      confirmText: 'Qabul qilish',
-      cancelText: 'Bekor qilish',
-      type: 'info',
-    });
-    if (!isConfirmed) return;
-
-    try {
-      await inventoryApi.acceptTransfer(transferId);
-      toast.success('Transfer muvaffaqiyatli qabul qilindi va tovarlar omboringizga qo‘shildi!');
-      loadData();
-    } catch (err) {
-      toast.error(err.message || 'Transferni qabul qilishda xatolik yuz berdi');
-    }
-  };
-
-  const handleRejectTransfer = async (transferId) => {
-    const reason = window.prompt('Transferni rad etish sababini kiriting (ixtiyoriy):');
-    if (reason === null) return;
-
-    try {
-      await inventoryApi.rejectTransfer(transferId, reason);
-      toast.warning('Transfer rad etildi va tovarlar jo‘natuvchi filial omboriga qaytarildi.');
-      loadData();
-    } catch (err) {
-      toast.error(err.message || 'Transferni rad etishda xatolik yuz berdi');
-    }
-  };
+  }, [activeTab, activeTenant?.id, deficitSearch, toast]);
 
   useEffect(() => {
     loadData();
@@ -210,6 +167,7 @@ export default function Inventory() {
     try {
       await inventoryApi.adjustStock({
         product_variant_id: parseInt(selectedVariantId, 10),
+        batch_id: selectedBatch ? Number(selectedBatch) : null,
         quantity: parseFloat(formQuantity),
         direction: formDirection,
         note: formNote || 'Inventarizatsiya natijasi',
@@ -237,6 +195,7 @@ export default function Inventory() {
     try {
       await inventoryApi.customerReturn({
         product_variant_id: parseInt(selectedVariantId, 10),
+        batch_id: selectedBatch ? Number(selectedBatch) : null,
         quantity: parseFloat(formQuantity),
         note: formNote || 'Mijoz tomonidan qaytarildi',
       });
@@ -263,6 +222,7 @@ export default function Inventory() {
     try {
       await inventoryApi.supplierReturn({
         product_variant_id: parseInt(selectedVariantId, 10),
+        batch_id: selectedBatch ? Number(selectedBatch) : null,
         quantity: parseFloat(formQuantity),
         note: formNote || 'Yetkazib beruvchiga qaytarildi',
       });
@@ -289,6 +249,7 @@ export default function Inventory() {
     try {
       await inventoryApi.writeOff({
         product_variant_id: parseInt(selectedVariantId, 10),
+        batch_id: selectedBatch ? Number(selectedBatch) : null,
         quantity: parseFloat(formQuantity),
         note: formNote || 'Yaroqsiz / Buzilgan / Muddati o‘tgan',
       });
@@ -401,7 +362,7 @@ export default function Inventory() {
 
   useEffect(() => {
     setStockPage(1);
-  }, [inventoryFilters.stockSearch, inventoryFilters.stockCategory, inventoryFilters.stockSort, activeBranch?.id]);
+  }, [inventoryFilters.stockSearch, inventoryFilters.stockCategory, inventoryFilters.stockSort, activeTenant?.id]);
 
   const filteredMovements = useMemo(() => {
     return movements.filter((m) => {
@@ -461,7 +422,7 @@ export default function Inventory() {
 
   useEffect(() => {
     setMovementPage(1);
-  }, [inventoryFilters.movementSearch, inventoryFilters.movementType, inventoryFilters.movementDate, activeBranch?.id]);
+  }, [inventoryFilters.movementSearch, inventoryFilters.movementType, inventoryFilters.movementDate, activeTenant?.id]);
 
   const hasActiveStockFilters =
     Boolean(inventoryFilters.stockSearch) ||
@@ -473,21 +434,18 @@ export default function Inventory() {
     inventoryFilters.movementType !== 'all' ||
     inventoryFilters.movementDate !== 'all';
 
-  const selectedVariantObj = variants.find((v) => String(v.id) === String(selectedVariantId));
-  const activeCurrency = selectedVariantObj?.currency || 'UZS';
-  const activeUnit = selectedVariantObj?.unit || 'dona';
 
   // Count items in draft for badge display on "+ Tovar Kirimi" button
   const draftItemsCount = useMemo(() => {
     try {
-      const raw = localStorage.getItem('inventra_stock_intake_full_draft_v1');
+      const raw = localStorage.getItem(`inventra_stock_intake_full_draft_v1:${activeTenant?.id || 'pending'}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed?.items)) return parsed.items.length;
       }
     } catch {}
     return 0;
-  }, [intakeModalOpen]);
+  }, [intakeModalOpen, activeTenant?.id]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -528,7 +486,7 @@ export default function Inventory() {
             }}
           >
             <span>Transferlar</span>
-            {transfers.filter((t) => t.status === 'PENDING').length > 0 && (
+            {transfers.filter((t) => t.status === 'pending' && String(t.destination_tenant) === String(activeTenant?.id)).length > 0 && (
               <span
                 style={{
                   fontSize: 10.5,
@@ -539,7 +497,7 @@ export default function Inventory() {
                   fontWeight: 800,
                 }}
               >
-                {transfers.filter((t) => t.status === 'PENDING').length}
+                {transfers.filter((t) => t.status === 'pending' && String(t.destination_tenant) === String(activeTenant?.id)).length}
               </span>
             )}
           </button>
@@ -592,34 +550,12 @@ export default function Inventory() {
           >
             Harakatlar Tarixi
           </button>
+          <button className={activeTab === 'batches' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setActiveTab('batches')}>Partiyalar va yaroqlilik</button>
         </div>
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            onClick={() => {
-              setSelectedVariantForTransfer(null);
-              setTransferModalOpen(true);
-            }}
-            style={{
-              padding: '9px 14px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-card)',
-              background: 'var(--bg-card)',
-              color: 'var(--text-primary)',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-            }}
-            title="Boshqa filialga tovar o‘tkazish"
-          >
-            <ArrowRightLeft size={16} color="var(--primary)" />
-            <span>Filialga o‘tkazish</span>
-          </button>
-
+          {activeTab === 'stock' && <ExcelExportButton endpoint="/inventory/stock/export/" ids={filteredStock.map(row => row.id)} filename="inventra-ombor.xlsx" disabled={loading} />}
           <button
             onClick={() => {
               setSelectedVariantForIntake(null);
@@ -1087,7 +1023,7 @@ export default function Inventory() {
       {/* Main Table View */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">
-          {activeTab === 'stock' ? (
+          {activeTab === 'batches' ? <StockBatchesPanel /> : activeTab === 'stock' ? (
             <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
@@ -1128,7 +1064,7 @@ export default function Inventory() {
                       <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                           <Store size={13} color="var(--primary)" />
-                          <span>{item.branch_name || activeBranch?.name || 'Asosiy'}</span>
+                          <span>{item.branch_name || activeTenant?.name || 'Asosiy'}</span>
                         </span>
                       </td>
                       <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>
@@ -1169,58 +1105,6 @@ export default function Inventory() {
                             <Info size={13} />
                             <span>Batafsil</span>
                           </button>
-                          <button
-                            onClick={() => {
-                              setSelectedStockForPrice(item);
-                              setPriceModalOpen(true);
-                            }}
-                            title="Filial narxlarini sozlash"
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: 'var(--radius-xs)',
-                              border: '1px solid var(--border-card)',
-                              background: 'transparent',
-                              color: 'var(--primary)',
-                              fontSize: 12,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            <Tag size={13} />
-                            <span>Narx</span>
-                          </button>
-                          {qty > 0 && (
-                            <button
-                              onClick={() => {
-                                setSelectedVariantForTransfer({
-                                  id: item.product_variant?.id || item.product_variant || item.id,
-                                  name: item.product_name || item.name,
-                                  sku: item.code || item.sku,
-                                  quantity: qty,
-                                  unit: item.unit,
-                                });
-                                setTransferModalOpen(true);
-                              }}
-                              title="Boshqa filialga o‘tkazish"
-                              style={{
-                                padding: '6px 10px',
-                                borderRadius: 'var(--radius-xs)',
-                                border: '1px solid var(--border-card)',
-                                background: 'transparent',
-                                color: 'var(--accent-emerald)',
-                                fontSize: 12,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <ArrowRightLeft size={13} />
-                              <span>Transfer</span>
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -1236,173 +1120,18 @@ export default function Inventory() {
             </tbody>
           </table>
         ) : activeTab === 'transfers' ? (
-          <div>
-            {/* Filter toolbar */}
-            <div
-              style={{
-                padding: '14px 20px',
-                background: 'var(--bg-card)',
-                borderBottom: '1px solid var(--border-subtle)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 12,
-              }}
-            >
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 6 }}>Holat:</span>
-                {[
-                  { id: 'all', label: 'Barchasi' },
-                  { id: 'PENDING', label: 'Kutilmoqda' },
-                  { id: 'COMPLETED', label: 'Qabul qilingan' },
-                  { id: 'REJECTED', label: 'Rad etilgan' },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setTransferFilter(f.id)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 999,
-                      border: transferFilter === f.id ? '1px solid var(--primary)' : '1px solid var(--border-card)',
-                      background: transferFilter === f.id ? 'var(--primary)' : 'transparent',
-                      color: transferFilter === f.id ? 'var(--primary-foreground)' : 'var(--text-secondary)',
-                      fontSize: 12,
-                      fontWeight: transferFilter === f.id ? 700 : 500,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Jami: <strong style={{ color: 'var(--text-primary)' }}>{transfers.length}</strong> ta transfer
-              </div>
-            </div>
-
-            <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Transfer ID</th>
-                  <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Yo‘nalish (Filiallar)</th>
-                  <th style={{ padding: '14px 18px' }}>Mahsulotlar</th>
-                  <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Yubordi</th>
-                  <th style={{ padding: '14px 18px', textAlign: 'center', whiteSpace: 'nowrap' }}>Holat</th>
-                  <th style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>Sana</th>
-                  <th style={{ padding: '14px 18px', textAlign: 'center', whiteSpace: 'nowrap' }}>Amallar</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
-                  </tr>
-                ) : transfers.length > 0 ? (
-                  transfers.map((tr) => {
-                    const isPending = tr.status === 'PENDING';
-                    const isCompleted = tr.status === 'COMPLETED';
-                    const isRejected = tr.status === 'REJECTED';
-                    const isIncoming = activeBranch && String(tr.to_branch?.id || tr.to_branch) === String(activeBranch.id);
-                    const canAct = isPending && (isOwner || isAdmin || isIncoming);
-
-                    return (
-                      <tr key={tr.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                        <td style={{ padding: '14px 18px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary)' }}>
-                          #TR-{tr.id}
-                        </td>
-                        <td style={{ padding: '14px 18px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                            <span>{tr.from_branch_name}</span>
-                            <ArrowRightLeft size={13} color="var(--text-muted)" />
-                            <span style={{ color: 'var(--primary)' }}>{tr.to_branch_name}</span>
-                          </div>
-                          {tr.note && (
-                            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                              Izoh: {tr.note}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '14px 18px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            {(tr.items || []).map((it, idx) => (
-                              <div key={idx} style={{ fontSize: 12.5 }}>
-                                • {it.product_name || it.product_variant_name} — <strong>{it.quantity} {it.unit || 'dona'}</strong>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                        <td style={{ padding: '14px 18px', color: 'var(--text-secondary)' }}>
-                          {tr.sent_by_name || 'Xodim'}
-                        </td>
-                        <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                          <span
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              fontSize: 11.5,
-                              fontWeight: 700,
-                              background: isPending
-                                ? 'rgba(234, 179, 8, 0.15)'
-                                : isCompleted
-                                ? 'rgba(34, 197, 94, 0.15)'
-                                : 'rgba(239, 68, 68, 0.15)',
-                              color: isPending
-                                ? '#d97706'
-                                : isCompleted
-                                ? 'var(--accent-emerald)'
-                                : 'var(--accent-rose)',
-                            }}
-                          >
-                            {isPending ? 'Kutilmoqda' : isCompleted ? 'Qabul qilingan' : 'Rad etilgan'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontSize: 12 }}>
-                          {new Date(tr.created_at).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                          {canAct ? (
-                            <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleAcceptTransfer(tr.id)}
-                                className="btn btn-primary"
-                                style={{ padding: '5px 10px', fontSize: 11.5, background: 'var(--accent-emerald)', borderColor: 'var(--accent-emerald)' }}
-                                title="Qabul qilish"
-                              >
-                                <Check size={13} />
-                                <span>Qabul</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleRejectTransfer(tr.id)}
-                                className="btn btn-secondary"
-                                style={{ padding: '5px 10px', fontSize: 11.5, color: 'var(--accent-rose)' }}
-                                title="Rad etish"
-                              >
-                                <X size={13} />
-                                <span>Rad</span>
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      Transferlar mavjud emas
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <TenantTransfersPanel
+            activeTenant={activeTenant}
+            isOwner={isOwner}
+            transfers={transfers}
+            targets={transferTargets}
+            variants={variants}
+            categories={categories}
+            loading={loading}
+            reload={loadData}
+            toast={toast}
+            confirm={confirm}
+          />
         ) : activeTab === 'deficits' ? (
           <table style={{ width: '100%', minWidth: 840, borderCollapse: 'collapse', textAlign: 'left', fontSize: 14 }}>
             <thead>
@@ -1651,13 +1380,14 @@ export default function Inventory() {
       {/* Modal 2: Qoldiqni To‘g‘rilash (Stock Adjust) */}
       <Modal isOpen={adjustModalOpen} onClose={() => setAdjustModalOpen(false)} title="Ombor Qoldig‘ini Tuzatish">
         <form onSubmit={handleAdjustSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={formDirection === 'in'} />
           <div>
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Tovar Varianti *
             </label>
             <CustomSelect
               value={selectedVariantId}
-              onChange={(val) => setSelectedVariantId(val)}
+              onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
               options={variants.map((v) => ({
                 value: v.id,
@@ -1734,6 +1464,7 @@ export default function Inventory() {
       {/* Modal 3: Mijoz Qaytardi (Customer Return) */}
       <Modal isOpen={customerReturnModalOpen} onClose={() => setCustomerReturnModalOpen(false)} title="Mijozdan Tovarni Qaytarib Olish (Cheksiz)">
         <form onSubmit={handleCustomerReturnSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={true} />
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: 'var(--radius-sm)', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.25)', color: '#93c5fa', fontSize: 13 }}>
             <Info size={18} style={{ flexShrink: 0, marginTop: 2, color: '#60a5fa' }} />
             <div>
@@ -1749,7 +1480,7 @@ export default function Inventory() {
             </label>
             <CustomSelect
               value={selectedVariantId}
-              onChange={(val) => setSelectedVariantId(val)}
+              onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
               options={variants.map((v) => ({
                 value: v.id,
@@ -1810,13 +1541,14 @@ export default function Inventory() {
       {/* Modal 4: Ta’minotchiga Qaytarish (Supplier Return) */}
       <Modal isOpen={supplierReturnModalOpen} onClose={() => setSupplierReturnModalOpen(false)} title="Ta’minotchiga Tovarni Qaytarish">
         <form onSubmit={handleSupplierReturnSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={false} />
           <div>
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Qaytariladigan Variant *
             </label>
             <CustomSelect
               value={selectedVariantId}
-              onChange={(val) => setSelectedVariantId(val)}
+              onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
               options={variants.map((v) => ({
                 value: v.id,
@@ -1877,6 +1609,7 @@ export default function Inventory() {
       {/* Modal 5: Write-off / Hisobdan chiqarish */}
       <Modal isOpen={writeOffModalOpen} onClose={() => setWriteOffModalOpen(false)} title="Hisobdan Chiqarish (Isrofgarchilik)">
         <form onSubmit={handleWriteOffSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={false} />
           <div style={{ padding: 12, borderRadius: 'var(--radius-xs)', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--accent-rose)', fontSize: 13 }}>
             Diqqat: Ushbu amal tovarlarni ombordan butunlay hisobdan chiqaradi va tizim auditiga qayd etiladi.
           </div>
@@ -1887,7 +1620,7 @@ export default function Inventory() {
             </label>
             <CustomSelect
               value={selectedVariantId}
-              onChange={(val) => setSelectedVariantId(val)}
+              onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
               options={variants.map((v) => ({
                 value: v.id,
@@ -2025,27 +1758,6 @@ export default function Inventory() {
         )}
       </Modal>
 
-      {/* Modal: Filiallararo Tovar Transferi */}
-      <StockTransferModal
-        isOpen={transferModalOpen}
-        onClose={() => {
-          setTransferModalOpen(false);
-          setSelectedVariantForTransfer(null);
-        }}
-        onSuccess={loadData}
-        initialVariant={selectedVariantForTransfer}
-      />
-
-      {/* Modal: Filial Narxlarini Sozlash */}
-      <StockPriceModal
-        isOpen={priceModalOpen}
-        onClose={() => {
-          setPriceModalOpen(false);
-          setSelectedStockForPrice(null);
-        }}
-        stockItem={selectedStockForPrice}
-        onSuccess={loadData}
-      />
     </div>
   );
 }

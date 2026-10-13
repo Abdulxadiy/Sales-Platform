@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from celery import shared_task
 from django.utils import timezone
+from django.db import transaction
 
 from apps.tenants.models import Tenant
 from apps.cashbox.models import DailyCashReport
@@ -65,7 +66,7 @@ def send_daily_report_for_tenant_task(tenant_id: int):
     lines = [
         "📊 *KUNLIK HISOBOT VAQTI KELDI*",
         f"🏢 *Do'kon:* {tenant.name}",
-        f"📅 *Sana:* {timezone.now().date()} | {timezone.now().strftime('%H:%M')}",
+        f"📅 *Sana:* {timezone.localdate()} | {timezone.localtime().strftime('%H:%M')}",
         "",
         "💵 *KASSA KUTILAYOTGAN NAQD PUL:*",
         f"• Kutilgan: `{_fmt_line_amounts(status.get('expected_cash_uzs'), status.get('expected_cash_usd'))}`",
@@ -130,18 +131,20 @@ def check_and_send_daily_reports_task():
     """
     Periodic task: checks active tenants whose daily_report_time matches current hour/minute window.
     """
-    now = timezone.now()
-    current_time = now.time()
-
-    tenants = Tenant.objects.filter(is_active=True)
+    now = timezone.localtime()
     count = 0
-    for tenant in tenants:
-        report_time = tenant.daily_report_time
-        if (
-            report_time.hour == current_time.hour
-            and abs(report_time.minute - current_time.minute) <= 5
-        ):
-            send_daily_report_for_tenant_task.delay(tenant.id)
+    for tenant_id in Tenant.objects.filter(is_active=True).values_list('pk', flat=True):
+        with transaction.atomic():
+            tenant = Tenant.objects.select_for_update(skip_locked=True).filter(pk=tenant_id, is_active=True).first()
+            if tenant is None or tenant.daily_report_target == Tenant.TARGET_NONE:
+                continue
+            if tenant.last_daily_report_sent_at and timezone.localtime(tenant.last_daily_report_sent_at).date() == now.date():
+                continue
+            scheduled = now.replace(hour=tenant.daily_report_time.hour, minute=tenant.daily_report_time.minute, second=0, microsecond=0)
+            if not 0 <= (now - scheduled).total_seconds() < 300:
+                continue
+            send_daily_report_for_tenant_task.delay(tenant.pk)
+            tenant.last_daily_report_sent_at = now
+            tenant.save(update_fields=['last_daily_report_sent_at'])
             count += 1
-
     return count

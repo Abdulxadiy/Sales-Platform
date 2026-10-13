@@ -1,53 +1,44 @@
-from rest_framework.response import Response
-from rest_framework import status
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.response import Response
 
 from api.mixins import OwnerStaffOnlyAPIView
-from apps.cashbox.models import CashExpense, CashIncome, DailyCashReport
-from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
+from api.permissions import HasEmployeePermission
+from api.schema import ShiftStatusSerializer
 from api.v1.cashbox.serializers import (
     CashExpenseSerializer,
     CashIncomeSerializer,
-    ShiftCloseSerializer,
     DailyCashReportSerializer,
+    ShiftCloseSerializer,
+    ShiftOpenSerializer,
 )
+from apps.cashbox.models import CashExpense, CashIncome, DailyCashReport
+from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
 
 
 class _BaseCashboxAPIView(OwnerStaffOnlyAPIView):
-    def get_branch(self, request):
-        branch_id = request.query_params.get('branch_id') or (request.data.get('branch_id') if isinstance(request.data, dict) else None)
-        if branch_id:
-            from apps.tenants.models import Branch
-            return Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
-        if hasattr(request.user, 'employments'):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch:
-                return emp.branch
-        return None
+    permission_classes = [HasEmployeePermission]
+    required_permission = 'cashbox.view_cashbox'
 
 
 class CashExpenseListCreateView(_BaseCashboxAPIView):
-    """
-    Kassadan xarajatlar ro'yxati va yangi xarajat kiritish.
-    """
+    """Kassadan xarajatlar ro'yxati va yangi xarajat kiritish."""
+    permission_map = {'GET': 'cashbox.view_cashbox', 'POST': 'cashbox.record_expense'}
+    @extend_schema(request=None, responses={200: CashExpenseSerializer(many=True)})
     def get(self, request):
-        branch = self.get_branch(request)
         expenses = CashExpense.objects.filter(tenant=self.tenant)
-        if branch:
-            expenses = expenses.filter(branch=branch)
         serializer = CashExpenseSerializer(expenses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(request=CashExpenseSerializer, responses={201: CashExpenseSerializer})
     def post(self, request):
         serializer = CashExpenseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        branch = self.get_branch(request)
-
         try:
             expense = CashboxService.record_expense(
                 tenant=self.tenant,
-                branch=branch,
                 user=request.user,
                 amount=data['amount'],
                 currency=data.get('currency', CashExpense.CURRENCY_UZS),
@@ -64,27 +55,22 @@ class CashExpenseListCreateView(_BaseCashboxAPIView):
 
 
 class CashIncomeListCreateView(_BaseCashboxAPIView):
-    """
-    Kassaga qo'shimcha kirimlar ro'yxati va yangi kirim kiritish.
-    """
+    """Kassaga qo'shimcha kirimlar ro'yxati va yangi kirim kiritish."""
+    permission_map = {'GET': 'cashbox.view_cashbox', 'POST': 'cashbox.record_income'}
+    @extend_schema(request=None, responses={200: CashIncomeSerializer(many=True)})
     def get(self, request):
-        branch = self.get_branch(request)
         incomes = CashIncome.objects.filter(tenant=self.tenant)
-        if branch:
-            incomes = incomes.filter(branch=branch)
         serializer = CashIncomeSerializer(incomes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(request=CashIncomeSerializer, responses={201: CashIncomeSerializer})
     def post(self, request):
         serializer = CashIncomeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        branch = self.get_branch(request)
-
         try:
             income = CashboxService.record_income(
                 tenant=self.tenant,
-                branch=branch,
                 user=request.user,
                 amount=data['amount'],
                 currency=data.get('currency', CashIncome.CURRENCY_UZS),
@@ -104,9 +90,9 @@ class CurrentShiftStatusView(_BaseCashboxAPIView):
     """
     Kassaning joriy smenadagi jonli holati (kutilgan pul, tushumlar, xarajatlar).
     """
+    @extend_schema(request=None, responses={200: ShiftStatusSerializer})
     def get(self, request):
-        branch = self.get_branch(request)
-        status_data = CashboxService.get_current_shift_status(self.tenant, branch=branch)
+        status_data = CashboxService.get_current_shift_status(self.tenant)
         # Format decimals to strings for clean JSON
         formatted = {
             k: f"{v:.2f}" if hasattr(v, "quantize") else v
@@ -116,24 +102,22 @@ class CurrentShiftStatusView(_BaseCashboxAPIView):
 
 
 class ShiftCloseView(_BaseCashboxAPIView):
-    """
-    Smenani yopish va Z-Hisobot yaratish.
-    """
+    """Smenani yopish va Z-Hisobot yaratish."""
+    required_permission = 'cashbox.manage_shift'
+    @extend_schema(request=ShiftCloseSerializer, responses={201: DailyCashReportSerializer})
     def post(self, request):
         serializer = ShiftCloseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        branch = self.get_branch(request)
-
         try:
             report = CashboxService.close_shift(
                 tenant=self.tenant,
-                branch=branch,
                 user=request.user,
                 actual_cash_uzs=data['actual_cash_uzs'],
                 actual_cash_usd=data['actual_cash_usd'],
                 discrepancy_reason=data.get('discrepancy_reason', ''),
                 staff_notes=data.get('staff_notes', ''),
+                shift_id=data.get('shift_id'),
             )
             return Response(DailyCashReportSerializer(report).data, status=status.HTTP_201_CREATED)
         except CashboxServiceError as e:
@@ -147,11 +131,9 @@ class DailyCashReportListView(_BaseCashboxAPIView):
     """
     O'tgan Z-Hisobotlar ro'yxati.
     """
+    @extend_schema(request=None, responses={200: DailyCashReportSerializer(many=True)})
     def get(self, request):
-        branch = self.get_branch(request)
         reports = DailyCashReport.objects.filter(tenant=self.tenant)
-        if branch:
-            reports = reports.filter(branch=branch)
         serializer = DailyCashReportSerializer(reports, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -160,7 +142,23 @@ class DailyCashReportDetailView(_BaseCashboxAPIView):
     """
     Alohida Z-Hisobot tafsilotlari.
     """
+    @extend_schema(request=None, responses={200: DailyCashReportSerializer})
     def get(self, request, pk):
         report = get_object_or_404(DailyCashReport, tenant=self.tenant, pk=pk)
         serializer = DailyCashReportSerializer(report)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ShiftOpenView(_BaseCashboxAPIView):
+    required_permission = 'cashbox.manage_shift'
+
+    @extend_schema(request=ShiftOpenSerializer, responses={201: ShiftStatusSerializer})
+    def post(self, request):
+        from api.v1.cashbox.serializers import ShiftOpenSerializer
+        serializer = ShiftOpenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            CashboxService.open_shift(tenant=self.tenant, user=request.user, **serializer.validated_data)
+        except CashboxServiceError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        return Response(CashboxService.get_current_shift_status(self.tenant), status=201)

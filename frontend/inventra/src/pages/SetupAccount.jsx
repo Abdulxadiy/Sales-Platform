@@ -216,6 +216,21 @@ export default function SetupAccount() {
     setPhoneHint(resumed.phone_hint || phoneHint);
     setLoginTicket(resumed.login_ticket);
     setOtpCode('');
+
+    if (resumed.telegram_linked) {
+      try {
+        const otpRes = await authApi.sendTelegramOtp(resumed.login_ticket);
+        if (otpRes?.otp_sent) {
+          setOtpTimeLeft(OTP_EXPIRY_SECONDS);
+          setStep(3);
+          toast.info('Tasdiqlash kodi Telegram orqali yuborildi.');
+          return resumed;
+        }
+      } catch {
+        // Fallback to step 2 if send fails
+      }
+    }
+
     setStep(2);
     return resumed;
   };
@@ -263,9 +278,30 @@ export default function SetupAccount() {
       setAccountUsername(effectiveUsername);
       setPhoneHint(res.phone_hint || phoneHint);
       setLoginTicket(res.login_ticket);
-      setStep(2);
       setNewPassword('');
       setConfirmPassword('');
+
+      // Agar Telegram botga allaqachon bog'langan bo'lsa, Step 2 (botni ulash) kerak emas!
+      if (res.telegram_linked) {
+        try {
+          const otpRes = await authApi.sendTelegramOtp(res.login_ticket);
+          if (otpRes?.otp_sent) {
+            setOtpCode('');
+            setOtpTimeLeft(OTP_EXPIRY_SECONDS);
+            setStep(3);
+            toast.success('Parol saqlandi. Tasdiqlash kodi Telegram botingizga yuborildi.');
+            return;
+          }
+        } catch (otpErr) {
+          if (otpErr.status === 404 || otpErr.data?.error === 'telegram_contact_not_found') {
+            setStep(2);
+            return;
+          }
+          setErrorMsg(otpErr.message || 'Kodni yuborishda xatolik yuz berdi');
+        }
+      }
+
+      setStep(2);
       toast.success('Parol saqlandi. Endi Telegram botda telefoningizni ulang.');
     } catch (err) {
       if (err.data?.detail === 'setup_already_started') {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, KeyRound, ArrowRight, ShieldCheck, Eye, EyeOff, Sun, Moon, Play, RefreshCw, Mail, AlertCircle } from 'lucide-react';
+import { Lock, User, KeyRound, ArrowRight, ArrowLeft, ShieldCheck, Eye, EyeOff, Sun, Moon, Play, RefreshCw, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
@@ -95,10 +95,12 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [submittingStep1, setSubmittingStep1] = useState(false);
 
   const handleStep1 = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setSubmittingStep1(true);
     try {
       if (rememberMe) {
         localStorage.setItem('inventra_remember_login', username.trim());
@@ -118,9 +120,33 @@ export default function Login() {
       setLoginTicket(res.login_ticket);
       setPhoneHint(res.phone_hint || '');
       setOtpCode('');
+
+      // Agar Telegram botga allaqachon bog'langan bo'lsa, "Telegram botni ulash" (step 2)
+      // bosqichini ko'rsatish shart emas. To'g'ridan-to'g'ri kodni botga yuborib Step 3 (OTP kiritish)ga o'tamiz.
+      if (res.telegram_linked) {
+        try {
+          const otpRes = await authApi.sendTelegramOtp(res.login_ticket);
+          if (otpRes?.otp_sent) {
+            setOtpTimeLeft(OTP_EXPIRY_SECONDS);
+            setStep(3);
+            toast.success('Tasdiqlash kodi Telegram botingizga yuborildi');
+            return;
+          }
+        } catch (otpErr) {
+          if (otpErr.status === 404 || otpErr.data?.error === 'telegram_contact_not_found') {
+            setStep(2);
+            return;
+          }
+          setErrorMsg(otpErr.message || 'Tasdiqlash kodini yuborishda xatolik yuz berdi');
+        }
+      }
+
+      // FAQAT hali botga ulanmagan bo'lsagina Step 2 ("Telegram botni ulang") ko'rsatiladi
       setStep(2);
     } catch (err) {
       setErrorMsg(err.message || 'Login yoki parol noto‘g‘ri');
+    } finally {
+      setSubmittingStep1(false);
     }
   };
 
@@ -527,11 +553,11 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || submittingStep1}
               className="btn btn-primary"
               style={{ marginTop: 8, padding: '13px' }}
             >
-              <span>{loading ? 'Tekshirilmoqda...' : 'Davom etish'}</span>
+              <span>{loading || submittingStep1 ? 'Tekshirilmoqda...' : 'Davom etish'}</span>
               <ArrowRight size={18} />
             </button>
           </form>
@@ -682,6 +708,30 @@ export default function Login() {
                 style={{ flex: 2 }}
               >
                 {loading ? 'Kutilyapti...' : otpTimeLeft === 0 ? 'Kodni Yangilang' : 'Tizimga Kirish'}
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginTicket('');
+                  setErrorMsg('');
+                  setOtpCode('');
+                  setStep(1);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: 12.5,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                <ArrowLeft size={14} /> Login sahifasiga qaytish
               </button>
             </div>
           </form>

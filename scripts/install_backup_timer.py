@@ -13,20 +13,24 @@ def quoted(value):
     )
 
 
-def main():
-    root = Path(__file__).resolve().parents[1]
-    directory = Path.home() / ".config/systemd/user"
-    directory.mkdir(parents=True, exist_ok=True)
-    service = f"""[Unit]
+def service_contents(root):
+    return f"""[Unit]
 Description=Back up Sales Platform source to GitHub
 
 [Service]
 Type=oneshot
-WorkingDirectory={quoted(root)}
+WorkingDirectory={str(root).replace("%", "%%")}
 ExecStart=/usr/bin/python3 {quoted(root / "scripts/commit_queue.py")} backup
 Environment=GIT_TERMINAL_PROMPT=0
 TimeoutStartSec=10min
 """
+
+
+def main():
+    root = Path(__file__).resolve().parents[1]
+    directory = Path.home() / ".config/systemd/user"
+    directory.mkdir(parents=True, exist_ok=True)
+    service = service_contents(root)
     timer = """[Unit]
 Description=Back up saved Sales Platform code every 15 minutes
 

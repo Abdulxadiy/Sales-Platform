@@ -16,6 +16,18 @@ SPEC.loader.exec_module(queue)
 
 
 class PublisherTests(unittest.TestCase):
+    def test_backup_service_uses_an_absolute_unquoted_working_directory(self):
+        spec = importlib.util.spec_from_file_location(
+            "install_backup_timer",
+            Path(__file__).resolve().parents[2] / "scripts/install_backup_timer.py",
+        )
+        installer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(installer)
+        service = installer.service_contents(Path("/tmp/project with spaces"))
+        self.assertIn("WorkingDirectory=/tmp/project with spaces\n", service)
+        self.assertIn('"/tmp/project with spaces/scripts/commit_queue.py"', service)
+        self.assertNotIn('WorkingDirectory="', service)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

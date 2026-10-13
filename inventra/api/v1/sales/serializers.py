@@ -1,31 +1,76 @@
-from rest_framework import serializers
 from decimal import Decimal
+
+from rest_framework import serializers
+
+from api.serializers import SensitiveCostSerializerMixin
 from apps.sales.models import (
     Counterparty,
     DebtPayment,
+    Notification,
     Sale,
     SaleItem,
-    SaleVoidLog,
-    Notification,
 )
 
 
 class CounterpartyOutputSerializer(serializers.ModelSerializer):
-    target_tenant_name = serializers.CharField(source='target_tenant.name', read_only=True)
+    target_tenant_name = serializers.CharField(source="target_tenant.name", read_only=True)
+    last_payment = serializers.SerializerMethodField()
 
     class Meta:
         model = Counterparty
         fields = [
-            'id', 'name', 'phone_number', 'target_tenant', 'target_tenant_name',
-            'debt_balance_uzs', 'debt_balance_usd', 'note', 'is_active', 'created_at',
+            "id",
+            "name",
+            "phone_number",
+            "target_tenant",
+            "target_tenant_name",
+            "debt_balance_uzs",
+            "debt_balance_usd",
+            "note",
+            "is_active",
+            "created_at",
+            "last_payment",
         ]
         read_only_fields = fields
 
+    def get_last_payment(self, obj) -> dict | None:
+        prefetched = getattr(obj, "prefetched_payments", None)
+        if prefetched is not None:
+            payment = prefetched[0] if prefetched else None
+        else:
+            payment = obj.payments.select_related("recorded_by", "branch", "tenant").order_by("-paid_at").first()
+
+        if not payment:
+            return None
+
+        branch_name = ""
+        if payment.branch:
+            branch_name = payment.branch.name
+        elif payment.tenant:
+            branch_name = payment.tenant.name
+
+        recorded_by_name = ""
+        if payment.recorded_by:
+            recorded_by_name = payment.recorded_by.get_full_name() or payment.recorded_by.username
+
+        return {
+            "id": payment.id,
+            "amount": str(payment.amount),
+            "currency": payment.currency,
+            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
+            "recorded_by_name": recorded_by_name,
+            "branch_id": payment.branch_id or payment.tenant_id,
+            "branch_name": branch_name,
+            "note": payment.note,
+            "is_correction": payment.is_correction,
+        }
+
 
 class CounterpartyCreateSerializer(serializers.Serializer):
+    target_tenant_code = serializers.CharField(max_length=12, required=False, allow_blank=True, default="")
     name = serializers.CharField(max_length=150)
     phone_number = serializers.CharField(max_length=20)
-    note = serializers.CharField(required=False, allow_blank=True, default='')
+    note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class CounterpartyUpdateSerializer(serializers.Serializer):
@@ -35,81 +80,150 @@ class CounterpartyUpdateSerializer(serializers.Serializer):
 
 
 class DebtPaymentOutputSerializer(serializers.ModelSerializer):
-    recorded_by_name = serializers.CharField(source='recorded_by.get_full_name', read_only=True)
+    recorded_by_name = serializers.SerializerMethodField()
+    branch_id = serializers.SerializerMethodField()
+    branch_name = serializers.SerializerMethodField()
 
     class Meta:
         model = DebtPayment
         fields = [
-            'id', 'counterparty', 'amount', 'currency', 'paid_at',
-            'recorded_by', 'recorded_by_name', 'is_correction', 'note',
+            "id",
+            "counterparty",
+            "amount",
+            "currency",
+            "paid_at",
+            "recorded_by",
+            "recorded_by_name",
+            "branch",
+            "branch_id",
+            "branch_name",
+            "is_correction",
+            "payment_type",
+            "note",
         ]
         read_only_fields = fields
 
+    def get_recorded_by_name(self, obj) -> str:
+        if obj.recorded_by:
+            return obj.recorded_by.get_full_name() or obj.recorded_by.username
+        return "Kassir"
+
+    def get_branch_id(self, obj) -> int | None:
+        return obj.branch_id or obj.tenant_id
+
+    def get_branch_name(self, obj) -> str:
+        if obj.branch:
+            return obj.branch.name
+        if obj.tenant:
+            return obj.tenant.name
+        return ""
+
 
 class DebtPaymentCreateSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0.01'))
-    currency = serializers.ChoiceField(choices=['UZS', 'USD'])
-    note = serializers.CharField(required=False, allow_blank=True, default='')
+    payment_type = serializers.ChoiceField(choices=["cash", "card"], default="cash")
+    idempotency_key = serializers.CharField(max_length=64, required=False, allow_blank=False)
+    amount = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0.01"))
+    currency = serializers.ChoiceField(choices=["UZS", "USD"])
+    branch_id = serializers.IntegerField(required=False, allow_null=True)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class DebtPaymentCorrectionSerializer(serializers.Serializer):
+    payment_type = serializers.ChoiceField(choices=["cash", "card", "none"], default="none")
+    idempotency_key = serializers.CharField(max_length=64, required=False, allow_blank=False)
     amount = serializers.DecimalField(max_digits=14, decimal_places=2)
-    currency = serializers.ChoiceField(choices=['UZS', 'USD'])
+    currency = serializers.ChoiceField(choices=["UZS", "USD"])
+    branch_id = serializers.IntegerField(required=False, allow_null=True)
     note = serializers.CharField(required=True, allow_blank=False)
 
 
-class SaleItemOutputSerializer(serializers.ModelSerializer):
-    product_variant_name = serializers.CharField(source='product_variant.name', read_only=True)
-    product_name = serializers.CharField(source='product_variant.product.name', read_only=True)
-    product_code = serializers.CharField(source='product_variant.code', read_only=True)
-    product_sku = serializers.CharField(source='product_variant.sku', read_only=True)
-    unit = serializers.CharField(source='product_variant.unit', read_only=True)
+class SaleItemOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
+    product_variant_name = serializers.CharField(source="product_variant.name", read_only=True)
+    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
+    product_code = serializers.CharField(source="product_variant.code", read_only=True)
+    product_sku = serializers.CharField(source="product_variant.sku", read_only=True)
+    product_barcode = serializers.CharField(source="product_variant.barcode", read_only=True, allow_null=True)
+    unit = serializers.CharField(source="product_variant.unit", read_only=True)
 
     class Meta:
         model = SaleItem
         fields = [
-            'id', 'product_variant', 'product_name', 'product_variant_name',
-            'product_code', 'product_sku', 'unit',
-            'quantity', 'unit_price', 'cost_price', 'original_partner_price',
-            'total_price', 'status', 'voided_quantity', 'b2b_accepted_quantity',
-            'b2b_rejected_quantity',
+            "id",
+            "product_variant",
+            "product_name",
+            "product_variant_name",
+            "product_code",
+            "product_sku",
+            "product_barcode",
+            "unit",
+            "quantity",
+            "unit_price",
+            "cost_price",
+            "original_partner_price",
+            "total_price",
+            "status",
+            "voided_quantity",
+            "b2b_accepted_quantity",
+            "b2b_rejected_quantity",
+            "b2b_return_pending_quantity",
+            "b2b_discrepancy_closed_quantity",
         ]
         read_only_fields = fields
 
 
 class SaleOutputSerializer(serializers.ModelSerializer):
-    sold_by_name = serializers.CharField(source='sold_by.get_full_name', read_only=True)
-    counterparty_name = serializers.CharField(source='counterparty.name', read_only=True)
-    counterparty_phone = serializers.CharField(source='counterparty.phone_number', read_only=True)
-    branch_name = serializers.CharField(source='branch.name', read_only=True)
-    branch_address = serializers.CharField(source='branch.address', read_only=True)
-    branch_phone = serializers.CharField(source='branch.phone_number', read_only=True)
-    b2b_target_tenant_name = serializers.CharField(source='b2b_target_tenant.name', read_only=True)
+    tenant_name = serializers.CharField(source="tenant.name", read_only=True)
+    tenant_address = serializers.CharField(source="tenant.address", read_only=True)
+    tenant_phone = serializers.CharField(source="tenant.receipt_phone", read_only=True)
+    sold_by_name = serializers.CharField(source="sold_by.get_full_name", read_only=True)
+    counterparty_name = serializers.CharField(source="counterparty.name", read_only=True)
+    counterparty_phone = serializers.CharField(source="counterparty.phone_number", read_only=True)
+    b2b_target_tenant_name = serializers.CharField(source="b2b_target_tenant.name", read_only=True)
     items = SaleItemOutputSerializer(many=True, read_only=True)
 
     class Meta:
         model = Sale
         fields = [
-            'id', 'receipt_number', 'branch', 'branch_name', 'branch_address', 'branch_phone',
-            'sold_by', 'sold_by_name',
-            'counterparty', 'counterparty_name', 'counterparty_phone', 'currency', 'is_partner_sale',
-            'total_amount', 'payment_type', 'status',
-            'b2b_target_tenant', 'b2b_target_tenant_name', 'b2b_expires_at', 'b2b_reject_reason',
-            'voided_at', 'voided_by', 'void_reason', 'items', 'created_at',
+            "id",
+            "receipt_number",
+            "public_token",
+            "tenant_name",
+            "tenant_address",
+            "tenant_phone",
+            "sold_by",
+            "sold_by_name",
+            "counterparty",
+            "counterparty_name",
+            "counterparty_phone",
+            "currency",
+            "is_partner_sale",
+            "total_amount",
+            "refunded_amount",
+            "net_amount",
+            "payment_type",
+            "status",
+            "b2b_target_tenant",
+            "b2b_target_tenant_name",
+            "b2b_expires_at",
+            "b2b_reject_reason",
+            "voided_at",
+            "voided_by",
+            "void_reason",
+            "items",
+            "created_at",
         ]
         read_only_fields = fields
 
 
 class SaleCreateItemInputSerializer(serializers.Serializer):
     product_variant_id = serializers.IntegerField()
-    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal('0.001'))
-    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal('0.01'))
+    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
+    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0.01"))
 
 
 class SaleCreateInputSerializer(serializers.Serializer):
-    branch_id = serializers.IntegerField(required=False, allow_null=True)
     items = SaleCreateItemInputSerializer(many=True)
-    payment_type = serializers.ChoiceField(choices=['cash', 'card', 'debt'], default='cash')
+    payment_type = serializers.ChoiceField(choices=["cash", "card", "debt"], default="cash")
     counterparty_id = serializers.IntegerField(required=False, allow_null=True)
     is_partner_sale = serializers.BooleanField(default=False)
     idempotency_key = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
@@ -120,13 +234,13 @@ class SaleVoidSerializer(serializers.Serializer):
 
 
 class SaleItemVoidSerializer(serializers.Serializer):
-    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal('0.001'))
+    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     reason = serializers.CharField(required=True, allow_blank=False)
 
 
 class B2BAcceptItemSerializer(serializers.Serializer):
     sale_item_id = serializers.IntegerField()
-    accepted_quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal('0.000'))
+    accepted_quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.000"))
     target_category_id = serializers.IntegerField(required=False, allow_null=True)
     target_variant_id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -139,70 +253,147 @@ class B2BRejectInputSerializer(serializers.Serializer):
     reason = serializers.CharField(required=True, allow_blank=False)
 
 
-class NotificationOutputSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = ['id', 'recipient', 'type', 'title', 'message', 'link', 'is_read', 'created_at']
-        read_only_fields = fields
+class B2BReturnItemInputSerializer(serializers.Serializer):
+    sale_item_id = serializers.IntegerField(min_value=1)
+    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
 
 
-class PublicReceiptItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product_variant.product.name', read_only=True)
-    product_variant_name = serializers.CharField(source='product_variant.name', read_only=True)
-    unit = serializers.CharField(source='product_variant.unit', read_only=True)
+class B2BReturnInputSerializer(serializers.Serializer):
+    idempotency_key = serializers.CharField(max_length=64, allow_blank=False)
+    reason = serializers.CharField(required=True, allow_blank=False)
+    items = B2BReturnItemInputSerializer(many=True, allow_empty=False)
+
+
+class B2BReturnDiscrepancyCloseInputSerializer(serializers.Serializer):
+    idempotency_key = serializers.CharField(max_length=64, allow_blank=False)
+    reason = serializers.CharField(required=True, allow_blank=False)
+    items = B2BReturnItemInputSerializer(many=True, allow_empty=False)
+
+
+class B2BIncomingSaleItemSerializer(serializers.ModelSerializer):
+    product_variant_name = serializers.CharField(source="product_variant.name", read_only=True)
+    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
+    product_code = serializers.CharField(source="product_variant.code", read_only=True)
+    product_sku = serializers.CharField(source="product_variant.sku", read_only=True)
+    product_barcode = serializers.CharField(
+        source="product_variant.barcode", read_only=True, allow_null=True
+    )
+    unit = serializers.CharField(source="product_variant.unit", read_only=True)
 
     class Meta:
         model = SaleItem
         fields = [
-            'id',
-            'product_name',
-            'product_variant_name',
-            'unit',
-            'quantity',
-            'unit_price',
-            'total_price',
+            "id",
+            "product_name",
+            "product_variant_name",
+            "product_code",
+            "product_sku",
+            "product_barcode",
+            "unit",
+            "quantity",
+            "unit_price",
+            "status",
+            "b2b_accepted_quantity",
+            "voided_quantity",
+            "b2b_rejected_quantity",
+            "b2b_return_pending_quantity",
+            "b2b_discrepancy_closed_quantity",
+        ]
+        read_only_fields = fields
+
+
+class B2BIncomingSaleSerializer(serializers.ModelSerializer):
+    source_tenant_name = serializers.CharField(source="tenant.name", read_only=True)
+    items = B2BIncomingSaleItemSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Sale
+        fields = [
+            "id",
+            "receipt_number",
+            "source_tenant_name",
+            "currency",
+            "total_amount",
+            "refunded_amount",
+            "net_amount",
+            "status",
+            "b2b_expires_at",
+            "items",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class NotificationOutputSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "recipient", "type", "title", "message", "link", "is_read", "created_at"]
+        read_only_fields = fields
+
+
+class PublicReceiptItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
+    product_variant_name = serializers.CharField(source="product_variant.name", read_only=True)
+    unit = serializers.CharField(source="product_variant.unit", read_only=True)
+
+    class Meta:
+        model = SaleItem
+        fields = [
+            "id",
+            "product_name",
+            "product_variant_name",
+            "unit",
+            "quantity",
+            "voided_quantity",
+            "status",
+            "unit_price",
+            "total_price",
         ]
         read_only_fields = fields
 
 
 class PublicReceiptSerializer(serializers.ModelSerializer):
-    store_name = serializers.CharField(source='tenant.name', read_only=True)
-    branch_name = serializers.CharField(source='branch.name', read_only=True, default='')
-    branch_address = serializers.CharField(source='branch.address', read_only=True, default='')
-    branch_phone = serializers.CharField(source='branch.phone_number', read_only=True, default='')
-    sold_by_name = serializers.SerializerMethodField()
-    counterparty_name = serializers.CharField(source='counterparty.name', read_only=True, default=None)
-    payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    store_name = serializers.CharField(source="tenant.name", read_only=True)
+    store_address = serializers.CharField(source="tenant.address", read_only=True)
+    store_phone = serializers.CharField(source="tenant.receipt_phone", read_only=True)
+    payment_type_display = serializers.CharField(source="get_payment_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     items = serializers.SerializerMethodField()
 
     class Meta:
         model = Sale
         fields = [
-            'id',
-            'receipt_number',
-            'store_name',
-            'branch_name',
-            'branch_address',
-            'branch_phone',
-            'sold_by_name',
-            'counterparty_name',
-            'currency',
-            'total_amount',
-            'payment_type',
-            'payment_type_display',
-            'status',
-            'status_display',
-            'created_at',
-            'items',
+            "receipt_number",
+            "store_name",
+            "store_address",
+            "store_phone",
+            "currency",
+            "total_amount",
+            "refunded_amount",
+            "net_amount",
+            "payment_type",
+            "payment_type_display",
+            "status",
+            "status_display",
+            "created_at",
+            "items",
         ]
         read_only_fields = fields
 
-    def get_sold_by_name(self, obj):
-        if not obj.sold_by:
-            return "Kassir"
-        return obj.sold_by.get_full_name() or obj.sold_by.username
-
-    def get_items(self, obj):
+    def get_items(self, obj) -> list[dict]:
         return PublicReceiptItemSerializer(obj.items.all(), many=True).data
 
+
+class SaleListQuerySerializer(serializers.Serializer):
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+    status = serializers.ChoiceField(choices=Sale.STATUS_CHOICES, required=False)
+    currency = serializers.ChoiceField(choices=Sale.CURRENCY_CHOICES, required=False)
+    payment_type = serializers.ChoiceField(choices=Sale.PAYMENT_CHOICES, required=False)
+    counterparty_id = serializers.IntegerField(required=False, min_value=1)
+    b2b_only = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        if attrs.get('date_from') and attrs.get('date_to') and attrs['date_from'] > attrs['date_to']:
+            raise serializers.ValidationError('Boshlanish sanasi tugash sanasidan katta bo‘lmaydi.')
+        return attrs

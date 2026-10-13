@@ -1,4 +1,6 @@
 from decimal import Decimal
+import hashlib
+import json
 from django.db import transaction
 from django.utils import timezone
 from apps.sales.models import Counterparty, DebtPayment, Notification
@@ -21,12 +23,44 @@ class DebtService:
         amount: Decimal,
         currency: str,
         recorded_by,
+        branch = None,
         is_correction: bool = False,
-        note: str = ''
+        note: str = '',
+        payment_type: str = None,
+        idempotency_key: str = None,
     ) -> DebtPayment:
-        # Permission check: only owner and platform_admin
-        if getattr(recorded_by, 'role', None) not in ('owner', 'platform_admin'):
-            raise DebtServiceError("Qarz to'lovlarini faqat do'kon egasi yoki admin kiritishi mumkin.")
+        from apps.accounts.services.permission_service import PermissionService
+        if not PermissionService.has_permission(recorded_by, 'sales.record_debt_payment', tenant=counterparty.tenant):
+            raise DebtServiceError("Qarz to‘lovi uchun ruxsat berilmagan.")
+        payment_type = payment_type or ('none' if is_correction else 'cash')
+        if payment_type not in ('cash', 'card', 'none') or (not is_correction and payment_type == 'none'):
+            raise DebtServiceError("To‘lov turi naqd yoki karta bo‘lishi kerak.")
+        target_branch = branch or counterparty.tenant
+        if not PermissionService.has_permission(recorded_by, "sales.record_debt_payment", tenant=target_branch):
+            raise DebtServiceError("To‘lov qabul qiluvchi do‘kon uchun ruxsat berilmagan.")
+        idempotency_key = (idempotency_key or "").strip() or None
+        if target_branch.owner_id != counterparty.tenant.owner_id or not target_branch.is_active:
+            raise DebtServiceError("To‘lov faqat faol va shu egaga tegishli do‘konda qabul qilinadi.")
+        from apps.tenants.models import Tenant
+        Tenant.objects.select_for_update().get(pk=target_branch.pk)
+        fingerprint = hashlib.sha256(json.dumps({
+            'branch': target_branch.pk, 'amount': str(amount.normalize()), 'currency': currency,
+            'type': payment_type, 'correction': is_correction, 'note': note.strip(),
+        }, sort_keys=True).encode()).hexdigest()
+        cp = Counterparty.objects.select_for_update().get(pk=counterparty.pk)
+        if idempotency_key:
+            existing = DebtPayment.objects.filter(counterparty=cp, idempotency_key=idempotency_key).first()
+            if existing:
+                if existing.request_fingerprint != fingerprint:
+                    raise DebtServiceError("Idempotency kaliti boshqa to‘lov uchun ishlatilgan.")
+                return existing
+        shift = None
+        if payment_type != 'none':
+            from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
+            try:
+                shift = CashboxService.lock_open_shift(target_branch)
+            except CashboxServiceError as exc:
+                raise DebtServiceError(str(exc)) from exc
 
         if amount == 0:
             raise DebtServiceError("To'lov summasi 0 bo'lishi mumkin emas.")
@@ -40,15 +74,15 @@ class DebtService:
         if currency not in ('UZS', 'USD'):
             raise DebtServiceError("Valyuta 'UZS' yoki 'USD' bo'lishi shart.")
 
-        cp = Counterparty.objects.select_for_update().get(pk=counterparty.pk)
-
         if currency == 'UZS':
             cp.debt_balance_uzs -= amount
         else:
             cp.debt_balance_usd -= amount
 
         payment = DebtPayment.objects.create(
-            tenant=cp.tenant,
+            tenant=target_branch,
+            branch=target_branch, shift=shift, payment_type=payment_type,
+            idempotency_key=idempotency_key, request_fingerprint=fingerprint,
             counterparty=cp,
             amount=amount,
             currency=currency,
@@ -105,7 +139,7 @@ class DebtService:
 
         try:
             from apps.sales.tasks import send_async_telegram_message_task
-            send_async_telegram_message_task.delay(contact.chat_id, text)
+            transaction.on_commit(lambda: send_async_telegram_message_task.delay(contact.chat_id, text), robust=True)
         except Exception:
             from apps.tg_bot.services import send_telegram_message
             send_telegram_message(contact.chat_id, text)

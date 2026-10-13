@@ -1,51 +1,74 @@
 from django.urls import path
-from api.v1.sales.views.sale_views import (
-    SaleListCreateView,
-    SaleDetailView,
-    SaleVoidView,
-    SaleItemVoidView,
-    PublicReceiptDetailView,
+from api.v1.exports import SalesExportView, CounterpartyExportView
+
+from api.v1.sales.views.b2b_views import (
+    B2BAcceptView,
+    B2BInboxListView,
+    B2BRejectView,
+    B2BReturnDiscrepancyCloseView,
+    B2BReturnReceiveView,
 )
 from api.v1.sales.views.counterparty_views import (
-    CounterpartyListCreateView,
     CounterpartyDetailView,
-    DebtPaymentListCreateView,
-    DebtPaymentCorrectionView,
+    CounterpartyListCreateView,
     CounterpartySalesListView,
-)
-from api.v1.sales.views.b2b_views import (
-    B2BInboxListView,
-    B2BAcceptView,
-    B2BRejectView,
+    DebtPaymentCorrectionView,
+    DebtPaymentListCreateView,
 )
 from api.v1.sales.views.notification_views import (
-    NotificationListView,
     NotificationDetailView,
+    NotificationListView,
     NotificationReadView,
+)
+from api.v1.sales.views.sale_views import (
+    PublicReceiptDetailView,
+    SaleDetailView,
+    SaleItemVoidView,
+    SaleListCreateView,
+    SaleReceiptTokenRotateView,
+    SaleVoidView,
 )
 
 urlpatterns = [
+    path("export/", SalesExportView.as_view(), name="sales-export"),
+    path("counterparties/export/", CounterpartyExportView.as_view(), name="counterparties-export"),
     # Sales
-    path('', SaleListCreateView.as_view(), name='sale-list-create'),
-    path('public/receipt/<str:receipt_number>/', PublicReceiptDetailView.as_view(), name='public-receipt-detail'),
-    path('<int:pk>/', SaleDetailView.as_view(), name='sale-detail'),
-    path('<int:pk>/void/', SaleVoidView.as_view(), name='sale-void'),
-    path('items/<int:pk>/void/', SaleItemVoidView.as_view(), name='sale-item-void'),
-
+    path("", SaleListCreateView.as_view(), name="sale-list-create"),
+    path("public/receipt/<str:token>/", PublicReceiptDetailView.as_view(), name="public-receipt-detail"),
+    path("<int:pk>/", SaleDetailView.as_view(), name="sale-detail"),
+    path("<int:pk>/receipt-token/rotate/", SaleReceiptTokenRotateView.as_view(), name="sale-receipt-token-rotate"),
+    path("<int:pk>/void/", SaleVoidView.as_view(), name="sale-void"),
+    path("items/<int:pk>/void/", SaleItemVoidView.as_view(), name="sale-item-void"),
     # Counterparties & Debt
-    path('counterparties/', CounterpartyListCreateView.as_view(), name='counterparty-list-create'),
-    path('counterparties/<int:pk>/', CounterpartyDetailView.as_view(), name='counterparty-detail'),
-    path('counterparties/<int:counterparty_id>/sales/', CounterpartySalesListView.as_view(), name='counterparty-sales-list'),
-    path('counterparties/<int:counterparty_id>/payments/', DebtPaymentListCreateView.as_view(), name='debt-payment-list-create'),
-    path('counterparties/<int:counterparty_id>/payments/correct/', DebtPaymentCorrectionView.as_view(), name='debt-payment-correct'),
-
+    path("counterparties/", CounterpartyListCreateView.as_view(), name="counterparty-list-create"),
+    path("counterparties/<int:pk>/", CounterpartyDetailView.as_view(), name="counterparty-detail"),
+    path(
+        "counterparties/<int:counterparty_id>/sales/",
+        CounterpartySalesListView.as_view(),
+        name="counterparty-sales-list",
+    ),
+    path(
+        "counterparties/<int:counterparty_id>/payments/",
+        DebtPaymentListCreateView.as_view(),
+        name="debt-payment-list-create",
+    ),
+    path(
+        "counterparties/<int:counterparty_id>/payments/correct/",
+        DebtPaymentCorrectionView.as_view(),
+        name="debt-payment-correct",
+    ),
     # B2B
-    path('b2b/inbox/', B2BInboxListView.as_view(), name='b2b-inbox-list'),
-    path('b2b/<int:sale_id>/accept/', B2BAcceptView.as_view(), name='b2b-accept'),
-    path('b2b/<int:sale_id>/reject/', B2BRejectView.as_view(), name='b2b-reject'),
-
+    path("b2b/inbox/", B2BInboxListView.as_view(), name="b2b-inbox-list"),
+    path("b2b/<int:sale_id>/accept/", B2BAcceptView.as_view(), name="b2b-accept"),
+    path("b2b/<int:sale_id>/reject/", B2BRejectView.as_view(), name="b2b-reject"),
+    path("b2b/<int:sale_id>/returns/receive/", B2BReturnReceiveView.as_view(), name="b2b-return-receive"),
+    path(
+        "b2b/<int:sale_id>/returns/close-discrepancy/",
+        B2BReturnDiscrepancyCloseView.as_view(),
+        name="b2b-return-discrepancy-close",
+    ),
     # Notifications
-    path('notifications/', NotificationListView.as_view(), name='notification-list'),
-    path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
-    path('notifications/<int:pk>/read/', NotificationReadView.as_view(), name='notification-read'),
+    path("notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
+    path("notifications/<int:pk>/read/", NotificationReadView.as_view(), name="notification-read"),
 ]

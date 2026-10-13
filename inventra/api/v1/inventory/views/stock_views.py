@@ -1,11 +1,15 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 
 from api.permissions import HasEmployeePermission
+from api.schema import optional_pagination
+from api.v1.inventory.serializers import StockOutputSerializer
 from apps.catalog.models import ProductVariant
 from apps.inventory.models import Stock
-from api.v1.inventory.serializers import StockOutputSerializer, StockPriceUpdateSerializer
+
 from ._base import InventoryAPIView
 
 
@@ -17,19 +21,12 @@ class StockListView(InventoryAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "inventory.view_stock"
 
+    @extend_schema(request=None, responses={200: optional_pagination(StockOutputSerializer)})
     def get(self, request):
         stock = (
             Stock.objects.filter(tenant=self.tenant)
-            .select_related("branch", "product_variant", "product_variant__product", "product_variant__product__category")
+            .select_related("product_variant", "product_variant__product", "product_variant__product__category")
         )
-
-        branch_id = request.query_params.get("branch_id")
-        if branch_id:
-            stock = stock.filter(branch_id=branch_id)
-        elif hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch and request.user != self.tenant.owner and not request.user.is_superuser:
-                stock = stock.filter(branch=emp.branch)
 
         search = request.query_params.get("search")
         if search:
@@ -45,65 +42,29 @@ class StockListView(InventoryAPIView):
             from api.pagination import StandardResultsSetPagination
             paginator = StandardResultsSetPagination()
             page_data = paginator.paginate_queryset(stock.order_by("id"), request)
-            return paginator.get_paginated_response(StockOutputSerializer(page_data, many=True).data)
+            return paginator.get_paginated_response(StockOutputSerializer(page_data, many=True, context={"request": request}).data)
 
-        return Response(StockOutputSerializer(stock, many=True).data)
+        return Response(StockOutputSerializer(stock, many=True, context={"request": request}).data)
 
 
 class StockDetailView(InventoryAPIView):
     """GET /api/v1/inventory/stock/{product_variant_id}/ -- current
-    balance for one variant for the specified branch (or default).
-    PATCH /api/v1/inventory/stock/{product_variant_id}/ -- update custom branch prices."""
+    balance for one variant in the active tenant."""
 
     permission_classes = [HasEmployeePermission]
     required_permission = "inventory.view_stock"
 
-    def _resolve_branch(self, request, data=None):
-        branch_id = (data.get("branch_id") if data else None) or request.query_params.get("branch_id")
-        if branch_id:
-            return self.tenant.branches.filter(pk=branch_id).first()
-        if hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-            if emp and emp.branch:
-                return emp.branch
-        return self.tenant.get_main_branch()
-
+    @extend_schema(request=None, responses={200: StockOutputSerializer})
     def get(self, request, product_variant_id):
         variant = get_object_or_404(ProductVariant, pk=product_variant_id, tenant=self.tenant)
-        branch = self._resolve_branch(request)
-        stock = Stock.objects.filter(tenant=self.tenant, branch=branch, product_variant=variant).first()
+        stock = Stock.objects.filter(tenant=self.tenant, product_variant=variant).first()
         if stock is None:
             return Response({
                 "product_variant": variant.id,
-                "branch": branch.id if branch else None,
-                "branch_name": branch.name if branch else "",
                 "quantity": "0.000",
                 "last_cost_price": None,
-                "base_price_recommended": variant.price_recommended,
-                "base_price_min": variant.price_min,
-                "base_price_partner": variant.price_partner,
-                "effective_price_recommended": variant.price_recommended,
-                "effective_price_min": variant.price_min,
-                "effective_price_partner": variant.price_partner,
             })
-        return Response(StockOutputSerializer(stock).data)
-
-    def patch(self, request, product_variant_id):
-        variant = get_object_or_404(ProductVariant, pk=product_variant_id, tenant=self.tenant)
-        serializer = StockPriceUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        branch = self._resolve_branch(request, data)
-        stock, _ = Stock.objects.get_or_create(
-            tenant=self.tenant, branch=branch, product_variant=variant, defaults={"quantity": 0}
-        )
-
-        for field in ("custom_price_recommended", "custom_price_min", "custom_price_partner"):
-            if field in data:
-                setattr(stock, field, data[field])
-        stock.save(update_fields=["custom_price_recommended", "custom_price_min", "custom_price_partner", "updated_at"])
-        return Response(StockOutputSerializer(stock).data)
+        return Response(StockOutputSerializer(stock, context={"request": request}).data)
 
 
 class DeficitStockListView(InventoryAPIView):
@@ -115,6 +76,7 @@ class DeficitStockListView(InventoryAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "inventory.view_stock"
 
+    @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
         from apps.inventory.services import DeficitService
 

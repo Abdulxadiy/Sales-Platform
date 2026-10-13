@@ -6,6 +6,7 @@ class TelegramContact(models.Model):
     Using this model helps avoid having to re-request a Telegram number or chat ID."""
     phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False, db_index=True)
     chat_id = models.CharField(max_length=100, unique=True, null=False, blank=False)
+    bot_id = models.CharField(max_length=32, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

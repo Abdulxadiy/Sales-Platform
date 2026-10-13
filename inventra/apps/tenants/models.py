@@ -1,7 +1,58 @@
 import datetime
+import secrets
+
 from django.db import models
+from django.db.models.functions import Lower
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
+
+
+class SellerProfile(models.Model):
+    LEGAL_FORM_YTT = "ytt"
+    LEGAL_FORM_MCHJ = "mchj"
+    LEGAL_FORM_OTHER = "other"
+    LEGAL_FORM_CHOICES = [
+        (LEGAL_FORM_YTT, "YTT"),
+        (LEGAL_FORM_MCHJ, "MChJ"),
+        (LEGAL_FORM_OTHER, "Boshqa"),
+    ]
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_EXPIRED = "expired"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Tekshiruv kutilmoqda"),
+        (STATUS_APPROVED, "Tasdiqlangan"),
+        (STATUS_REJECTED, "Rad etilgan"),
+        (STATUS_EXPIRED, "Muddati o‘tgan"),
+    ]
+
+    owner = models.ForeignKey(User, on_delete=models.PROTECT, related_name="seller_profiles")
+    legal_form = models.CharField(max_length=10, choices=LEGAL_FORM_CHOICES)
+    official_name = models.CharField(max_length=200)
+    tax_identifier = models.CharField(max_length=20)
+    tax_regime = models.CharField(max_length=100, blank=True)
+    permitted_activity = models.TextField(blank=True)
+    fiscal_provider = models.CharField(max_length=150, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_seller_profiles"
+    )
+    review_reason = models.TextField(blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "tax_identifier"], name="unique_seller_identifier_per_owner"),
+        ]
+
+    def __str__(self):
+        return f"{self.official_name} ({self.get_status_display()})"
 
 
 class Tenant(models.Model):
@@ -16,9 +67,16 @@ class Tenant(models.Model):
         (TARGET_NONE, 'Yuborilmasin'),
     ]
 
-    name = models.CharField(max_length=100, unique=True)
-    owner = models.OneToOneField(User, on_delete=models.CASCADE, related_name="owned_tenant")
+    name = models.CharField(max_length=100)
+    owner = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="owned_tenants"
+    )
+    seller_profile = models.ForeignKey(
+        SellerProfile, null=True, blank=True, on_delete=models.PROTECT, related_name="tenants"
+    )
     description = models.TextField(blank=True)
+    address = models.CharField(max_length=255, blank=True, default="")
+    public_code = models.CharField(max_length=12, unique=True, editable=False)
     is_active = models.BooleanField(default=True)
     usd_rate = models.DecimalField(
         max_digits=12,
@@ -30,6 +88,7 @@ class Tenant(models.Model):
         default=datetime.time(22, 0),
         help_text="Kunlik Z-hisobot xabari yuboriladigan vaqt (masalan 22:00)",
     )
+    last_daily_report_sent_at = models.DateTimeField(null=True, blank=True)
 
     # Telegram va Bildirishnoma sozlamalari
     daily_report_target = models.CharField(
@@ -127,43 +186,21 @@ class Tenant(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.name
-
-    def get_main_branch(self):
-        branch = self.branches.filter(is_main=True, is_active=True).first()
-        if not branch:
-            branch = self.branches.filter(is_active=True).first()
-        if not branch:
-            branch = Branch.objects.create(
-                tenant=self,
-                name="Asosiy filial",
-                is_main=True,
-                is_active=True,
-            )
-        return branch
-
-
-class Branch(models.Model):
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="branches")
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=32, blank=True, default="")
-    address = models.CharField(max_length=255, blank=True, default="")
-    phone_number = models.CharField(max_length=30, blank=True, default="")
-    is_main = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
-        ordering = ["-is_main", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["tenant", "name"],
-                name="unique_branch_name_per_tenant",
-            ),
+            models.UniqueConstraint(Lower("name"), name="unique_tenant_name_ci"),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self.public_code:
+            for _ in range(10):
+                candidate = secrets.token_hex(4).upper()
+                if not type(self).objects.filter(public_code=candidate).exists():
+                    self.public_code = candidate
+                    break
+            else:
+                raise RuntimeError("Could not generate a unique tenant code")
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        main_badge = " (Asosiy)" if self.is_main else ""
-        return f"{self.name}{main_badge}"
+        return self.name

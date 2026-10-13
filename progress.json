@@ -23,9 +23,16 @@
     "deployment-configuration",
     "ci-and-client-regressions"
   ],
-  "last_main_sha": "6f2d79c96a05937c3997bcdc0ff1d1ac15778b1f",
+  "last_main_sha": "d98f3956335ab94e7cfaafd163096b5568e18a91",
   "days": {
-    "2026-10-13": 20
+    "2026-10-13": 21
   },
-  "updated_at": "2026-10-13T22:20:46.297234+05:00"
+  "updated_at": "2026-10-13T22:25:06.198906+05:00",
+  "manual_fixes": [
+    {
+      "sha": "d98f3956335ab94e7cfaafd163096b5568e18a91",
+      "date": "2026-10-13",
+      "message": "fix(backup): use a valid systemd working directory and cover service generation"
+    }
+  ]
 }

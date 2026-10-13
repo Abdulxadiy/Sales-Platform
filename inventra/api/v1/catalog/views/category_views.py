@@ -1,16 +1,21 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 
+from api.query_params import positive_id
 from api.permissions import HasEmployeePermission
-from apps.catalog.models import Category
-from apps.catalog.services import CategoryService, CategoryServiceError
+from api.schema import optional_pagination
 from api.v1.catalog.serializers import (
-    CategoryOutputSerializer,
     CategoryCreateSerializer,
+    CategoryOutputSerializer,
     CategoryUpdateSerializer,
 )
+from apps.catalog.models import Category
+from apps.catalog.services import CategoryService, CategoryServiceError
+
 from ._base import CatalogAPIView
 
 
@@ -21,6 +26,7 @@ class CategoryListCreateView(CatalogAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {"GET": "catalog.view_category", "POST": "catalog.add_category"}
 
+    @extend_schema(request=None, responses={200: optional_pagination(CategoryOutputSerializer)})
     def get(self, request):
         categories = Category.objects.filter(tenant=self.tenant, is_active=True)
         search = request.query_params.get("search")
@@ -34,7 +40,7 @@ class CategoryListCreateView(CatalogAPIView):
         if parent == "null" or parent == "none" or parent == "0":
             categories = categories.filter(parent__isnull=True)
         elif parent:
-            categories = categories.filter(parent_id=parent)
+            categories = categories.filter(parent_id=positive_id(parent, "parent"))
 
         if request.query_params.get("page"):
             from api.pagination import StandardResultsSetPagination
@@ -44,6 +50,7 @@ class CategoryListCreateView(CatalogAPIView):
 
         return Response(CategoryOutputSerializer(categories, many=True).data)
 
+    @extend_schema(request=CategoryCreateSerializer, responses={201: CategoryOutputSerializer})
     def post(self, request):
         serializer = CategoryCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -66,6 +73,7 @@ class CategoryDetailView(CatalogAPIView):
         "DELETE": "catalog.archive_category",
     }
 
+    @extend_schema(request=None, responses={200: CategoryOutputSerializer})
     def get(self, request, pk):
         # Filtering by tenant here does double duty: a category that
         # exists but belongs to a different tenant 404s exactly the
@@ -74,6 +82,7 @@ class CategoryDetailView(CatalogAPIView):
         category = get_object_or_404(Category, pk=pk, tenant=self.tenant)
         return Response(CategoryOutputSerializer(category).data)
 
+    @extend_schema(request=CategoryUpdateSerializer, responses={200: CategoryOutputSerializer})
     def patch(self, request, pk):
         category = get_object_or_404(Category, pk=pk, tenant=self.tenant)
         serializer = CategoryUpdateSerializer(data=request.data, partial=True)
@@ -85,6 +94,7 @@ class CategoryDetailView(CatalogAPIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(CategoryOutputSerializer(category).data)
 
+    @extend_schema(request=None, responses={204: None})
     def delete(self, request, pk):
         category = get_object_or_404(Category, pk=pk, tenant=self.tenant)
         try:
@@ -100,6 +110,7 @@ class CategoryArchiveView(CatalogAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_category"
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: CategoryOutputSerializer})
     def post(self, request, pk):
         category = get_object_or_404(Category, pk=pk, tenant=self.tenant)
         category = CategoryService.archive(category)

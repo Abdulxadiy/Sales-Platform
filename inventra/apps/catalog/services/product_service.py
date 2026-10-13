@@ -22,6 +22,8 @@ class ProductService:
         """Next free, tenant-scoped, zero-padded sequential sku. Purely
         internal -- never shown to or edited by the owner (mirrors
         CategoryService._next_kod's collision-safe approach)."""
+        from apps.tenants.models import Tenant
+        Tenant.objects.select_for_update().get(pk=tenant.pk)
         existing = set(
             ProductVariant.objects.select_for_update()
             .filter(tenant=tenant)
@@ -161,8 +163,9 @@ class ProductService:
         """
         has_sales = product.variants.filter(sale_items__isnull=False).exists()
         has_stock_moves = product.variants.filter(stock_movements__isnull=False).exists()
+        has_batches = product.variants.filter(stock_batches__isnull=False).exists()
 
-        if has_sales or has_stock_moves:
+        if has_sales or has_stock_moves or has_batches:
             cls.archive(product)
             return True
 
@@ -189,7 +192,7 @@ class ProductService:
         has_sales = variant.sale_items.exists()
         has_stock_moves = variant.stock_movements.exists()
 
-        if has_sales or has_stock_moves:
+        if has_sales or has_stock_moves or variant.stock_batches.exists():
             variant.is_active = False
             variant.save(update_fields=["is_active"])
         else:
@@ -200,6 +203,7 @@ class ProductService:
     @transaction.atomic
     def add_image(cls, *, product: Product, image_file, order: int = 0) -> ProductImage:
         """Add a gallery image to a product (maximum 3 images allowed per product)."""
+        Product.objects.select_for_update().get(pk=product.pk)
         current_count = ProductImage.objects.filter(product=product).count()
         if current_count >= 3:
             raise ProductServiceError("Bitta mahsulotga maksimal 3 tagacha rasm yuklash mumkin.")

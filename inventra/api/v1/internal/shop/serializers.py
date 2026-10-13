@@ -1,5 +1,5 @@
-from decimal import Decimal
 from rest_framework import serializers
+
 from apps.catalog.models import ProductVariant
 
 
@@ -33,7 +33,7 @@ class ShopProductVariantSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_stock_quantity(self, obj):
+    def get_stock_quantity(self, obj) -> str:
         stock = getattr(obj, "stock", None)
         return str(stock.quantity) if stock else "0.000"
 
@@ -46,32 +46,15 @@ class ShopProductVariantSerializer(serializers.ModelSerializer):
             return "/" + "/".join(res.split("/")[3:])
         return res
 
-    def get_image_url(self, obj):
+    def get_image_url(self, obj) -> str | None:
         image = obj.image or obj.product.image
         if not image:
             return None
         return self._clean_url(image.url)
 
-    def get_gallery_images(self, obj):
+    def get_gallery_images(self, obj) -> list[dict]:
         urls = []
         for g in obj.product.gallery_images.all():
             if g.image:
                 urls.append(self._clean_url(g.image.url))
         return urls
-
-
-class ShopOrderItemSerializer(serializers.Serializer):
-    product_variant_id = serializers.IntegerField()
-    quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
-    unit_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.00"))
-
-
-class ShopOrderDeductSerializer(serializers.Serializer):
-    order_id = serializers.CharField(max_length=64)
-    customer_phone = serializers.CharField(max_length=20)
-    customer_name = serializers.CharField(max_length=150, required=False, default="")
-    payment_type = serializers.ChoiceField(choices=["card", "cash"], default="card")
-    items = serializers.ListField(
-        child=ShopOrderItemSerializer(),
-        allow_empty=False,
-    )

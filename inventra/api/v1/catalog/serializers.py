@@ -1,7 +1,8 @@
 from decimal import Decimal
+
 from rest_framework import serializers
 
-from apps.catalog.models import Category, Product, ProductVariant, ProductImage
+from apps.catalog.models import Category, Product, ProductImage, ProductVariant
 
 
 class CategoryOutputSerializer(serializers.ModelSerializer):
@@ -55,9 +56,7 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(source="product.category_id", read_only=True)
     category_name = serializers.CharField(source="product.category.name", read_only=True)
     stock_quantity = serializers.SerializerMethodField()
-    price_recommended = serializers.SerializerMethodField()
-    price_min = serializers.SerializerMethodField()
-    price_partner = serializers.SerializerMethodField()
+    expired_batches = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
@@ -65,79 +64,22 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
             "id", "product", "product_name", "category_id", "category_name",
             "name", "sku", "code", "barcode", "image", "unit",
             "currency", "price_partner", "price_min", "price_recommended",
-            "stock_quantity", "is_active",
+            "stock_quantity", "expired_batches", "is_active",
         ]
         read_only_fields = ["id", "product", "sku", "is_active", "currency", "stock_quantity"]
 
-    def _get_branch_stock(self, obj):
-        if hasattr(obj, "_cached_branch_stock"):
-            return obj._cached_branch_stock
+    def get_expired_batches(self, obj) -> list[dict]:
+        from apps.inventory.services.batch_service import BatchService
+        return BatchService.warnings(obj)
 
-        branch = self.context.get("branch")
-        if not branch:
-            request = self.context.get("request")
-            if request and hasattr(request, "user") and request.user.is_authenticated:
-                if hasattr(request.user, "employments"):
-                    tenant = getattr(request, "tenant", None) or getattr(obj, "tenant", None)
-                    emp = request.user.employments.filter(tenant=tenant, is_active=True).first() if tenant else None
-                    if emp and emp.branch:
-                        branch = emp.branch
+    def _get_stock(self, obj):
+        return getattr(obj, "stock", None)
 
-        st = None
-        if branch:
-            if hasattr(obj, "_prefetched_branch_stocks"):
-                for s in obj._prefetched_branch_stocks:
-                    if s.branch_id == branch.id:
-                        st = s
-                        break
-            elif hasattr(obj, "_prefetched_stocks"):
-                for s in obj._prefetched_stocks:
-                    if s.branch_id == branch.id:
-                        st = s
-                        break
-            elif hasattr(obj, "_prefetched_objects_cache") and "stocks" in obj._prefetched_objects_cache:
-                for s in obj._prefetched_objects_cache["stocks"]:
-                    if s.branch_id == branch.id:
-                        st = s
-                        break
-            else:
-                st = obj.stocks.filter(branch=branch).first()
-        else:
-            if hasattr(obj, "_prefetched_branch_stocks") and obj._prefetched_branch_stocks:
-                st = obj._prefetched_branch_stocks[0]
-            elif hasattr(obj, "_prefetched_stocks") and obj._prefetched_stocks:
-                st = obj._prefetched_stocks[0]
-            elif hasattr(obj, "_prefetched_objects_cache") and "stocks" in obj._prefetched_objects_cache and obj._prefetched_objects_cache["stocks"]:
-                st = obj._prefetched_objects_cache["stocks"][0]
-            else:
-                st = getattr(obj, "stock", None)
-
-        obj._cached_branch_stock = st
-        return st
-
-    def get_stock_quantity(self, obj):
-        st = self._get_branch_stock(obj)
+    def get_stock_quantity(self, obj) -> str:
+        st = self._get_stock(obj)
         return str(st.quantity) if st else "0.000"
 
-    def get_price_recommended(self, obj):
-        st = self._get_branch_stock(obj)
-        if st and st.custom_price_recommended is not None:
-            return st.custom_price_recommended
-        return obj.price_recommended
-
-    def get_price_min(self, obj):
-        st = self._get_branch_stock(obj)
-        if st and st.custom_price_min is not None:
-            return st.custom_price_min
-        return obj.price_min
-
-    def get_price_partner(self, obj):
-        st = self._get_branch_stock(obj)
-        if st and st.custom_price_partner is not None:
-            return st.custom_price_partner
-        return obj.price_partner
-
-    def get_image(self, obj):
+    def get_image(self, obj) -> str | None:
         image = obj.image or obj.product.image
         if not image:
             return None
@@ -153,9 +95,9 @@ class ProductVariantCreateSerializer(serializers.Serializer):
     unit = serializers.ChoiceField(choices=ProductVariant.UNIT_CHOICES, default="dona")
     barcode = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
     image = serializers.ImageField(required=False, allow_null=True)
-    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2)
-    price_min = serializers.DecimalField(max_digits=12, decimal_places=2)
-    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2)
+    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
+    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
+    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
 
 class ProductVariantUpdateSerializer(serializers.Serializer):
@@ -169,9 +111,9 @@ class ProductVariantUpdateSerializer(serializers.Serializer):
     unit = serializers.ChoiceField(choices=ProductVariant.UNIT_CHOICES, required=False)
     barcode = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
     image = serializers.ImageField(required=False, allow_null=True)
-    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
-    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
-    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
+    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
+    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -182,7 +124,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image", "image_url", "order", "created_at"]
         read_only_fields = ["id", "image_url", "created_at"]
 
-    def get_image_url(self, obj):
+    def get_image_url(self, obj) -> str | None:
         if not obj.image:
             return None
         return _clean_media_url(obj.image.url, self.context.get("request"))
@@ -198,7 +140,7 @@ class ProductOutputSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "category", "image", "gallery_images", "is_active", "variants"]
         read_only_fields = ["id", "is_active", "variants", "gallery_images"]
 
-    def get_image(self, obj):
+    def get_image(self, obj) -> str | None:
         if not obj.image:
             return None
         return _clean_media_url(obj.image.url, self.context.get("request"))
@@ -217,9 +159,9 @@ class ProductCreateSerializer(serializers.Serializer):
     variant_name = serializers.CharField(max_length=150, required=False, default="Standart")
     code = serializers.CharField(max_length=64, required=False, allow_blank=True)
     barcode = serializers.CharField(max_length=64, required=False, allow_blank=True, allow_null=True)
-    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2)
-    price_min = serializers.DecimalField(max_digits=12, decimal_places=2)
-    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2)
+    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
+    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
+    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
     # Optional immediate stock intake fields
     initial_quantity = serializers.DecimalField(
@@ -246,6 +188,6 @@ class ProductUpdateSerializer(serializers.Serializer):
     unit = serializers.ChoiceField(choices=ProductVariant.UNIT_CHOICES, required=False)
     code = serializers.CharField(max_length=64, required=False, allow_blank=True)
     barcode = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
-    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
-    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
-    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
+    price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
+    price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))

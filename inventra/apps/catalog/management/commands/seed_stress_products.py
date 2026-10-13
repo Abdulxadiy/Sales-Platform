@@ -3,17 +3,16 @@ No images are created/stored. All other fields (Product, ProductVariant, Stock, 
 """
 
 import time
-import random
 from decimal import Decimal
-from django.core.management.base import BaseCommand
+
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.tenants.models import Tenant
-from apps.accounts.models import User
 from apps.catalog.models import Category, Product, ProductVariant
-from apps.inventory.models import Stock, StockMovement
 from apps.catalog.services import ProductService
-
+from apps.inventory.models import Stock, StockMovement
+from apps.tenants.models import Tenant
 
 CATEGORY_DEFINITIONS = [
     {
@@ -21,8 +20,33 @@ CATEGORY_DEFINITIONS = [
         "name": "Ichimliklar va sharbatlar",
         "currency": "UZS",
         "unit": "dona",
-        "brands": ["Coca-Cola", "Pepsi", "Fanta", "Sprite", "Flash Up", "Red Bull", "Dinay", "Dena", "Bliss", "Hydrolife", "Montella", "Chortoq", "Bonaqua", "Fuse Tea", "Gorilla"],
-        "items": ["Gazlangan ichimlik", "Mineral suv", "Tabiiy sharbat", "Sovuq choy", "Energetik ichimlik", "Limonad", "Nektar", "Artezian suvi"],
+        "brands": [
+            "Coca-Cola",
+            "Pepsi",
+            "Fanta",
+            "Sprite",
+            "Flash Up",
+            "Red Bull",
+            "Dinay",
+            "Dena",
+            "Bliss",
+            "Hydrolife",
+            "Montella",
+            "Chortoq",
+            "Bonaqua",
+            "Fuse Tea",
+            "Gorilla",
+        ],
+        "items": [
+            "Gazlangan ichimlik",
+            "Mineral suv",
+            "Tabiiy sharbat",
+            "Sovuq choy",
+            "Energetik ichimlik",
+            "Limonad",
+            "Nektar",
+            "Artezian suvi",
+        ],
         "specs": ["0.5L", "1L", "1.5L", "2L", "0.33L banka", "250ml", "0.75L shisha", "5L"],
         "price_min_range": (4000, 25000),
     },
@@ -31,8 +55,35 @@ CATEGORY_DEFINITIONS = [
         "name": "Oziq-ovqat va baqqollik",
         "currency": "UZS",
         "unit": "kg",
-        "brands": ["Makfa", "Barilla", "Rolton", "Doshirak", "Zolotaya Semechka", "Shodlik", "Oila Tanlovi", "Lazer", "Alanga", "Devzira", "Dunyo", "Bonduelle", "Qozoq Un"],
-        "items": ["Guruch", "Makaron", "Kungaboqar yog'i", "O'simlik yog'i", "Un oliy nav", "Shakar", "Osh tuzi", "Konservalangan no'xat", "Konservalangan makkajo'xori", "Grechka", "Suli yormasi", "Loviya"],
+        "brands": [
+            "Makfa",
+            "Barilla",
+            "Rolton",
+            "Doshirak",
+            "Zolotaya Semechka",
+            "Shodlik",
+            "Oila Tanlovi",
+            "Lazer",
+            "Alanga",
+            "Devzira",
+            "Dunyo",
+            "Bonduelle",
+            "Qozoq Un",
+        ],
+        "items": [
+            "Guruch",
+            "Makaron",
+            "Kungaboqar yog'i",
+            "O'simlik yog'i",
+            "Un oliy nav",
+            "Shakar",
+            "Osh tuzi",
+            "Konservalangan no'xat",
+            "Konservalangan makkajo'xori",
+            "Grechka",
+            "Suli yormasi",
+            "Loviya",
+        ],
         "specs": ["1kg", "2kg", "5kg", "900g", "800g", "450g", "1L", "5L"],
         "price_min_range": (6000, 85000),
     },
@@ -41,8 +92,29 @@ CATEGORY_DEFINITIONS = [
         "name": "Choy, qahva va nonushta",
         "currency": "UZS",
         "unit": "dona",
-        "brands": ["Ahmad Tea", "Greenfield", "Tess", "Beta Tea", "Akbar", "Nescafe", "Jacobs", "MacCoffee", "Carte Noire", "Lavazza", "Nesquik"],
-        "items": ["Qora choy", "Ko'k choy", "Eriydigan qahva", "Donador qahva", "3-in-1 qahva paketi", "Kakao kukuni", "Meva choyi", "Nonushta yormasi"],
+        "brands": [
+            "Ahmad Tea",
+            "Greenfield",
+            "Tess",
+            "Beta Tea",
+            "Akbar",
+            "Nescafe",
+            "Jacobs",
+            "MacCoffee",
+            "Carte Noire",
+            "Lavazza",
+            "Nesquik",
+        ],
+        "items": [
+            "Qora choy",
+            "Ko'k choy",
+            "Eriydigan qahva",
+            "Donador qahva",
+            "3-in-1 qahva paketi",
+            "Kakao kukuni",
+            "Meva choyi",
+            "Nonushta yormasi",
+        ],
         "specs": ["100g", "200g", "250g", "500g", "25 paket", "100 paket", "20 dona", "95g shisha"],
         "price_min_range": (12000, 140000),
     },
@@ -52,7 +124,18 @@ CATEGORY_DEFINITIONS = [
         "currency": "UZS",
         "unit": "dona",
         "brands": ["Musaffo", "Kamilka", "Sutim", "President", "Danone", "Rastishka", "Savushkin", "Bio-Sut", "Lactel"],
-        "items": ["Sut 2.5%", "Sut 3.2%", "Qatiq", "Qaymoq", "Tvorog", "Sariyog' 82.5%", "Golland pishlog'i", "Mozzarella pishloq", "Eritilgan pishloq", "Yogurt"],
+        "items": [
+            "Sut 2.5%",
+            "Sut 3.2%",
+            "Qatiq",
+            "Qaymoq",
+            "Tvorog",
+            "Sariyog' 82.5%",
+            "Golland pishlog'i",
+            "Mozzarella pishloq",
+            "Eritilgan pishloq",
+            "Yogurt",
+        ],
         "specs": ["1L", "900ml", "500g", "400g", "200g", "180g", "150g", "250g"],
         "price_min_range": (8000, 65000),
     },
@@ -61,8 +144,32 @@ CATEGORY_DEFINITIONS = [
         "name": "Shirinliklar va pishiriqlar",
         "currency": "UZS",
         "unit": "dona",
-        "brands": ["Alpen Gold", "Milka", "Snickers", "Twix", "KitKat", "Baunti", "Roshen", "Oreo", "Tuk", "Yubileynoye", "Choco Pie", "Kinder", "Raffaello"],
-        "items": ["Sutli shokolad", "Qora shokolad", "Karamel konfet", "Pechenye", "Vafli", "Shokolad batonchik", "Biskvit rulet", "Marmelad", "Zefir"],
+        "brands": [
+            "Alpen Gold",
+            "Milka",
+            "Snickers",
+            "Twix",
+            "KitKat",
+            "Baunti",
+            "Roshen",
+            "Oreo",
+            "Tuk",
+            "Yubileynoye",
+            "Choco Pie",
+            "Kinder",
+            "Raffaello",
+        ],
+        "items": [
+            "Sutli shokolad",
+            "Qora shokolad",
+            "Karamel konfet",
+            "Pechenye",
+            "Vafli",
+            "Shokolad batonchik",
+            "Biskvit rulet",
+            "Marmelad",
+            "Zefir",
+        ],
         "specs": ["85g", "90g", "100g", "50g", "150g", "200g", "250g", "500g quti"],
         "price_min_range": (5000, 75000),
     },
@@ -71,8 +178,29 @@ CATEGORY_DEFINITIONS = [
         "name": "Maishiy kimyo va tozalash",
         "currency": "UZS",
         "unit": "dona",
-        "brands": ["Ariel", "Tide", "Persil", "Fairy", "Pril", "Domestos", "Cif", "Mr. Proper", "Lenor", "Bref", "Vanish", "Sorti"],
-        "items": ["Kir yuvish kukuni avtomat", "Kir yuvish geli", "Idish yuvish suyuqligi", "Xlorli tozalash geli", "Universal pol yuvish vositasi", "Mato yumshatuvchi", "Dog' ketkazuvchi"],
+        "brands": [
+            "Ariel",
+            "Tide",
+            "Persil",
+            "Fairy",
+            "Pril",
+            "Domestos",
+            "Cif",
+            "Mr. Proper",
+            "Lenor",
+            "Bref",
+            "Vanish",
+            "Sorti",
+        ],
+        "items": [
+            "Kir yuvish kukuni avtomat",
+            "Kir yuvish geli",
+            "Idish yuvish suyuqligi",
+            "Xlorli tozalash geli",
+            "Universal pol yuvish vositasi",
+            "Mato yumshatuvchi",
+            "Dog' ketkazuvchi",
+        ],
         "specs": ["450ml", "900ml", "1L", "1.5kg", "3kg", "4.5kg", "500ml"],
         "price_min_range": (14000, 160000),
     },
@@ -81,8 +209,30 @@ CATEGORY_DEFINITIONS = [
         "name": "Shaxsiy gigiyena",
         "currency": "UZS",
         "unit": "dona",
-        "brands": ["Head & Shoulders", "Clear", "Pantene", "Colgate", "Blend-a-med", "Splat", "Safeguard", "Duru", "Dove", "Nivea", "Gillette", "Palmolive"],
-        "items": ["Shampun", "Soch balzami", "Tish pastasi", "Tish cho'tkasi", "Antibakterial qo'l sovuni", "Dush geli", "Dezodorant sprey", "Soqol olish ko'pigi"],
+        "brands": [
+            "Head & Shoulders",
+            "Clear",
+            "Pantene",
+            "Colgate",
+            "Blend-a-med",
+            "Splat",
+            "Safeguard",
+            "Duru",
+            "Dove",
+            "Nivea",
+            "Gillette",
+            "Palmolive",
+        ],
+        "items": [
+            "Shampun",
+            "Soch balzami",
+            "Tish pastasi",
+            "Tish cho'tkasi",
+            "Antibakterial qo'l sovuni",
+            "Dush geli",
+            "Dezodorant sprey",
+            "Soqol olish ko'pigi",
+        ],
         "specs": ["200ml", "400ml", "100ml", "75ml", "150ml", "90g", "1 dona"],
         "price_min_range": (10000, 85000),
     },
@@ -91,9 +241,37 @@ CATEGORY_DEFINITIONS = [
         "name": "Elektronika va aksessuarlar",
         "currency": "UZS",
         "unit": "dona",
-        "brands": ["Hoco", "Borofone", "Remax", "Baseus", "Xiaomi", "Joyroom", "Duracell", "Energizer", "Ugreen", "Anker"],
-        "items": ["Smartfon zaryadka kabeli", "Tarmoq adapteri Fast Charge", "Powerbank tashqi akkumulyator", "Bluetooth simsiz quloqchin", "Avtomobil telefon ushlagichi", "Ishqoriy batareyka"],
-        "specs": ["Type-C 1m", "Lightning 1m", "20W", "33W", "10000mAh", "20000mAh", "AA 2 dona", "AAA 4 dona", "TWS Wireless"],
+        "brands": [
+            "Hoco",
+            "Borofone",
+            "Remax",
+            "Baseus",
+            "Xiaomi",
+            "Joyroom",
+            "Duracell",
+            "Energizer",
+            "Ugreen",
+            "Anker",
+        ],
+        "items": [
+            "Smartfon zaryadka kabeli",
+            "Tarmoq adapteri Fast Charge",
+            "Powerbank tashqi akkumulyator",
+            "Bluetooth simsiz quloqchin",
+            "Avtomobil telefon ushlagichi",
+            "Ishqoriy batareyka",
+        ],
+        "specs": [
+            "Type-C 1m",
+            "Lightning 1m",
+            "20W",
+            "33W",
+            "10000mAh",
+            "20000mAh",
+            "AA 2 dona",
+            "AAA 4 dona",
+            "TWS Wireless",
+        ],
         "price_min_range": (20000, 350000),
     },
     {
@@ -102,7 +280,15 @@ CATEGORY_DEFINITIONS = [
         "currency": "UZS",
         "unit": "dona",
         "brands": ["Silicone Case", "Leather Case", "Clear TPU", "Armor Case", "Magnetic MagSafe", "Carbon Fiber"],
-        "items": ["G'ilof iPhone 13", "G'ilof iPhone 14 Pro", "G'ilof iPhone 15", "G'ilof Samsung A54", "G'ilof Samsung S23", "G'ilof Redmi Note 12", "G'ilof Redmi Note 13"],
+        "items": [
+            "G'ilof iPhone 13",
+            "G'ilof iPhone 14 Pro",
+            "G'ilof iPhone 15",
+            "G'ilof Samsung A54",
+            "G'ilof Samsung S23",
+            "G'ilof Redmi Note 12",
+            "G'ilof Redmi Note 13",
+        ],
         "specs": ["Qora", "Shaffof", "To'q ko'k", "Yashil", "Pushti", "Binafsharang", "Kulrang"],
         "price_min_range": (25000, 120000),
     },
@@ -112,7 +298,15 @@ CATEGORY_DEFINITIONS = [
         "currency": "UZS",
         "unit": "dona",
         "brands": ["9D Ceramic", "11D Full Glue", "Privacy Anti-Spy", "Gorilla Shield", "Super D", "Diamond Pro"],
-        "items": ["Himoya oynasi iPhone 11/XR", "Himoya oynasi iPhone 12/12 Pro", "Himoya oynasi iPhone 13/14", "Himoya oynasi iPhone 15 Pro", "Himoya oynasi Samsung A14", "Himoya oynasi Samsung A24", "Himoya oynasi Redmi 12"],
+        "items": [
+            "Himoya oynasi iPhone 11/XR",
+            "Himoya oynasi iPhone 12/12 Pro",
+            "Himoya oynasi iPhone 13/14",
+            "Himoya oynasi iPhone 15 Pro",
+            "Himoya oynasi Samsung A14",
+            "Himoya oynasi Samsung A24",
+            "Himoya oynasi Redmi 12",
+        ],
         "specs": ["Shaffof 9D", "Anti-shpiyon (qora)", "Matoviy (xira)", "To'liq qoplovchi"],
         "price_min_range": (15000, 70000),
     },
@@ -122,7 +316,13 @@ CATEGORY_DEFINITIONS = [
         "currency": "UZS",
         "unit": "metr",
         "brands": ["Ugreen", "Vention", "Baseus", "Prolink", "D-Link", "CommScope"],
-        "items": ["HDMI 2.1 yuqori tezlikdagi kabel", "Ethernet LAN RJ45 Cat6 kabel", "AUX 3.5mm audio kabel", "Type-C to Type-C 100W PD kabel", "Optik audio kabel Toslink"],
+        "items": [
+            "HDMI 2.1 yuqori tezlikdagi kabel",
+            "Ethernet LAN RJ45 Cat6 kabel",
+            "AUX 3.5mm audio kabel",
+            "Type-C to Type-C 100W PD kabel",
+            "Optik audio kabel Toslink",
+        ],
         "specs": ["1 metr", "2 metr", "3 metr", "5 metr", "10 metr"],
         "price_min_range": (18000, 150000),
     },
@@ -168,8 +368,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--tenant-id",
             type=int,
-            default=4,
-            help="Tenant ID to seed products into (default: 4)",
+            required=True,
+            help="Tenant ID to seed products into (required)",
         )
         parser.add_argument(
             "--batch-size",
@@ -177,8 +377,19 @@ class Command(BaseCommand):
             default=1000,
             help="Batch size for bulk_create operations (default: 1000)",
         )
+        parser.add_argument(
+            "--i-know-this-is-not-production",
+            action="store_true",
+            help="Bypass production guard when running with DEBUG=False",
+        )
 
     def handle(self, *args, **options):
+        if not settings.DEBUG and not options.get("i_know_this_is_not_production"):
+            raise CommandError(
+                "Refusing to run stress seeder when settings.DEBUG is False unless "
+                "--i-know-this-is-not-production is passed."
+            )
+
         total_target = options["count"]
         tenant_id = options["tenant_id"]
         batch_size = options["batch_size"]
@@ -187,20 +398,12 @@ class Command(BaseCommand):
 
         try:
             tenant = Tenant.objects.get(id=tenant_id)
-        except Tenant.DoesNotExist:
-            self.stderr.write(self.style.ERROR(f"Tenant with ID {tenant_id} not found."))
-            return
+        except Tenant.DoesNotExist as err:
+            raise CommandError(f"Tenant with ID {tenant_id} not found.") from err
 
-        main_branch = tenant.get_main_branch()
-        if not main_branch:
-            self.stderr.write(self.style.ERROR(f"Tenant '{tenant.name}' has no main branch."))
-            return
-
-        owner = User.objects.filter(tenant=tenant, role="owner").first()
+        owner = tenant.owner
         if not owner:
-            owner = User.objects.filter(tenant=tenant).first()
-        if not owner:
-            owner = User.objects.first()
+            raise CommandError(f"Tenant '{tenant.name}' has no owner.")
 
         self.stdout.write(
             self.style.NOTICE(
@@ -209,7 +412,7 @@ class Command(BaseCommand):
                 f"Tenant: '{tenant.name}' (ID: {tenant.id})\n"
                 f"Target products: {total_target}\n"
                 f"Batch size: {batch_size}\n"
-                f"Main branch: '{main_branch.name}' (ID: {main_branch.id})\n"
+                f"Tenant stock: '{tenant.name}'\n"
                 f"Created by: {owner.phone_number if owner else 'None'}\n"
                 f"Images: SKIPPED (user request: rasmlar kerak emas)\n"
                 f"======================================================\n"
@@ -243,9 +446,7 @@ class Command(BaseCommand):
 
         # 3. Determine initial Barcode sequence offset
         existing_barcodes = set(
-            ProductVariant.objects.filter(tenant=tenant)
-            .exclude(barcode__isnull=True)
-            .values_list("barcode", flat=True)
+            ProductVariant.objects.filter(tenant=tenant).exclude(barcode__isnull=True).values_list("barcode", flat=True)
         )
         barcode_seq = 200000001
 
@@ -271,8 +472,10 @@ class Command(BaseCommand):
                 # Generate varied realistic name
                 brand = cat_def["brands"][(i // cat_count) % len(cat_def["brands"])]
                 item = cat_def["items"][(i // (cat_count * len(cat_def["brands"]))) % len(cat_def["items"])]
-                spec = cat_def["specs"][(i // (cat_count * len(cat_def["brands"]) * len(cat_def["items"]))) % len(cat_def["specs"])]
-                
+                spec = cat_def["specs"][
+                    (i // (cat_count * len(cat_def["brands"]) * len(cat_def["items"]))) % len(cat_def["specs"])
+                ]
+
                 prod_name = f"{brand} {item} {spec} (Model #{item_idx:04d})"
 
                 # Pricing
@@ -317,17 +520,19 @@ class Command(BaseCommand):
                 )
                 products_to_create.append(prod)
 
-                variants_meta.append({
-                    "sku": sku,
-                    "code": code,
-                    "barcode": candidate_barcode,
-                    "unit": unit,
-                    "price_partner": price_partner,
-                    "price_min": price_min,
-                    "price_recommended": price_recommended,
-                    "cost_price": cost_price,
-                    "quantity": quantity,
-                })
+                variants_meta.append(
+                    {
+                        "sku": sku,
+                        "code": code,
+                        "barcode": candidate_barcode,
+                        "unit": unit,
+                        "price_partner": price_partner,
+                        "price_min": price_min,
+                        "price_recommended": price_recommended,
+                        "cost_price": cost_price,
+                        "quantity": quantity,
+                    }
+                )
 
             # Bulk insert into DB within an atomic transaction
             with transaction.atomic():
@@ -336,7 +541,7 @@ class Command(BaseCommand):
 
                 # 2. Prepare ProductVariants
                 variants_to_create = []
-                for p, v_meta in zip(created_products, variants_meta):
+                for p, v_meta in zip(created_products, variants_meta, strict=False):
                     variants_to_create.append(
                         ProductVariant(
                             tenant=tenant,
@@ -359,11 +564,10 @@ class Command(BaseCommand):
                 # 3. Prepare Stocks & StockMovements
                 stocks_to_create = []
                 movements_to_create = []
-                for v, v_meta in zip(created_variants, variants_meta):
+                for v, v_meta in zip(created_variants, variants_meta, strict=False):
                     stocks_to_create.append(
                         Stock(
                             tenant=tenant,
-                            branch=main_branch,
                             product_variant=v,
                             quantity=v_meta["quantity"],
                             last_cost_price=v_meta["cost_price"],
@@ -372,7 +576,6 @@ class Command(BaseCommand):
                     movements_to_create.append(
                         StockMovement(
                             tenant=tenant,
-                            branch=main_branch,
                             product_variant=v,
                             type=StockMovement.TYPE_KIRIM,
                             direction=StockMovement.DIRECTION_IN,
@@ -407,7 +610,7 @@ class Command(BaseCommand):
                 f"- Jami yangi bazadagi yozuvlar: {seeded_total * 4}\n"
                 f"- Ketgan vaqt: {total_elapsed:.2f} soniya\n"
                 f"- O'rtacha tezlik: {seeded_total / total_elapsed:.1f} ta mahsulot/soniya\n"
-                f"- Filial: '{main_branch.name}' (ID: {main_branch.id})\n"
+                f"- Tenant ombori: '{tenant.name}' (ID: {tenant.id})\n"
                 f"- Rasmlar: Mavjud emas (null/blank)\n"
                 f"--------------------------------------------------\n"
             )

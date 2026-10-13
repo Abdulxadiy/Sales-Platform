@@ -1,25 +1,51 @@
 from decimal import Decimal
-from django.db import transaction
-from django.db.models import Q, Prefetch
+from functools import wraps
+
+from django.db import IntegrityError, transaction
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
+from api.query_params import positive_id, nonnegative_price
 from api.permissions import HasEmployeePermission
-from apps.catalog.models import Product, ProductVariant
-from apps.inventory.models import Stock
-from apps.catalog.services import ProductService, ProductServiceError
+from api.schema import ImageUploadInputSerializer, optional_pagination
 from api.v1.catalog.serializers import (
-    ProductOutputSerializer,
     ProductCreateSerializer,
-    ProductUpdateSerializer,
-    ProductVariantOutputSerializer,
-    ProductVariantCreateSerializer,
-    ProductVariantUpdateSerializer,
     ProductImageSerializer,
+    ProductOutputSerializer,
+    ProductUpdateSerializer,
+    ProductVariantCreateSerializer,
+    ProductVariantOutputSerializer,
+    ProductVariantUpdateSerializer,
 )
+from apps.accounts.services.permission_service import PermissionService
+from apps.catalog.models import Product, ProductVariant
+from apps.catalog.services import ProductService, ProductServiceError
+from apps.inventory.services import StockServiceError
+
 from ._base import CatalogAPIView
+
+
+def catalog_integrity_response(method):
+    @wraps(method)
+    def wrapped(*args, **kwargs):
+        try:
+            with transaction.atomic():
+                from apps.tenants.models import Tenant
+                Tenant.objects.select_for_update().get(pk=args[0].tenant.pk)
+                return method(*args, **kwargs)
+        except IntegrityError:
+            return Response({"detail": "Variant nomi yoki shtrix-kod allaqachon mavjud."}, status=400)
+    return wrapped
+
+
+def variant_has_history(variant):
+    return variant.sale_items.exists() or variant.transfer_source_lines.exists() or variant.received_b2b_sale_items.exists() or variant.stock_movements.exists()
 
 
 class ProductListCreateView(CatalogAPIView):
@@ -31,26 +57,11 @@ class ProductListCreateView(CatalogAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {"GET": "catalog.view_product", "POST": "catalog.add_product"}
 
+    @extend_schema(request=None, responses={200: optional_pagination(ProductOutputSerializer)})
     def get(self, request):
-        branch = None
-        branch_id = request.query_params.get("branch_id")
-        emp = None
-        if hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-        if branch_id:
-            from apps.tenants.models import Branch
-            branch = Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
-        elif emp and emp.branch:
-            branch = emp.branch
-        elif self.tenant:
-            branch = self.tenant.get_main_branch()
-
-        stock_qs = Stock.objects.filter(branch=branch) if branch else Stock.objects.all()
         variant_prefetch = Prefetch(
             "variants",
-            queryset=ProductVariant.objects.filter(is_active=True).prefetch_related(
-                Prefetch("stocks", queryset=stock_qs, to_attr="_prefetched_branch_stocks")
-            ),
+            queryset=ProductVariant.objects.filter(is_active=True).select_related("stock").prefetch_related("stock_batches"),
         )
 
         qs = (
@@ -69,7 +80,7 @@ class ProductListCreateView(CatalogAPIView):
                 | Q(variants__barcode__icontains=search)
             ).distinct()
 
-        category_id = request.query_params.get("category")
+        category_id = positive_id(request.query_params.get("category"), "category")
         if category_id:
             qs = qs.filter(category_id=category_id)
 
@@ -78,13 +89,14 @@ class ProductListCreateView(CatalogAPIView):
             paginator = StandardResultsSetPagination()
             page_data = paginator.paginate_queryset(qs, request)
             return paginator.get_paginated_response(
-                ProductOutputSerializer(page_data, many=True, context={"request": request, "branch": branch}).data
+                ProductOutputSerializer(page_data, many=True, context={"request": request}).data
             )
 
         return Response(
-            ProductOutputSerializer(qs, many=True, context={"request": request, "branch": branch}).data
+            ProductOutputSerializer(qs, many=True, context={"request": request}).data
         )
 
+    @extend_schema(request=ProductCreateSerializer, responses={201: ProductOutputSerializer})
     @transaction.atomic
     def post(self, request):
         serializer = ProductCreateSerializer(data=request.data)
@@ -96,35 +108,42 @@ class ProductListCreateView(CatalogAPIView):
         supplier = val_data.pop("supplier", "").strip()
         intake_note = val_data.pop("intake_note", "").strip()
 
+        if initial_quantity and not PermissionService.has_permission(
+            request.user, "inventory.add_stock_intake", tenant=self.tenant, employee=self.employee,
+        ):
+            raise PermissionDenied("Boshlang‘ich qoldiq kiritish uchun ombor kirimi ruxsati kerak.")
         try:
-            product = ProductService.create(tenant=self.tenant, **val_data)
-            if initial_quantity is not None and initial_quantity > 0:
-                from apps.inventory.services import StockService
+            with transaction.atomic():
+                product = ProductService.create(tenant=self.tenant, **val_data)
+                if initial_quantity is not None and initial_quantity > 0:
+                    from apps.inventory.services import StockService
 
-                first_variant = product.variants.first()
-                note_parts = []
-                if supplier:
-                    note_parts.append(f"Ta’minotchi: {supplier}")
-                if intake_note:
-                    note_parts.append(intake_note)
-                combined_note = " | ".join(note_parts) if note_parts else "Boshlang‘ich kirim"
+                    first_variant = product.variants.first()
+                    note_parts = []
+                    if supplier:
+                        note_parts.append(f"Ta’minotchi: {supplier}")
+                    if intake_note:
+                        note_parts.append(intake_note)
+                    combined_note = " | ".join(note_parts) if note_parts else "Boshlang‘ich kirim"
 
-                StockService.intake(
-                    tenant=self.tenant,
-                    product_variant=first_variant,
-                    quantity=initial_quantity,
-                    cost_price=initial_cost_price if initial_cost_price is not None else Decimal("0"),
-                    created_by=request.user,
-                    note=combined_note,
-                )
-        except (ProductServiceError, Exception) as exc:
+                    StockService.intake(
+                        tenant=self.tenant,
+                        product_variant=first_variant,
+                        quantity=initial_quantity,
+                        cost_price=initial_cost_price if initial_cost_price is not None else Decimal("0"),
+                        created_by=request.user,
+                        note=combined_note,
+                    )
+        except (ProductServiceError, StockServiceError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError:
+            return Response({"detail": "Variant nomi yoki shtrix-kod allaqachon mavjud."}, status=400)
 
         # Re-fetch product with stock pre-fetched to output accurate stock_quantity
         product = (
             Product.objects.filter(tenant=self.tenant, pk=product.pk)
             .select_related("category")
-            .prefetch_related("variants__stocks", "variants", "gallery_images")
+            .prefetch_related("variants", "gallery_images")
             .first()
         )
 
@@ -147,54 +166,56 @@ class ProductDetailView(CatalogAPIView):
     }
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    @extend_schema(request=None, responses={200: ProductOutputSerializer})
     def get(self, request, pk):
         product = get_object_or_404(
             Product.objects.prefetch_related("variants"), pk=pk, tenant=self.tenant
         )
         return Response(ProductOutputSerializer(product, context={"request": request}).data)
 
+    @extend_schema(request=ProductUpdateSerializer, responses={200: ProductOutputSerializer})
+    @catalog_integrity_response
     def patch(self, request, pk):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         serializer = ProductUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        val_data = serializer.validated_data
-
-        category = val_data.pop("category", None)
-        if category is not None:
-            if category.tenant_id != self.tenant.id:
-                return Response(
-                    {"detail": "category must belong to the same tenant."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            product.category = category
-
-        # Extract variant fields if provided
-        variant_id = val_data.pop("variant_id", None)
-        variant_fields = {}
-        for v_key in ["unit", "code", "barcode", "price_partner", "price_min", "price_recommended"]:
-            if v_key in val_data:
-                variant_fields[v_key] = val_data.pop(v_key)
-
-        for field, value in val_data.items():
-            setattr(product, field, value)
-        product.save()
-
-        # If variant fields were provided, update the variant
-        if variant_fields:
-            variant = None
-            if variant_id:
-                variant = product.variants.filter(id=variant_id).first()
-            if not variant:
-                variant = product.variants.first()
-            if variant:
-                if "barcode" in variant_fields:
-                    variant_fields["barcode"] = variant_fields["barcode"] or None
-                for k, v in variant_fields.items():
-                    setattr(variant, k, v)
-                variant.save()
-
+        values = dict(serializer.validated_data)
+        category = values.pop("category", None)
+        if category is not None and (category.tenant_id != self.tenant.id or not category.is_active):
+            return Response({"detail": "Faol kategoriya shu do‘konga tegishli bo‘lishi kerak."}, status=400)
+        if category is not None and category.currency != product.category.currency and (product.variants.filter(stock__quantity__gt=0).exists() or any(variant_has_history(v) for v in product.variants.all())):
+            return Response({"detail": "Qoldig‘i bor mahsulot valyutasini o‘zgartirib bo‘lmaydi."}, status=400)
+        variant_id = values.pop("variant_id", None)
+        fields = {key: values.pop(key) for key in (
+            "unit", "code", "barcode", "price_partner", "price_min", "price_recommended",
+        ) if key in values}
+        variant = get_object_or_404(product.variants, pk=variant_id) if variant_id is not None else product.variants.first()
+        if variant is not None and "unit" in fields and fields["unit"] != variant.unit and variant_has_history(variant):
+            return Response({"detail": "Harakat tarixi bor variant o‘lchov birligini o‘zgartirib bo‘lmaydi."}, status=400)
+        try:
+            with transaction.atomic():
+                if category is not None:
+                    product.category = category
+                for key, value in values.items():
+                    setattr(product, key, value)
+                product.save()
+                if fields and variant is not None:
+                    old = {key: getattr(variant, key) for key in fields}
+                    for key, value in fields.items():
+                        setattr(variant, key, (value or None) if key == "barcode" else value)
+                    variant.save()
+                    changes = {key: {"old": str(old[key]), "new": str(getattr(variant, key))}
+                               for key in fields if key.startswith("price_") and old[key] != getattr(variant, key)}
+                    if changes:
+                        from apps.core.models import AuditAction
+                        from apps.core.services.audit_service import AuditService
+                        AuditService.log(action=AuditAction.PRICE_CHANGE, actor=request.user, tenant=self.tenant,
+                                         target_model="ProductVariant", target_id=str(variant.pk), changes=changes, request=request)
+        except IntegrityError:
+            return Response({"detail": "Variant nomi yoki shtrix-kod allaqachon mavjud."}, status=400)
         return Response(ProductOutputSerializer(product, context={"request": request}).data)
 
+    @extend_schema(request=None, responses={204: None})
     def delete(self, request, pk):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         try:
@@ -211,6 +232,7 @@ class ProductArchiveView(CatalogAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_product"
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: ProductOutputSerializer})
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         product = ProductService.archive(product)
@@ -227,6 +249,7 @@ class ProductVariantCreateView(CatalogAPIView):
     required_permission = "catalog.change_product"
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    @extend_schema(request=ProductVariantCreateSerializer, responses={201: ProductVariantOutputSerializer})
     def post(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id, tenant=self.tenant)
         serializer = ProductVariantCreateSerializer(data=request.data)
@@ -254,12 +277,17 @@ class ProductVariantDetailView(CatalogAPIView):
     }
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    @extend_schema(request=ProductVariantUpdateSerializer, responses={200: ProductVariantOutputSerializer})
+    @transaction.atomic
+    @catalog_integrity_response
     def patch(self, request, pk):
         variant = get_object_or_404(ProductVariant, pk=pk, tenant=self.tenant)
         serializer = ProductVariantUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
+        if "unit" in data and data["unit"] != variant.unit and variant_has_history(variant):
+            return Response({"detail": "Harakat tarixi bor variant o‘lchov birligini o‘zgartirib bo‘lmaydi."}, status=400)
         if "barcode" in data:
             # Never persist "" for "no barcode" -- see ProductVariant.barcode.
             data["barcode"] = data["barcode"] or None
@@ -292,6 +320,7 @@ class ProductVariantDetailView(CatalogAPIView):
 
         return Response(ProductVariantOutputSerializer(variant, context={"request": request}).data)
 
+    @extend_schema(request=None, responses={204: None})
     def delete(self, request, pk):
         variant = get_object_or_404(ProductVariant, pk=pk, tenant=self.tenant)
         try:
@@ -312,8 +341,9 @@ class ProductVariantArchiveView(CatalogAPIView):
     units."""
 
     permission_classes = [HasEmployeePermission]
-    required_permission = "catalog.change_product"
+    required_permission = "catalog.archive_product"
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: ProductVariantOutputSerializer})
     def post(self, request, pk):
         variant = get_object_or_404(ProductVariant, pk=pk, tenant=self.tenant)
         variant.is_active = False
@@ -327,6 +357,7 @@ class ProductImageUploadView(CatalogAPIView):
     required_permission = "catalog.change_product"
     parser_classes = [MultiPartParser, FormParser]
 
+    @extend_schema(request=ImageUploadInputSerializer, responses={201: ProductImageSerializer})
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         image_file = request.FILES.get("image")
@@ -342,7 +373,10 @@ class ProductImageUploadView(CatalogAPIView):
 
         try:
             prod_image = ProductService.add_image(product=product, image_file=image_file, order=order)
-            return Response(ProductImageSerializer(prod_image, context={"request": request}).data, status=status.HTTP_201_CREATED)
+            return Response(
+                ProductImageSerializer(prod_image, context={"request": request}).data,
+                status=status.HTTP_201_CREATED,
+            )
         except Exception as exc:
             return Response(
                 {"error": {"code": "image_error", "message": str(exc)}},
@@ -355,6 +389,7 @@ class ProductImageDeleteView(CatalogAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.change_product"
 
+    @extend_schema(request=None, responses={204: None})
     def delete(self, request, pk, image_id):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         try:
@@ -382,42 +417,18 @@ class ProductVariantListView(CatalogAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.view_product"
 
+    @extend_schema(request=None, responses={200: optional_pagination(ProductVariantOutputSerializer)})
     def get(self, request):
-        branch = None
-        branch_id = request.query_params.get("branch_id")
-        emp = None
-        if hasattr(request.user, "employments"):
-            emp = request.user.employments.filter(tenant=self.tenant, is_active=True).first()
-
-        if branch_id:
-            from apps.tenants.models import Branch
-            branch = Branch.objects.filter(pk=branch_id, tenant=self.tenant).first()
-        elif emp and emp.branch:
-            branch = emp.branch
-        elif self.tenant:
-            branch = self.tenant.get_main_branch()
-
-        stock_qs = Stock.objects.filter(branch=branch) if branch else Stock.objects.all()
-        stocks_prefetch = Prefetch("stocks", queryset=stock_qs, to_attr="_prefetched_branch_stocks")
-
         qs = (
             ProductVariant.objects.filter(
                 tenant=self.tenant, is_active=True, product__is_active=True
             )
-            .select_related("product", "product__category")
-            .prefetch_related(stocks_prefetch)
+            .select_related("product", "product__category", "stock").prefetch_related("stock_batches")
         )
 
         in_stock = request.query_params.get("in_stock")
         if in_stock and in_stock.lower() in ("true", "1"):
-            if branch:
-                qs = qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal("0.000"))
-            else:
-                qs = qs.filter(stocks__quantity__gt=Decimal("0.000"))
-        elif branch and emp:
-            # Cashier/staff is strictly isolated to products stocked in their branch
-            if emp.branch and not request.user.is_superuser and request.user != self.tenant.owner:
-                qs = qs.filter(stocks__branch=branch, stocks__quantity__gt=Decimal("0.000"))
+            qs = qs.filter(stock__quantity__gt=Decimal("0.000"))
 
         search = request.query_params.get("search")
         if search:
@@ -438,7 +449,7 @@ class ProductVariantListView(CatalogAPIView):
         if sku:
             qs = qs.filter(sku__iexact=sku.strip())
 
-        category_id = request.query_params.get("category")
+        category_id = positive_id(request.query_params.get("category"), "category")
         if category_id:
             qs = qs.filter(product__category_id=category_id)
 
@@ -448,17 +459,11 @@ class ProductVariantListView(CatalogAPIView):
 
         min_price = request.query_params.get("min_price")
         if min_price:
-            try:
-                qs = qs.filter(price_min__gte=Decimal(min_price))
-            except Exception:
-                pass
+            qs = qs.filter(price_min__gte=nonnegative_price(min_price, "min_price"))
 
         max_price = request.query_params.get("max_price")
         if max_price:
-            try:
-                qs = qs.filter(price_min__lte=Decimal(max_price))
-            except Exception:
-                pass
+            qs = qs.filter(price_min__lte=nonnegative_price(max_price, "max_price"))
 
         ordered_qs = qs.distinct().order_by("id")
         if request.query_params.get("page"):
@@ -466,10 +471,10 @@ class ProductVariantListView(CatalogAPIView):
             paginator = StandardResultsSetPagination()
             page_data = paginator.paginate_queryset(ordered_qs, request)
             return paginator.get_paginated_response(
-                ProductVariantOutputSerializer(page_data, many=True, context={"request": request, "branch": branch}).data
+                ProductVariantOutputSerializer(page_data, many=True, context={"request": request}).data
             )
 
         return Response(
-            ProductVariantOutputSerializer(ordered_qs, many=True, context={"request": request, "branch": branch}).data,
+            ProductVariantOutputSerializer(ordered_qs, many=True, context={"request": request}).data,
             status=status.HTTP_200_OK,
         )

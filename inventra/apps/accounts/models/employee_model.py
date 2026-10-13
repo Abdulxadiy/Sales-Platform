@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
-from apps.core.models import BaseModel
 from django.db import models
+
+from apps.core.models import BaseModel
 
 User = get_user_model()
 
@@ -8,18 +9,11 @@ User = get_user_model()
 class Employee(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='employments')
     position = models.CharField(max_length=100, blank=True)
-    branch = models.ForeignKey(
-        'tenants.Branch',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='employees',
-        help_text="Xodim biriktirilgan filial (agar ko'rsatilsa, xodim faqat shu filialda ishlaydi)",
-    )
-
+    is_owner = models.BooleanField(default=False)
     hired_at = models.DateTimeField(auto_now_add=True)
     fired_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     hired_by = models.ForeignKey(
         'accounts.User', on_delete=models.SET_NULL, null=True,
@@ -35,10 +29,19 @@ class Employee(BaseModel):
 
     class Meta:
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(archived_at__isnull=True) | models.Q(is_active=False),
+                name='archived_employee_must_be_inactive',
+            ),
             models.UniqueConstraint(
                 fields=['user'],
+                condition=models.Q(is_active=True, is_owner=False),
+                name='unique_active_staff_employment_per_user',
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'tenant'],
                 condition=models.Q(is_active=True),
-                name='unique_employment_per_user',
+                name='unique_active_employment_per_user_tenant',
             )
         ]
 

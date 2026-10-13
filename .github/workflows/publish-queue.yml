@@ -1,17 +1,10 @@
-name: Publish verified queued changes
+name: Publish reviewed changes
 
 on:
-  schedule:
-    # 07:17 Asia/Tashkent. GitHub schedules may start later under load.
-    - cron: '17 2 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
         description: 'Prepare and inspect the next batch without pushing'
-        type: boolean
-        default: false
-      force_today:
-        description: 'Allow one more genuine batch today'
         type: boolean
         default: false
 
@@ -68,9 +61,7 @@ jobs:
       - name: Prepare, test and publish a real batch
         env:
           QUEUE_DRY_RUN: ${{ inputs.dry_run || false }}
-          QUEUE_FORCE_TODAY: ${{ inputs.force_today || false }}
         run: |
           arguments=()
           if [ "$QUEUE_DRY_RUN" = "true" ]; then arguments+=(--dry-run); fi
-          if [ "$QUEUE_FORCE_TODAY" = "true" ]; then arguments+=(--force-today); fi
           python3 scripts/commit_queue.py publish "${arguments[@]}"

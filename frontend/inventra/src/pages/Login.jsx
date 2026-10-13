@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Lock, User, KeyRound, ArrowRight, ShieldCheck, Eye, EyeOff, Sun, Moon, HelpCircle, Play, Clock, RefreshCw, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Lock, User, KeyRound, ArrowRight, ShieldCheck, Eye, EyeOff, Sun, Moon, Play, RefreshCw, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
@@ -8,6 +8,7 @@ import { authApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import InventraLogo from '../components/common/InventraLogo';
 import InventraIntroAnimation from '../components/common/InventraIntroAnimation';
+import TelegramConnectionGate from '../components/auth/TelegramConnectionGate';
 
 const OTP_EXPIRY_SECONDS = 180; // 3 daqiqa
 
@@ -24,7 +25,7 @@ export default function Login() {
   }, [isAuthenticated, navigate]);
 
   const [showIntro, setShowIntro] = useState(true);
-  const [step, setStep] = useState(1); // 1 = credentials, 2 = telegram otp
+  const [step, setStep] = useState(1); // 1 = credentials, 2 = Telegram binding, 3 = OTP
   const [rememberMe, setRememberMe] = useState(() => {
     const saved = localStorage.getItem('inventra_remember_me');
     return saved !== null ? saved === 'true' : true;
@@ -32,14 +33,9 @@ export default function Login() {
   const [username, setUsername] = useState(() => {
     return localStorage.getItem('inventra_remember_login') || '';
   });
-  const [password, setPassword] = useState(() => {
-    try {
-      const savedPass = localStorage.getItem('inventra_remember_password');
-      return savedPass ? decodeURIComponent(escape(atob(savedPass))) : '';
-    } catch {
-      return '';
-    }
-  });
+  const [password, setPassword] = useState('');
+  useEffect(() => { localStorage.removeItem('inventra_remember_password'); }, []);
+  const [loginTicket, setLoginTicket] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [phoneHint, setPhoneHint] = useState('');
@@ -48,15 +44,17 @@ export default function Login() {
   const [resending, setResending] = useState(false);
   const passwordInputRef = useRef(null);
 
+  // Faqat sahifa birinchi yuklanganda: agar avval saqlangan username mavjud bo'lsa, parolga fokus beramiz
   useEffect(() => {
-    if (username && !password && passwordInputRef.current) {
+    const rememberedLogin = localStorage.getItem('inventra_remember_login');
+    if (rememberedLogin && passwordInputRef.current) {
       passwordInputRef.current.focus();
     }
-  }, [username, password]);
+  }, []);
 
   // 2FA OTP Countdown Timer (3 daqiqa)
   useEffect(() => {
-    if (step !== 2) return;
+    if (step !== 3) return;
 
     const timer = setInterval(() => {
       setOtpTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
@@ -81,13 +79,7 @@ export default function Login() {
     } else {
       localStorage.setItem('inventra_remember_me', 'true');
       if (username) localStorage.setItem('inventra_remember_login', username.trim());
-      if (password) {
-        try {
-          localStorage.setItem('inventra_remember_password', btoa(unescape(encodeURIComponent(password))));
-        } catch {
-          // ignore
-        }
-      }
+
     }
   };
 
@@ -110,23 +102,23 @@ export default function Login() {
     try {
       if (rememberMe) {
         localStorage.setItem('inventra_remember_login', username.trim());
-        try {
-          localStorage.setItem('inventra_remember_password', btoa(unescape(encodeURIComponent(password))));
-        } catch {
-          // ignore
-        }
         localStorage.setItem('inventra_remember_me', 'true');
       } else {
         localStorage.removeItem('inventra_remember_login');
         localStorage.removeItem('inventra_remember_password');
         localStorage.setItem('inventra_remember_me', 'false');
       }
-      const res = await loginStep1(username.trim(), password);
+      const res = await loginStep1(username.trim(), password, rememberMe);
+      if (res.demo_login === true && res.access && res.refresh) {
+        toast.success('Sinov akkauntiga kirildi');
+        navigate('/');
+        return;
+      }
+      if (!res.login_ticket) throw new Error('Kirishni davom ettirib bo‘lmadi. Qayta urinib ko‘ring.');
+      setLoginTicket(res.login_ticket);
       setPhoneHint(res.phone_hint || '');
       setOtpCode('');
-      setOtpTimeLeft(OTP_EXPIRY_SECONDS);
       setStep(2);
-      toast.info('Tasdiqlash kodi Telegram orqali yuborildi');
     } catch (err) {
       setErrorMsg(err.message || 'Login yoki parol noto‘g‘ri');
     }
@@ -137,13 +129,21 @@ export default function Login() {
     setResending(true);
     setErrorMsg('');
     try {
-      const res = await loginStep1(username.trim(), password);
-      if (res.phone_hint) setPhoneHint(res.phone_hint);
+      await authApi.sendTelegramOtp(loginTicket);
       setOtpCode('');
       setOtpTimeLeft(OTP_EXPIRY_SECONDS);
       toast.success('Yangi tasdiqlash kodi Telegram orqali yuborildi');
     } catch (err) {
-      setErrorMsg(err.message || 'Kodni qayta yuborishda xatolik yuz berdi');
+      if (err.data?.error === 'invalid_or_expired_login_ticket') {
+        setLoginTicket('');
+        setStep(1);
+        setErrorMsg('Kirish muddati tugagan. Login va parolni qayta kiriting.');
+      } else if (err.status === 404 || err.data?.error === 'telegram_contact_not_found') {
+        setStep(2);
+        setErrorMsg('Telegram aloqasi uzilgan. Botda telefoningizni qayta ulang.');
+      } else {
+        setErrorMsg(err.message || 'Kodni qayta yuborishda xatolik yuz berdi');
+      }
     } finally {
       setResending(false);
     }
@@ -166,11 +166,17 @@ export default function Login() {
         localStorage.removeItem('inventra_remember_login');
         localStorage.setItem('inventra_remember_me', 'false');
       }
-      await loginStep2(username.trim(), otpCode, rememberMe);
+      await loginStep2(username.trim(), loginTicket, otpCode, rememberMe);
       toast.success('Xush kelibsiz!');
       navigate('/');
     } catch (err) {
-      setErrorMsg(err.message || 'Tasdiqlash kodi noto‘g‘ri yoki muddati o‘tgan');
+      if (err.data?.error === 'invalid_or_expired_login_ticket') {
+        setLoginTicket('');
+        setStep(1);
+        setErrorMsg('Kirish muddati tugagan. Login va parolni qayta kiriting.');
+      } else {
+        setErrorMsg(err.message || 'Tasdiqlash kodi noto‘g‘ri yoki muddati o‘tgan');
+      }
     }
   };
 
@@ -529,6 +535,24 @@ export default function Login() {
               <ArrowRight size={18} />
             </button>
           </form>
+        ) : step === 2 ? (
+          <TelegramConnectionGate
+            loginTicket={loginTicket}
+            phoneHint={phoneHint}
+            onOtpSent={() => {
+              setErrorMsg('');
+              setOtpCode('');
+              setOtpTimeLeft(OTP_EXPIRY_SECONDS);
+              setStep(3);
+              toast.success('Tasdiqlash kodi Telegram orqali yuborildi');
+            }}
+            onBack={() => {
+              setLoginTicket('');
+              setErrorMsg('');
+              setStep(1);
+            }}
+            backLabel="Login sahifasiga qaytish"
+          />
         ) : (
           <form onSubmit={handleStep2} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div
@@ -554,17 +578,7 @@ export default function Login() {
               )}
 
               <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.5, borderTop: '1px dashed var(--border-subtle)', paddingTop: 8 }}>
-                Kod kelmadimi? Rasmiy Telegram botimiz:{' '}
-                <a
-                  href="https://t.me/inventraa_bot"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}
-                >
-                  @inventraa_bot
-                </a>
-                <br />
-                Botga kirib (<code>/start</code>), telefon raqamingizni ulaganingizga ishonch hosil qiling.
+                Kodni @ilbi_bot bilan suhbatdagi so‘nggi xabardan oling.
               </div>
             </div>
 
@@ -655,11 +669,11 @@ export default function Login() {
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="btn btn-secondary"
                 style={{ flex: 1 }}
               >
-                Orqaga
+                Botni tekshirish
               </button>
               <button
                 type="submit"

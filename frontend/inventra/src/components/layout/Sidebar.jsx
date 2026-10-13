@@ -6,6 +6,8 @@ import {
   Package,
   Boxes,
   Receipt,
+  CreditCard,
+  Building2,
   Coins,
   ShieldCheck,
   LogOut,
@@ -22,7 +24,6 @@ import {
   ChevronRight,
   Sliders,
   X,
-  GitBranch,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -43,6 +44,12 @@ export default function Sidebar({
   const confirm = useConfirm();
   const [filterQuery, setFilterQuery] = useState('');
 
+  const handleNavClick = () => {
+    if (mobileOpen && onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
   const handleLogoutClick = async () => {
     const isConfirmed = await confirm({
       title: 'Tizimdan chiqish',
@@ -52,7 +59,7 @@ export default function Sidebar({
       type: 'warning',
     });
     if (isConfirmed) {
-      if (onCloseMobile) onCloseMobile();
+      if (mobileOpen && onCloseMobile) onCloseMobile();
       logout();
     }
   };
@@ -75,6 +82,11 @@ export default function Sidebar({
             label: 'Do‘konlar (Tenants)',
             icon: Store,
           },
+          {
+            to: '/seller-profiles/review',
+            label: 'Sotuvchi Tekshiruvi',
+            icon: ShieldCheck,
+          },
         ]
       : []),
     ...(!isAdmin
@@ -96,8 +108,18 @@ export default function Sidebar({
           },
           {
             to: '/sales',
-            label: 'Savdo & Nasiyalar',
+            label: 'Savdolar Tarixi',
             icon: Receipt,
+          },
+          {
+            to: '/debts',
+            label: 'Mijoz Nasiyalari',
+            icon: CreditCard,
+          },
+          {
+            to: '/b2b',
+            label: 'B2B Tranzaksiyalar',
+            icon: Building2,
           },
           {
             to: '/shifts',
@@ -108,11 +130,7 @@ export default function Sidebar({
       : []),
     ...(isAdmin || isOwner
       ? [
-          {
-            to: '/branches',
-            label: 'Filiallar',
-            icon: GitBranch,
-          },
+          ...(isOwner ? [{ to: '/my-tenants', label: 'Mening do‘konlarim', icon: Store }] : []),
           {
             to: '/employees',
             label: 'Xodimlar (Jamoa)',
@@ -185,7 +203,7 @@ export default function Sidebar({
             to="/"
             className="sidebar-brand-icon"
             title="Inventra — Boshqaruv & POS Tizimi"
-            onClick={onCloseMobile}
+            onClick={handleNavClick}
           >
             <InventraLogo
               size={32}
@@ -213,7 +231,7 @@ export default function Sidebar({
             to="/"
             className="sidebar-brand"
             title="Inventra — Boshqaruv & POS Tizimi"
-            onClick={onCloseMobile}
+            onClick={handleNavClick}
           >
             <InventraLogo size={32} showBadge={true} badgeText="PRO" />
           </NavLink>
@@ -249,7 +267,7 @@ export default function Sidebar({
         className="profile"
         style={{ textDecoration: 'none', cursor: 'pointer' }}
         title={`${displayName} (${roleLabel}) — Profilni ko‘rish`}
-        onClick={onCloseMobile}
+        onClick={handleNavClick}
       >
         {avatarUrl ? (
           <img
@@ -297,7 +315,7 @@ export default function Sidebar({
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              onClick={onCloseMobile}
+              onClick={handleNavClick}
               className={({ isActive }) => `item ${isActive ? 'active' : ''}`}
               title={isEffectiveCollapsed ? item.label : undefined}
             >
@@ -328,7 +346,7 @@ export default function Sidebar({
             type="button"
             className="action-btn"
             onClick={() => {
-              if (onCloseMobile) onCloseMobile();
+              if (mobileOpen && onCloseMobile) onCloseMobile();
               onOpenNotifications();
             }}
             title="Xabarnomalar va B2B"

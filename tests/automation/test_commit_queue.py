@@ -42,8 +42,6 @@ class PublisherTests(unittest.TestCase):
             "state_branch": "queue/progress",
             "backup_branch": "backup/work-in-progress",
             "timezone": "Asia/Tashkent",
-            "target_per_day": 2,
-            "minimum_batch": 2,
             "author_name": "Test Author",
             "author_email": "test@example.invalid",
             "paused": False,
@@ -91,17 +89,16 @@ class PublisherTests(unittest.TestCase):
         queue.git(self.repo, "add", "--all")
         queue.git(self.repo, "commit", "-q", "-m", message)
 
-    def test_batch_size_never_leaves_a_small_tail(self):
-        self.assertEqual(queue.batch_size(45, 20, 15), 20)
-        self.assertEqual(queue.batch_size(25, 20, 15), 25)
-        self.assertEqual(queue.batch_size(35, 20, 15), 20)
-        self.assertEqual(queue.batch_size(15, 20, 15), 15)
-        self.assertEqual(queue.batch_size(0, 20, 15), 0)
-        with self.assertRaises(queue.QueueError):
-            queue.batch_size(14, 20, 15)
+    def test_one_real_group_can_be_published_without_a_daily_quota(self):
+        manifest = {**self.manifest, "groups": self.groups[:1]}
+        state = queue.prepare_batch(self.repo, self.settings, manifest, {})
+        self.assertEqual(state["completed"], ["first"])
+        self.assertEqual(
+            queue.output(self.repo, "rev-list", "--count", f"{self.base}..HEAD"), "1"
+        )
 
     def test_prepare_handles_new_modified_deleted_and_space_containing_paths(self):
-        # With three remaining groups and a minimum of two, take all three.
+        # Publish the completed reviewed work together, without a quota.
         state = queue.prepare_batch(
             self.repo, self.settings, self.manifest, {}, today="2026-10-13"
         )
@@ -192,6 +189,38 @@ class PublisherTests(unittest.TestCase):
         with self.assertRaisesRegex(queue.QueueError, "bad.py") as error:
             queue.source_files(self.repo)
         self.assertNotIn(token, str(error.exception))
+
+    def test_backup_preserves_working_files_without_reintroducing_local_history(self):
+        remote = Path(self.tmp.name) / "remote.git"
+        queue.run(["git", "init", "--bare", "-q", str(remote)])
+        queue.git(self.repo, "remote", "add", "origin", str(remote))
+        queue.git(self.repo, "push", "-q", "origin", f"{self.base}:refs/heads/main")
+        (self.repo / ".github").mkdir()
+        (self.repo / ".github/activity.log").write_text("artificial local activity\n")
+        self.commit("old artificial local commit")
+        local_head = queue.output(self.repo, "rev-parse", "HEAD")
+        before = queue.output(self.repo, "status", "--porcelain")
+        settings = {**self.settings, "remote": str(remote)}
+
+        def configure_local(repo, settings):
+            queue.git(repo, "remote", "set-url", "origin", settings["remote"])
+
+        with patch.object(queue, "configure", side_effect=configure_local):
+            saved = queue.backup(self.repo, settings)
+        self.assertEqual(
+            queue.output(remote, "show", f"{saved}:update.txt"), "real update"
+        )
+        self.assertEqual(
+            queue.output(remote, "show", "-s", "--format=%P", saved), self.base
+        )
+        self.assertNotEqual(
+            queue.git(
+                remote, "cat-file", "-e", f"{saved}:.github/activity.log", check=False
+            ).returncode,
+            0,
+        )
+        self.assertEqual(queue.output(self.repo, "rev-parse", "HEAD"), local_head)
+        self.assertEqual(queue.output(self.repo, "status", "--porcelain"), before)
 
     def test_commit_dates_are_real_and_not_inherited_from_environment(self):
         with patch.dict(

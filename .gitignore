@@ -57,7 +57,6 @@ cover/
 
 # Django stuff:
 *.log
-!.github/activity.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -234,5 +233,15 @@ staticfiles/
 # Frontend
 node_modules/
 dist/
+dist_docker/
 .vite/
 
+# Junk and IDE
+.directory
+*/.directory
+Architectures/.idea/
+Architectures/.obsidian/
+
+
+# Local GitHub publishing cache and locks
+.commit-queue-local/

@@ -1,0 +1,25 @@
+{
+  "repository": "Abdulxadiy/Sales-Platform",
+  "remote": "https://github.com/Abdulxadiy/Sales-Platform.git",
+  "default_branch": "main",
+  "backup_branch": "backup/work-in-progress",
+  "queue_branch": "queue/ready",
+  "state_branch": "queue/progress",
+  "author_name": "Abdulxadiy",
+  "author_email": "241130805+Abdulxadiy@users.noreply.github.com",
+  "timezone": "Asia/Tashkent",
+  "target_per_day": 20,
+  "minimum_batch": 15,
+  "paused": false,
+  "validation": [
+    {"cwd": ".", "argv": ["python3", "-m", "unittest", "discover", "-s", "tests/automation", "-v"]},
+    {"cwd": "inventra", "argv": ["uv", "sync", "--frozen"]},
+    {"cwd": "inventra", "argv": ["uv", "run", "ruff", "check", ".", "--select", "E9,F821,F822,F823"]},
+    {"cwd": "inventra", "argv": ["uv", "run", "python", "manage.py", "spectacular", "--settings=config.settings_test", "--validate", "--fail-on-warn", "--file", "/tmp/queue-api-schema.yml"]},
+    {"cwd": "inventra", "argv": ["uv", "run", "pytest", "-q"]},
+    {"cwd": "frontend/inventra", "argv": ["npm", "ci"]},
+    {"cwd": "frontend/inventra", "argv": ["npm", "run", "lint", "--if-present"]},
+    {"cwd": "frontend/inventra", "argv": ["npm", "test"]},
+    {"cwd": "frontend/inventra", "argv": ["npm", "run", "build"]}
+  ]
+}

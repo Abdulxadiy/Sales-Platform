@@ -1,0 +1,76 @@
+name: Publish verified queued changes
+
+on:
+  schedule:
+    # 07:17 Asia/Tashkent. GitHub schedules may start later under load.
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Prepare and inspect the next batch without pushing'
+        type: boolean
+        default: false
+      force_today:
+        description: 'Allow one more genuine batch today'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sales-platform-commit-queue
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: inventra_test
+          POSTGRES_USER: inventra_test
+          POSTGRES_PASSWORD: inventra_test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U inventra_test"
+          --health-interval 2s --health-timeout 3s --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports: ['6380:6379']
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DJANGO_SETTINGS_MODULE: config.settings_test
+      TEST_DB_NAME: inventra_test
+      TEST_DB_USER: inventra_test
+      TEST_DB_PASSWORD: inventra_test
+      TEST_DB_HOST: localhost
+      TEST_DB_PORT: '5433'
+      TEST_REDIS_URL: redis://localhost:6380/0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.12.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate publisher
+        run: python3 -m unittest discover -s tests/automation -v
+      - name: Prepare, test and publish a real batch
+        env:
+          QUEUE_DRY_RUN: ${{ inputs.dry_run || false }}
+          QUEUE_FORCE_TODAY: ${{ inputs.force_today || false }}
+        run: |
+          arguments=()
+          if [ "$QUEUE_DRY_RUN" = "true" ]; then arguments+=(--dry-run); fi
+          if [ "$QUEUE_FORCE_TODAY" = "true" ]; then arguments+=(--force-today); fi
+          python3 scripts/commit_queue.py publish "${arguments[@]}"

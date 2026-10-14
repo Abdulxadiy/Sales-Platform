@@ -433,18 +433,19 @@ export default function Employees() {
         </div>
       )}
 
-      <Modal isOpen={hireModalOpen} onClose={() => setHireModalOpen(false)} title="Xodim ishga olish">
+      <Modal isOpen={hireModalOpen} onClose={() => setHireModalOpen(false)} title="Xodim ishga olish" maxWidth={680}>
         <form onSubmit={handleHireSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {renderPermissions(hireForm, setHireForm)}
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
             Telefon va email kiriting. Yangi hisobga parol o‘rnatish havolasi email orqali yuboriladi.
           </p>
-          <label style={{ fontSize: 13, fontWeight: 600 }}>Telefon raqami
-            <PhoneInput className="input-field" name="tel" required value={hireForm.phone_number} onChange={(event) => setHireForm({ ...hireForm, phone_number: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
-          </label>
-          <label style={{ fontSize: 13, fontWeight: 600 }}>Email
-            <input className="input-field" type="email" name="email" autoComplete="email" placeholder="xodim@example.com" required value={hireForm.email} onChange={(event) => setHireForm({ ...hireForm, email: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
-          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ fontSize: 13, fontWeight: 600 }}>Telefon raqami
+              <PhoneInput className="input-field" name="tel" required value={hireForm.phone_number} onChange={(event) => setHireForm({ ...hireForm, phone_number: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
+            </label>
+            <label style={{ fontSize: 13, fontWeight: 600 }}>Email
+              <input className="input-field" type="email" name="email" autoComplete="email" placeholder="xodim@example.com" required value={hireForm.email} onChange={(event) => setHireForm({ ...hireForm, email: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
+            </label>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <label style={{ fontSize: 13, fontWeight: 600 }}>Ismi
               <input className="input-field" type="text" name="given-name" autoComplete="given-name" value={hireForm.first_name} onChange={(event) => setHireForm({ ...hireForm, first_name: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
@@ -456,16 +457,27 @@ export default function Employees() {
           <label style={{ fontSize: 13, fontWeight: 600 }}>Lavozimi
             <input className="input-field" type="text" name="organization-title" autoComplete="organization-title" placeholder="Masalan: Kassir" required value={hireForm.position} onChange={(event) => setHireForm({ ...hireForm, position: event.target.value })} style={{ marginTop: 6, width: '100%' }} />
           </label>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+
+          <div style={{ marginTop: 4 }}>
+            <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, display: 'block', color: 'var(--text-primary)' }}>
+              Xodimga beriladigan ruxsatlar va vakolatlar
+            </label>
+            <EmployeePermissionsSelector
+              permissionChoices={permissionChoices}
+              selectedIds={hireForm.permission_ids || []}
+              onChange={(newIds) => setHireForm((prev) => ({ ...prev, permission_ids: newIds }))}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
             <button type="button" className="btn btn-secondary" onClick={() => setHireModalOpen(false)}>Bekor qilish</button>
             <button type="submit" className="btn btn-primary" disabled={hiring}>{hiring ? 'Qo‘shilmoqda...' : 'Ishga olish'}</button>
           </div>
         </form>
       </Modal>
 
-      <Modal isOpen={Boolean(editTarget)} onClose={() => { if (!editing) setEditTarget(null); }} title="Hisob ma’lumotlarini tahrirlash">
+      <Modal isOpen={Boolean(editTarget)} onClose={() => { if (!editing) setEditTarget(null); }} title="Hisob ma’lumotlarini tahrirlash" maxWidth={680}>
         {editTarget && <form onSubmit={handleEditSubmit} style={{ display: 'grid', gap: 14 }}>
-          {!editTarget.employee.is_owner && renderPermissions(editForm, setEditForm)}
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>
             {employeeName(editTarget.employee)} · Login raqami: {editTarget.employee.phone_number}
             {editTarget.employee.is_owner && ' · Ism va email egasining barcha do‘konlarida yangilanadi.'}
@@ -478,17 +490,33 @@ export default function Employees() {
               <input className="input-field" maxLength={50} value={editForm.last_name} onChange={(event) => setEditForm({ ...editForm, last_name: event.target.value })} />
             </label>
           </div>
-          <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Email
-            <input className="input-field" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} />
-          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Email
+              <input className="input-field" type="email" value={editForm.email} onChange={(event) => setEditForm({ ...editForm, email: event.target.value })} />
+            </label>
+            <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Aloqa telefon raqami
+              <PhoneInput className="input-field" value={editForm.contact_phone} onChange={(event) => setEditForm({ ...editForm, contact_phone: event.target.value })} />
+            </label>
+          </div>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 12 }}>Email o‘zgarsa, oldingi faollashtirish/parol havolalari bekor qilinadi. Yangi manzilga havolani alohida yuboring.</p>
-          <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Aloqa telefon raqami
-            <PhoneInput className="input-field" value={editForm.contact_phone} onChange={(event) => setEditForm({ ...editForm, contact_phone: event.target.value })} />
-          </label>
           <label style={{ display: 'grid', gap: 6, fontSize: 13 }}>Lavozimi
             <input className="input-field" maxLength={100} value={editForm.position} onChange={(event) => setEditForm({ ...editForm, position: event.target.value })} />
           </label>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+
+          {!editTarget.employee.is_owner && (
+            <div style={{ marginTop: 4 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, display: 'block', color: 'var(--text-primary)' }}>
+                Xodim ruxsatlari va vakolatlari
+              </label>
+              <EmployeePermissionsSelector
+                permissionChoices={permissionChoices}
+                selectedIds={editForm.permission_ids || []}
+                onChange={(newIds) => setEditForm((prev) => ({ ...prev, permission_ids: newIds }))}
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
             <button type="button" className="btn btn-secondary" disabled={editing} onClick={() => setEditTarget(null)}>Bekor qilish</button>
             <button type="submit" className="btn btn-primary" disabled={editing}>{editing ? 'Saqlanmoqda...' : 'Saqlash'}</button>
           </div>

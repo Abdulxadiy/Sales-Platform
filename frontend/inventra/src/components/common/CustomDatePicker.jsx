@@ -147,12 +147,6 @@ export default function CustomDatePicker({
     return `${String(day).padStart(2, '0')}-${monthName}, ${year}`;
   };
 
-  const handleSelectDay = (day) => {
-    const dateStr = formatDateStr(viewYear, viewMonth, day);
-    setIsOpen(false);
-    triggerChange(dateStr);
-  };
-
   const triggerChange = (valStr) => {
     if (typeof onChange === 'function') {
       const syntheticEvent = {
@@ -169,6 +163,12 @@ export default function CustomDatePicker({
         } catch {}
       }
     }
+  };
+
+  const handleSelectDay = (day) => {
+    const dateStr = formatDateStr(viewYear, viewMonth, day);
+    setIsOpen(false);
+    triggerChange(dateStr);
   };
 
   const handleClear = (e) => {

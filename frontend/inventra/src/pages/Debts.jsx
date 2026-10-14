@@ -133,6 +133,42 @@ export default function Debts() {
     }
   };
 
+  // Open Counterparty Purchases & Debts Detail Modal
+  const handleOpenCounterpartyPurchases = async (cp, initialTab = 'debt_sales') => {
+    setSelectedCpDetail(cp);
+    setCpDetailTab(initialTab);
+    setCpDetailModalOpen(true);
+    setLoadingCpDetailSales(true);
+    setLoadingCpDetailPayments(true);
+
+    try {
+      const salesRes = await salesApi.getCounterpartySales(cp.id);
+      const salesData = Array.isArray(salesRes) ? salesRes : (salesRes.sales || salesRes.results || []);
+      setCpDetailSales(salesData);
+      const summary = salesRes.summary || {
+        total_sales_count: salesRes.total_sales_count ?? salesData.length,
+        debt_sales_count: salesRes.debt_sales_count ?? salesData.filter((s) => s.payment_type === 'debt').length,
+        total_spent_uzs: salesData.filter((s) => s.currency === 'UZS').reduce((acc, s) => acc + Number(s.net_amount ?? s.total_amount ?? 0), 0),
+        total_spent_usd: salesData.filter((s) => s.currency === 'USD').reduce((acc, s) => acc + Number(s.net_amount ?? s.total_amount ?? 0), 0),
+      };
+      setCpSalesSummary(summary);
+    } catch {
+      toast.error('Mijoz xaridlari tarixini yuklab bo‘lmadi');
+    } finally {
+      setLoadingCpDetailSales(false);
+    }
+
+    try {
+      const paymentsRes = await salesApi.getCounterpartyPayments(cp.id);
+      const paymentsData = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.results || []);
+      setCpDetailPayments(paymentsData);
+    } catch {
+      toast.error('Mijoz to‘lovlari tarixini yuklab bo‘lmadi');
+    } finally {
+      setLoadingCpDetailPayments(false);
+    }
+  };
+
   // Record Debt Payment
   const handleOpenDebtPayment = (cp) => {
     setSelectedCp(cp);
@@ -228,42 +264,6 @@ export default function Debts() {
       toast.error(err.message || 'Haqni qaytarishda xatolik yuz berdi');
     } finally {
       setSubmittingRefund(false);
-    }
-  };
-
-  // Open Counterparty Purchases & Debts Detail Modal
-  const handleOpenCounterpartyPurchases = async (cp, initialTab = 'debt_sales') => {
-    setSelectedCpDetail(cp);
-    setCpDetailTab(initialTab);
-    setCpDetailModalOpen(true);
-    setLoadingCpDetailSales(true);
-    setLoadingCpDetailPayments(true);
-
-    try {
-      const salesRes = await salesApi.getCounterpartySales(cp.id);
-      const salesData = Array.isArray(salesRes) ? salesRes : (salesRes.sales || salesRes.results || []);
-      setCpDetailSales(salesData);
-      const summary = salesRes.summary || {
-        total_sales_count: salesRes.total_sales_count ?? salesData.length,
-        debt_sales_count: salesRes.debt_sales_count ?? salesData.filter((s) => s.payment_type === 'debt').length,
-        total_spent_uzs: salesData.filter((s) => s.currency === 'UZS').reduce((acc, s) => acc + Number(s.net_amount ?? s.total_amount ?? 0), 0),
-        total_spent_usd: salesData.filter((s) => s.currency === 'USD').reduce((acc, s) => acc + Number(s.net_amount ?? s.total_amount ?? 0), 0),
-      };
-      setCpSalesSummary(summary);
-    } catch {
-      toast.error('Mijoz xaridlari tarixini yuklab bo‘lmadi');
-    } finally {
-      setLoadingCpDetailSales(false);
-    }
-
-    try {
-      const paymentsRes = await salesApi.getCounterpartyPayments(cp.id);
-      const paymentsData = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.results || []);
-      setCpDetailPayments(paymentsData);
-    } catch {
-      toast.error('Mijoz to‘lovlari tarixini yuklab bo‘lmadi');
-    } finally {
-      setLoadingCpDetailPayments(false);
     }
   };
 

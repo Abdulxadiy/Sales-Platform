@@ -13,181 +13,6 @@ import { parseZReport, formatMarkdownLine } from './NotificationParser';
 import InventraLogo from '../common/InventraLogo';
 import { useNavigate } from 'react-router-dom';
 
-export default function NotificationCard({ notification, onMarkRead, onDelete }) {
-  const navigate = useNavigate();
-  const n = notification;
-  const parsedZ = parseZReport(n.message || n.text);
-
-  const getNotifIcon = () => {
-    if (parsedZ || n.type === 'daily_z_report') {
-      return <Receipt size={16} color="var(--primary)" />;
-    }
-    if (n.type && n.type.includes('b2b')) {
-      return <ArrowRightLeft size={16} color="var(--accent-cyan)" />;
-    }
-    if (n.type && n.type.includes('debt')) {
-      return <AlertTriangle size={16} color="var(--accent-rose)" />;
-    }
-    return <Bell size={16} color="var(--primary)" />;
-  };
-
-  const handleLinkClick = () => {
-    if (n.link) {
-      navigate(n.link);
-    }
-  };
-
-  return (
-    <div
-      className={`notif-card ${n.is_read ? 'read' : 'unread'}`}
-      style={{
-        padding: '14px 16px',
-        borderRadius: 14,
-        background: n.is_read ? 'var(--bg-card)' : 'var(--bg-surface)',
-        border: `1px solid ${
-          n.is_read ? 'var(--border-subtle)' : 'var(--border-hover)'
-        }`,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        transition: 'all 0.2s ease',
-      }}
-    >
-      {/* Top Header Row */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              background: n.is_read ? 'var(--bg-chip)' : 'var(--primary-light)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            {getNotifIcon()}
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                style={{
-                  fontSize: 13.5,
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                }}
-              >
-                {n.title || (parsedZ ? 'Kunlik Z-Hisobot' : 'Tizim xabarnomasi')}
-              </span>
-              {!n.is_read && (
-                <span
-                  style={{
-                    fontSize: 10,
-                    padding: '1px 6px',
-                    borderRadius: 999,
-                    background: 'var(--primary)',
-                    color: 'var(--text-on-primary)',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  Yangi
-                </span>
-              )}
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                marginTop: 1,
-              }}
-            >
-              <Clock size={11} />
-              <span>
-                {n.created_at
-                  ? new Date(n.created_at).toLocaleString('uz-UZ', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : ''}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {n.link && (
-            <button
-              onClick={handleLinkClick}
-              className="btn btn-secondary"
-              style={{ padding: '4px 8px', fontSize: 11 }}
-              title="Sahifaga o‘tish"
-            >
-              <ExternalLink size={12} />
-              <span>Ochish</span>
-            </button>
-          )}
-
-          {!n.is_read && (
-            <button
-              onClick={() => onMarkRead(n.id)}
-              className="btn btn-secondary"
-              style={{
-                padding: '4px 10px',
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--primary)',
-              }}
-              title="O‘qildi deb belgilash"
-            >
-              <Check size={13} />
-              <span>O‘qildi</span>
-            </button>
-          )}
-
-          {onDelete && (
-            <button
-              onClick={() => onDelete(n.id)}
-              className="btn btn-secondary"
-              style={{
-                padding: '4px 8px',
-                fontSize: 11,
-                color: 'var(--accent-rose, #ef4444)',
-              }}
-              title="O‘chirish"
-            >
-              <Trash2 size={13} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Body: Minimalist Fiscal Receipt vs General Text */}
-      {parsedZ ? (
-        <MinimalZReportReceipt parsed={parsedZ} notificationTitle={n.title} />
-      ) : (
-        <MinimalGeneralMarkdownView text={n.message || n.text} />
-      )}
-    </div>
-  );
-}
-
 /**
  * Minimalist, authentic fiscal receipt layout matching the Shifts section receipt
  */
@@ -535,6 +360,181 @@ function MinimalGeneralMarkdownView({ text }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+export default function NotificationCard({ notification, onMarkRead, onDelete }) {
+  const navigate = useNavigate();
+  const n = notification;
+  const parsedZ = parseZReport(n.message || n.text);
+
+  const getNotifIcon = () => {
+    if (parsedZ || n.type === 'daily_z_report') {
+      return <Receipt size={16} color="var(--primary)" />;
+    }
+    if (n.type && n.type.includes('b2b')) {
+      return <ArrowRightLeft size={16} color="var(--accent-cyan)" />;
+    }
+    if (n.type && n.type.includes('debt')) {
+      return <AlertTriangle size={16} color="var(--accent-rose)" />;
+    }
+    return <Bell size={16} color="var(--primary)" />;
+  };
+
+  const handleLinkClick = () => {
+    if (n.link) {
+      navigate(n.link);
+    }
+  };
+
+  return (
+    <div
+      className={`notif-card ${n.is_read ? 'read' : 'unread'}`}
+      style={{
+        padding: '14px 16px',
+        borderRadius: 14,
+        background: n.is_read ? 'var(--bg-card)' : 'var(--bg-surface)',
+        border: `1px solid ${
+          n.is_read ? 'var(--border-subtle)' : 'var(--border-hover)'
+        }`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        transition: 'all 0.2s ease',
+      }}
+    >
+      {/* Top Header Row */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: n.is_read ? 'var(--bg-chip)' : 'var(--primary-light)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {getNotifIcon()}
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {n.title || (parsedZ ? 'Kunlik Z-Hisobot' : 'Tizim xabarnomasi')}
+              </span>
+              {!n.is_read && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 999,
+                    background: 'var(--primary)',
+                    color: 'var(--text-on-primary)',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Yangi
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                marginTop: 1,
+              }}
+            >
+              <Clock size={11} />
+              <span>
+                {n.created_at
+                  ? new Date(n.created_at).toLocaleString('uz-UZ', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {n.link && (
+            <button
+              onClick={handleLinkClick}
+              className="btn btn-secondary"
+              style={{ padding: '4px 8px', fontSize: 11 }}
+              title="Sahifaga o‘tish"
+            >
+              <ExternalLink size={12} />
+              <span>Ochish</span>
+            </button>
+          )}
+
+          {!n.is_read && (
+            <button
+              onClick={() => onMarkRead(n.id)}
+              className="btn btn-secondary"
+              style={{
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--primary)',
+              }}
+              title="O‘qildi deb belgilash"
+            >
+              <Check size={13} />
+              <span>O‘qildi</span>
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              onClick={() => onDelete(n.id)}
+              className="btn btn-secondary"
+              style={{
+                padding: '4px 8px',
+                fontSize: 11,
+                color: 'var(--accent-rose, #ef4444)',
+              }}
+              title="O‘chirish"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Body: Minimalist Fiscal Receipt vs General Text */}
+      {parsedZ ? (
+        <MinimalZReportReceipt parsed={parsedZ} notificationTitle={n.title} />
+      ) : (
+        <MinimalGeneralMarkdownView text={n.message || n.text} />
+      )}
     </div>
   );
 }

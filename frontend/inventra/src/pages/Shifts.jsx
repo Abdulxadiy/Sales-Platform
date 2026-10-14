@@ -47,6 +47,8 @@ const DEFAULT_INCOME_SOURCES = [
 
 export default function Shifts() {
   const toast = useToast();
+  const { activeTenant } = useTenant();
+
   const canRecordIncome = activeTenant?.is_owner || activeTenant?.permissions?.includes('cashbox.record_income');
   const canRecordExpense = activeTenant?.is_owner || activeTenant?.permissions?.includes('cashbox.record_expense');
   const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes('cashbox.manage_shift');
@@ -54,7 +56,6 @@ export default function Shifts() {
   const [openingCashUzs, setOpeningCashUzs] = useState('0');
   const [openingCashUsd, setOpeningCashUsd] = useState('0');
   const [openingShift, setOpeningShift] = useState(false);
-  const { activeTenant } = useTenant();
   const [activeTab, setActiveTab] = useState('reports'); // 'reports' | 'expenses' | 'income'
   const [shiftStatus, setShiftStatus] = useState(null);
   const [reports, setReports] = useState([]);
@@ -105,6 +106,20 @@ export default function Shifts() {
     return DEFAULT_INCOME_SOURCES;
   });
 
+  // Expense Form
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCurrency, setExpenseCurrency] = useState('UZS');
+  const [expenseCategory, setExpenseCategory] = useState(() => savedExpenseCategories[0] || 'Xarajat');
+  const [expenseNote, setExpenseNote] = useState('');
+  const [submittingExpense, setSubmittingExpense] = useState(false);
+
+  // Income Form
+  const [incomeAmount, setIncomeAmount] = useState('');
+  const [incomeCurrency, setIncomeCurrency] = useState('UZS');
+  const [incomeSource, setIncomeSource] = useState(() => savedIncomeSources[0] || 'Qo‘shimcha kirim');
+  const [incomeNote, setIncomeNote] = useState('');
+  const [submittingIncome, setSubmittingIncome] = useState(false);
+
   useEffect(() => {
     const loadTenantCategories = (key, fallback) => {
       try {
@@ -121,20 +136,6 @@ export default function Shifts() {
     setExpenseCategory(expensesForTenant[0] || 'Xarajat');
     setIncomeSource(incomesForTenant[0] || 'Qo‘shimcha kirim');
   }, [activeTenant?.id]);
-
-  // Expense Form
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseCurrency, setExpenseCurrency] = useState('UZS');
-  const [expenseCategory, setExpenseCategory] = useState(() => savedExpenseCategories[0] || 'Xarajat');
-  const [expenseNote, setExpenseNote] = useState('');
-  const [submittingExpense, setSubmittingExpense] = useState(false);
-
-  // Income Form
-  const [incomeAmount, setIncomeAmount] = useState('');
-  const [incomeCurrency, setIncomeCurrency] = useState('UZS');
-  const [incomeSource, setIncomeSource] = useState(() => savedIncomeSources[0] || 'Qo‘shimcha kirim');
-  const [incomeNote, setIncomeNote] = useState('');
-  const [submittingIncome, setSubmittingIncome] = useState(false);
 
   const handleDeleteExpenseCategory = (catToDelete) => {
     const updated = savedExpenseCategories.filter((c) => c !== catToDelete);

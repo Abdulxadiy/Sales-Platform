@@ -231,40 +231,6 @@ export default function POS() {
     return success;
   }, [getDefaultPrice, isPartnerSale, setCart, toast]);
 
-  // Barcode quick add on Enter (instantly searches in-memory array)
-  const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      const q = searchQuery.trim().toLowerCase();
-      if (!q) {
-        if (cart.length > 0) {
-          handleOpenCheckout();
-        }
-        return;
-      }
-      e.preventDefault();
-      // Try exact barcode match or 3-level code first across all branch variants
-      const exactMatch = allVariantsRef.current.find(
-        (v) =>
-          v.barcode?.toLowerCase() === q ||
-          v.code?.toLowerCase() === q ||
-          v.sku?.toLowerCase() === q
-      );
-      if (exactMatch) {
-        if (addToCart(exactMatch)) {
-          setSearchQuery('');
-          toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
-        }
-      } else if (variants.length === 1) {
-        if (addToCart(variants[0])) {
-          setSearchQuery('');
-          toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
-        }
-      } else {
-        toast.error(`"${searchQuery}" shtrix-kodli tovar topilmadi`);
-      }
-    }
-  };
-
   const updateQuantity = (variantId, delta) => {
     setCart((prev) =>
       prev
@@ -447,6 +413,40 @@ export default function POS() {
     setPaidAmountUZS(cartTotalUZS > 0 ? String(cartTotalUZS) : '');
     setPaidAmountUSD(cartTotalUSD > 0 ? String(cartTotalUSD) : '');
     setCheckoutOpen(true);
+  };
+
+  // Barcode quick add on Enter (instantly searches in-memory array)
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) {
+        if (cart.length > 0) {
+          handleOpenCheckout();
+        }
+        return;
+      }
+      e.preventDefault();
+      // Try exact barcode match or 3-level code first across all branch variants
+      const exactMatch = allVariantsRef.current.find(
+        (v) =>
+          v.barcode?.toLowerCase() === q ||
+          v.code?.toLowerCase() === q ||
+          v.sku?.toLowerCase() === q
+      );
+      if (exactMatch) {
+        if (addToCart(exactMatch)) {
+          setSearchQuery('');
+          toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
+        }
+      } else if (variants.length === 1) {
+        if (addToCart(variants[0])) {
+          setSearchQuery('');
+          toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
+        }
+      } else {
+        toast.error(`"${searchQuery}" shtrix-kodli tovar topilmadi`);
+      }
+    }
   };
 
   // Complete Sale

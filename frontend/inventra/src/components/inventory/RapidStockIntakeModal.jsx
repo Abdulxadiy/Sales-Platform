@@ -64,32 +64,6 @@ export default function RapidStockIntakeModal({
     }
   }, [isOpen]);
 
-  // Handle preselected variant if opened via "Quick Intake"
-  useEffect(() => {
-    if (isOpen && preselectedVariantId && variants.length > 0) {
-      const match = variants.find((v) => String(v.id) === String(preselectedVariantId));
-      if (match) {
-        addItemToDraft(match);
-      }
-    }
-  }, [isOpen, preselectedVariantId, variants]);
-
-  // Close autocomplete on click outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target) &&
-        searchInputRef.current &&
-        !searchInputRef.current.contains(e.target)
-      ) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   // Helper to get clean variant details
   const getVariantInfo = useCallback((variant) => {
     const name = variant.product_name || variant.name || 'Noma’lum tovar';
@@ -106,22 +80,6 @@ export default function RapidStockIntakeModal({
 
     return { name, sub, code, barcode, unit, currency, stock, costPrice };
   }, []);
-
-  // Filtered variants for autocomplete
-  const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-
-    return variants
-      .filter((v) => {
-        const name = (v.product_name || v.name || '').toLowerCase();
-        const barcode = (v.barcode || '').toLowerCase();
-        const code = (v.code || '').toLowerCase();
-        const sku = (v.sku || '').toLowerCase();
-        return name.includes(q) || barcode.includes(q) || code.includes(q) || sku.includes(q);
-      })
-      .slice(0, 10);
-  }, [variants, searchQuery]);
 
   // Add or increment item in draft
   const addItemToDraft = useCallback(
@@ -202,6 +160,48 @@ export default function RapidStockIntakeModal({
     },
     [getVariantInfo, setDraft, toast]
   );
+
+  // Handle preselected variant if opened via "Quick Intake"
+  useEffect(() => {
+    if (isOpen && preselectedVariantId && variants.length > 0) {
+      const match = variants.find((v) => String(v.id) === String(preselectedVariantId));
+      if (match) {
+        addItemToDraft(match);
+      }
+    }
+  }, [isOpen, preselectedVariantId, variants, addItemToDraft]);
+
+  // Close autocomplete on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(e.target)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtered variants for autocomplete
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+
+    return variants
+      .filter((v) => {
+        const name = (v.product_name || v.name || '').toLowerCase();
+        const barcode = (v.barcode || '').toLowerCase();
+        const code = (v.code || '').toLowerCase();
+        const sku = (v.sku || '').toLowerCase();
+        return name.includes(q) || barcode.includes(q) || code.includes(q) || sku.includes(q);
+      })
+      .slice(0, 10);
+  }, [variants, searchQuery]);
 
   // Handle Search Input KeyDown (Barcode scanner or manual autocomplete)
   const handleSearchKeyDown = (e) => {

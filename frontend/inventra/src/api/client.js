@@ -83,6 +83,55 @@ export const resolveAvatarUrl = (raw) => {
 
 export const resolveMediaUrl = resolveAvatarUrl;
 
+async function handleResponse(response, responseType) {
+  if (response.status === 204) {
+    return null;
+  }
+  if (response.ok && responseType === 'blob') return response.blob();
+
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const data = isJson ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    let errorMsg = 'Kutilmagan xatolik yuz berdi';
+
+    if (response.status === 429) {
+      errorMsg =
+        (typeof data === 'object' && (data?.detail || data?.message || data?.error?.message)) ||
+        (typeof data === 'object' && data?.retry_after_seconds
+          ? `Iltimos, ${data.retry_after_seconds} soniyadan keyin qayta urinib ko'ring.`
+          : null) ||
+        "So'rovlar soni me'yordan oshib ketdi (429 Too Many Requests). Iltimos, biroz kuting.";
+    } else if (data && typeof data === 'object') {
+      if (data.error === 'telegram_send_failed') {
+        errorMsg = data.detail || 'Telegram bot orqali tasdiqlash kodini yuborib bo‘lmadi. Iltimos, Telegramda @ilbi_bot ga kirib, /start bosing va telefon raqamingizni ulang.';
+      } else if (data.error === 'telegram_contact_not_found') {
+        errorMsg = data.detail || 'Telefon raqamingiz Telegram botga ulanmagan. Iltimos, Telegramda @ilbi_bot ga kirib, /start bosing va telefon raqamingizni ulang.';
+      } else {
+        errorMsg =
+          data.detail ||
+          data.message ||
+          (typeof data.error === 'string' ? data.error : data.error?.message) ||
+          (Array.isArray(data) ? data[0] : JSON.stringify(data));
+      }
+    } else if (typeof data === 'string') {
+      if (data.trim().startsWith('<')) {
+        errorMsg = `Server xatoligi (${response.status} ${response.statusText || ''})`.trim();
+      } else {
+        errorMsg = data;
+      }
+    }
+
+    const err = new Error(errorMsg);
+    err.status = response.status;
+    err.data = data;
+    throw err;
+  }
+
+  return data;
+}
+
 let refreshPromise = null;
 
 export function refreshAccessToken() {
@@ -177,55 +226,6 @@ export async function request(endpoint, options = {}) {
   } catch (error) {
     throw error;
   }
-}
-
-async function handleResponse(response, responseType) {
-  if (response.status === 204) {
-    return null;
-  }
-  if (response.ok && responseType === 'blob') return response.blob();
-
-  const contentType = response.headers.get('content-type') || '';
-  const isJson = contentType.includes('application/json');
-  const data = isJson ? await response.json() : await response.text();
-
-  if (!response.ok) {
-    let errorMsg = 'Kutilmagan xatolik yuz berdi';
-
-    if (response.status === 429) {
-      errorMsg =
-        (typeof data === 'object' && (data?.detail || data?.message || data?.error?.message)) ||
-        (typeof data === 'object' && data?.retry_after_seconds
-          ? `Iltimos, ${data.retry_after_seconds} soniyadan keyin qayta urinib ko'ring.`
-          : null) ||
-        "So'rovlar soni me'yordan oshib ketdi (429 Too Many Requests). Iltimos, biroz kuting.";
-    } else if (data && typeof data === 'object') {
-      if (data.error === 'telegram_send_failed') {
-        errorMsg = data.detail || 'Telegram bot orqali tasdiqlash kodini yuborib bo‘lmadi. Iltimos, Telegramda @ilbi_bot ga kirib, /start bosing va telefon raqamingizni ulang.';
-      } else if (data.error === 'telegram_contact_not_found') {
-        errorMsg = data.detail || 'Telefon raqamingiz Telegram botga ulanmagan. Iltimos, Telegramda @ilbi_bot ga kirib, /start bosing va telefon raqamingizni ulang.';
-      } else {
-        errorMsg =
-          data.detail ||
-          data.message ||
-          (typeof data.error === 'string' ? data.error : data.error?.message) ||
-          (Array.isArray(data) ? data[0] : JSON.stringify(data));
-      }
-    } else if (typeof data === 'string') {
-      if (data.trim().startsWith('<')) {
-        errorMsg = `Server xatoligi (${response.status} ${response.statusText || ''})`.trim();
-      } else {
-        errorMsg = data;
-      }
-    }
-
-    const err = new Error(errorMsg);
-    err.status = response.status;
-    err.data = data;
-    throw err;
-  }
-
-  return data;
 }
 
 // -------------------------------------------------------------

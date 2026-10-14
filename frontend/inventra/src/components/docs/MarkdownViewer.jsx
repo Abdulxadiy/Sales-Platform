@@ -85,6 +85,114 @@ function scrollToHeading(targetId, rawHref) {
  * Clean, lightweight, dependency-free Markdown renderer with full TOC anchor support.
  * Formatted specifically for the Inventra Obsidian & Gold Design System.
  */
+/**
+ * Parses bold, italic, inline code, and links with interactive smooth scroll for anchors
+ */
+function renderInline(text = '') {
+  if (!text) return null;
+
+  // Split text by formatting tokens: code, bold, italic, strikethrough, images, links
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\))/g;
+  const parts = text.split(regex);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    // Image: ![caption](url)
+    const inlineImgMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (inlineImgMatch) {
+      return (
+        <img
+          key={index}
+          src={inlineImgMatch[2]}
+          alt={inlineImgMatch[1] || 'rasm'}
+          loading="lazy"
+          style={{
+            maxWidth: '100%',
+            borderRadius: 12,
+            border: '1px solid var(--border-card)',
+            margin: '8px 0',
+            display: 'inline-block',
+          }}
+        />
+      );
+    }
+
+    // Inline code: `code`
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      return (
+        <code key={index} className="inline-code">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // Bold: **text**
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      return (
+        <strong key={index} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    // Italic: *text*
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return (
+        <em key={index} style={{ color: 'var(--text-primary)', fontStyle: 'italic' }}>
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+
+    // Strikethrough: ~~text~~
+    if (part.startsWith('~~') && part.endsWith('~~') && part.length > 4) {
+      return (
+        <del key={index} style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+          {part.slice(2, -2)}
+        </del>
+      );
+    }
+
+    // Link: [label](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      const href = linkMatch[2];
+      const isAnchor = href.startsWith('#');
+      const isInternal = isAnchor || href.startsWith('/');
+
+      const handleAnchorClick = (e) => {
+        if (!isAnchor) return;
+        e.preventDefault();
+        const targetId = href.slice(1);
+        scrollToHeading(targetId, href);
+      };
+
+      return (
+        <a
+          key={index}
+          href={href}
+          onClick={isAnchor ? handleAnchorClick : undefined}
+          target={isInternal ? '_self' : '_blank'}
+          rel="noopener noreferrer"
+          className="doc-link"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            cursor: 'pointer',
+          }}
+        >
+          <span>{linkMatch[1]}</span>
+          {!isInternal && <ExternalLink size={12} style={{ opacity: 0.7 }} />}
+        </a>
+      );
+    }
+
+    return part;
+  });
+}
+
 export default function MarkdownViewer({ content = '', className = '' }) {
   useEffect(() => {
     if (!content) return;
@@ -404,112 +512,4 @@ export default function MarkdownViewer({ content = '', className = '' }) {
   if (inAlert) flushAlert('end');
 
   return <div className={`doc-viewer ${className}`}>{elements}</div>;
-}
-
-/**
- * Parses bold, italic, inline code, and links with interactive smooth scroll for anchors
- */
-function renderInline(text = '') {
-  if (!text) return null;
-
-  // Split text by formatting tokens: code, bold, italic, strikethrough, images, links
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\))/g;
-  const parts = text.split(regex);
-
-  return parts.map((part, index) => {
-    if (!part) return null;
-
-    // Image: ![caption](url)
-    const inlineImgMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-    if (inlineImgMatch) {
-      return (
-        <img
-          key={index}
-          src={inlineImgMatch[2]}
-          alt={inlineImgMatch[1] || 'rasm'}
-          loading="lazy"
-          style={{
-            maxWidth: '100%',
-            borderRadius: 12,
-            border: '1px solid var(--border-card)',
-            margin: '8px 0',
-            display: 'inline-block',
-          }}
-        />
-      );
-    }
-
-    // Inline code: `code`
-    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-      return (
-        <code key={index} className="inline-code">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-
-    // Bold: **text**
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      return (
-        <strong key={index} style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-
-    // Italic: *text*
-    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-      return (
-        <em key={index} style={{ color: 'var(--text-primary)', fontStyle: 'italic' }}>
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-
-    // Strikethrough: ~~text~~
-    if (part.startsWith('~~') && part.endsWith('~~') && part.length > 4) {
-      return (
-        <del key={index} style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-          {part.slice(2, -2)}
-        </del>
-      );
-    }
-
-    // Link: [label](url)
-    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (linkMatch) {
-      const href = linkMatch[2];
-      const isAnchor = href.startsWith('#');
-      const isInternal = isAnchor || href.startsWith('/');
-
-      const handleAnchorClick = (e) => {
-        if (!isAnchor) return;
-        e.preventDefault();
-        const targetId = href.slice(1);
-        scrollToHeading(targetId, href);
-      };
-
-      return (
-        <a
-          key={index}
-          href={href}
-          onClick={isAnchor ? handleAnchorClick : undefined}
-          target={isInternal ? '_self' : '_blank'}
-          rel="noopener noreferrer"
-          className="doc-link"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 3,
-            cursor: 'pointer',
-          }}
-        >
-          <span>{linkMatch[1]}</span>
-          {!isInternal && <ExternalLink size={12} style={{ opacity: 0.7 }} />}
-        </a>
-      );
-    }
-
-    return part;
-  });
 }

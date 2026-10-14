@@ -9,6 +9,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import PhoneInput from '../components/common/PhoneInput';
+import EmployeePermissionsSelector from '../components/employees/EmployeePermissionsSelector';
 
 const PAGE_SIZE = 50;
 
@@ -157,21 +158,6 @@ export default function Employees() {
     }).catch((error) => { if (!cancelled) toast.error(error.message); });
     return () => { cancelled = true; };
   }, [selectedTenantId, toast]);
-
-  const renderPermissions = (form, setForm) => (
-    <fieldset style={{ border: '1px solid var(--border-card)', borderRadius: 8, padding: 12 }}>
-      <legend>Xodim ruxsatlari</legend>
-      <div style={{ display: 'grid', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
-        {permissionChoices.map((permission) => <label key={permission.id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
-          <input type="checkbox" checked={(form.permission_ids || []).includes(permission.id)}
-            onChange={(event) => setForm({ ...form, permission_ids: event.target.checked
-              ? [...(form.permission_ids || []), permission.id]
-              : (form.permission_ids || []).filter((id) => id !== permission.id) })} />
-          {permission.name}
-        </label>)}
-      </div>
-    </fieldset>
-  );
 
   const refreshList = () => setReloadVersion((version) => version + 1);
 

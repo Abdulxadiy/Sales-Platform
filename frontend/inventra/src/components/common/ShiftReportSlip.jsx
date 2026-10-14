@@ -1,7 +1,7 @@
 import React from 'react';
 import InventraLogo from './InventraLogo';
 import { ReceiptBarcode } from './ReceiptSlip';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Authentic 58mm/80mm Thermal Z-Report Slip Component (Smena / Kassa Z-Hisoboti)

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, UserPlus, UserX, Users, Mail, Pencil, Ban, ShieldCheck, Trash2, RotateCcw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { tenantApi } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';

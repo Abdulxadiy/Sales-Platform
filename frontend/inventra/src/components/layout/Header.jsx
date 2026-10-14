@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Clock, Shield, Menu, Store, Headphones } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import CustomSelect from '../common/CustomSelect';
 

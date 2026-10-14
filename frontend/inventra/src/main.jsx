@@ -59,8 +59,7 @@ class ErrorBoundary extends Component {
             </pre>
             <button
               onClick={() => {
-                localStorage.clear();
-                window.location.href = '/login';
+                window.location.reload();
               }}
               style={{
                 background: '#6366f1',
@@ -73,7 +72,7 @@ class ErrorBoundary extends Component {
                 cursor: 'pointer'
               }}
             >
-              Keshni tozalash va Qayta yuklash
+              Qayta yuklash
             </button>
           </div>
         </div>

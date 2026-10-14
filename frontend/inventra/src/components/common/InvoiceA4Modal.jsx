@@ -10,7 +10,7 @@ import {
   Lock,
 } from 'lucide-react';
 import Modal from './Modal';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import { numberToWordsUzbek } from '../../utils/numberToWordsUzbek';
 

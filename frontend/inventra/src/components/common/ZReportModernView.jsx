@@ -16,7 +16,7 @@ import {
   FileText,
 } from 'lucide-react';
 import InventraLogo from './InventraLogo';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * Modern, clean, notification-inspired Z-Report UI component.

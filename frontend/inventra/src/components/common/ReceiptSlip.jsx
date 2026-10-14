@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import InventraLogo from './InventraLogo';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 /**
  * High-resolution QR Code generator optimized for thermal printer heads (203 DPI)

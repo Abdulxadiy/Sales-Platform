@@ -130,3 +130,16 @@ test('financial request key survives retries and regenerates when the payload ch
   assert.notEqual(getOrCreateRequestKey('tenant:1:checkout', { ...data, amount: '200' }), key);
   assert.notEqual(getOrCreateRequestKey('tenant:2:checkout', data), key);
 });
+
+
+test('support can omit an obsolete tenant selection while retaining account authentication', async () => {
+  const access = token();
+  setTokens(access, token());
+  localStorage.setItem('inventra_active_tenant:1', '999');
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.headers['X-Tenant-ID'], undefined);
+    assert.equal(options.headers.Authorization, `Bearer ${access}`);
+    return json({ results: [] });
+  };
+  assert.deepEqual(await request('/support/conversations/', { skipTenant: true }), { results: [] });
+});

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Headphones } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { supportApi } from '../../api/support';
 import { savedSupportLanguage, supportText } from './translations';
+import { startSupportPolling } from './polling';
 import './support.css';
 
 export default function HelpLauncher() {
@@ -15,16 +16,11 @@ export default function HelpLauncher() {
     setUnread(0);
     if (hidden || loading) return;
     let active = true;
-    const load = async () => {
-      if (document.hidden) return;
-      try {
-        const result = await supportApi(isAuthenticated, isAdmin).list();
-        if (active) setUnread(result.unread_total || 0);
-      } catch { /* The help link stays available during a connection failure. */ }
-    };
-    load();
-    const timer = setInterval(load, 20000);
-    return () => { active = false; clearInterval(timer); };
+    const poller = startSupportPolling(async () => {
+      const result = await supportApi(isAuthenticated, isAdmin).list();
+      if (active) setUnread(result.unread_total || 0);
+    }, { intervalMs: 20000 });
+    return () => { active = false; poller.stop(); };
   }, [isAuthenticated, isAdmin, user?.id, hidden, loading]);
   if (hidden) return null;
   const title = supportText[savedSupportLanguage()].title;

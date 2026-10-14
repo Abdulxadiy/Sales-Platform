@@ -274,3 +274,38 @@ def test_public_guides_exclude_private_manuals_and_images_are_real():
     for doc in (root / "qollanmalar").glob("*.md"):
         for reference in re.findall(r"!\[[^\]]*\]\((\.\./rasmlar/focused/[^)]+)\)", doc.read_text()):
             assert (doc.parent / reference).is_file(), (doc.name, reference)
+
+
+def test_forwarded_prefix_cannot_bypass_guest_write_limit():
+    client = guest()
+    for index in range(20):
+        client.post(
+            "/api/v1/support/guest/", {}, format="json", HTTP_X_FORWARDED_FOR=f"198.51.100.{index}, 203.0.113.9"
+        )
+    response = client.post(
+        "/api/v1/support/guest/", {}, format="json", HTTP_X_FORWARDED_FOR="different-prefix, 203.0.113.9"
+    )
+    assert response.status_code == 429
+
+
+def test_unapplied_support_migration_returns_retryable_service_error():
+    from django.db import ProgrammingError
+
+    missing = ProgrammingError('relation "support_conversation" does not exist')
+    driver_error = Exception("undefined table")
+    driver_error.pgcode = "42P01"
+    missing.__cause__ = driver_error
+    with patch("api.v1.support.views.with_unread", side_effect=missing):
+        response = guest().get("/api/v1/support/guest/")
+    assert response.status_code == 503
+    assert response.data["error"]["code"] == "support_not_ready"
+    assert response["Retry-After"] == "30"
+    assert response["Cache-Control"] == "no-store"
+
+
+def test_unrelated_database_error_is_not_hidden_as_support_setup():
+    from django.db import ProgrammingError
+
+    with patch("api.v1.support.views.with_unread", side_effect=ProgrammingError("invalid column")):
+        with pytest.raises(ProgrammingError, match="invalid column"):
+            guest().get("/api/v1/support/guest/")

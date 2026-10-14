@@ -9,7 +9,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { tenantApi } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { useToast } from '../context/ToastContext';
 import CustomSelect from '../components/common/CustomSelect';

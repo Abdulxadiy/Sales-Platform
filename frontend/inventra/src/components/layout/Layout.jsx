@@ -6,7 +6,7 @@ import Modal from '../common/Modal';
 import PriceInput from '../common/PriceInput';
 import { cashboxApi, salesApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';

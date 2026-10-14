@@ -18,7 +18,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { authApi } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import TelegramConnectionGate from '../components/auth/TelegramConnectionGate';

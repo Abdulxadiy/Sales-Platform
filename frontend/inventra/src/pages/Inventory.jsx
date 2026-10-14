@@ -25,7 +25,7 @@ import CustomSelect from '../components/common/CustomSelect';
 import Pagination from '../components/common/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { usePersistedState } from '../hooks/usePersistedState';
 

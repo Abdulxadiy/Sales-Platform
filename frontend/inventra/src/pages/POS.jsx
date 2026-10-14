@@ -24,7 +24,7 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useTenant } from '../context/TenantContext';
 import { getOrCreateRequestKey } from '../utils/requestKey';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { usePersistedState } from '../hooks/usePersistedState';
 
 const EMPTY_CART = [];

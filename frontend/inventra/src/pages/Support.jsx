@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Headphones, Phone, Send, Paperclip, X, BookOpen } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { useTenant } from '../context/TenantContext';
 import { request } from '../api/client';
 import { publicSupportRequest, supportApi } from '../api/support';
 import { savedSupportLanguage, supportText } from '../components/support/translations';
 import MarkdownViewer from '../components/docs/MarkdownViewer';
+import { startSupportPolling } from '../components/support/polling';
 import '../components/support/support.css';
 
 function PrivateImage({ api, conversationId, messageId, t }) {
@@ -29,6 +31,7 @@ const mergeMessages = (previous, incoming) => Array.from(new Map([...previous, .
 
 
 function SupportCenter({ user, authenticated, operator }) {
+  const { activeTenant } = useTenant();
   const [language, setLanguage] = useState(savedSupportLanguage);
   const t = supportText[language];
   const api = useMemo(() => supportApi(authenticated, operator), [authenticated, operator]);
@@ -59,6 +62,8 @@ function SupportCenter({ user, authenticated, operator }) {
   const startRequest = useRef(null);
   const sendRequest = useRef(null);
   const fileRef = useRef(null);
+  const listPollerRef = useRef(null);
+  const messagePollerRef = useRef(null);
   const listQuery = `?page=${page}&status=${filter}&mine=${mine}`;
   const loadList = useCallback(async () => {
     const result = await api.list(listQuery);
@@ -69,16 +74,19 @@ function SupportCenter({ user, authenticated, operator }) {
   useEffect(() => { publicSupportRequest('/support/metadata/').then(setMetadata).catch(() => setError(t.unavailable)); }, [t.unavailable]);
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      if (globalThis.document.hidden) return;
-      try {
-        const result = await api.list(listQuery);
-        if (active) { setConversations(result.results); setNextPage(Boolean(result.next)); }
-      } catch (err) { if (active) setError(err.message || t.unavailable); }
-    };
-    load();
-    const timer = setInterval(load, 15000);
-    return () => { active = false; clearInterval(timer); };
+    const poller = startSupportPolling(async () => {
+      const result = await api.list(listQuery);
+      if (active) {
+        setConversations(result.results);
+        setNextPage(Boolean(result.next));
+        setError('');
+      }
+    }, {
+      intervalMs: 15000,
+      onError: (err) => { if (active) setError(err.status >= 500 ? t.unavailable : err.message || t.unavailable); },
+    });
+    listPollerRef.current = poller;
+    return () => { active = false; poller.stop(); listPollerRef.current = null; };
   }, [api, listQuery, t.unavailable]);
 
   const docRequest = useCallback((path) => authenticated ? request(path) : publicSupportRequest(path), [authenticated]);
@@ -100,11 +108,7 @@ function SupportCenter({ user, authenticated, operator }) {
     setMessages([]); messagesRef.current = []; setConversation(null); setHasOlder(false); readRef.current = 0;
     if (!selected) return;
     let active = true;
-    let inFlight = false;
-    const load = async () => {
-      if (inFlight || globalThis.document.hidden) return;
-      inFlight = true;
-      try {
+    const poller = startSupportPolling(async () => {
         const latest = messagesRef.current.at(-1)?.id;
         const [detail, batch] = await Promise.all([
           api.detail(selected), api.messages(selected, latest ? `?after_id=${latest}` : ''),
@@ -122,12 +126,12 @@ function SupportCenter({ user, authenticated, operator }) {
           await api.action(selected, 'read', { through_id: through });
           if (active) readRef.current = through;
         }
-      } catch (err) { if (active) setError(err.message || t.unavailable); }
-      finally { inFlight = false; }
-    };
-    load();
-    const timer = setInterval(load, 5000);
-    return () => { active = false; clearInterval(timer); };
+    }, {
+      intervalMs: 5000,
+      onError: (err) => { if (active) setError(err.status >= 500 ? t.unavailable : err.message || t.unavailable); },
+    });
+    messagePollerRef.current = poller;
+    return () => { active = false; poller.stop(); messagePollerRef.current = null; };
   }, [api, selected, t.unavailable]);
   const lastMessageId = messages.at(-1)?.id;
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [lastMessageId]);
@@ -149,7 +153,7 @@ function SupportCenter({ user, authenticated, operator }) {
       const body = { ...form, language };
       const signature = JSON.stringify(body);
       if (startRequest.current?.signature !== signature) startRequest.current = { signature, id: crypto.randomUUID() };
-      const created = await api.create({ ...body, client_id: startRequest.current.id });
+      const created = await api.create({ ...body, client_id: startRequest.current.id }, activeTenant?.id);
       startRequest.current = null;
       choose(created.id); setForm((old) => ({ ...old, subject: '', text: '' }));
     });
@@ -194,7 +198,7 @@ function SupportCenter({ user, authenticated, operator }) {
       {!authenticated && <p className="support-note">{t.guest}</p>}
       <div className="support-tabs"><button className={`btn ${tab === 'chat' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('chat')}><Headphones size={16} />{operator ? t.inbox : t.chat}</button>
         <button className={`btn ${tab === 'guide' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('guide')}><BookOpen size={16} />{t.guide}</button></div>
-      {error && <div className="support-error" role="alert">{error}<button className="btn btn-secondary" disabled={busy} onClick={() => run(loadList)}>{t.retry}</button></div>}
+      {error && <div className="support-error" role="alert">{error}<button className="btn btn-secondary" disabled={busy} onClick={() => { setError(''); listPollerRef.current?.retry(); messagePollerRef.current?.retry(); }}>{t.retry}</button></div>}
       {tab === 'guide' ? <section className="support-docs">
         <select className="input-field" aria-label={t.guide} value={docKey} onChange={(e) => setDocKey(e.target.value)}>
           {documents.map((doc) => <option key={doc.key} value={doc.key}>{doc.title}</option>)}

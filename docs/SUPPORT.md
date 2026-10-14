@@ -11,6 +11,15 @@ cd inventra
 uv run python manage.py migrate
 ```
 
+When source files are bind-mounted into a running development container, Gunicorn reloads Python code but does not rerun the startup migration command. After adding the support app to an already running stack, apply its migration explicitly:
+
+```bash
+docker compose exec -T inventra python manage.py migrate support --plan
+docker compose exec -T inventra python manage.py migrate support --noinput
+```
+
+A missing support table returns `503` with `error.code = support_not_ready` and `Retry-After: 30`, rather than an uncontrolled 500. Other database programming errors retain their normal error behavior. Schema changes are never applied from an HTTP request.
+
 The existing Redis service is used for shared support rate limits. Celery worker delivers Telegram notifications; chat persistence does not depend on successful notification delivery.
 
 Environment variables in `inventra/.env`:
@@ -49,10 +58,10 @@ An authenticated conversation belongs to its author, regardless of shared tenant
 - A visitor may close or reopen their own conversation. `claim` is an operator-only action.
 - List responses include per-thread unread counts and `unread_total` over the full filtered collection, not only the current page. Read markers only move forward.
 - Message history returns 50 items and `has_more`. Use `before_id` for older items or `after_id` for incremental updates; they cannot be combined.
-- Browser polls active chats every five seconds, list every 15 seconds, and the global unread launcher every 20 seconds. Hidden tabs pause polling.
+- Browser polls active chats every five seconds, list every 15 seconds, and the global unread launcher every 20 seconds after successful reads. Reads never overlap within a poller. Failures increase the interval to at most two minutes, while server Retry-After instructions are respected. Manual retry can resume immediately; hidden tabs pause polling.
 - Message POST requires a client-generated UUID `client_id`; retries in the same conversation return the existing message. The browser retains that ID on a failed send.
 
-Limits: 4,000 characters per message, 160 per subject, 100 per visitor name, five open conversations per identity, 120 requests/minute and 20 writes/minute per authenticated user or guest IP. Reverse-proxy forwarding must not allow forged client addresses.
+Limits: 4,000 characters per message, 160 per subject, 100 per visitor name, five open conversations per identity, 120 requests/minute and 20 writes/minute per authenticated user or guest IP. Guest limits use the last address appended to `X-Forwarded-For`. Keep the backend accessible only behind the trusted reverse proxy; client-supplied prefixes do not change the limit identity.
 
 Images: PNG/JPEG/WebP, up to 2 MB and 16 megapixels. Pillow validates and re-encodes to a resized JPEG with metadata removed. Small attachments are stored privately in the database, avoiding the public `/media/` route. List/history queries defer binary data. Include attachment storage in database capacity and backup planning; retention is not automatically enforced in this release.
 
@@ -104,3 +113,9 @@ node scripts/capture_guides.cjs
 ```
 
 If `CHROME_PATH` is omitted, Playwright uses its installed browser. Review every crop after a UI change: a passing screenshot command alone does not establish that a guide image is useful.
+
+### Development hot updates and recovery
+
+`AuthContext.jsx` exports the provider component; consumers import `useAuth` from `hooks/useAuth.js`. The context object lives in `context/authContext.js` and preserves its identity across Vite updates. Keep hooks and context creation outside the provider's component module so a development update cannot leave consumers attached to a different context object.
+
+The app error boundary reloads the page without clearing local storage. Do not clear browser data as a routine repair: it also removes the guest support credential, remembered sessions and local drafts.

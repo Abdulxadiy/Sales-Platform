@@ -126,6 +126,7 @@ async function handleResponse(response, responseType) {
     const err = new Error(errorMsg);
     err.status = response.status;
     err.data = data;
+    err.retryAfterMs = Number(response.headers.get('Retry-After') || 0) * 1000;
     throw err;
   }
 
@@ -187,7 +188,7 @@ export async function request(endpoint, options = {}) {
   const activeTenantId = tenantStorageKey
     ? sessionStorage.getItem(tenantStorageKey) || localStorage.getItem(tenantStorageKey)
     : null;
-  if (activeTenantId && !endpoint.startsWith('/auth/') && !endpoint.startsWith('/tenants/my/')) {
+  if (activeTenantId && !options.skipTenant && !endpoint.startsWith('/auth/') && !endpoint.startsWith('/tenants/my/')) {
     headers['X-Tenant-ID'] = activeTenantId;
   }
 

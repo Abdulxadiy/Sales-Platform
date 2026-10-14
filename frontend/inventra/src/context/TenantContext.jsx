@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 const TenantContext = createContext(null);
 const tenantStorageKey = (userId) => `inventra_active_tenant:${userId}`;

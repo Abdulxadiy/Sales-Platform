@@ -1,9 +1,11 @@
 import hashlib
+import logging
 import re
+from ipaddress import ip_address
 
 from django.conf import settings
 from django.core.cache import caches
-from django.db import transaction
+from django.db import ProgrammingError, transaction
 from django.db.models import Count, F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -23,6 +25,8 @@ from apps.support.tasks import enqueue_notification
 
 from .serializers import ConversationSerializer, MessageSerializer, SendSerializer, StartSerializer
 
+logger = logging.getLogger(__name__)
+
 
 class SupportThrottle(SimpleRateThrottle):
     scope = "support"
@@ -33,6 +37,16 @@ class SupportThrottle(SimpleRateThrottle):
 
     def get_rate(self):
         return "120/min"
+
+    def get_ident(self, request):
+        # Both project Nginx configs append the actual client address. Do not
+        # include a client-supplied XFF prefix in the rate-limit identity.
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        candidate = forwarded.split(",")[-1].strip() if forwarded else request.META.get("REMOTE_ADDR", "")
+        try:
+            return str(ip_address(candidate))
+        except ValueError:
+            return request.META.get("REMOTE_ADDR", "unknown")
 
     def get_cache_key(self, request, view):
         ident = f"user:{request.user.pk}" if request.user.is_authenticated else self.get_ident(request)
@@ -86,6 +100,26 @@ def with_unread(queryset, operator):
 class SupportView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [SupportThrottle, SupportWriteThrottle]
+
+    def handle_exception(self, exc):
+        # A development code reload does not apply new migrations. Keep this
+        # failure recoverable without hiding unrelated SQL/programming errors.
+        driver_error = getattr(exc, "__cause__", None)
+        missing_table = getattr(driver_error, "pgcode", None) == "42P01"
+        support_table = any(f'"{table}"' in str(exc) for table in ("support_conversation", "support_message"))
+        if isinstance(exc, ProgrammingError) and missing_table and support_table:
+            logger.error("Support tables are missing; apply the support migrations before serving chat requests.")
+            return Response(
+                {
+                    "error": {
+                        "code": "support_not_ready",
+                        "message": "Support is temporarily unavailable. Try again shortly.",
+                    }
+                },
+                status=503,
+                headers={"Retry-After": "30"},
+            )
+        return super().handle_exception(exc)
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)

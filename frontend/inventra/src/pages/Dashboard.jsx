@@ -25,7 +25,7 @@ import {
 import { analyticsApi, tenantApi, authApi, auditApi } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import Modal from '../components/common/Modal';
 import RevenueCostAnalyticsChart from '../components/dashboard/RevenueCostAnalyticsChart';
 import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';

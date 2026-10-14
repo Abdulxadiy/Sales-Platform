@@ -20,6 +20,8 @@ export async function publicSupportRequest(path, options = {}) {
     const data = await response.json().catch(() => ({}));
     const error = new Error(data.detail || data.error?.message || `HTTP ${response.status}`);
     error.status = response.status;
+    error.data = data;
+    error.retryAfterMs = Number(response.headers.get('Retry-After') || 0) * 1000;
     throw error;
   }
   return options.responseType === 'blob' ? response.blob() : response.json();
@@ -28,11 +30,11 @@ export async function publicSupportRequest(path, options = {}) {
 export function supportApi(authenticated, operator = false) {
   const root = `/support/${operator ? 'inbox' : authenticated ? 'conversations' : 'guest'}/`;
   const call = (path = '', options = {}) => authenticated
-    ? request(root + path, options)
+    ? request(root + path, { ...options, skipTenant: true })
     : publicSupportRequest(root + path, { ...options, headers: { 'X-Support-Token': guestSupportKey() } });
   return {
     list: (query = '') => call(query),
-    create: (body) => call('', { method: 'POST', body }),
+    create: (body, tenantId) => call('', { method: 'POST', body, headers: tenantId ? { 'X-Tenant-ID': String(tenantId) } : {} }),
     detail: (id) => call(`${id}/`),
     action: (id, action, extra = {}) => call(`${id}/`, { method: 'POST', body: { action, ...extra } }),
     messages: (id, query = '') => call(`${id}/messages/${query}`),

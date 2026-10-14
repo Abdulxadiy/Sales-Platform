@@ -3,7 +3,7 @@ import { ShieldCheck, Eye } from 'lucide-react';
 import { auditApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Audit() {
   const toast = useToast();

@@ -15,7 +15,7 @@ import {
   CheckCircle,
   Check,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import { docsApi } from '../api/client';
 import MarkdownViewer from '../components/docs/MarkdownViewer';

@@ -18,7 +18,7 @@ import Modal from '../components/common/Modal';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import { useToast } from '../context/ToastContext';
 import { useTenant } from '../context/TenantContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 const pendingQuantity = (item) => Math.max(0, Number(item.quantity || 0) - ['voided_quantity', 'b2b_accepted_quantity', 'b2b_rejected_quantity', 'b2b_return_pending_quantity', 'b2b_discrepancy_closed_quantity'].reduce((sum, field) => sum + Number(item[field] || 0), 0));
 

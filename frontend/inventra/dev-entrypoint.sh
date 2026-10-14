@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+if ! sha256sum -c node_modules/.inventra-dependencies.sha256 >/dev/null 2>&1; then
+    echo "Syncing frontend dependencies..."
+    npm ci --no-audit --no-fund
+    sha256sum package.json package-lock.json > node_modules/.inventra-dependencies.sha256
+fi
+
+exec npm run dev -- "$@"

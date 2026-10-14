@@ -13,7 +13,7 @@ export default function Header({
   onOpenMobileMenu,
 }) {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isOwner } = useAuth();
   const { tenants, activeTenant, selectTenant } = useTenant();
   const canViewCashbox = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.view_cashbox");
   const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.manage_shift");
@@ -83,18 +83,19 @@ export default function Header({
       </div>
 
       <div className="header-actions-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {!isAdmin && activeTenant && (
-          isOwner && tenants.length > 1 ? (
+        {!isAdmin && tenants.length > 0 && (
+          isOwner && (tenants.length > 1 || !activeTenant) ? (
             <CustomSelect
-              value={activeTenant.id}
+              value={activeTenant?.id ?? ''}
               onChange={(newTenantId) => {
                 const selected = tenants.find((tenant) => String(tenant.id) === String(newTenantId));
                 if (selected) selectTenant(selected);
               }}
               options={tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))}
+              placeholder="Do‘konni tanlang"
               icon={Store}
               size="sm"
-              title="Faol do‘konni almashtirish"
+              title="Do‘konni tanlash"
               style={{
                 borderRadius: 10,
                 background: 'var(--bg-chip)',
@@ -107,7 +108,7 @@ export default function Header({
                 left: 'auto',
               }}
             />
-          ) : (
+          ) : activeTenant ? (
             <div
               style={{
                 display: 'flex',
@@ -126,7 +127,7 @@ export default function Header({
               <Store size={14} color="var(--primary)" />
               <span>{activeTenant.name}</span>
             </div>
-          )
+          ) : null
         )}
 
         {isAdmin ? (

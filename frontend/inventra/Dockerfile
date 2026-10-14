@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci && sha256sum package.json package-lock.json > node_modules/.inventra-dependencies.sha256
 
 # Copy application files
 FROM dependencies AS development
@@ -14,7 +14,7 @@ COPY . .
 
 EXPOSE 5173
 
-CMD ["npm", "run", "dev"]
+CMD ["sh", "./dev-entrypoint.sh"]
 
 FROM dependencies AS build
 COPY . .

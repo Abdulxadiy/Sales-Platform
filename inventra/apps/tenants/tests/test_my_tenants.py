@@ -45,9 +45,19 @@ def test_owner_can_create_another_isolated_tenant():
     assert created.owner_id == owner.id
     assert created.address == "Toshkent"
     assert created.receipt_header == "Source receipt"
+    assert created.seller_profile_id == source.seller_profile_id
     assert Employee.objects.filter(
         user=owner, tenant=created, is_owner=True, is_active=True
     ).exists()
+
+
+def test_create_for_existing_owner_auto_binds_approved_seller_profile():
+    owner = OwnerFactory()
+    source = TenantFactory(owner=owner)
+    EmployeeFactory(user=owner, tenant=source, is_owner=True)
+
+    new_tenant = TenantService.create_for_existing_owner(owner=owner, name="Auto profile shop")
+    assert new_tenant.seller_profile_id == source.seller_profile_id
 
 
 def test_staff_cannot_create_an_owned_tenant():

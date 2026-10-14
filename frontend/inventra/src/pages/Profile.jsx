@@ -618,7 +618,7 @@ export default function Profile() {
           <button
             type="submit"
             disabled={saving}
-            className="btn-primary"
+            className="btn btn-primary"
             style={{
               padding: '12px 28px',
               borderRadius: 'var(--radius-sm)',
@@ -676,7 +676,7 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => setShowPasswordModal(true)}
-              className="btn-primary"
+              className="btn btn-primary"
               style={{
                 padding: '9px 18px',
                 borderRadius: 'var(--radius-sm)',
@@ -899,7 +899,7 @@ export default function Profile() {
                 <button
                   type="submit"
                   disabled={changingPassword}
-                  className="btn-primary"
+                  className="btn btn-primary"
                   style={{
                     padding: '10px 22px',
                     borderRadius: 'var(--radius-sm)',

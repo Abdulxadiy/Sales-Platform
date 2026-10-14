@@ -1603,8 +1603,156 @@ dialog.confirm-dialog-native[open] .confirm-dialog-card {
 .data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); text-align: left; vertical-align: top; }
 .data-table th { background: var(--bg-card); color: var(--text-secondary); }
 
-/* Focused documentation screenshots with an accessible enlarged view. */
-.doc-focus-figure{margin:24px 0;text-align:center}.doc-focus-trigger{display:block;margin:auto;max-width:100%;padding:0;border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:var(--bg-card);cursor:zoom-in}.doc-focus-trigger img{display:block;max-width:100%;height:auto}.doc-focus-figure figcaption{font-size:13px;line-height:1.5;margin:10px 0 4px;color:var(--text-secondary)}.doc-focus-figure>small{font-size:11px;color:var(--text-muted)}.doc-image-dialog{width:95vw;max-width:1600px;max-height:94dvh;padding:16px;border:1px solid var(--border-subtle);border-radius:14px;background:var(--bg-card);color:var(--text-primary)}.doc-image-dialog::backdrop{background:#000b}.doc-image-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;text-align:left}.doc-image-toolbar span{flex:1;font-size:13px}.doc-image-scroll{max-height:78dvh;overflow:auto}.doc-image-scroll img{display:block;margin:auto;height:auto}
+.doc-focus-figure {
+  margin: 24px 0;
+  text-align: center;
+}
+
+.doc-focus-trigger {
+  display: block;
+  margin: auto;
+  max-width: 100%;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card);
+  cursor: zoom-in;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.doc-focus-trigger:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.25);
+}
+
+.doc-focus-trigger img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.doc-focus-figure figcaption {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 10px 0 4px;
+  color: var(--text-secondary);
+}
+
+.doc-focus-figure > small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Modal Dialog for focused screenshot enlargement — Centered on screen */
+dialog.doc-image-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto !important;
+  padding: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  max-width: 95vw;
+  max-height: 94vh;
+  width: fit-content;
+  height: fit-content;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+dialog.doc-image-dialog:not([open]) {
+  display: none !important;
+}
+
+dialog.doc-image-dialog::backdrop {
+  background: var(--dialog-backdrop, rgba(6, 17, 13, 0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+dialog.doc-image-dialog .doc-image-card {
+  background: var(--bg-modal, var(--bg-surface));
+  color: var(--text-primary);
+  border: 1px solid var(--border-modal, var(--border-card));
+  border-radius: 16px;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.75), 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: min(92vw, 360px);
+  max-width: min(94vw, 1300px);
+  max-height: 90vh;
+  box-sizing: border-box;
+  animation: scaleIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog.doc-image-dialog .doc-image-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+dialog.doc-image-dialog .doc-image-toolbar span {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+dialog.doc-image-dialog .doc-image-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+dialog.doc-image-dialog .doc-image-scroll {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  max-height: calc(88vh - 90px);
+  max-width: 100%;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.08);
+  padding: 12px;
+}
+
+dialog.doc-image-dialog .doc-image-scroll img {
+  display: block;
+  margin: auto;
+  max-width: 100%;
+  max-height: calc(84vh - 120px);
+  height: auto;
+  width: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+  user-select: none;
+  cursor: zoom-in;
+}
+
+dialog.doc-image-dialog .doc-image-scroll img.is-zoomed {
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+  cursor: zoom-out;
+}
+
 
 /* ==========================================================================
    Catalog Import Modal & Dropzone Styles

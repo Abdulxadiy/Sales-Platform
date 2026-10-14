@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowRightLeft, Check, RotateCcw, Send } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, Check, Plus, RotateCcw, Send, Store, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { inventoryApi } from '../../api/client';
 import CustomSelect from '../common/CustomSelect';
 
@@ -28,6 +29,7 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
 
   const updateDraft = (index, key, value) => setDraftRows((rows) => rows.map((row, i) => i === index ? { ...row, [key]: value } : row));
   const addDraftRow = () => setDraftRows((rows) => [...rows, { source_variant_id: '', quantity: '1', destination_category_id: '' }]);
+  const removeDraftRow = (index) => setDraftRows((rows) => (rows.length > 1 ? rows.filter((_, i) => i !== index) : rows));
 
   const dispatch = async (event) => {
     event.preventDefault();
@@ -177,24 +179,80 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
       <section style={{ padding: 18, border: '1px solid var(--border-card)', borderRadius: 14, background: 'var(--bg-card)' }}>
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 0, color: 'var(--text-primary)' }}><Send size={17} /> Do‘konlararo ichki transfer</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Faqat bir xil tasdiqlangan sotuvchi profiliga bog‘langan do‘konlar ko‘rinadi. Bu savdo yoki qarz yaratmaydi.</p>
+        {!loading && targets.length === 0 && (
+          <div
+            style={{
+              padding: '14px 16px',
+              borderRadius: 12,
+              background: 'var(--amber-bg, rgba(245, 158, 11, 0.08))',
+              border: '1px solid var(--amber-border, rgba(245, 158, 11, 0.25))',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              color: 'var(--text-primary)',
+              fontSize: 13,
+              lineHeight: 1.5,
+              marginBottom: 12,
+            }}
+          >
+            <AlertCircle size={20} style={{ color: 'var(--amber-500, #f59e0b)', flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+                Transfer uchun boshqa filial do‘kon topilmadi
+              </div>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                O‘zbekiston soliq qonunchiligiga ko‘ra, do‘konlararo ichki transfer faqat bir xil tasdiqlangan yuridik shaxs yoki YTT (Sotuvchi profili)ga bog‘langan do‘konlar o‘rtasida amalga oshiriladi.
+                Boshqa filial do‘konlaringizni ayni profilga ulash orqali bu yerda chiqarishingiz mumkin.
+              </div>
+              {isOwner && (
+                <div style={{ marginTop: 8 }}>
+                  <Link
+                    to="/my-tenants"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      color: 'var(--brand-primary, #6366f1)',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <Store size={15} /> Mening do‘konlarim bo‘limiga o‘tish &rarr;
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         <form onSubmit={dispatch} style={{ display: 'grid', gap: 10 }}>
           <CustomSelect
             value={destinationId}
             onChange={(val) => setDestinationId(val)}
             options={[
-              { value: '', label: 'Manzil do‘konni tanlang' },
+              { value: '', label: targets.length ? 'Manzil do‘konni tanlang' : 'Mavjud filial do‘konlar topilmadi' },
               ...targets.map((tenant) => ({
                 value: String(tenant.id),
                 label: `${tenant.name}${tenant.address ? ' — ' + tenant.address : ''}`,
               })),
             ]}
+            disabled={targets.length === 0}
             size="md"
             fullWidth
           />
           {draftRows.map((row, index) => {
             const variant = variants.find((item) => String(item.id) === String(row.source_variant_id));
             return (
-              <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 140px minmax(180px, 1fr)', gap: 8, alignItems: 'center' }}>
+              <div
+                key={index}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: draftRows.length > 1
+                    ? 'minmax(220px, 1fr) 130px minmax(180px, 1fr) 42px'
+                    : 'minmax(220px, 1fr) 130px minmax(180px, 1fr)',
+                  gap: 10,
+                  alignItems: 'center',
+                }}
+              >
                 <CustomSelect
                   value={row.source_variant_id}
                   onChange={(val) => updateDraft(index, 'source_variant_id', val)}
@@ -213,7 +271,15 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                   min="0.001"
                   step="0.001"
                   className="form-input"
-                  style={{ marginTop: 0 }}
+                  placeholder="Miqdor"
+                  style={{
+                    marginTop: 0,
+                    height: 42,
+                    fontSize: 14,
+                    padding: '8px 12px',
+                    borderRadius: 10,
+                    boxSizing: 'border-box',
+                  }}
                   value={row.quantity}
                   onChange={(event) => updateDraft(index, 'quantity', event.target.value)}
                   required
@@ -233,16 +299,65 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                     fullWidth
                   />
                 ) : (
-                  <span style={{ color: 'var(--text-muted)', fontSize: 12, alignSelf: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12, alignSelf: 'center', paddingLeft: 4 }}>
                     Kategoriya topilmasa qabul qiluvchi tanlaydi
                   </span>
+                )}
+                {draftRows.length > 1 && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => removeDraftRow(index)}
+                    title="Qatorni o‘chirish"
+                    style={{
+                      height: 42,
+                      width: 42,
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--accent-rose, #f43f5e)',
+                      borderColor: 'rgba(244, 63, 94, 0.25)',
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 )}
               </div>
             );
           })}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type='button' className='btn-secondary' onClick={addDraftRow}>Yana mahsulot qo‘shish</button>
-            <button type='submit' disabled={busyId === 'dispatch' || !targets.length}>{busyId === 'dispatch' ? 'Yuborilmoqda…' : 'Transferni yuborish'}</button>
+          <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={addDraftRow}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '9px 18px',
+                fontSize: 13.5,
+              }}
+            >
+              <Plus size={15} />
+              <span>Yana mahsulot qo‘shish</span>
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={busyId === 'dispatch' || !targets.length}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '9px 22px',
+                fontSize: 13.5,
+              }}
+            >
+              <Send size={15} />
+              <span>{busyId === 'dispatch' ? 'Yuborilmoqda…' : 'Transferni yuborish'}</span>
+            </button>
           </div>
           {!targets.length && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Transfer uchun boshqa tasdiqlangan profilingizga bog‘langan do‘kon kerak.</span>}
         </form>
@@ -259,7 +374,19 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
               <strong style={{ color: 'var(--primary)' }}>#{transfer.id}</strong>
               <span>{transfer.source_tenant_name} <ArrowRightLeft size={13} style={{ verticalAlign: 'middle' }} /> {transfer.destination_tenant_name}</span>
-              <span style={{ padding: '3px 8px', borderRadius: 999, background: transfer.status === 'pending' ? 'rgba(234,179,8,.15)' : 'rgba(34,197,94,.13)', color: 'var(--text-primary)', fontSize: 12 }}>{statusLabels[transfer.status] || transfer.status}</span>
+              <span
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  background: transfer.status === 'pending' ? 'rgba(234, 179, 8, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                  color: transfer.status === 'pending' ? 'var(--accent-amber, #f59e0b)' : 'var(--accent-emerald, #10b981)',
+                  border: transfer.status === 'pending' ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {statusLabels[transfer.status] || transfer.status}
+              </span>
               {transfer.kind === 'return' && <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Qaytish transferi</span>}
             </div>
             <div style={{ display: 'grid', gap: 4 }}>{transfer.items.map((item) => <div key={item.id} style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -268,10 +395,64 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
               {item.discrepancy_reason && <span style={{ color: 'var(--accent-rose)' }}> — {item.discrepancy_reason}</span>}
             </div>)}</div>
             {transfer.note && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Izoh: {transfer.note}</div>}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {canReceive && <button disabled={busyId === transfer.id} onClick={() => receive(transfer)}><Check size={14} /> Qabulni qayd etish</button>}
-              {canReturn && <button className='btn-secondary' disabled={busyId === transfer.id} onClick={() => startReturn(transfer)}><RotateCcw size={14} /> Qaytish transferi</button>}
-              {canClose && <button className='btn-secondary' disabled={busyId === transfer.id} onClick={() => closeDiscrepancy(transfer)}>Tafovutni yopish</button>}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+              {canReceive && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={busyId === transfer.id}
+                  onClick={() => receive(transfer)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    background: 'var(--accent-emerald, #10b981)',
+                    borderColor: 'var(--accent-emerald, #10b981)',
+                  }}
+                >
+                  <Check size={14} />
+                  <span>Qabulni qayd etish</span>
+                </button>
+              )}
+              {canReturn && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busyId === transfer.id}
+                  onClick={() => startReturn(transfer)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    fontSize: 13,
+                  }}
+                >
+                  <RotateCcw size={14} />
+                  <span>Qaytish transferi</span>
+                </button>
+              )}
+              {canClose && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={busyId === transfer.id}
+                  onClick={() => closeDiscrepancy(transfer)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    color: 'var(--accent-amber, #f59e0b)',
+                    borderColor: 'rgba(245, 158, 11, 0.3)',
+                  }}
+                >
+                  <span>Tafovutni yopish</span>
+                </button>
+              )}
             </div>
           </article>;
         })}

@@ -72,18 +72,27 @@ class TenantService:
         if Tenant.objects.filter(name__iexact=name).exists():
             raise TenantServiceError("Bunday nomli do‘kon allaqachon mavjud.")
 
+        source = None
+        if copy_settings_from is not None:
+            source = Tenant.objects.filter(pk=copy_settings_from, owner=owner).first()
+            if source is None:
+                raise TenantServiceError("Sozlamalar faqat o‘zingizga tegishli do‘kondan nusxalanadi.")
+
         if seller_profile is not None:
             if not isinstance(seller_profile, SellerProfile) or seller_profile.owner_id != owner.id:
                 raise TenantServiceError("Faqat o‘zingizga tegishli sotuvchi profilini tanlang.")
+        elif source is not None and source.seller_profile:
+            seller_profile = source.seller_profile
+        else:
+            approved_profiles = SellerProfile.objects.filter(owner=owner, status=SellerProfile.STATUS_APPROVED)
+            if approved_profiles.count() == 1:
+                seller_profile = approved_profiles.first()
 
         tenant = Tenant(
             name=name, owner=owner, description=description, address=address,
             seller_profile=seller_profile,
         )
-        if copy_settings_from is not None:
-            source = Tenant.objects.filter(pk=copy_settings_from, owner=owner).first()
-            if source is None:
-                raise TenantServiceError("Sozlamalar faqat o‘zingizga tegishli do‘kondan nusxalanadi.")
+        if source is not None:
             for field in TenantService.COPYABLE_SETTINGS:
                 setattr(tenant, field, getattr(source, field))
         tenant.save()

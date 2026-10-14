@@ -659,7 +659,7 @@
 .support-launcher {
   position: fixed;
   right: 24px;
-  bottom: 34px;
+  bottom: 38px;
   z-index: 80;
   display: flex;
   gap: 8px;
@@ -672,16 +672,33 @@
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, bottom 0.2s ease;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
 }
 .support-launcher:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
 }
+.support-launcher.is-dragging {
+  cursor: grabbing !important;
+  transform: scale(1.06) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45) !important;
+  transition: none !important;
+}
 .support-launcher.compact {
-  padding: 10px;
-  bottom: 24px;
-  right: 18px;
+  padding: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  justify-content: center;
+}
+.support-launcher.compact > span:not(.support-badge) {
+  display: none !important;
+}
+.support-launcher.compact:hover {
+  transform: scale(1.08);
 }
 .support-login-link {
   display: block;

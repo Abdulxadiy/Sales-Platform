@@ -90,6 +90,79 @@ export default function HelpLauncher() {
   const api = useMemo(() => supportApi(isAuthenticated, isAdmin), [isAuthenticated, isAdmin]);
   const hidden = pathname === '/support' || pathname.startsWith('/r/') || pathname.startsWith('/receipt/');
 
+  const [customBottom, setCustomBottom] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('support_launcher_bottom');
+      return saved ? parseInt(saved, 10) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ isDragging: false, startY: 0, startBottom: 0, hasMoved: false });
+
+  // Default safe positions: in POS sits safely above checkout (125px), otherwise 38px
+  const defaultBottom = pathname === '/pos' ? 125 : 38;
+  const launcherBottom = customBottom ?? defaultBottom;
+  const widgetBottom = Math.max(20, Math.min(launcherBottom + (pathname === '/pos' ? 56 : 54), typeof window !== 'undefined' ? window.innerHeight - 560 : 500));
+
+  const handlePointerDown = (e) => {
+    if (e.button !== 0) return;
+    dragRef.current = {
+      isDragging: true,
+      startY: e.clientY,
+      startBottom: launcherBottom,
+      hasMoved: false,
+    };
+
+    const handlePointerMove = (moveEvent) => {
+      if (!dragRef.current.isDragging) return;
+      const deltaY = dragRef.current.startY - moveEvent.clientY;
+      if (Math.abs(deltaY) > 5) {
+        dragRef.current.hasMoved = true;
+        setIsDragging(true);
+      }
+      if (dragRef.current.hasMoved) {
+        const newBottom = Math.max(20, Math.min(window.innerHeight - 80, dragRef.current.startBottom + deltaY));
+        setCustomBottom(newBottom);
+      }
+    };
+
+    const handlePointerUp = () => {
+      dragRef.current.isDragging = false;
+      setIsDragging(false);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      if (dragRef.current.hasMoved) {
+        setCustomBottom((latest) => {
+          if (latest) {
+            try { sessionStorage.setItem('support_launcher_bottom', String(latest)); } catch (_) {}
+          }
+          return latest;
+        });
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  const handleLauncherClick = (e) => {
+    if (dragRef.current.hasMoved) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    setIsOpen((prev) => !prev);
+  };
+
+  const handleLauncherDoubleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCustomBottom(null);
+    try { sessionStorage.removeItem('support_launcher_bottom'); } catch (_) {}
+  };
+
   // Listen for open event from anywhere in the app
   useEffect(() => {
     const handleOpenWidget = () => setIsOpen(true);
@@ -320,7 +393,13 @@ export default function HelpLauncher() {
     <>
       {/* Floating Chat Popup Window */}
       {isOpen && (
-        <div className="support-widget-window">
+        <div
+          className="support-widget-window"
+          style={{
+            bottom: widgetBottom,
+            right: pathname === '/pos' ? 20 : 24,
+          }}
+        >
           {/* Header */}
           <div className="support-widget-header">
             <div className="support-widget-header-info">
@@ -655,10 +734,16 @@ export default function HelpLauncher() {
       {/* Floating Toggle Launcher Button */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`support-launcher ${pathname === '/pos' ? 'compact' : ''} ${isOpen ? 'active-open' : ''}`}
+        onPointerDown={handlePointerDown}
+        onClick={handleLauncherClick}
+        onDoubleClick={handleLauncherDoubleClick}
+        className={`support-launcher ${pathname === '/pos' ? 'compact' : ''} ${isOpen ? 'active-open' : ''} ${isDragging ? 'is-dragging' : ''}`}
+        style={{
+          bottom: launcherBottom,
+          right: pathname === '/pos' ? 20 : 24,
+        }}
         aria-label={`${title}${unread ? ` (${unread})` : ''}`}
-        title={isOpen ? 'Chatni yopish' : title}
+        title={isOpen ? 'Chatni yopish' : `${title} (O‘rnini surish uchun bosing va torting, joyiga qaytarish uchun 2 marta bosing)`}
       >
         {isOpen ? (
           <X size={20} />

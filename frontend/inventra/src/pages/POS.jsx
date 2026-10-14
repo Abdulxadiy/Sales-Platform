@@ -624,7 +624,7 @@ export default function POS() {
           </button>
           <button
             type="button"
-            className="btn-secondary"
+            className="btn btn-secondary"
             onClick={() => setUsdCalculatorOpen((open) => !open)}
             style={{
               borderColor: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,

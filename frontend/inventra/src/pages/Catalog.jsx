@@ -746,17 +746,18 @@ export default function Catalog() {
           onClick={() => handleTabChange('active')}
           style={{
             padding: '8px 18px',
-            borderRadius: 'var(--radius-sm)',
-            border: activeTab === 'active' ? '1px solid var(--primary)' : '1px solid var(--border-card)',
-            background: activeTab === 'active' ? 'var(--primary-subtle, rgba(245, 158, 11, 0.12))' : 'var(--bg-card)',
-            color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
-            fontWeight: 700,
-            fontSize: 13,
+            borderRadius: 10,
+            border: activeTab === 'active' ? '1px solid var(--primary, #f59e0b)' : '1px solid var(--border-subtle)',
+            background: activeTab === 'active' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-card)',
+            color: activeTab === 'active' ? 'var(--primary, #f59e0b)' : 'var(--text-primary)',
+            fontWeight: activeTab === 'active' ? 700 : 600,
+            fontSize: 13.5,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
             transition: 'all 0.15s ease',
+            boxShadow: activeTab === 'active' ? '0 0 12px rgba(245, 158, 11, 0.15)' : 'none',
           }}
         >
           <Package size={16} />
@@ -768,21 +769,22 @@ export default function Catalog() {
           onClick={() => handleTabChange('archived')}
           style={{
             padding: '8px 18px',
-            borderRadius: 'var(--radius-sm)',
-            border: activeTab === 'archived' ? '1px solid var(--accent-amber)' : '1px solid var(--border-card)',
+            borderRadius: 10,
+            border: activeTab === 'archived' ? '1px solid var(--primary, #f59e0b)' : '1px solid var(--border-subtle)',
             background: activeTab === 'archived' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-card)',
-            color: activeTab === 'archived' ? 'var(--accent-amber)' : 'var(--text-muted)',
-            fontWeight: 700,
-            fontSize: 13,
+            color: activeTab === 'archived' ? 'var(--primary, #f59e0b)' : 'var(--text-primary)',
+            fontWeight: activeTab === 'archived' ? 700 : 600,
+            fontSize: 13.5,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
             transition: 'all 0.15s ease',
+            boxShadow: activeTab === 'archived' ? '0 0 12px rgba(245, 158, 11, 0.15)' : 'none',
           }}
         >
           <Archive size={16} />
-          <span>📦 Arxivlangan tovarlar</span>
+          <span>Arxivlangan tovarlar</span>
         </button>
       </div>
 

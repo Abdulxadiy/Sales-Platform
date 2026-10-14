@@ -14,6 +14,9 @@ import {
   FileText,
   Camera,
   Info,
+  Package,
+  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 import { catalogApi, salesApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
@@ -82,6 +85,16 @@ export default function POS() {
   const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const [selectedPosInvoiceSale, setSelectedPosInvoiceSale] = useState(null);
   const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 900 : false));
+  const [mobileTab, setMobileTab] = useState('catalog'); // 'catalog' | 'cart'
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 900);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -347,6 +360,11 @@ export default function POS() {
     [cartUSD, getItemEffectivePrice]
   );
 
+  const totalCartQty = useMemo(
+    () => cart.reduce((a, b) => a + (Number(b.quantity) || 0), 0),
+    [cart]
+  );
+
   const changeDueUZS = useMemo(
     () => Math.max(0, parseFloat(paidAmountUZS || 0) - cartTotalUZS),
     [paidAmountUZS, cartTotalUZS]
@@ -518,6 +536,7 @@ export default function POS() {
       localStorage.removeItem(checkoutStorageKey);
       setCompletedSales(salesList);
       resetCart();
+      setMobileTab('catalog');
       loadVariants();
       setCheckoutOpen(false);
       setReceiptOpen(true);
@@ -531,110 +550,214 @@ export default function POS() {
   };
 
   return (
-    <div style={{ display: 'flex', gap: 20, height: 'calc(100vh - 120px)' }}>
-      {/* Left Column: Catalog & Quick Select */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-        {/* Top Controls: Search Bar & 1-Narx Switcher */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <Search
-              size={18}
-              color="var(--text-muted)"
-              style={{ position: 'absolute', left: 14, top: 12 }}
-            />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Shtrix-kod, 3 bosqichli kod yoki tovar nomini yozing (Enter bosing)..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              style={{
-                width: '100%',
-                padding: '11px 14px 11px 42px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-card)',
-                background: 'var(--bg-input)',
-                color: 'var(--text-primary)',
-                fontSize: 14,
-                outline: 'none',
-              }}
-            />
-          </div>
-
-          {/* Camera Barcode Scanner Button */}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 12 : 20,
+        height: isMobile ? 'auto' : 'calc(100vh - 120px)',
+        minHeight: isMobile ? 'calc(100dvh - 130px)' : undefined,
+        width: '100%',
+        maxWidth: '100%',
+      }}
+    >
+      {/* Mobile Mode Segmented Switcher */}
+      {isMobile && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            background: 'var(--bg-card)',
+            padding: 4,
+            borderRadius: 12,
+            border: '1px solid var(--border-card)',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
           <button
             type="button"
-            onClick={() => setCameraScannerOpen(true)}
-            title="Telefon / qurilma kamerasi orqali shtrix-kod skanerlash"
+            onClick={() => setMobileTab('catalog')}
             style={{
+              flex: 1,
+              padding: '9px 12px',
+              borderRadius: 8,
+              border: 'none',
+              background: mobileTab === 'catalog' ? 'var(--primary, #f59e0b)' : 'transparent',
+              color: mobileTab === 'catalog' ? '#000' : 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 6,
-              padding: '10px 14px',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-card)',
-              background: 'var(--bg-input)',
-              color: 'var(--primary)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: 13,
-              whiteSpace: 'nowrap',
               transition: 'all 0.15s ease',
             }}
           >
-            <Camera size={16} />
-            <span>Kamera</span>
+            <Package size={16} />
+            <span>Katalog & Tovarlar</span>
           </button>
-
-          {/* 1-Narx (Partner) Switch Button */}
           <button
             type="button"
-            onClick={togglePartnerSale}
+            onClick={() => setMobileTab('cart')}
             style={{
-              padding: '10px 18px',
-              borderRadius: 'var(--radius-sm)',
-              border: isPartnerSale
-                ? '1px solid var(--accent-emerald)'
-                : '1px solid var(--border-subtle)',
-              background: isPartnerSale
-                ? 'rgba(16, 185, 129, 0.15)'
-                : 'rgba(255, 255, 255, 0.04)',
-              color: isPartnerSale ? 'var(--accent-emerald)' : 'var(--text-secondary)',
-              fontSize: 13,
+              flex: 1,
+              padding: '9px 12px',
+              borderRadius: 8,
+              border: 'none',
+              background: mobileTab === 'cart' ? 'var(--primary, #f59e0b)' : 'transparent',
+              color: mobileTab === 'cart' ? '#000' : 'var(--text-secondary)',
               fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              cursor: 'pointer',
-              boxShadow: isPartnerSale ? '0 0 15px rgba(16, 185, 129, 0.3)' : 'none',
-              transition: 'all var(--transition-fast)',
+              justifyContent: 'center',
+              gap: 6,
+              transition: 'all 0.15s ease',
             }}
           >
-            <Zap size={16} />
-            <span>1-Narx (Ulgurji)</span>
-            <div
+            <ShoppingBag size={16} />
+            <span>Savat</span>
+            <span
               style={{
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: isPartnerSale ? 'var(--accent-emerald)' : 'var(--text-muted)',
+                fontSize: 11,
+                padding: '1px 6px',
+                borderRadius: 999,
+                background: mobileTab === 'cart' ? '#000' : 'var(--primary, #f59e0b)',
+                color: mobileTab === 'cart' ? '#fff' : '#000',
+                fontWeight: 800,
               }}
-            />
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setUsdCalculatorOpen((open) => !open)}
-            style={{
-              borderColor: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
-              color: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
-            }}
-          >
-            <Banknote size={16} />
-            <span>USD kalkulyator</span>
+            >
+              {totalCartQty}
+            </span>
           </button>
         </div>
+      )}
+
+      {/* Left Column: Catalog & Quick Select */}
+      {(!isMobile || mobileTab === 'catalog') && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, width: '100%' }}>
+          {/* Top Controls: Search Bar & Action Buttons */}
+          <div style={{ display: 'flex', gap: isMobile ? 8 : 12, alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+            <div style={{ flex: isMobile ? '1 1 100%' : 1, position: 'relative' }}>
+              <Search
+                size={18}
+                color="var(--text-muted)"
+                style={{ position: 'absolute', left: 14, top: 12 }}
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Shtrix-kod, 3 bosqichli kod yoki tovar nomini yozing..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onKeyDown={handleSearchKeyDown}
+                style={{
+                  width: '100%',
+                  padding: '11px 14px 11px 42px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  fontSize: 14,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: isMobile ? '100%' : 'auto', flex: isMobile ? '1 1 100%' : 'none' }}>
+              {/* Camera Barcode Scanner Button */}
+              <button
+                type="button"
+                onClick={() => setCameraScannerOpen(true)}
+                title="Telefon / qurilma kamerasi orqali shtrix-kod skanerlash"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-card)',
+                  background: 'var(--bg-input)',
+                  color: 'var(--primary)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  whiteSpace: 'nowrap',
+                  flex: isMobile ? 1 : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Camera size={16} />
+                <span>Kamera</span>
+              </button>
+
+              {/* 1-Narx (Partner) Switch Button */}
+              <button
+                type="button"
+                onClick={togglePartnerSale}
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: isPartnerSale
+                    ? '1px solid var(--accent-emerald)'
+                    : '1px solid var(--border-subtle)',
+                  background: isPartnerSale
+                    ? 'rgba(16, 185, 129, 0.15)'
+                    : 'rgba(255, 255, 255, 0.04)',
+                  color: isPartnerSale ? 'var(--accent-emerald)' : 'var(--text-secondary)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  cursor: 'pointer',
+                  flex: isMobile ? 1 : 'none',
+                  boxShadow: isPartnerSale ? '0 0 15px rgba(16, 185, 129, 0.3)' : 'none',
+                  transition: 'all var(--transition-fast)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Zap size={16} />
+                <span>1-Narx</span>
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: isPartnerSale ? 'var(--accent-emerald)' : 'var(--text-muted)',
+                  }}
+                />
+              </button>
+
+              {/* USD Calculator Button */}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setUsdCalculatorOpen((open) => !open)}
+                style={{
+                  borderColor: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
+                  color: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
+                  flex: isMobile ? 1 : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Banknote size={16} />
+                <span>USD</span>
+              </button>
+            </div>
+          </div>
 
         {usdCalculatorOpen && (() => {
           const usdAmount = parseFloat(String(usdCalculatorAmount || '').replace(/\s/g, '')) || 0;
@@ -868,8 +991,10 @@ export default function POS() {
             flex: 1,
             overflowY: 'auto',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 1fr))',
-            gap: 12,
+            gridTemplateColumns: isMobile
+              ? 'repeat(auto-fill, minmax(145px, 1fr))'
+              : 'repeat(auto-fill, minmax(185px, 1fr))',
+            gap: isMobile ? 10 : 12,
             alignContent: 'start',
             paddingRight: 4,
           }}
@@ -1004,19 +1129,94 @@ export default function POS() {
             compact={true}
           />
         )}
+
+        {/* Sticky Mobile Quick Cart Bar */}
+        {isMobile && cart.length > 0 && (
+          <div
+            onClick={() => setMobileTab('cart')}
+            style={{
+              position: 'sticky',
+              bottom: 8,
+              zIndex: 30,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              color: '#000',
+              fontWeight: 700,
+              fontSize: 13.5,
+              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.42)',
+              cursor: 'pointer',
+              marginTop: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  background: 'rgba(0,0,0,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <ShoppingBag size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>{totalCartQty} ta tovar savatda</div>
+                <div style={{ fontSize: 12, opacity: 0.9 }}>{cartTotalUZS.toLocaleString()} UZS</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 800, fontSize: 13 }}>
+              <span>Savatga o‘tish</span>
+              <ChevronRight size={17} />
+            </div>
+          </div>
+        )}
       </div>
+      )}
 
       {/* Right Column: Live Cart Drawer */}
-      <div
-        className="glass-card"
-        style={{
-          width: 380,
-          display: 'flex',
-          flexDirection: 'column',
-          padding: 20,
-          background: 'var(--bg-surface)',
-        }}
-      >
+      {(!isMobile || mobileTab === 'cart') && (
+        <div
+          className="glass-card"
+          style={{
+            width: isMobile ? '100%' : 380,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: isMobile ? 14 : 20,
+            background: 'var(--bg-surface)',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Top navigation back button on mobile */}
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setMobileTab('catalog')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'none',
+                border: 'none',
+                color: 'var(--primary, #f59e0b)',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '4px 0 12px 0',
+                marginBottom: 6,
+                borderBottom: '1px solid var(--border-subtle)',
+              }}
+            >
+              <ArrowLeft size={16} />
+              <span>← Tovarlar qo‘shish (Katalogga qaytish)</span>
+            </button>
+          )}
         <div
           style={{
             display: 'flex',
@@ -1345,6 +1545,7 @@ export default function POS() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Checkout Modal */}
       <Modal

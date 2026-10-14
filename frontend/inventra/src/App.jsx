@@ -8,6 +8,7 @@ import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/layout/Layout';
 import HelpLauncher from './components/support/HelpLauncher';
+import AppLoadingScreen from './components/common/AppLoadingScreen';
 const Support = lazy(() => import('./pages/Support'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -32,7 +33,7 @@ const PublicReceiptView = lazy(() => import('./pages/PublicReceiptView'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, user, loading } = useAuth();
-  if (loading) return <div style={{ padding: 24 }}>Sessiya tekshirilmoqda...</div>;
+  if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -44,7 +45,7 @@ function ProtectedRoute({ children }) {
 
 function RoleProtectedRoute({ children, allowedRoles }) {
   const { role, isAuthenticated, user, loading } = useAuth();
-  if (loading) return <div style={{ padding: 24 }}>Sessiya tekshirilmoqda...</div>;
+  if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -59,7 +60,7 @@ function RoleProtectedRoute({ children, allowedRoles }) {
 
 function SupportRoute() {
   const { isAuthenticated, loading } = useAuth();
-  if (loading) return <div style={{ padding: 24 }}>Sessiya tekshirilmoqda...</div>;
+  if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
   if (isAuthenticated) {
     return (
       <ProtectedRoute>
@@ -80,7 +81,7 @@ export default function App() {
           <TenantProvider>
             <ToastProvider>
               <ConfirmProvider>
-                <Suspense fallback={<div style={{ padding: 24 }}>Sahifa yuklanmoqda...</div>}>
+                <Suspense fallback={<AppLoadingScreen message="Sahifa yuklanmoqda..." />}>
                 <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/support" element={<SupportRoute />} />

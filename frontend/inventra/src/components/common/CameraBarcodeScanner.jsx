@@ -52,9 +52,39 @@ export default function CameraBarcodeScanner({
   const scannerRef = useRef(null);
   const isStoppingRef = useRef(false);
   const hasDetectedRef = useRef(false);
+  const nativeDetectorRef = useRef(null);
+  const animFrameRef = useRef(null);
   const elementId = 'camera-barcode-scanner-viewport';
 
+  // Initialize native BarcodeDetector if supported by the browser (iOS 17+ Safari, Android Chrome)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+      try {
+        nativeDetectorRef.current = new window.BarcodeDetector({
+          formats: [
+            'code_128',
+            'code_39',
+            'code_93',
+            'ean_13',
+            'ean_8',
+            'qr_code',
+            'upc_a',
+            'upc_e',
+            'itf',
+            'data_matrix',
+          ],
+        });
+      } catch {
+        nativeDetectorRef.current = null;
+      }
+    }
+  }, []);
+
   const stopScanner = useCallback(async () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
     if (isStoppingRef.current || !scannerRef.current) return;
     isStoppingRef.current = true;
     try {
@@ -80,7 +110,7 @@ export default function CameraBarcodeScanner({
       playBeep();
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate(100);
+          navigator.vibrate([80, 40, 80]);
         } catch {}
       }
 
@@ -92,6 +122,28 @@ export default function CameraBarcodeScanner({
     },
     [onScan, onClose, stopScanner]
   );
+
+  // Hardware-accelerated native scan loop running directly on video frames
+  const startNativeScanLoop = useCallback(() => {
+    if (!nativeDetectorRef.current) return;
+    const checkFrame = async () => {
+      if (hasDetectedRef.current || !isOpen) return;
+      const videoElem = document.querySelector(`#${elementId} video`);
+      if (videoElem && videoElem.readyState >= 2 && !videoElem.paused) {
+        try {
+          const detected = await nativeDetectorRef.current.detect(videoElem);
+          if (detected && detected.length > 0 && detected[0].rawValue) {
+            handleDetected(detected[0].rawValue);
+            return;
+          }
+        } catch {
+          // Frame detect skip; continue loop
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(checkFrame);
+    };
+    animFrameRef.current = requestAnimationFrame(checkFrame);
+  }, [isOpen, handleDetected]);
 
   const startScanner = useCallback(
     async (cameraId) => {
@@ -106,22 +158,36 @@ export default function CameraBarcodeScanner({
         const html5QrCode = new Html5Qrcode(elementId, {
           formatsToSupport: SUPPORTED_FORMATS,
           verbose: false,
+          useBarCodeDetectorIfSupported: true,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
         });
         scannerRef.current = html5QrCode;
 
+        // HD video constraints with continuous autofocus
+        const videoConstraints = {
+          facingMode: 'environment',
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 },
+          focusMode: 'continuous',
+        };
+
         const config = {
-          fps: 15,
+          fps: 20,
+          disableFlip: false,
+          videoConstraints,
           qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const edge = Math.floor(minEdge * 0.75);
-            return { width: Math.max(edge, 220), height: Math.max(Math.floor(edge * 0.6), 140) };
+            // Generous scanning area so 1D linear barcodes and QR codes are not prematurely cropped
+            const w = Math.floor(viewfinderWidth * 0.88);
+            const h = Math.floor(Math.min(viewfinderHeight * 0.72, 280));
+            return { width: Math.max(w, 240), height: Math.max(h, 160) };
           },
-          aspectRatio: 1.0,
         };
 
         const cameraConfig = cameraId
           ? { deviceId: { exact: cameraId } }
-          : { facingMode: 'environment' };
+          : videoConstraints;
 
         await html5QrCode.start(
           cameraConfig,
@@ -135,6 +201,7 @@ export default function CameraBarcodeScanner({
         );
 
         setIsScanning(true);
+        startNativeScanLoop();
 
         // Check if camera capabilities support torch
         try {
@@ -142,7 +209,6 @@ export default function CameraBarcodeScanner({
           if (stream?.torchFeature?.()?.isSupported?.()) {
             setHasTorch(true);
           } else {
-            // Test track directly if available
             const videoElem = document.querySelector(`#${elementId} video`);
             const track = videoElem?.srcObject?.getVideoTracks?.()[0];
             const caps = track?.getCapabilities?.();
@@ -163,7 +229,7 @@ export default function CameraBarcodeScanner({
         }
       }
     },
-    [isOpen, stopScanner, handleDetected]
+    [isOpen, stopScanner, handleDetected, startNativeScanLoop]
   );
 
   // Initialize camera list on open
@@ -411,10 +477,11 @@ export default function CameraBarcodeScanner({
               <div
                 style={{
                   position: 'relative',
-                  width: '75%',
-                  height: '55%',
+                  width: '84%',
+                  height: '64%',
                   boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
                   borderRadius: 12,
+                  transition: 'border-color 0.2s ease',
                 }}
               >
                 {/* 4 Corner Markers */}
@@ -423,10 +490,10 @@ export default function CameraBarcodeScanner({
                     position: 'absolute',
                     top: -2,
                     left: -2,
-                    width: 22,
-                    height: 22,
-                    borderTop: '3px solid var(--primary, #f59e0b)',
-                    borderLeft: '3px solid var(--primary, #f59e0b)',
+                    width: 24,
+                    height: 24,
+                    borderTop: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
+                    borderLeft: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
                     borderTopLeftRadius: 10,
                   }}
                 />
@@ -435,10 +502,10 @@ export default function CameraBarcodeScanner({
                     position: 'absolute',
                     top: -2,
                     right: -2,
-                    width: 22,
-                    height: 22,
-                    borderTop: '3px solid var(--primary, #f59e0b)',
-                    borderRight: '3px solid var(--primary, #f59e0b)',
+                    width: 24,
+                    height: 24,
+                    borderTop: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
+                    borderRight: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
                     borderTopRightRadius: 10,
                   }}
                 />
@@ -447,10 +514,10 @@ export default function CameraBarcodeScanner({
                     position: 'absolute',
                     bottom: -2,
                     left: -2,
-                    width: 22,
-                    height: 22,
-                    borderBottom: '3px solid var(--primary, #f59e0b)',
-                    borderLeft: '3px solid var(--primary, #f59e0b)',
+                    width: 24,
+                    height: 24,
+                    borderBottom: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
+                    borderLeft: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
                     borderBottomLeftRadius: 10,
                   }}
                 />
@@ -459,10 +526,10 @@ export default function CameraBarcodeScanner({
                     position: 'absolute',
                     bottom: -2,
                     right: -2,
-                    width: 22,
-                    height: 22,
-                    borderBottom: '3px solid var(--primary, #f59e0b)',
-                    borderRight: '3px solid var(--primary, #f59e0b)',
+                    width: 24,
+                    height: 24,
+                    borderBottom: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
+                    borderRight: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
                     borderBottomRightRadius: 10,
                   }}
                 />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, Shield, Menu, Store, Headphones } from 'lucide-react';
+import { Clock, Shield, Menu, Store } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
@@ -84,7 +84,6 @@ export default function Header({
       </div>
 
       <div className="header-actions-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {pathname === '/pos' && <Link to="/support" title="Yordam markazi" aria-label="Yordam markazi" style={{ display: 'inline-flex', padding: 7, color: 'var(--text-primary)', borderRadius: 8, background: 'var(--bg-chip)' }}><Headphones size={20} /></Link>}
         {!isAdmin && tenants.length > 0 && (
           isOwner && (tenants.length > 1 || !activeTenant) ? (
             <CustomSelect

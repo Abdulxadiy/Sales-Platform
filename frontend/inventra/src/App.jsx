@@ -6,6 +6,8 @@ import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/layout/Layout';
+import HelpLauncher from './components/support/HelpLauncher';
+const Support = lazy(() => import('./pages/Support'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const POS = lazy(() => import('./pages/POS'));
@@ -65,6 +67,7 @@ export default function App() {
                 <Suspense fallback={<div style={{ padding: 24 }}>Sahifa yuklanmoqda...</div>}>
                 <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/support" element={<Support />} />
                 <Route path="/setup-account" element={<SetupAccount />} />
                 <Route path="/reset-password" element={<SetupAccount />} />
                 <Route path="/accept-terms" element={<AcceptTerms />} />
@@ -142,6 +145,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
                 </Suspense>
+                <HelpLauncher />
             </ConfirmProvider>
           </ToastProvider>
         </TenantProvider>

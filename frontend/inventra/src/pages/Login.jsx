@@ -408,6 +408,8 @@ export default function Login() {
           </p>
         </div>
 
+        <a className="support-login-link" href="/support">Yordam markazi · Помощь · Help</a>
+
         {errorMsg && (
           <div
             style={{

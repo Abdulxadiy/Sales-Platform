@@ -74,3 +74,6 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 # In-memory email backend for fast, isolated test verification via mail.outbox
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# Support throttles share the isolated test Redis, never the application Redis.
+CACHES['support']['LOCATION'] = REDIS_URL

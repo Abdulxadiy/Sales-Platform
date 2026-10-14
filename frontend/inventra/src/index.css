@@ -1602,3 +1602,6 @@ dialog.confirm-dialog-native[open] .confirm-dialog-card {
 .data-table { border-collapse: collapse; font-size: 13px; }
 .data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); text-align: left; vertical-align: top; }
 .data-table th { background: var(--bg-card); color: var(--text-secondary); }
+
+/* Focused documentation screenshots with an accessible enlarged view. */
+.doc-focus-figure{margin:24px 0;text-align:center}.doc-focus-trigger{display:block;margin:auto;max-width:100%;padding:0;border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:var(--bg-card);cursor:zoom-in}.doc-focus-trigger img{display:block;max-width:100%;height:auto}.doc-focus-figure figcaption{font-size:13px;line-height:1.5;margin:10px 0 4px;color:var(--text-secondary)}.doc-focus-figure>small{font-size:11px;color:var(--text-muted)}.doc-image-dialog{width:95vw;max-width:1600px;max-height:94dvh;padding:16px;border:1px solid var(--border-subtle);border-radius:14px;background:var(--bg-card);color:var(--text-primary)}.doc-image-dialog::backdrop{background:#000b}.doc-image-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;text-align:left}.doc-image-toolbar span{flex:1;font-size:13px}.doc-image-scroll{max-height:78dvh;overflow:auto}.doc-image-scroll img{display:block;margin:auto;height:auto}

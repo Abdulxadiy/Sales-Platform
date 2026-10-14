@@ -6,7 +6,7 @@ INVENTRA is an enterprise-grade multi-tenant retail and wholesale sales platform
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, Django 6.1, Django REST Framework, Celery, Gunicorn + Gevent
+- **Backend**: Python 3.12, Django (version constrained in `inventra/pyproject.toml`), Django REST Framework, Celery, Gunicorn + Gevent
 - **Database & Cache**: PostgreSQL 16, Redis 7
 - **Frontend**: React 19, Vite, Tailwind CSS, Lucide Icons
 - **Proxy & Server**: Nginx, Docker, Docker Compose
@@ -129,3 +129,11 @@ Full architectural documentation, guides, and policies are available in the [`do
 ## License
 
 Copyright (c) 2026 INVENTRA. All rights reserved. See [LICENSE](LICENSE) for details.
+
+## Support and current guides
+
+`/support` is available to visitors and signed-in users. It provides Uzbek, Russian and English support UI, private conversation history and image attachments. Platform administrators use the same route as an operator inbox. Public contacts are +998770212149 and @abdulxadiy_0; bot login uses @ilbi_bot. AI is not enabled in this release.
+
+See [support setup and API](docs/SUPPORT.md) for Telegram recipient configuration and [documentation index](docs/README.md) for concise role guides and focused, annotated screenshots. After updating, apply backend migrations and rebuild the frontend.
+
+Retail POS currently accepts UZS only. Production retail sales are blocked pending fiscal provider integration; the guide screenshots use synthetic demo data. USD catalog values and the currency calculator do not enable USD retail checkout.

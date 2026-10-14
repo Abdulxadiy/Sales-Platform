@@ -1,108 +1,48 @@
-# Test scaffold — o'rnatish qo'llanmasi
+# Inventra testlarini ishga tushirish
 
-## 1. Fayllarni joylashtirish
+Yangilangan: **2026-10-14**. Testlar PostgreSQL va Redis’ning alohida servislaridan foydalanadi; demo/dev bazasi bilan aralashtirmang.
 
-Repo tuzilishiga mos qilib quyidagicha ko'chiring (root — `manage.py` turgan joy):
+## Muhit
 
-```
-Inventra/
-├── conftest.py                                  ← shu yerga
-├── pytest.ini                                   ← shu yerga
-├── tests/
-│   ├── __init__.py                               ← bo'sh fayl, o'zingiz yarating
-│   └── factories.py                              ← shu yerga
-├── apps/
-│   ├── accounts/
-│   │   ├── tests.py                              ← O'CHIRING (eski stub)
-│   │   └── tests/
-│   │       ├── __init__.py                       ← bo'sh fayl, o'zingiz yarating
-│   │       ├── test_employee_service.py          ← shu yerga
-│   │       └── test_otp_services.py              ← shu yerga
-│   └── tenants/
-│       ├── tests.py                              ← O'CHIRING (eski stub)
-│       └── tests/
-│           ├── __init__.py                       ← bo'sh fayl, o'zingiz yarating
-│           └── test_tenant_service.py            ← shu yerga
+Repo ildizidan:
+
+```bash
+docker compose -f inventra/docker-compose.test.yml up -d
+cd inventra
+uv sync --group dev
 ```
 
-`apps/accounts/tests.py` va `apps/tenants/tests.py` bir vaqtning o'zida
-`tests/` papka bilan bir xil nomda tura olmaydi — albatta o'chirib, keyin
-papka yarating.
+`config.settings_test` test konfiguratsiyasini yuklaydi. Standart PostgreSQL porti **5433**, Redis porti **6380**; kerak bo‘lsa `.env.test.example`dan `.env.test` yarating. Test sozlamalari production maxfiy kalitini va fayl saqlash xizmatlarini almashtiradi; email xotirada saqlanadi. Support tezlik cheklovlari ham test Redis’iga yo‘naltiriladi, ayrim testlar uni alohida xotira cache’i bilan almashtiradi.
 
-## 2. Kerakli paketlarni o'rnatish
+## Buyruqlar
 
-```powershell
-uv add --dev pytest pytest-django factory-boy pytest-cov
-```
-
-## 3. Test infratuzilmasi — alohida Postgres va Redis
-
-Endi testlar **dev/production bazangizga umuman tegmaydi** — `docker-compose.test.yml`
-orqali ko'tariladigan alohida Postgres (port `5433`) va Redis (port `6380`)
-konteynerlarida ishlaydi.
-
-**Bir martalik sozlash:**
-
-```powershell
-copy .env.test.example .env.test
-```
-
-`.env.test` faylini o'zgartirish shart emas — standart qiymatlar
-`docker-compose.test.yml`dagi portlarga mos keladi. `.env` kabi buni ham
-`.gitignore`ga qo'shing.
-
-**Har safar test yozishdan/ishga tushirishdan oldin:**
-
-```powershell
-docker compose -f docker-compose.test.yml up -d
+```bash
 uv run pytest
+uv run pytest apps/support/tests apps/accounts/tests/test_terms_and_docs_views.py -q
+uv run pytest apps/sales/tests/test_sale_service.py -q
+uv run pytest --cov=apps --cov-report=term-missing
 ```
 
-**Ishlab bo'lgach (ixtiyoriy — konteynerlarni butunlay o'chirish uchun):**
+`pytest.ini`da `--reuse-db` bor. Migratsiya yoki test bazasi eski bo‘lsa `uv run pytest --create-db` bilan yangilang. `@pytest.mark.slow` sinovlarni vaqtincha o‘tkazib yuborish uchun `-m 'not slow'` ishlatiladi. Oldingi hujjatdagi qat’iy “36 ta test” soni amaldagi to‘plamni ifodalamaydi.
 
-```powershell
-docker compose -f docker-compose.test.yml down -v
+`conftest.py` umumiy foydalanuvchi va tenant fixture’larini, `tests/factories.py` esa ma’lumot fabrikalarini beradi. Koddagi rol maydonini o‘zgartirishning o‘zi faol do‘kon a’zoligini yaratmaydi; vakolat testida kerakli `Employee` yozuvini ham yarating.
+
+## Frontend
+
+```bash
+cd frontend/inventra
+npm ci
+npm test
+npm run lint
+npm run build
 ```
 
-`tmpfs` ishlatilgani uchun har safar `down -v` qilinganda ma'lumotlar
-butunlay tozalanadi — bu ataylab shunday, testlar har doim toza holatdan
-boshlanishi kerak. Kunlik ishlashda konteynerlarni ochiq qoldirib,
-`--reuse-db` (pytest.ini'da allaqachon yoqilgan) tufayli test bazasi
-qayta yaratilmay, tezroq ishlaydi.
+Brauzer tekshiruvida akkauntlar va tashrif buyuruvchilar uchun alohida context ishlating. Yordam chati uchun mehmon murojaati, boshqa mehmonning kirishiga rad javobi, operator qabul qilishi, javob, rasm, sahifa yangilanganda tarix, mobil ko‘rinish va tillarni tekshiring.
 
-`config/settings_test.py` — `config/settings.py`dan hamma narsani meros
-oladi (`INSTALLED_APPS`, `REST_FRAMEWORK` va h.k.), faqat `DATABASES` va
-`REDIS_URL`ni `.env.test`dagi qiymatlarga almashtiradi. Production
-`settings.py`ga hech qanday o'zgartirish kiritilmaydi.
+## Servislarni to‘xtatish
 
-`pytest.ini`da `DJANGO_SETTINGS_MODULE = config.settings_test` allaqachon
-ko'rsatilgan — qo'shimcha flag kerak emas, oddiy `pytest` buyrug'i yetarli.
-
-**Tasdiqlandi**: shu sozlash bilan barcha 36 test (Redis'ga bog'liqlari
-ham) haqiqiy alohida Postgres/Redis instance'lariga qarshi muvaffaqiyatli
-o'tdi.
-
-## 5. Ishga tushirish
-
-```powershell
-uv run pytest
-uv run pytest --cov=apps --cov-report=term-missing   # coverage bilan
-uv run pytest apps/accounts/tests/test_employee_service.py -v   # bitta fayl
+```bash
+docker compose -f inventra/docker-compose.test.yml stop
 ```
 
-## 6. Bu yerda yo'q narsalar (keyingi qadamlar)
-
-- `TenantService`/`EmployeeService` uchun **concurrency** (race-condition)
-  testlari — `select_for_update()` ikkita parallel so'rovda ham bitta
-  faol `Employee` qolishini kafolatlashi kerak. Buni to'g'ri yozish uchun
-  `threading`/`transaction.on_commit` bilan ishlash kerak — alohida
-  muhokama qilib, keyin qo'shamiz.
-- API/permission integratsion testlari (`APIClient` + JWT) — bularni
-  yozish uchun `api/v1/tenants/views.py` va `api/v1/accounts/views/` fayllarini
-  ko'rib chiqishim kerak (hali ko'rmadim). Shu fayllarni ko'rsatsangiz,
-  keyingi bosqichda yozib beraman.
-- `test_employee_service.py`dagi `test_owner_cannot_poach_staff_employed_at_another_tenant`
-  testi — hujjatingizda o'zingiz "asimmetrik xatti-harakat" deb belgilagan
-  joyni **hozirgi kod xulq-atvori** sifatida qayd etadi. Agar bu kutilgan
-  bo'lmasa, `EmployeeService.hire()`dagi avtomatik-fire logikasini
-  o'zgartirish kerak bo'ladi va shu testni ham yangilaymiz.
+Test servislaridagi ma’lumot vaqtinchalik. Uni haqiqiy mijoz ma’lumotlari yoki yagona zaxira nusxa uchun ishlatmang. Testlar soni va natijasini har bir o‘zgarishda haqiqiy ishga tushirish natijasi bilan qayd eting.

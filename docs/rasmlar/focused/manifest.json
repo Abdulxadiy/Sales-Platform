@@ -1,0 +1,260 @@
+{
+  "captured": "2026-10-14",
+  "source": "Current React UI + isolated synthetic PostgreSQL fixtures",
+  "images": [
+    {
+      "file": "catalog_tools.png",
+      "route": "/catalog",
+      "crop": {
+        "x": 310,
+        "y": 142,
+        "width": 742.3125,
+        "height": 133
+      },
+      "annotations": [
+        "Excel / CSV",
+        "Yangi mahsulot"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "catalog_create.png",
+      "route": "/catalog",
+      "crop": {
+        "x": 382,
+        "y": 116.25,
+        "width": 676,
+        "height": 560
+      },
+      "annotations": [
+        "Mahsulot nomi",
+        "Kategoriya"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "catalog_import.png",
+      "route": "/catalog",
+      "crop": {
+        "x": 202,
+        "y": 358.5,
+        "width": 1036,
+        "height": 348
+      },
+      "annotations": [
+        "Shablonni oling",
+        "Faylni tanlang",
+        "Avval tekshiring"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "catalog_labels.png",
+      "route": "/catalog",
+      "crop": {
+        "x": 377,
+        "y": 208.5,
+        "width": 686,
+        "height": 648
+      },
+      "annotations": [
+        "Qog‘oz turi",
+        "O‘lcham",
+        "Chop etish"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "inventory_intake.png",
+      "route": "/inventory",
+      "crop": {
+        "x": 142,
+        "y": 151.75,
+        "width": 1156,
+        "height": 761.5
+      },
+      "annotations": [
+        "Qidirish + Enter",
+        "Kirimni tasdiqlash"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "inventory_batches.png",
+      "route": "/inventory",
+      "crop": {
+        "x": 292,
+        "y": 50,
+        "width": 1086,
+        "height": 485
+      },
+      "annotations": [
+        "Partiyalar bo‘limi"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "pos_cart.png",
+      "route": "/pos",
+      "crop": {
+        "x": 1031,
+        "y": 916.5,
+        "width": 374,
+        "height": 183.5
+      },
+      "annotations": [
+        "To‘lov oynasi"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "pos_payment.png",
+      "route": "/pos",
+      "crop": {
+        "x": 432,
+        "y": 203.5,
+        "width": 576,
+        "height": 658
+      },
+      "annotations": [
+        "To‘lov usuli",
+        "Qabul qilingan pul"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "debt_payment.png",
+      "route": "/debts",
+      "crop": {
+        "x": 422,
+        "y": 226.5,
+        "width": 596,
+        "height": 612
+      },
+      "annotations": [
+        "To‘lov summasi",
+        "Haqiqiy to‘lovni saqlash"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "shift_close.png",
+      "route": "/shifts",
+      "crop": {
+        "x": 422,
+        "y": 271,
+        "width": 596,
+        "height": 523
+      },
+      "annotations": [
+        "Sanab kiritilgan naqd",
+        "Yopish va hisobot"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "employees_actions.png",
+      "route": "/employees",
+      "crop": {
+        "x": 297,
+        "y": 45,
+        "width": 1129,
+        "height": 510
+      },
+      "annotations": [
+        "Yangi xodim",
+        "Taklif yuborish"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "tenant_switch.png",
+      "route": "/catalog",
+      "crop": {
+        "x": 874.4375,
+        "y": 0,
+        "width": 266,
+        "height": 212
+      },
+      "annotations": [
+        "Faol do‘kon"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "login_fields.png",
+      "route": "/login",
+      "crop": {
+        "x": 519,
+        "y": 459.25,
+        "width": 402,
+        "height": 257.5
+      },
+      "annotations": [
+        "Login / telefon / email",
+        "Shaxsiy parol"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "support_guest.png",
+      "route": "/support",
+      "crop": {
+        "x": 375,
+        "y": 316.140625,
+        "width": 998,
+        "height": 661.6875
+      },
+      "annotations": [
+        "Murojaat mavzusi",
+        "Operatorga yuborish"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "support_operator.png",
+      "route": "/support",
+      "crop": {
+        "x": 375,
+        "y": 294.34375,
+        "width": 998,
+        "height": 187.5
+      },
+      "annotations": [
+        "Suhbatni qabul qiling"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    },
+    {
+      "file": "support_reply.png",
+      "route": "/support",
+      "crop": {
+        "x": 375,
+        "y": 850.84375,
+        "width": 998,
+        "height": 244.75
+      },
+      "annotations": [
+        "Javob yuborish",
+        "Skrinshot biriktirish"
+      ],
+      "captured": "2026-10-14",
+      "data": "synthetic"
+    }
+  ]
+}

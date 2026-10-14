@@ -20,7 +20,10 @@ from api.v1.accounts.views import (
 )
 from api.v1.accounts.views.token_refresh import RevocableTokenRefreshView
 
+from .views.docs_views import documentation_image
+
 urlpatterns = [
+    path('docs/images/<str:filename>', documentation_image, name='documentation-image'),
     path('auth/token/refresh/', RevocableTokenRefreshView.as_view(), name='token-refresh'),
     path('auth/profile/', UserProfileView.as_view(), name='user-profile'),
     path('auth/me/', UserProfileView.as_view(), name='current-user-profile'),

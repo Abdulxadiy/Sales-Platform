@@ -1,6 +1,7 @@
 from django.urls import include, path
 
 urlpatterns = [
+    path('support/', include('api.v1.support.urls')),
     path('', include('api.v1.accounts.urls')),
     path('', include('api.v1.tg_bot.urls')),
     path("tenants/", include('api.v1.tenants.urls')),

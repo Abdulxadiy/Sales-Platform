@@ -11,6 +11,19 @@ from rest_framework.views import APIView
 from api.schema import DocumentUpdateInputSerializer
 
 DOCS_MAP = {
+    "yordam_uz": {
+        "file": "qollanmalar/yordam_uz.md", "title": "Boshlash va yordam",
+        "roles": ["public", "staff", "owner", "platform_admin"], "category": "practical",
+    },
+    "yordam_ru": {
+        "file": "qollanmalar/yordam_ru.md", "title": "Начало работы и поддержка",
+        "roles": ["public", "staff", "owner", "platform_admin"], "category": "practical",
+    },
+    "yordam_en": {
+        "file": "qollanmalar/yordam_en.md", "title": "Getting started and support",
+        "roles": ["public", "staff", "owner", "platform_admin"], "category": "practical",
+    },
+
     # 1. Amaliy Vizual Qo'llanmalar (Rasmlar bilan)
     "platform_admin_amaliy_qollanma": {
         "file": "qollanmalar/platform_admin_amaliy_qollanma.md",
@@ -210,3 +223,19 @@ class DocumentationView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+def documentation_image(request, filename):
+    """Public, synthetic tutorial crops only; never serve arbitrary repository paths."""
+    import re
+
+    from django.http import FileResponse, Http404
+    if request.method not in ('GET', 'HEAD') or not re.fullmatch(r'[a-z0-9_-]+\.png', filename):
+        raise Http404
+    path = _get_docs_root() / 'rasmlar' / 'focused' / filename
+    if not path.is_file():
+        raise Http404
+    response = FileResponse(path.open('rb'), content_type='image/png')
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Cache-Control'] = 'public, max-age=3600'
+    return response

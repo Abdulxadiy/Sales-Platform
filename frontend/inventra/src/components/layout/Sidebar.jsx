@@ -20,6 +20,7 @@ import {
   Bell,
   User,
   BookOpen,
+  Headphones,
   ChevronLeft,
   ChevronRight,
   Sliders,
@@ -156,6 +157,7 @@ export default function Sidebar({
           },
         ]
       : []),
+    { to: '/support', label: isAdmin ? 'Yordam: Murojaatlar' : 'Yordam markazi', icon: Headphones },
     {
       to: '/docs',
       label: 'Qo‘llanma & Hujjatlar',

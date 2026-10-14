@@ -465,7 +465,15 @@ export default function Employees() {
             <EmployeePermissionsSelector
               permissionChoices={permissionChoices}
               selectedIds={hireForm.permission_ids || []}
+              currentPosition={hireForm.position}
               onChange={(newIds) => setHireForm((prev) => ({ ...prev, permission_ids: newIds }))}
+              onPresetSelect={(preset) => {
+                setHireForm((prev) => ({
+                  ...prev,
+                  position: preset.label,
+                  permission_ids: preset.ids,
+                }));
+              }}
             />
           </div>
 
@@ -511,7 +519,15 @@ export default function Employees() {
               <EmployeePermissionsSelector
                 permissionChoices={permissionChoices}
                 selectedIds={editForm.permission_ids || []}
+                currentPosition={editForm.position}
                 onChange={(newIds) => setEditForm((prev) => ({ ...prev, permission_ids: newIds }))}
+                onPresetSelect={(preset) => {
+                  setEditForm((prev) => ({
+                    ...prev,
+                    position: preset.label,
+                    permission_ids: preset.ids,
+                  }));
+                }}
               />
             </div>
           )}

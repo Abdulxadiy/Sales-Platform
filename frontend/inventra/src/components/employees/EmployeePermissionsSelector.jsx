@@ -14,6 +14,10 @@ import {
   Users,
   RotateCcw,
   TrendingUp,
+  Briefcase,
+  ShieldCheck,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
 const CATEGORY_META = {
@@ -77,52 +81,8 @@ const PERMISSION_DESCRIPTIONS = {
   view_reports: 'Moliyaviy va umumiy davriy hisobotlarni ko‘rish hamda yuklab olish',
 };
 
-// PRESETS by codename
-const PRESETS = {
-  kassir: [
-    'manage_shift',
-    'view_cashbox',
-    'record_income',
-    'record_expense',
-    'add_sale',
-    'view_sale',
-    'record_debt_payment',
-    'view_product',
-    'view_category',
-  ],
-  omborchi: [
-    'view_stock',
-    'add_stock_intake',
-    'adjust_stock',
-    'transfer_stock',
-    'view_product',
-    'view_category',
-    'add_product',
-    'change_product',
-  ],
-  menejer: [
-    'manage_shift',
-    'view_cashbox',
-    'record_income',
-    'record_expense',
-    'add_sale',
-    'view_sale',
-    'void_sale',
-    'manage_counterparty',
-    'record_debt_payment',
-    'view_product',
-    'add_product',
-    'change_product',
-    'view_category',
-    'add_category',
-    'view_stock',
-    'add_stock_intake',
-    'adjust_stock',
-    'transfer_stock',
-    'view_dashboard',
-    'view_reports',
-  ],
-};
+// Role presets imported from rolePresets.js
+import { ROLE_PRESETS, PRESETS } from './rolePresets.js';
 
 /**
  * Modern Neumorphic / Smooth Pill Switch
@@ -238,10 +198,13 @@ export default function EmployeePermissionsSelector({
   permissionChoices = [],
   selectedIds = [],
   onChange,
+  onPresetSelect,
+  currentPosition = '',
   disabled = false,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [presetsOpen, setPresetsOpen] = useState(false);
 
   const allAvailableIds = useMemo(
     () => permissionChoices.map((p) => p.id),
@@ -253,6 +216,39 @@ export default function EmployeePermissionsSelector({
   const isFullAccess =
     allAvailableIds.length > 0 &&
     allAvailableIds.every((id) => selectedSet.has(id));
+
+  // Determine active preset (if current permissions match any role preset)
+  const activePreset = useMemo(() => {
+    if (selectedIds.length === 0) return null;
+    // 1. Exact match on permissions
+    for (const preset of ROLE_PRESETS) {
+      const presetIds = permissionChoices
+        .filter((p) => preset.permissions.includes(p.codename))
+        .map((p) => p.id);
+      if (
+        presetIds.length > 0 &&
+        presetIds.length === selectedIds.length &&
+        presetIds.every((id) => selectedSet.has(id))
+      ) {
+        return preset;
+      }
+    }
+    // 2. Match by currentPosition if defined and all its permissions are active
+    if (currentPosition) {
+      const found = ROLE_PRESETS.find(
+        (p) => p.label.toLowerCase() === currentPosition.trim().toLowerCase()
+      );
+      if (found) {
+        const foundIds = permissionChoices
+          .filter((p) => found.permissions.includes(p.codename))
+          .map((p) => p.id);
+        if (foundIds.length > 0 && foundIds.every((id) => selectedSet.has(id))) {
+          return found;
+        }
+      }
+    }
+    return null;
+  }, [selectedIds, selectedSet, permissionChoices, currentPosition]);
 
   // Group permissions by category
   const groupedCategories = useMemo(() => {
@@ -316,13 +312,19 @@ export default function EmployeePermissionsSelector({
   };
 
   // Apply quick preset
-  const handleApplyPreset = (presetKey) => {
+  const handleApplyPreset = (preset) => {
     if (disabled) return;
-    const codenames = PRESETS[presetKey] || [];
+    const codenames = preset.permissions || [];
     const matchedIds = permissionChoices
       .filter((p) => codenames.includes(p.codename))
       .map((p) => p.id);
-    onChange(matchedIds);
+
+    onChange?.(matchedIds);
+    onPresetSelect?.({
+      key: preset.key,
+      label: preset.label,
+      ids: matchedIds,
+    });
   };
 
   // Accordion toggle
@@ -448,56 +450,61 @@ export default function EmployeePermissionsSelector({
           paddingBottom: 4,
         }}
       >
-        {/* Preset Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600 }}>
-            Shablonlar:
-          </span>
+        {/* Collapsible Presets Toggle & Clear */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-secondary"
             disabled={disabled}
-            style={{ padding: '3px 9px', fontSize: 11.5, borderRadius: 6 }}
-            onClick={() => handleApplyPreset('kassir')}
-            title="Kassa, smenalar, savdo va qarz to‘lovlari"
+            style={{
+              padding: '5px 12px',
+              fontSize: 12,
+              borderRadius: 8,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: presetsOpen
+                ? 'var(--primary, #6366f1)'
+                : activePreset
+                ? 'rgba(99, 102, 241, 0.15)'
+                : 'var(--bg-chip, rgba(255, 255, 255, 0.05))',
+              color: presetsOpen ? '#ffffff' : activePreset ? 'var(--primary, #6366f1)' : 'var(--text-primary)',
+              border: presetsOpen || activePreset
+                ? '1px solid var(--primary, #6366f1)'
+                : '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
+              fontWeight: 600,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: presetsOpen ? '0 0 10px rgba(99, 102, 241, 0.35)' : 'none',
+            }}
+            onClick={() => setPresetsOpen((prev) => !prev)}
+            title="Tayyor lavozim shablonlarini ochish yoki yig‘ishtirish"
           >
-            <Wallet size={12} style={{ marginRight: 4 }} /> Kassir
+            <Sparkles size={13} color={presetsOpen ? '#ffffff' : (activePreset?.color || 'var(--primary)')} />
+            <span>
+              {activePreset ? `Shablon: ${activePreset.label}` : 'Lavozim shablonlari (8)'}
+            </span>
+            {presetsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={disabled}
-            style={{ padding: '3px 9px', fontSize: 11.5, borderRadius: 6 }}
-            onClick={() => handleApplyPreset('omborchi')}
-            title="Ombor zaxirasi, kirim, tuzatish va tovarlar"
-          >
-            <Layers size={12} style={{ marginRight: 4 }} /> Omborchi
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            disabled={disabled}
-            style={{ padding: '3px 9px', fontSize: 11.5, borderRadius: 6 }}
-            onClick={() => handleApplyPreset('menejer')}
-            title="Savdo, kassa, katalog va ombor amallari"
-          >
-            <Users size={12} style={{ marginRight: 4 }} /> Menejer
-          </button>
+
           {totalSelectedCount > 0 && (
             <button
               type="button"
               className="btn btn-secondary"
               disabled={disabled}
               style={{
-                padding: '3px 9px',
+                padding: '5px 10px',
                 fontSize: 11.5,
-                borderRadius: 6,
+                borderRadius: 8,
                 color: 'var(--accent-rose, #ef4444)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
               }}
               onClick={() => onChange([])}
               title="Barcha tanlangan ruxsatlarni tozalash"
             >
-              <RotateCcw size={12} style={{ marginRight: 4 }} /> Tozalash
+              <RotateCcw size={12} /> Tozalash
             </button>
           )}
         </div>
@@ -551,6 +558,176 @@ export default function EmployeePermissionsSelector({
           </button>
         </div>
       </div>
+
+      {/* 2.1 Collapsible Presets Panel */}
+      {presetsOpen && (
+        <div
+          style={{
+            borderRadius: 12,
+            background: 'var(--bg-surface, rgba(255, 255, 255, 0.03))',
+            border: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
+            padding: '12px 14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}
+        >
+          {/* Header inside drawer */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 6,
+                  background: 'rgba(99, 102, 241, 0.2)',
+                  color: 'var(--primary, #6366f1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Sparkles size={14} />
+              </div>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Tayyor lavozim shablonlari
+                </span>
+                <span style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  (Shablon tanlanganda lavozim nomi va mos ruxsatlar avtomatik to‘ldiriladi)
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{
+                padding: '3px 8px',
+                fontSize: 11,
+                borderRadius: 6,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              onClick={() => setPresetsOpen(false)}
+              title="Shablonlar panelini yig‘ishtirish"
+            >
+              <ChevronUp size={13} /> Yig‘ishtirish
+            </button>
+          </div>
+
+          {/* Grid of presets */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
+              gap: 8,
+              maxHeight: 250,
+              overflowY: 'auto',
+              paddingRight: 4,
+            }}
+          >
+            {ROLE_PRESETS.map((preset) => {
+              const IconComp = preset.icon;
+              const isCurrent = activePreset?.key === preset.key;
+              const matchedCount = permissionChoices.filter((p) =>
+                preset.permissions.includes(p.codename)
+              ).length;
+
+              return (
+                <div
+                  key={preset.key}
+                  role="button"
+                  tabIndex={disabled ? -1 : 0}
+                  onClick={() => handleApplyPreset(preset)}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      handleApplyPreset(preset);
+                    }
+                  }}
+                  style={{
+                    padding: '9px 11px',
+                    borderRadius: 9,
+                    background: isCurrent
+                      ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0.08) 100%)'
+                      : 'var(--bg-chip, rgba(255, 255, 255, 0.03))',
+                    border: isCurrent
+                      ? '1.5px solid var(--primary, #6366f1)'
+                      : '1px solid var(--border-subtle, rgba(255, 255, 255, 0.07))',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 5,
+                    transition: 'all 0.16s ease',
+                    boxShadow: isCurrent ? '0 0 10px rgba(99, 102, 241, 0.25)' : 'none',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isCurrent) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isCurrent) e.currentTarget.style.borderColor = 'var(--border-subtle, rgba(255, 255, 255, 0.07))';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 7,
+                          background: `${preset.color}22`,
+                          color: preset.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <IconComp size={14} />
+                      </div>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {preset.label}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          padding: '1px 6px',
+                          borderRadius: 999,
+                          background: isCurrent
+                            ? 'var(--primary, #6366f1)'
+                            : 'rgba(255, 255, 255, 0.06)',
+                          color: isCurrent ? '#ffffff' : 'var(--text-muted)',
+                        }}
+                      >
+                        {matchedCount} ta
+                      </span>
+                      {isCurrent && <Check size={13} color="var(--primary, #6366f1)" strokeWidth={3} />}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10.5,
+                      color: 'var(--text-muted)',
+                      lineHeight: 1.3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {preset.description}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 3. Category Sections List */}
       <div

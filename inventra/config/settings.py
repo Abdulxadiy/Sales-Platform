@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'apps.sales',
     'apps.analytics',
     'apps.cashbox',
+    'apps.support',
 ]
 
 MIDDLEWARE = [
@@ -270,3 +271,13 @@ if USE_MINIO:
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Public support contacts; operator notifications require a verified private bot contact.
+SUPPORT_PHONE = os.getenv('SUPPORT_PHONE', '+998770212149')
+SUPPORT_TELEGRAM_USERNAME = os.getenv('SUPPORT_TELEGRAM_USERNAME', 'abdulxadiy_0').lstrip('@')
+SUPPORT_OPERATOR_PHONES = [phone.strip() for phone in os.getenv('SUPPORT_OPERATOR_PHONES', SUPPORT_PHONE).split(',') if phone.strip()]
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'support': {'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': REDIS_URL or 'redis://localhost:6379/0', 'KEY_PREFIX': 'inventra_support'},
+}

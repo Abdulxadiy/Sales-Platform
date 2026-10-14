@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import DocImage from './DocImage';
 import {
   Info,
   AlertTriangle,
@@ -157,7 +158,13 @@ function renderInline(text = '') {
     // Link: [label](url)
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
-      const href = linkMatch[2];
+      let href = linkMatch[2];
+      const docFile = href.match(/(?:^|\/)([a-z0-9_]+)\.md$/);
+      const documentKeys = ['maxfiylik_siyosati', 'foydalanish_qoidalari', 'ommaviy_oferta',
+        'owner_qollanma', 'staff_qollanma', 'platform_admin_qollanma',
+        'owner_amaliy_qollanma', 'staff_amaliy_qollanma', 'platform_admin_amaliy_qollanma',
+        'yordam_uz', 'yordam_ru', 'yordam_en'];
+      if (docFile && documentKeys.includes(docFile[1])) href = `/support?doc=${docFile[1]}`;
       const isAnchor = href.startsWith('#');
       const isInternal = isAnchor || href.startsWith('/');
 
@@ -374,53 +381,7 @@ export default function MarkdownViewer({ content = '', className = '' }) {
     if (imgMatch) {
       const caption = imgMatch[1];
       const src = imgMatch[2];
-      elements.push(
-        <figure
-          key={`img-${i}`}
-          style={{
-            margin: '26px 0',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <div
-            style={{
-              borderRadius: 16,
-              overflow: 'hidden',
-              border: '1px solid var(--border-card)',
-              background: 'var(--bg-surface)',
-              boxShadow: 'var(--shadow-md)',
-              maxWidth: '100%',
-            }}
-          >
-            <img
-              src={src}
-              alt={caption || 'Qo‘llanma rasmi'}
-              loading="lazy"
-              style={{
-                width: '100%',
-                maxHeight: 560,
-                objectFit: 'contain',
-                display: 'block',
-              }}
-            />
-          </div>
-          {caption && (
-            <figcaption
-              style={{
-                marginTop: 8,
-                fontSize: 12.5,
-                color: 'var(--text-muted)',
-                fontStyle: 'italic',
-              }}
-            >
-              📸 {caption}
-            </figcaption>
-          )}
-        </figure>
-      );
+      elements.push(<DocImage key={`img-${i}`} src={src} caption={caption} />);
       continue;
     }
 

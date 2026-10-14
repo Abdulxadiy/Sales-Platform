@@ -144,7 +144,7 @@ class MetadataView(SupportView):
             {
                 "phone": settings.SUPPORT_PHONE,
                 "telegram_username": settings.SUPPORT_TELEGRAM_USERNAME,
-                "languages": ["uz", "ru", "en"],
+                "languages": ["uz"],
                 "ai_enabled": False,
                 "max_image_bytes": 2 * 1024 * 1024,
             }

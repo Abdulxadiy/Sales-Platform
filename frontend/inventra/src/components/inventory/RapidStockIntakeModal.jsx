@@ -1,14 +1,26 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ScanBarcode,
+  Camera,
   Plus,
   Minus,
   Trash2,
   PackagePlus,
+  CalendarDays,
+  Tag,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle,
+  Truck,
+  FileText,
+  MessageSquare,
+  Layers,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../common/Modal';
 import PriceInput from '../common/PriceInput';
+import CameraBarcodeScanner from '../common/CameraBarcodeScanner';
 import { inventoryApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -20,6 +32,72 @@ const EMPTY_DRAFT = {
   invoiceNumber: '',
   note: '',
   items: [],
+};
+
+// Helper: Calculate future expiration date string YYYY-MM-DD from months delta
+const getPresetDate = (months) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper: Analyze expiration status and calculate remaining period
+const getExpiryStatus = (dateStr) => {
+  if (!dateStr) return null;
+  const target = new Date(dateStr);
+  if (isNaN(target.getTime())) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target - now) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      type: 'expired',
+      label: `Muddati o‘tgan (${Math.abs(diffDays)} kun oldin)`,
+      bg: 'rgba(239, 68, 68, 0.15)',
+      color: 'var(--accent-rose, #ef4444)',
+      borderColor: 'rgba(239, 68, 68, 0.35)',
+      icon: <AlertCircle size={12} />,
+      tooltip: 'Ushbu partiyaning yaroqlilik muddati tugagan!',
+    };
+  }
+  if (diffDays <= 30) {
+    return {
+      type: 'warning',
+      label: `${diffDays} kun qoldi`,
+      bg: 'rgba(245, 158, 11, 0.15)',
+      color: 'var(--accent-amber, #f59e0b)',
+      borderColor: 'rgba(245, 158, 11, 0.35)',
+      icon: <AlertTriangle size={12} />,
+      tooltip: 'Yaroqlilik muddati 1 oydan kam qoldi',
+    };
+  }
+  if (diffDays <= 365) {
+    const months = Math.round(diffDays / 30.5);
+    return {
+      type: 'ok',
+      label: `${months} oy yaroqli`,
+      bg: 'rgba(16, 185, 129, 0.12)',
+      color: 'var(--accent-emerald, #10b981)',
+      borderColor: 'rgba(16, 185, 129, 0.28)',
+      icon: <CheckCircle2 size={12} />,
+      tooltip: `Yaroqlilik sanasi: ${dateStr}`,
+    };
+  }
+  const years = (diffDays / 365.25).toFixed(1);
+  return {
+    type: 'ok',
+    label: `${years} yil yaroqli`,
+    bg: 'rgba(16, 185, 129, 0.12)',
+    color: 'var(--accent-emerald, #10b981)',
+    borderColor: 'rgba(16, 185, 129, 0.28)',
+    icon: <CheckCircle2 size={12} />,
+    tooltip: `Yaroqlilik sanasi: ${dateStr}`,
+  };
 };
 
 export default function RapidStockIntakeModal({
@@ -45,6 +123,7 @@ export default function RapidStockIntakeModal({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastAddedRowId, setLastAddedRowId] = useState(null);
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
 
   const searchInputRef = useRef(null);
   const rowInputRefs = useRef({});
@@ -250,6 +329,31 @@ export default function RapidStockIntakeModal({
     }
   };
 
+  // Camera Barcode Scanner detection handler
+  const handleCameraBarcodeScan = useCallback(
+    (code) => {
+      const q = (code || '').trim().toLowerCase();
+      if (!q) return;
+
+      const exactMatch = variants.find(
+        (v) =>
+          v.barcode?.toLowerCase() === q ||
+          v.code?.toLowerCase() === q ||
+          v.sku?.toLowerCase() === q
+      );
+
+      if (exactMatch) {
+        addItemToDraft(exactMatch);
+        toast.success(`"${exactMatch.product_name || exactMatch.name}" kirim jadvaliga qo‘shildi`);
+      } else {
+        setSearchQuery(code);
+        setIsDropdownOpen(true);
+        toast.info(`"${code}" shtrix-kodi bo‘yicha tovar qidirilmoqda...`);
+      }
+    },
+    [variants, addItemToDraft, toast]
+  );
+
   // Row update handlers
   const handleUpdateItem = (id, field, value) => {
     setDraft((prevDraft) => {
@@ -413,7 +517,8 @@ export default function RapidStockIntakeModal({
   const items = Array.isArray(draft?.items) ? draft.items : [];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="" maxWidth={1120}>
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title="" maxWidth={1120}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Top Header with Title and Auto-Saved Draft status */}
         <div
@@ -427,39 +532,41 @@ export default function RapidStockIntakeModal({
             borderBottom: '1px solid var(--border-subtle)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
               style={{
-                width: 38,
-                height: 38,
+                width: 42,
+                height: 42,
                 borderRadius: 'var(--radius-sm)',
-                background: 'rgba(59, 130, 246, 0.12)',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--primary)',
+                color: 'var(--primary, #f59e0b)',
+                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.12)',
               }}
             >
               <PackagePlus size={22} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                 Tovar Kirimi (Tezkor Partiya Oqimi)
               </h3>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                Shtrix-kod skaneri yoki klaviatura orqali tovarlarni bir zumda qabul qilish
+                Kamera skaneri, shtrix-kod yoki klaviatura orqali tovarlar partiyasini bir zumda qabul qilish
               </p>
             </div>
           </div>
 
-          {/* Draft Persistence Badge */}
+          {/* Draft Persistence Badge & Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '5px 10px',
+                padding: '6px 12px',
                 borderRadius: 20,
                 background: items.length > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-chip)',
                 color: items.length > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)',
@@ -475,6 +582,7 @@ export default function RapidStockIntakeModal({
                   height: 7,
                   borderRadius: '50%',
                   background: items.length > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)',
+                  boxShadow: items.length > 0 ? '0 0 6px var(--accent-emerald)' : 'none',
                 }}
               />
               <span>
@@ -494,20 +602,21 @@ export default function RapidStockIntakeModal({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
-                background: 'rgba(59, 130, 246, 0.08)',
-                border: '1px solid rgba(59, 130, 246, 0.25)',
-                color: 'var(--primary)',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-xs)',
+                gap: 6,
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                color: 'var(--primary, #f59e0b)',
+                padding: '7px 12px',
+                borderRadius: 'var(--radius-sm)',
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
+                transition: 'all 0.15s ease',
               }}
               title="Katalogga o‘tib yangi tovar yaratish (Qoralama o‘chmaydi)"
             >
               <Plus size={14} />
-              <span>+ Yangi tovar yaratish</span>
+              <span>Yangi tovar yaratish</span>
             </button>
           </div>
         </div>
@@ -519,13 +628,14 @@ export default function RapidStockIntakeModal({
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 12,
             background: 'var(--bg-card)',
-            padding: 12,
+            padding: '12px 14px',
             borderRadius: 'var(--radius-sm)',
             border: '1px solid var(--border-card)',
           }}
         >
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+              <Truck size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
               Ta’minotchi (Yetkazib beruvchi)
             </label>
             <input
@@ -547,7 +657,8 @@ export default function RapidStockIntakeModal({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+              <FileText size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
               Faktura / Nakladnoy raqami
             </label>
             <input
@@ -569,7 +680,8 @@ export default function RapidStockIntakeModal({
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+              <MessageSquare size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
               Umumiy izoh
             </label>
             <input
@@ -591,86 +703,88 @@ export default function RapidStockIntakeModal({
           </div>
         </div>
 
-        {/* Rapid Barcode & Autocomplete Search Bar */}
-        <div style={{ position: 'relative' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'var(--bg-input)',
-              border: isDropdownOpen ? '2px solid var(--primary)' : '1px solid var(--border-card)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '6px 14px',
-              gap: 10,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-              transition: 'border 0.15s ease',
-            }}
-          >
-            <ScanBarcode size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsDropdownOpen(true);
-                setHighlightedIndex(0);
-              }}
-              onFocus={() => {
-                if (searchQuery.trim()) setIsDropdownOpen(true);
-              }}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="Shtrix-kodni skanerlang yoki tovar nomi / artikul / model bo‘yicha qidiring..."
-              style={{
-                flex: 1,
-                border: 'none',
-                background: 'transparent',
-                outline: 'none',
-                fontSize: 14,
-                color: 'var(--text-primary)',
-                padding: '6px 0',
-              }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setIsDropdownOpen(false);
-                  if (searchInputRef.current) searchInputRef.current.focus();
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  padding: 4,
-                }}
-              >
-                ✕
-              </button>
-            )}
+        {/* Rapid Barcode & Autocomplete Search Bar + Camera Scanner Trigger */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
             <div
               style={{
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
-                gap: 4,
-                padding: '3px 8px',
-                background: 'var(--bg-chip)',
-                borderRadius: 'var(--radius-xs)',
-                fontSize: 11,
-                color: 'var(--text-secondary)',
-                fontWeight: 600,
-                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-input)',
+                border: isDropdownOpen ? '2px solid var(--primary)' : '1px solid var(--border-card)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '6px 14px',
+                gap: 10,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                transition: 'border 0.15s ease',
               }}
             >
-              <span>Enter ↵</span>
-              <span style={{ color: 'var(--text-muted)' }}>qo‘shish</span>
+              <ScanBarcode size={22} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsDropdownOpen(true);
+                  setHighlightedIndex(0);
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim()) setIsDropdownOpen(true);
+                }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Shtrix-kodni skanerlang yoki tovar nomi / artikul / model bo‘yicha qidiring..."
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  background: 'transparent',
+                  outline: 'none',
+                  fontSize: 14,
+                  color: 'var(--text-primary)',
+                  padding: '6px 0',
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIsDropdownOpen(false);
+                    if (searchInputRef.current) searchInputRef.current.focus();
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    padding: 4,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 8px',
+                  background: 'var(--bg-chip)',
+                  borderRadius: 'var(--radius-xs)',
+                  fontSize: 11,
+                  color: 'var(--text-secondary)',
+                  fontWeight: 600,
+                  border: '1px solid var(--border-subtle)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span>Enter ↵</span>
+                <span style={{ color: 'var(--text-muted)' }}>qo‘shish</span>
+              </div>
             </div>
-          </div>
 
-          {/* Autocomplete Dropdown Popover */}
+            {/* Autocomplete Dropdown Popover */}
           {isDropdownOpen && searchResults.length > 0 && (
             <div
               ref={dropdownRef}
@@ -818,6 +932,43 @@ export default function RapidStockIntakeModal({
           )}
         </div>
 
+        {/* Camera Barcode Scanner Trigger Button */}
+        <button
+          type="button"
+          onClick={() => setCameraScannerOpen(true)}
+          title="Telefon / kompyuter kamerasi orqali shtrix-kod skanerlash"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '0 16px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'rgba(245, 158, 11, 0.12)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            color: 'var(--primary, #f59e0b)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--primary)';
+            e.currentTarget.style.color = 'var(--primary-foreground, #000)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.12)';
+            e.currentTarget.style.color = 'var(--primary, #f59e0b)';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+        >
+          <Camera size={18} />
+          <span>Kamera skaneri</span>
+        </button>
+      </div>
+
         {/* Stream Table for Batch Intake */}
         <div
           style={{
@@ -839,20 +990,20 @@ export default function RapidStockIntakeModal({
                 }}
               >
                 <tr>
-                  <th style={{ padding: '10px 12px', width: 40, color: 'var(--text-secondary)', fontWeight: 600 }}>№</th>
-                  <th style={{ padding: '10px 12px', minWidth: 260, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Tovar va Variant
+                  <th style={{ padding: '10px 12px', width: 36, color: 'var(--text-secondary)', fontWeight: 600 }}>№</th>
+                  <th style={{ padding: '10px 12px', minWidth: 320, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Tovar va Partiya / Yaroqlilik ma’lumotlari
                   </th>
-                  <th style={{ padding: '10px 12px', width: 110, color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'center' }}>
+                  <th style={{ padding: '10px 12px', width: 100, color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'center' }}>
                     Joriy qoldiq
                   </th>
-                  <th style={{ padding: '10px 12px', width: 170, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  <th style={{ padding: '10px 12px', width: 165, color: 'var(--text-secondary)', fontWeight: 600 }}>
                     Kirim miqdori *
                   </th>
-                  <th style={{ padding: '10px 12px', width: 180, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  <th style={{ padding: '10px 12px', width: 175, color: 'var(--text-secondary)', fontWeight: 600 }}>
                     Tan narxi *
                   </th>
-                  <th style={{ padding: '10px 12px', width: 150, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  <th style={{ padding: '10px 12px', width: 140, color: 'var(--text-secondary)', fontWeight: 600 }}>
                     Jami qiymat
                   </th>
                   <th style={{ padding: '10px 12px', width: 44, textAlign: 'center' }}></th>
@@ -868,7 +1019,7 @@ export default function RapidStockIntakeModal({
                           Hozircha tovarlar qo‘shilmadi
                         </div>
                         <div style={{ fontSize: 12, maxWidth: 440, lineHeight: 1.5 }}>
-                          Yuqoridagi maydonda shtrix-kodni skanerlang yoki tovar nomini yozib{' '}
+                          Yuqoridagi maydonda kamera yoki shtrix-kod skaneri orqali tovar nomini yozib{' '}
                           <kbd style={{ padding: '2px 5px', background: 'var(--bg-chip)', borderRadius: 4 }}>Enter</kbd>{' '}
                           bosing. Tovar avtomatik ushbu jadvalga qo‘shiladi.
                         </div>
@@ -884,6 +1035,7 @@ export default function RapidStockIntakeModal({
                     const lineCost = parseFloat(item.cost_price) || 0;
                     const lineTotal = lineQty * lineCost;
                     const isRecentlyAdded = item.id === lastAddedRowId;
+                    const expiryStatus = getExpiryStatus(item.expires_on);
 
                     return (
                       <tr
@@ -891,63 +1043,254 @@ export default function RapidStockIntakeModal({
                         style={{
                           borderBottom: '1px solid var(--border-subtle)',
                           background: isRecentlyAdded
-                            ? 'rgba(59, 130, 246, 0.08)'
+                            ? 'rgba(245, 158, 11, 0.08)'
                             : idx % 2 === 1
                             ? 'rgba(255, 255, 255, 0.015)'
                             : 'transparent',
                           transition: 'background 0.3s ease',
                         }}
                       >
-                        <td style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontWeight: 600, verticalAlign: 'top' }}>
                           {idx + 1}
                         </td>
 
-                        {/* Product & Variant details */}
-                        <td style={{ padding: '8px 12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div>
-                              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
+                        {/* Product, Variant, Batch & Expiration sub-panel */}
+                        <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+                          <div>
+                            {/* Product Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
                                 {snap.name || 'Tovar'}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                                {snap.sub && (
-                                  <span
+                              </span>
+                              {snap.sub && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    padding: '1px 6px',
+                                    background: 'var(--bg-chip)',
+                                    borderRadius: 4,
+                                    color: 'var(--primary, #f59e0b)',
+                                    fontWeight: 600,
+                                    border: '1px solid var(--border-subtle)',
+                                  }}
+                                >
+                                  {snap.sub}
+                                </span>
+                              )}
+                              {snap.barcode && (
+                                <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '1px 5px', borderRadius: 4 }}>
+                                  #{snap.barcode}
+                                </span>
+                              )}
+                              {snap.code && (
+                                <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                  [{snap.code}]
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Partiya va Yaroqlilik Muddati Control Box */}
+                            <div
+                              style={{
+                                marginTop: 8,
+                                padding: '8px 10px',
+                                borderRadius: 'var(--radius-xs)',
+                                background: 'var(--bg-card)',
+                                border: '1px solid var(--border-subtle)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8,
+                              }}
+                            >
+                              {/* Input Row: Partiya raqami + Yaroqlilik muddati + Yangi partiya */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                {/* Partiya raqami */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: '1 1 130px' }}>
+                                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                                    <Tag size={12} style={{ color: 'var(--primary, #f59e0b)' }} />
+                                    Partiya:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Partiya / Seriya (ixtiyoriy)"
+                                    value={item.batch_code || ''}
+                                    maxLength={80}
+                                    onChange={(e) => handleUpdateItem(item.id, 'batch_code', e.target.value)}
                                     style={{
-                                      fontSize: 11,
-                                      padding: '1px 5px',
-                                      background: 'var(--bg-chip)',
+                                      flex: 1,
+                                      minWidth: 90,
+                                      padding: '5px 8px',
+                                      fontSize: 12,
+                                      borderRadius: 'var(--radius-xs)',
+                                      border: '1px solid var(--border-subtle)',
+                                      background: 'var(--bg-input)',
+                                      color: 'var(--text-primary)',
+                                      outline: 'none',
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Yaroqlilik muddati */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: '1 1 200px' }}>
+                                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                                    <CalendarDays size={12} style={{ color: 'var(--primary, #f59e0b)' }} />
+                                    Yaroqlilik muddati:
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={item.expires_on || ''}
+                                    min="2020-01-01"
+                                    max="2045-12-31"
+                                    onChange={(e) => handleUpdateItem(item.id, 'expires_on', e.target.value)}
+                                    title="Partiyaning yaroqlilik muddati (tugash sanasi)"
+                                    style={{
+                                      padding: '5px 8px',
+                                      fontSize: 12,
+                                      borderRadius: 'var(--radius-xs)',
+                                      border: '1px solid var(--border-subtle)',
+                                      background: 'var(--bg-input)',
+                                      color: 'var(--text-primary)',
+                                      outline: 'none',
+                                      cursor: 'pointer',
+                                    }}
+                                  />
+
+                                  {/* Status indicator badge */}
+                                  {expiryStatus && (
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        padding: '2px 7px',
+                                        borderRadius: 4,
+                                        background: expiryStatus.bg,
+                                        color: expiryStatus.color,
+                                        border: `1px solid ${expiryStatus.borderColor}`,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                      title={expiryStatus.tooltip}
+                                    >
+                                      {expiryStatus.icon}
+                                      <span>{expiryStatus.label}</span>
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Yangi partiya qo'shish */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const match = variants.find((v) => String(v.id) === String(item.variantId));
+                                    if (match) addItemToDraft(match, true);
+                                  }}
+                                  title="Aynan shu tovardan boshqa partiya yoki muddati boshqa yangi qator ochish"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '5px 10px',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    borderRadius: 'var(--radius-xs)',
+                                    background: 'rgba(245, 158, 11, 0.1)',
+                                    border: '1px solid rgba(245, 158, 11, 0.28)',
+                                    color: 'var(--primary, #f59e0b)',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'var(--primary)';
+                                    e.currentTarget.style.color = 'var(--primary-foreground, #000)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
+                                    e.currentTarget.style.color = 'var(--primary, #f59e0b)';
+                                  }}
+                                >
+                                  <Layers size={12} />
+                                  <span>+ Yangi partiya</span>
+                                </button>
+                              </div>
+
+                              {/* Quick Duration Presets for Yaroqlilik Muddati */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                  <Clock size={11} /> Tezkor muddat:
+                                </span>
+                                {[
+                                  { label: '+1 oy', months: 1 },
+                                  { label: '+3 oy', months: 3 },
+                                  { label: '+6 oy', months: 6 },
+                                  { label: '+1 yil', months: 12 },
+                                  { label: '+2 yil', months: 24 },
+                                ].map((preset) => (
+                                  <button
+                                    key={preset.label}
+                                    type="button"
+                                    onClick={() => handleUpdateItem(item.id, 'expires_on', getPresetDate(preset.months))}
+                                    style={{
+                                      padding: '2px 7px',
+                                      fontSize: 10,
+                                      fontWeight: 600,
                                       borderRadius: 4,
+                                      border: '1px solid var(--border-subtle)',
+                                      background: 'var(--bg-input)',
                                       color: 'var(--text-secondary)',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.1s ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.color = 'var(--primary)';
+                                      e.currentTarget.style.borderColor = 'var(--primary)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.color = 'var(--text-secondary)';
+                                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
                                     }}
                                   >
-                                    {snap.sub}
-                                  </span>
-                                )}
-                                {snap.barcode && (
-                                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                                    #{snap.barcode}
-                                  </span>
+                                    {preset.label}
+                                  </button>
+                                ))}
+
+                                {item.expires_on && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateItem(item.id, 'expires_on', '')}
+                                    style={{
+                                      padding: '2px 7px',
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      borderRadius: 4,
+                                      border: '1px dashed var(--accent-rose)',
+                                      background: 'rgba(239, 68, 68, 0.08)',
+                                      color: 'var(--accent-rose)',
+                                      cursor: 'pointer',
+                                    }}
+                                    title="Yaroqlilik muddatini tozalash (muddatsiz qilish)"
+                                  >
+                                    Muddatsiz ✕
+                                  </button>
                                 )}
                               </div>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                            <input aria-label="Partiya raqami" placeholder="Partiya (ixtiyoriy)" maxLength={80} value={item.batch_code || ''} onChange={e => handleUpdateItem(item.id, 'batch_code', e.target.value)} style={{ width: 140 }} />
-                            <input aria-label="Yaroqlilik sanasi" title="Yaroqlilik sanasi — ixtiyoriy" type="date" value={item.expires_on || ''} onChange={e => handleUpdateItem(item.id, 'expires_on', e.target.value)} />
-                            <button type="button" className="btn btn-secondary" onClick={() => addItemToDraft(variants.find(v => String(v.id) === String(item.variantId)), true)}>Yana partiya</button>
-                          </div>
                         </td>
 
                         {/* Current Stock */}
-                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <td style={{ padding: '12px 12px', textAlign: 'center', verticalAlign: 'top' }}>
                           <span
                             style={{
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: 700,
-                              padding: '2px 7px',
+                              padding: '3px 8px',
                               borderRadius: 4,
                               background: snap.stock > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                               color: snap.stock > 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+                              display: 'inline-block',
                             }}
                           >
                             {snap.stock ?? 0} {unit}
@@ -955,7 +1298,7 @@ export default function RapidStockIntakeModal({
                         </td>
 
                         {/* Quantity Stepper & Input */}
-                        <td style={{ padding: '8px 12px' }}>
+                        <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <button
                               type="button"
@@ -1025,7 +1368,7 @@ export default function RapidStockIntakeModal({
                         </td>
 
                         {/* Cost Price */}
-                        <td style={{ padding: '8px 12px' }}>
+                        <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <PriceInput
                               ref={(el) => (rowInputRefs.current[`${item.id}_cost`] = el)}
@@ -1050,12 +1393,12 @@ export default function RapidStockIntakeModal({
                         </td>
 
                         {/* Line Total */}
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: lineTotal > 0 ? 'var(--primary)' : 'var(--text-muted)' }}>
+                        <td style={{ padding: '12px 12px', fontWeight: 700, color: lineTotal > 0 ? 'var(--primary, #f59e0b)' : 'var(--text-muted)', verticalAlign: 'top' }}>
                           {lineTotal.toLocaleString()} {currency}
                         </td>
 
                         {/* Remove Action */}
-                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                        <td style={{ padding: '12px 12px', textAlign: 'center', verticalAlign: 'top' }}>
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(item.id)}
@@ -1069,7 +1412,10 @@ export default function RapidStockIntakeModal({
                               alignItems: 'center',
                               justifyContent: 'center',
                               opacity: 0.8,
+                              transition: 'opacity 0.15s ease',
                             }}
+                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.8')}
                             title="Qatorni o‘chirish"
                           >
                             <Trash2 size={16} />
@@ -1175,6 +1521,7 @@ export default function RapidStockIntakeModal({
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 600,
+                transition: 'all 0.15s ease',
               }}
             >
               Bekor qilish
@@ -1197,6 +1544,7 @@ export default function RapidStockIntakeModal({
                 alignItems: 'center',
                 gap: 8,
                 transition: 'all 0.15s ease',
+                boxShadow: items.length > 0 ? '0 4px 14px rgba(245, 158, 11, 0.28)' : 'none',
               }}
             >
               <PackagePlus size={16} />
@@ -1212,5 +1560,14 @@ export default function RapidStockIntakeModal({
         </div>
       </div>
     </Modal>
+
+    {/* Camera Barcode Scanner Modal */}
+    <CameraBarcodeScanner
+      isOpen={cameraScannerOpen}
+      onClose={() => setCameraScannerOpen(false)}
+      onScan={handleCameraBarcodeScan}
+      title="Tovar Kirimi Shtrix-kod Skaneri"
+    />
+    </>
   );
 }

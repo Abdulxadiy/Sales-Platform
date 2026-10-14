@@ -26,7 +26,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { request } from '../api/client';
 import { publicSupportRequest, supportApi } from '../api/support';
-import { savedSupportLanguage, supportText } from '../components/support/translations';
+import { supportText } from '../components/support/translations';
 import MarkdownViewer from '../components/docs/MarkdownViewer';
 import { startSupportPolling } from '../components/support/polling';
 import VoiceRecorder from '../components/support/VoiceRecorder';
@@ -66,8 +66,8 @@ const mergeMessages = (previous, incoming) => Array.from(new Map([...previous, .
 
 function SupportCenter({ user, authenticated, operator }) {
   const { activeTenant } = useTenant();
-  const [language, setLanguage] = useState(savedSupportLanguage);
-  const t = supportText[language];
+  const language = 'uz';
+  const t = supportText.uz;
   const api = useMemo(() => supportApi(authenticated, operator), [authenticated, operator]);
   const [params, setParams] = useSearchParams();
   const [selected, setSelected] = useState(params.get('conversation') || '');
@@ -97,18 +97,18 @@ function SupportCenter({ user, authenticated, operator }) {
   const [form, setForm] = useState({ name: [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || '', subject: '', text: '', consent: false });
   const [tab, setTab] = useState(params.has('doc') ? 'guide' : 'chat');
   const [documents, setDocuments] = useState([]);
-  const [docKey, setDocKey] = useState(params.get('doc') || `yordam_${language}`);
+  const [docKey, setDocKey] = useState(params.get('doc') || 'yordam_uz');
   const [document, setDocument] = useState(null);
   const [docSearch, setDocSearch] = useState('');
 
   const filteredDocuments = useMemo(() => {
     return documents.filter((doc) => {
       if (doc.key.startsWith('yordam_')) {
-        return doc.key === `yordam_${language}`;
+        return doc.key === 'yordam_uz';
       }
       return true;
     });
-  }, [documents, language]);
+  }, [documents]);
 
   const searchedDocuments = useMemo(() => {
     if (!docSearch.trim()) return filteredDocuments;
@@ -357,25 +357,6 @@ function SupportCenter({ user, authenticated, operator }) {
             </div>
           )}
         </div>
-        <div className="support-top-bar-right">
-          <CustomSelect
-            value={language}
-            onChange={(newLang) => {
-              setLanguage(newLang);
-              localStorage.setItem('inventra_support_language', newLang);
-              if (docKey.startsWith('yordam_')) {
-                setDocKey(`yordam_${newLang}`);
-              }
-            }}
-            options={[
-              { value: 'uz', label: 'O‘zbekcha' },
-              { value: 'ru', label: 'Русский' },
-              { value: 'en', label: 'English' },
-            ]}
-            size="sm"
-            style={{ minWidth: 130 }}
-          />
-        </div>
       </div>
 
       {!authenticated && (
@@ -563,9 +544,6 @@ function SupportCenter({ user, authenticated, operator }) {
                   <strong style={{ fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.subject}
                   </strong>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--bg-chip)', color: 'var(--text-secondary)' }}>
-                    {item.language.toUpperCase()}
-                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.name}</span>
@@ -698,7 +676,7 @@ function SupportCenter({ user, authenticated, operator }) {
                       <button
                         type="button"
                         className="support-msg-reply-btn"
-                        title="Javob yozish (Reply)"
+                        title="Javob yozish"
                         onClick={() => setReplyingTo(message)}
                       >
                         <CornerUpLeft size={13} />
@@ -750,7 +728,7 @@ function SupportCenter({ user, authenticated, operator }) {
                       {message.sticker && (
                         <StickerItem stickerId={message.sticker} showLabel={false} />
                       )}
-                      <time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-GB')}</time>
+                      <time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('uz-UZ')}</time>
                     </article>
                   </div>)}<div ref={endRef} />
               </div>
@@ -910,7 +888,7 @@ function SupportCenter({ user, authenticated, operator }) {
 
 export default function Support() {
   const { user, isAuthenticated, isAdmin, loading } = useAuth();
-  if (loading) return <div className="support-shell">Loading…</div>;
+  if (loading) return <div className="support-shell">Yuklanmoqda…</div>;
   return <SupportCenter key={`${user?.id || 'guest'}:${isAuthenticated}`} user={user} authenticated={isAuthenticated} operator={isAdmin} />;
 }
 

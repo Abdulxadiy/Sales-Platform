@@ -388,7 +388,7 @@ export default function CustomerProfileModal({ conversationId, api, onClose, onC
                     </div>
                     <div className="customer-profile-item">
                       <span className="customer-profile-label">Tanlagan tili</span>
-                      <span className="customer-profile-value">{profile.guest?.language?.toUpperCase()}</span>
+                      <span className="customer-profile-value">O‘zbekcha</span>
                     </div>
                     <div className="customer-profile-item full-width">
                       <span className="customer-profile-label">Mehmon kaliti (hash)</span>

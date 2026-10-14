@@ -44,7 +44,7 @@ def validate_support_voice(upload):
 class StartSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
     subject = serializers.CharField(max_length=160)
-    language = serializers.ChoiceField(choices=["uz", "ru", "en"])
+    language = serializers.ChoiceField(choices=["uz", "ru", "en"], default="uz", required=False)
     text = serializers.CharField(max_length=4000, required=False, allow_blank=True, default="")
     client_id = serializers.UUIDField()
     consent = serializers.BooleanField()

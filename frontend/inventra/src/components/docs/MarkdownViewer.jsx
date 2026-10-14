@@ -163,7 +163,7 @@ function renderInline(text = '') {
       const documentKeys = ['maxfiylik_siyosati', 'foydalanish_qoidalari', 'ommaviy_oferta',
         'owner_qollanma', 'staff_qollanma', 'platform_admin_qollanma',
         'owner_amaliy_qollanma', 'staff_amaliy_qollanma', 'platform_admin_amaliy_qollanma',
-        'yordam_uz', 'yordam_ru', 'yordam_en'];
+        'yordam_uz'];
       if (docFile && documentKeys.includes(docFile[1])) href = `/support?doc=${docFile[1]}`;
       const isAnchor = href.startsWith('#');
       const isInternal = isAnchor || href.startsWith('/');

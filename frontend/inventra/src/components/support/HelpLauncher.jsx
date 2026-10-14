@@ -459,7 +459,7 @@ export default function HelpLauncher() {
                           <button
                             type="button"
                             className="support-msg-reply-btn"
-                            title="Javob yozish (Reply)"
+                            title="Javob yozish"
                             onClick={() => setReplyingTo(msg)}
                           >
                             <CornerUpLeft size={12} />

@@ -15,14 +15,6 @@ DOCS_MAP = {
         "file": "qollanmalar/yordam_uz.md", "title": "Boshlash va yordam",
         "roles": ["public", "staff", "owner", "platform_admin"], "category": "practical",
     },
-    "yordam_ru": {
-        "file": "qollanmalar/yordam_ru.md", "title": "Начало работы и поддержка",
-        "roles": ["public", "staff", "owner", "platform_admin"], "category": "practical",
-    },
-    "yordam_en": {
-        "file": "qollanmalar/yordam_en.md", "title": "Getting started and support",
-        "roles": ["public", "staff", "owner", "platform_admin"], "category": "practical",
-    },
 
     # 1. Amaliy Vizual Qo'llanmalar (Rasmlar bilan)
     "platform_admin_amaliy_qollanma": {

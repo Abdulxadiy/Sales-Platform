@@ -53,7 +53,7 @@ export default function Documentation() {
       ? [
           {
             key: 'platform_admin_amaliy_qollanma',
-            label: 'Admin: Amaliy Yo‘riqnoma (Rasmli)',
+            label: 'Administrator: Amaliy Yo‘riqnoma (Rasmli)',
             icon: Shield,
             category: 'practical',
             badge: 'Rasmli',
@@ -64,7 +64,7 @@ export default function Documentation() {
       ? [
           {
             key: 'owner_amaliy_qollanma',
-            label: 'Owner: Amaliy Yo‘riqnoma (Rasmli)',
+            label: 'Do‘kon Egasi: Amaliy Yo‘riqnoma (Rasmli)',
             icon: Store,
             category: 'practical',
             badge: 'Rasmli',
@@ -84,7 +84,7 @@ export default function Documentation() {
       ? [
           {
             key: 'platform_admin_qollanma',
-            label: 'Admin Reglamenti',
+            label: 'Administrator Reglamenti',
             icon: Shield,
             category: 'manual',
           },
@@ -237,7 +237,7 @@ export default function Documentation() {
                 Hujjatlar & Yo‘riqnomalar
               </span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Inventra Documentation Portal
+                Inventra Qo‘llanmalar Portali
               </span>
             </div>
             <h1

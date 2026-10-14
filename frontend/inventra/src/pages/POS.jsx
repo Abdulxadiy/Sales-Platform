@@ -1641,7 +1641,7 @@ export default function POS() {
                           background: 'rgba(255, 255, 255, 0.04)',
                         }}
                       >
-                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Qaytim (Сдача):</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Qaytim:</span>
                         <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent-emerald)' }}>
                           {changeDueUZS.toLocaleString()} UZS
                         </span>

@@ -812,6 +812,7 @@ Shop endi **alohida mikroservis, o'z bazasi bilan** — to'liq reja `shop-yol-xa
 |**AD**|~~Kamomad (Deficits) dinamik algoritmi~~|✅ **YOPILDI** — Oxirgi 30 kunlik sotuvi >= 10 va qoldig'i <= 5 tovarlar avtomatik kamomadga tushadi, kirim bo'lishi bilan (>5) avtomatik chiqadi. Filial bo'yicha filterlanadi va Telegramga yuboriladi|
 |**AE**|~~Qarz to'lovida oxirgi to'lov auditi va Filial tanlovi~~|✅ **YOPILDI** — Har bir kontragent bo'yicha oxirgi to'langan summa, valyuta, sana va filial ma'lumotlari (`last_payment`) prefetched holda chiqariladi; qarz to'lash modalida oxirgi to'lov axborot banneri va to'lov qabul qilinayotgan filial (`branch_id`) tanlash imkoniyati to'liq joriy qilindi|
 |**AF**|~~Mijoz Nasiyalari va B2B Tranzaksiyalarining alohida sidebar bo'limlariga ajratilishi~~|✅ **YOPILDI** — Savdolar (`/sales`), Mijoz Nasiyalari (`/debts`), va B2B Tranzaksiyalari (`/b2b`) bitta sahifadagi tablardan to'liq mustaqil, ixtisoslashtirilgan SPA sahifalariga va Sidebar bo'limlariga ajratildi. Eskirgan linklar (`?tab=counterparties` va `?tab=b2b`) avtomatik tegishli yangi sahifalarga redirect qilinadi|
+|**AG**|~~Tizimni to'liq o'zbek tiliga o'tkazish (Operator, Qo'llanmalar, Interfeys)~~|✅ **YOPILDI** — Rus va ingliz tillaridagi barcha qoldiqlar, til almashtirgichlar olib tashlandi; operator chati, qo'llanmalar, rasmlar vizualizatsiyasi va kassa interfeysi sof o'zbek tiliga o'tkazildi|
 
 ---
 

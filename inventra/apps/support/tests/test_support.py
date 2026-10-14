@@ -280,11 +280,10 @@ def test_public_guides_exclude_private_manuals_and_images_are_real():
 
     client = APIClient()
     keys = {doc["key"] for doc in client.get("/api/v1/docs/").data["documents"]}
-    assert {"yordam_uz", "yordam_ru", "yordam_en"} <= keys
+    assert "yordam_uz" in keys
     assert "platform_admin_qollanma" not in keys
     assert "owner_qollanma" not in keys
-    for language in ("uz", "ru", "en"):
-        assert client.get(f"/api/v1/docs/?doc=yordam_{language}").status_code == 200
+    assert client.get("/api/v1/docs/?doc=yordam_uz").status_code == 200
     assert client.get("/api/v1/docs/images/manifest.json").status_code == 404
     assert client.get("/api/v1/docs/images/missing.png").status_code == 404
     response = client.get("/api/v1/docs/images/catalog_create.png")

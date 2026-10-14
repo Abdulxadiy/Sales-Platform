@@ -7,6 +7,31 @@ from rest_framework import serializers
 from apps.support.models import Conversation, Message
 
 
+def validate_support_image(upload):
+    if upload.size > 2 * 1024 * 1024:
+        raise serializers.ValidationError("Image limit: 2 MB.")
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", Image.DecompressionBombWarning)
+            with Image.open(upload) as source:
+                if source.format not in ("PNG", "JPEG", "WEBP") or source.width * source.height > 16_000_000:
+                    raise ValueError
+                source.load()
+                image = ImageOps.exif_transpose(source).convert("RGB")
+                image.thumbnail((1920, 1920))
+                output = BytesIO()
+                image.save(output, format="JPEG", quality=85)
+                return output.getvalue()
+    except (
+        OSError,
+        ValueError,
+        UnidentifiedImageError,
+        Image.DecompressionBombError,
+        Image.DecompressionBombWarning,
+    ) as exc:
+        raise serializers.ValidationError("Use a valid PNG, JPEG or WebP image (up to 16 MP).") from exc
+
+
 class StartSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
     subject = serializers.CharField(max_length=160)
@@ -14,11 +39,15 @@ class StartSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=4000)
     client_id = serializers.UUIDField()
     consent = serializers.BooleanField()
+    image = serializers.FileField(required=False)
 
     def validate_consent(self, value):
         if not value:
             raise serializers.ValidationError("Please accept the support privacy notice.")
         return value
+
+    def validate_image(self, upload):
+        return validate_support_image(upload)
 
 
 class SendSerializer(serializers.Serializer):
@@ -27,28 +56,7 @@ class SendSerializer(serializers.Serializer):
     image = serializers.FileField(required=False)
 
     def validate_image(self, upload):
-        if upload.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError("Image limit: 2 MB.")
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("error", Image.DecompressionBombWarning)
-                with Image.open(upload) as source:
-                    if source.format not in ("PNG", "JPEG", "WEBP") or source.width * source.height > 16_000_000:
-                        raise ValueError
-                    source.load()
-                    image = ImageOps.exif_transpose(source).convert("RGB")
-                    image.thumbnail((1920, 1920))
-                    output = BytesIO()
-                    image.save(output, format="JPEG", quality=85)
-                    return output.getvalue()
-        except (
-            OSError,
-            ValueError,
-            UnidentifiedImageError,
-            Image.DecompressionBombError,
-            Image.DecompressionBombWarning,
-        ) as exc:
-            raise serializers.ValidationError("Use a valid PNG, JPEG or WebP image (up to 16 MP).") from exc
+        return validate_support_image(upload)
 
     def validate(self, data):
         if not data.get("text") and not data.get("image"):

@@ -78,6 +78,29 @@ def test_create_retry_and_consent():
     assert start(client, language="de").status_code == 400
 
 
+def test_create_conversation_with_image():
+    client = guest()
+    buffer = BytesIO()
+    Image.new("RGB", (20, 20), "red").save(buffer, "PNG")
+    uploaded = SimpleUploadedFile("initial.png", buffer.getvalue(), "image/png")
+    body = {
+        "name": "Visitor",
+        "subject": "Initial bug report",
+        "language": "uz",
+        "text": "Screenshot attached",
+        "consent": True,
+        "client_id": str(uuid.uuid4()),
+        "image": uploaded,
+    }
+    response = client.post("/api/v1/support/guest/", body, format="multipart")
+    assert response.status_code == 201
+    pk = response.data["id"]
+    msg = Message.objects.filter(conversation_id=pk).first()
+    assert msg is not None
+    assert msg.has_image is True
+    assert msg.image_data is not None
+
+
 def test_authenticated_conversations_are_personal_not_tenant_shared(owner, tenant):
     client = APIClient()
     client.force_authenticate(owner)

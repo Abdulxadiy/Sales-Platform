@@ -180,6 +180,8 @@ class ConversationsView(SupportView):
             author=request.user if request.user.is_authenticated else None,
             client_id=values["client_id"],
             text=values["text"],
+            image_data=values.get("image"),
+            has_image=bool(values.get("image")),
         )
         transaction.on_commit(lambda: enqueue_notification(conversation.pk))
         return Response(ConversationSerializer(conversation).data, status=201)

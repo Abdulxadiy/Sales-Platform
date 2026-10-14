@@ -6,9 +6,6 @@ import {
   Minus,
   Trash2,
   PackagePlus,
-  CalendarDays,
-  Tag,
-  Clock,
   AlertTriangle,
   CheckCircle2,
   AlertCircle,
@@ -32,16 +29,6 @@ const EMPTY_DRAFT = {
   invoiceNumber: '',
   note: '',
   items: [],
-};
-
-// Helper: Calculate future expiration date string YYYY-MM-DD from months delta
-const getPresetDate = (months) => {
-  const d = new Date();
-  d.setMonth(d.getMonth() + months);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 };
 
 // Helper: Analyze expiration status and calculate remaining period
@@ -625,41 +612,42 @@ export default function RapidStockIntakeModal({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: 12,
             background: 'var(--bg-card)',
-            padding: '12px 14px',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border-card)',
+            padding: '10px 14px',
+            borderRadius: 10,
+            border: '1px solid var(--border-subtle)',
           }}
         >
           <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
               <Truck size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
-              Ta’minotchi (Yetkazib beruvchi)
+              Ta’minotchi
             </label>
             <input
               type="text"
-              placeholder="Masalan: Artel Zavod yoki Baza MCHJ"
+              placeholder="Yetkazib beruvchi nomi (ixtiyoriy)"
               value={draft.supplier || ''}
               onChange={(e) => setDraft((prev) => ({ ...prev, supplier: e.target.value }))}
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-xs)',
+                padding: '7px 10px',
+                borderRadius: 8,
                 border: '1px solid var(--border-subtle)',
                 background: 'var(--bg-input)',
                 color: 'var(--text-primary)',
-                fontSize: 13,
+                fontSize: 12.5,
                 outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
               <FileText size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
-              Faktura / Nakladnoy raqami
+              Faktura / Nakladnoy №
             </label>
             <input
               type="text"
@@ -668,36 +656,38 @@ export default function RapidStockIntakeModal({
               onChange={(e) => setDraft((prev) => ({ ...prev, invoiceNumber: e.target.value }))}
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-xs)',
+                padding: '7px 10px',
+                borderRadius: 8,
                 border: '1px solid var(--border-subtle)',
                 background: 'var(--bg-input)',
                 color: 'var(--text-primary)',
-                fontSize: 13,
+                fontSize: 12.5,
                 outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
               <MessageSquare size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
-              Umumiy izoh
+              Izoh
             </label>
             <input
               type="text"
-              placeholder="Masalan: 1-partiya kirimi, to‘lov kutilmoqda"
+              placeholder="Qisqa izoh..."
               value={draft.note || ''}
               onChange={(e) => setDraft((prev) => ({ ...prev, note: e.target.value }))}
               style={{
                 width: '100%',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-xs)',
+                padding: '7px 10px',
+                borderRadius: 8,
                 border: '1px solid var(--border-subtle)',
                 background: 'var(--bg-input)',
                 color: 'var(--text-primary)',
-                fontSize: 13,
+                fontSize: 12.5,
                 outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
@@ -972,55 +962,56 @@ export default function RapidStockIntakeModal({
         {/* Stream Table for Batch Intake */}
         <div
           style={{
-            border: '1px solid var(--border-card)',
-            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 12,
             overflow: 'hidden',
-            background: 'var(--bg-surface)',
+            background: 'var(--bg-card)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
           }}
         >
-          <div className="table-responsive" style={{ maxHeight: '420px', overflow: 'auto' }}>
-            <table style={{ width: '100%', minWidth: 840, borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+          <div className="table-responsive" style={{ maxHeight: '440px', overflowY: 'auto' }}>
+            <table
+              style={{
+                width: '100%',
+                minWidth: 980,
+                borderCollapse: 'separate',
+                borderSpacing: 0,
+                textAlign: 'left',
+                fontSize: 13,
+              }}
+            >
               <thead
                 style={{
-                  background: 'var(--bg-card)',
+                  background: 'var(--bg-chip)',
                   position: 'sticky',
                   top: 0,
-                  zIndex: 2,
-                  borderBottom: '1px solid var(--border-card)',
+                  zIndex: 3,
                 }}
               >
                 <tr>
-                  <th style={{ padding: '10px 12px', width: 36, color: 'var(--text-secondary)', fontWeight: 600 }}>№</th>
-                  <th style={{ padding: '10px 12px', minWidth: 320, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Tovar va Partiya / Yaroqlilik ma’lumotlari
-                  </th>
-                  <th style={{ padding: '10px 12px', width: 100, color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'center' }}>
-                    Joriy qoldiq
-                  </th>
-                  <th style={{ padding: '10px 12px', width: 165, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Kirim miqdori *
-                  </th>
-                  <th style={{ padding: '10px 12px', width: 175, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Tan narxi *
-                  </th>
-                  <th style={{ padding: '10px 12px', width: 140, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Jami qiymat
-                  </th>
-                  <th style={{ padding: '10px 12px', width: 44, textAlign: 'center' }}></th>
+                  <th style={{ padding: '11px 8px', width: 36, textAlign: 'center', borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>№</th>
+                  <th style={{ padding: '11px 12px', minWidth: 210, borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Tovar nomi</th>
+                  <th style={{ padding: '11px 10px', width: 135, borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Partiya №</th>
+                  <th style={{ padding: '11px 10px', width: 150, borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Yaroqlilik muddati</th>
+                  <th style={{ padding: '11px 8px', width: 95, textAlign: 'center', borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Joriy qoldiq</th>
+                  <th style={{ padding: '11px 10px', width: 145, borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Kirim miqdori *</th>
+                  <th style={{ padding: '11px 10px', width: 165, borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Tan narxi *</th>
+                  <th style={{ padding: '11px 12px', width: 120, borderBottom: '2px solid var(--border-card)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 12 }}>Jami qiymat</th>
+                  <th style={{ padding: '11px 8px', width: 65, textAlign: 'center', borderBottom: '2px solid var(--border-card)' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan={9} style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <ScanBarcode size={36} style={{ opacity: 0.4, color: 'var(--text-muted)' }} />
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        <ScanBarcode size={38} style={{ opacity: 0.35, color: 'var(--primary, #f59e0b)' }} />
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                           Hozircha tovarlar qo‘shilmadi
                         </div>
-                        <div style={{ fontSize: 12, maxWidth: 440, lineHeight: 1.5 }}>
+                        <div style={{ fontSize: 12.5, maxWidth: 440, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                           Yuqoridagi maydonda kamera yoki shtrix-kod skaneri orqali tovar nomini yozib{' '}
-                          <kbd style={{ padding: '2px 5px', background: 'var(--bg-chip)', borderRadius: 4 }}>Enter</kbd>{' '}
+                          <kbd style={{ padding: '2px 6px', background: 'var(--bg-chip)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontWeight: 700 }}>Enter</kbd>{' '}
                           bosing. Tovar avtomatik ushbu jadvalga qo‘shiladi.
                         </div>
                       </div>
@@ -1045,21 +1036,21 @@ export default function RapidStockIntakeModal({
                           background: isRecentlyAdded
                             ? 'rgba(245, 158, 11, 0.08)'
                             : idx % 2 === 1
-                            ? 'rgba(255, 255, 255, 0.015)'
+                            ? 'rgba(255, 255, 255, 0.02)'
                             : 'transparent',
-                          transition: 'background 0.3s ease',
+                          transition: 'background 0.25s ease',
                         }}
                       >
-                        <td style={{ padding: '12px 12px', color: 'var(--text-muted)', fontWeight: 600, verticalAlign: 'top' }}>
+                        {/* 1. № */}
+                        <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600, borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
                           {idx + 1}
                         </td>
 
-                        {/* Product, Variant, Batch & Expiration sub-panel */}
-                        <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
-                          <div>
-                            {/* Product Header */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
+                        {/* 2. Tovar Nomi & Kodlar */}
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--text-primary)' }}>
                                 {snap.name || 'Tovar'}
                               </span>
                               {snap.sub && (
@@ -1067,18 +1058,20 @@ export default function RapidStockIntakeModal({
                                   style={{
                                     fontSize: 11,
                                     padding: '1px 6px',
-                                    background: 'var(--bg-chip)',
+                                    background: 'rgba(245, 158, 11, 0.1)',
                                     borderRadius: 4,
                                     color: 'var(--primary, #f59e0b)',
                                     fontWeight: 600,
-                                    border: '1px solid var(--border-subtle)',
+                                    border: '1px solid rgba(245, 158, 11, 0.25)',
                                   }}
                                 >
                                   {snap.sub}
                                 </span>
                               )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               {snap.barcode && (
-                                <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '1px 5px', borderRadius: 4 }}>
+                                <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '1px 5px', borderRadius: 4, border: '1px solid var(--border-subtle)' }}>
                                   #{snap.barcode}
                                 </span>
                               )}
@@ -1088,225 +1081,103 @@ export default function RapidStockIntakeModal({
                                 </span>
                               )}
                             </div>
-
-                            {/* Partiya va Yaroqlilik Muddati Control Box */}
-                            <div
-                              style={{
-                                marginTop: 8,
-                                padding: '8px 10px',
-                                borderRadius: 'var(--radius-xs)',
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border-subtle)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 8,
-                              }}
-                            >
-                              {/* Input Row: Partiya raqami + Yaroqlilik muddati + Yangi partiya */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                {/* Partiya raqami */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: '1 1 130px' }}>
-                                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                                    <Tag size={12} style={{ color: 'var(--primary, #f59e0b)' }} />
-                                    Partiya:
-                                  </label>
-                                  <input
-                                    type="text"
-                                    placeholder="Partiya / Seriya (ixtiyoriy)"
-                                    value={item.batch_code || ''}
-                                    maxLength={80}
-                                    onChange={(e) => handleUpdateItem(item.id, 'batch_code', e.target.value)}
-                                    style={{
-                                      flex: 1,
-                                      minWidth: 90,
-                                      padding: '5px 8px',
-                                      fontSize: 12,
-                                      borderRadius: 'var(--radius-xs)',
-                                      border: '1px solid var(--border-subtle)',
-                                      background: 'var(--bg-input)',
-                                      color: 'var(--text-primary)',
-                                      outline: 'none',
-                                    }}
-                                  />
-                                </div>
-
-                                {/* Yaroqlilik muddati */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: '1 1 200px' }}>
-                                  <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                                    <CalendarDays size={12} style={{ color: 'var(--primary, #f59e0b)' }} />
-                                    Yaroqlilik muddati:
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={item.expires_on || ''}
-                                    min="2020-01-01"
-                                    max="2045-12-31"
-                                    onChange={(e) => handleUpdateItem(item.id, 'expires_on', e.target.value)}
-                                    title="Partiyaning yaroqlilik muddati (tugash sanasi)"
-                                    style={{
-                                      padding: '5px 8px',
-                                      fontSize: 12,
-                                      borderRadius: 'var(--radius-xs)',
-                                      border: '1px solid var(--border-subtle)',
-                                      background: 'var(--bg-input)',
-                                      color: 'var(--text-primary)',
-                                      outline: 'none',
-                                      cursor: 'pointer',
-                                    }}
-                                  />
-
-                                  {/* Status indicator badge */}
-                                  {expiryStatus && (
-                                    <span
-                                      style={{
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        padding: '2px 7px',
-                                        borderRadius: 4,
-                                        background: expiryStatus.bg,
-                                        color: expiryStatus.color,
-                                        border: `1px solid ${expiryStatus.borderColor}`,
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 4,
-                                        whiteSpace: 'nowrap',
-                                      }}
-                                      title={expiryStatus.tooltip}
-                                    >
-                                      {expiryStatus.icon}
-                                      <span>{expiryStatus.label}</span>
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Yangi partiya qo'shish */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const match = variants.find((v) => String(v.id) === String(item.variantId));
-                                    if (match) addItemToDraft(match, true);
-                                  }}
-                                  title="Aynan shu tovardan boshqa partiya yoki muddati boshqa yangi qator ochish"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    padding: '5px 10px',
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    borderRadius: 'var(--radius-xs)',
-                                    background: 'rgba(245, 158, 11, 0.1)',
-                                    border: '1px solid rgba(245, 158, 11, 0.28)',
-                                    color: 'var(--primary, #f59e0b)',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'var(--primary)';
-                                    e.currentTarget.style.color = 'var(--primary-foreground, #000)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
-                                    e.currentTarget.style.color = 'var(--primary, #f59e0b)';
-                                  }}
-                                >
-                                  <Layers size={12} />
-                                  <span>+ Yangi partiya</span>
-                                </button>
-                              </div>
-
-                              {/* Quick Duration Presets for Yaroqlilik Muddati */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
-                                  <Clock size={11} /> Tezkor muddat:
-                                </span>
-                                {[
-                                  { label: '+1 oy', months: 1 },
-                                  { label: '+3 oy', months: 3 },
-                                  { label: '+6 oy', months: 6 },
-                                  { label: '+1 yil', months: 12 },
-                                  { label: '+2 yil', months: 24 },
-                                ].map((preset) => (
-                                  <button
-                                    key={preset.label}
-                                    type="button"
-                                    onClick={() => handleUpdateItem(item.id, 'expires_on', getPresetDate(preset.months))}
-                                    style={{
-                                      padding: '2px 7px',
-                                      fontSize: 10,
-                                      fontWeight: 600,
-                                      borderRadius: 4,
-                                      border: '1px solid var(--border-subtle)',
-                                      background: 'var(--bg-input)',
-                                      color: 'var(--text-secondary)',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.1s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.color = 'var(--primary)';
-                                      e.currentTarget.style.borderColor = 'var(--primary)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.color = 'var(--text-secondary)';
-                                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                                    }}
-                                  >
-                                    {preset.label}
-                                  </button>
-                                ))}
-
-                                {item.expires_on && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateItem(item.id, 'expires_on', '')}
-                                    style={{
-                                      padding: '2px 7px',
-                                      fontSize: 10,
-                                      fontWeight: 600,
-                                      borderRadius: 4,
-                                      border: '1px dashed var(--accent-rose)',
-                                      background: 'rgba(239, 68, 68, 0.08)',
-                                      color: 'var(--accent-rose)',
-                                      cursor: 'pointer',
-                                    }}
-                                    title="Yaroqlilik muddatini tozalash (muddatsiz qilish)"
-                                  >
-                                    Muddatsiz ✕
-                                  </button>
-                                )}
-                              </div>
-                            </div>
                           </div>
                         </td>
 
-                        {/* Current Stock */}
-                        <td style={{ padding: '12px 12px', textAlign: 'center', verticalAlign: 'top' }}>
+                        {/* 3. Partiya № */}
+                        <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+                          <input
+                            type="text"
+                            placeholder="Ixtiyoriy"
+                            value={item.batch_code || ''}
+                            maxLength={80}
+                            onChange={(e) => handleUpdateItem(item.id, 'batch_code', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              fontSize: 12.5,
+                              borderRadius: 6,
+                              border: '1px solid var(--border-subtle)',
+                              background: 'var(--bg-input)',
+                              color: 'var(--text-primary)',
+                              outline: 'none',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                        </td>
+
+                        {/* 4. Yaroqlilik Muddati */}
+                        <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <input
+                              type="date"
+                              value={item.expires_on || ''}
+                              min="2020-01-01"
+                              max="2045-12-31"
+                              onChange={(e) => handleUpdateItem(item.id, 'expires_on', e.target.value)}
+                              title="Partiyaning yaroqlilik muddati (tugash sanasi)"
+                              style={{
+                                width: '100%',
+                                padding: '5px 8px',
+                                fontSize: 12,
+                                borderRadius: 6,
+                                border: '1px solid var(--border-subtle)',
+                                background: 'var(--bg-input)',
+                                color: 'var(--text-primary)',
+                                outline: 'none',
+                                cursor: 'pointer',
+                                boxSizing: 'border-box',
+                              }}
+                            />
+                            {expiryStatus && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: expiryStatus.color,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 3,
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={expiryStatus.tooltip}
+                              >
+                                {expiryStatus.icon}
+                                <span>{expiryStatus.label}</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 5. Joriy Qoldiq */}
+                        <td style={{ padding: '10px 8px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
                           <span
                             style={{
-                              fontSize: 12,
+                              fontSize: 11.5,
                               fontWeight: 700,
                               padding: '3px 8px',
-                              borderRadius: 4,
+                              borderRadius: 6,
                               background: snap.stock > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
                               color: snap.stock > 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)',
+                              border: snap.stock > 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
                               display: 'inline-block',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             {snap.stock ?? 0} {unit}
                           </span>
                         </td>
 
-                        {/* Quantity Stepper & Input */}
-                        <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+                        {/* 6. Kirim Miqdori */}
+                        <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <button
                               type="button"
                               onClick={() => handleStepQuantity(item.id, -1)}
                               style={{
                                 width: 28,
-                                height: 28,
-                                borderRadius: 'var(--radius-xs)',
+                                height: 30,
+                                borderRadius: 6,
                                 border: '1px solid var(--border-subtle)',
                                 background: 'var(--bg-chip)',
                                 color: 'var(--text-primary)',
@@ -1330,9 +1201,10 @@ export default function RapidStockIntakeModal({
                               onChange={(e) => handleUpdateItem(item.id, 'quantity', e.target.value)}
                               required
                               style={{
-                                width: 75,
-                                padding: '6px 8px',
-                                borderRadius: 'var(--radius-xs)',
+                                width: 56,
+                                height: 30,
+                                padding: '4px 6px',
+                                borderRadius: 6,
                                 border: '1px solid var(--border-card)',
                                 background: 'var(--bg-input)',
                                 color: 'var(--text-primary)',
@@ -1340,6 +1212,7 @@ export default function RapidStockIntakeModal({
                                 fontWeight: 700,
                                 textAlign: 'center',
                                 outline: 'none',
+                                boxSizing: 'border-box',
                               }}
                             />
 
@@ -1348,8 +1221,8 @@ export default function RapidStockIntakeModal({
                               onClick={() => handleStepQuantity(item.id, 1)}
                               style={{
                                 width: 28,
-                                height: 28,
-                                borderRadius: 'var(--radius-xs)',
+                                height: 30,
+                                borderRadius: 6,
                                 border: '1px solid var(--border-subtle)',
                                 background: 'var(--bg-chip)',
                                 color: 'var(--text-primary)',
@@ -1367,9 +1240,9 @@ export default function RapidStockIntakeModal({
                           </div>
                         </td>
 
-                        {/* Cost Price */}
-                        <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {/* 7. Tan Narxi */}
+                        <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <PriceInput
                               ref={(el) => (rowInputRefs.current[`${item.id}_cost`] = el)}
                               placeholder="0"
@@ -1378,48 +1251,78 @@ export default function RapidStockIntakeModal({
                               required
                               style={{
                                 width: 110,
-                                padding: '6px 8px',
-                                borderRadius: 'var(--radius-xs)',
+                                height: 30,
+                                padding: '4px 8px',
+                                borderRadius: 6,
                                 border: '1px solid var(--border-card)',
                                 background: 'var(--bg-input)',
                                 color: 'var(--text-primary)',
                                 fontSize: 13,
                                 fontWeight: 600,
                                 outline: 'none',
+                                boxSizing: 'border-box',
                               }}
                             />
                             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{currency}</span>
                           </div>
                         </td>
 
-                        {/* Line Total */}
-                        <td style={{ padding: '12px 12px', fontWeight: 700, color: lineTotal > 0 ? 'var(--primary, #f59e0b)' : 'var(--text-muted)', verticalAlign: 'top' }}>
+                        {/* 8. Jami Qiymat */}
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: lineTotal > 0 ? 'var(--primary, #f59e0b)' : 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           {lineTotal.toLocaleString()} {currency}
                         </td>
 
-                        {/* Remove Action */}
-                        <td style={{ padding: '12px 12px', textAlign: 'center', verticalAlign: 'top' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(item.id)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--accent-rose)',
-                              cursor: 'pointer',
-                              padding: 4,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              opacity: 0.8,
-                              transition: 'opacity 0.15s ease',
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.8')}
-                            title="Qatorni o‘chirish"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                        {/* 9. Amallar: Duplicate & Delete */}
+                        <td style={{ padding: '10px 8px', textAlign: 'center', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const match = variants.find((v) => String(v.id) === String(item.variantId));
+                                if (match) addItemToDraft(match, true);
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--primary, #f59e0b)',
+                                cursor: 'pointer',
+                                padding: 5,
+                                borderRadius: 4,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: 0.8,
+                                transition: 'opacity 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.8')}
+                              title="Shu tovardan yangi partiya qatori ochish"
+                            >
+                              <Layers size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--accent-rose, #ef4444)',
+                                cursor: 'pointer',
+                                padding: 5,
+                                borderRadius: 4,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: 0.8,
+                                transition: 'opacity 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.8')}
+                              title="Qatorni o‘chirish"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

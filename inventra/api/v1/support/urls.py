@@ -36,3 +36,7 @@ for prefix, listing, detail, messages, image, voice in [
         path(prefix + "<uuid:pk>/messages/<int:message_id>/image/", image.as_view()),
         path(prefix + "<uuid:pk>/messages/<int:message_id>/voice/", voice.as_view()),
     ]
+
+urlpatterns += [
+    path("inbox/<uuid:pk>/customer/", views.CustomerProfileView.as_view()),
+]

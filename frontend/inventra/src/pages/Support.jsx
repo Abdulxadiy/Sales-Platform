@@ -17,6 +17,9 @@ import {
   Mic,
   Smile,
   CornerUpLeft,
+  Sparkles,
+  Plus,
+  Filter,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
@@ -28,6 +31,8 @@ import { startSupportPolling } from '../components/support/polling';
 import VoiceRecorder from '../components/support/VoiceRecorder';
 import VoicePlayer from '../components/support/VoicePlayer';
 import StickerPicker, { StickerItem, STICKER_DICT } from '../components/support/StickerPicker';
+import CustomerProfileModal from '../components/support/CustomerProfileModal';
+import CustomSelect from '../components/common/CustomSelect';
 import '../components/support/support.css';
 
 function getDocIcon(key, category) {
@@ -83,6 +88,7 @@ function SupportCenter({ user, authenticated, operator }) {
   const [replyingTo, setReplyingTo] = useState(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [newImage, setNewImage] = useState(null);
   const [newImagePreview, setNewImagePreview] = useState(null);
   const newFileRef = useRef(null);
@@ -351,23 +357,23 @@ function SupportCenter({ user, authenticated, operator }) {
           )}
         </div>
         <div className="support-top-bar-right">
-          <select
-            className="input-field support-lang-select"
-            aria-label="Language"
+          <CustomSelect
             value={language}
-            onChange={(e) => {
-              const newLang = e.target.value;
+            onChange={(newLang) => {
               setLanguage(newLang);
               localStorage.setItem('inventra_support_language', newLang);
               if (docKey.startsWith('yordam_')) {
                 setDocKey(`yordam_${newLang}`);
               }
             }}
-          >
-            <option value="uz">O‘zbekcha</option>
-            <option value="ru">Русский</option>
-            <option value="en">English</option>
-          </select>
+            options={[
+              { value: 'uz', label: 'O‘zbekcha' },
+              { value: 'ru', label: 'Русский' },
+              { value: 'en', label: 'English' },
+            ]}
+            size="sm"
+            style={{ minWidth: 130 }}
+          />
         </div>
       </div>
 
@@ -496,20 +502,91 @@ function SupportCenter({ user, authenticated, operator }) {
           </section>
         </div>
       ) : <>
-        <p className="support-note">{t.ai}</p>
+        <div className="support-ai-banner">
+          <Sparkles size={16} className="support-ai-icon" />
+          <span>{t.ai}</span>
+        </div>
         <div className="support-workspace">
           <aside className="support-list" aria-label={operator ? t.inbox : t.chat}>
-            {operator ? <div className="support-filters"><select className="input-field" aria-label={t.inbox} value={filter} onChange={(e) => { setPage(1); setFilter(e.target.value); }}>
-              <option value="">{t.all}</option>{['waiting', 'active', 'closed'].map((s) => <option key={s} value={s}>{t[s]}</option>)}</select>
-              <label><input type="checkbox" checked={mine} onChange={(e) => { setPage(1); setMine(e.target.checked); }} /> {t.mine}</label></div>
-              : <button className="btn btn-primary" disabled={busy} onClick={() => { choose(''); setNewForm(true); }}>{t.new}</button>}
+            {operator ? (
+              <div className="support-filters">
+                <CustomSelect
+                  value={filter}
+                  onChange={(val) => {
+                    setPage(1);
+                    setFilter(val);
+                  }}
+                  options={[
+                    { value: '', label: t.all },
+                    { value: 'waiting', label: t.waiting },
+                    { value: 'active', label: t.active },
+                    { value: 'closed', label: t.closed },
+                  ]}
+                  size="sm"
+                  fullWidth
+                />
+                <label
+                  className={`support-mine-pill ${mine ? 'active' : ''}`}
+                  onClick={() => {
+                    setPage(1);
+                    setMine(!mine);
+                  }}
+                >
+                  <span className="support-mine-check">{mine ? '✓' : ''}</span>
+                  <span>{t.mine}</span>
+                </label>
+              </div>
+            ) : (
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                onClick={() => {
+                  choose('');
+                  setNewForm(true);
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 700 }}
+              >
+                <Plus size={16} />
+                <span>{t.new}</span>
+              </button>
+            )}
             {!conversations.length && <p className="support-note">{t.empty}</p>}
-            {conversations.map((item) => <button key={item.id} disabled={busy} onClick={() => choose(item.id)} className={`support-thread ${selected === item.id ? 'selected' : ''}`}>
-              <strong>{item.subject}</strong><span>{item.name} · {item.language.toUpperCase()}</span>
-              <span className={`support-status ${item.status}`}>{t[item.status]}{item.unread_count > 0 && <b className="support-badge">{item.unread_count}</b>}</span>
-            </button>)}
-            <div className="support-pages">{page > 1 && <button className="btn btn-secondary" disabled={busy} onClick={() => setPage(page - 1)}>←</button>}
-              {nextPage && <button className="btn btn-secondary" disabled={busy} onClick={() => setPage(page + 1)}>{t.more}</button>}</div>
+            {conversations.map((item) => (
+              <button
+                key={item.id}
+                disabled={busy}
+                onClick={() => choose(item.id)}
+                className={`support-thread ${selected === item.id ? 'selected' : ''}`}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <strong style={{ fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.subject}
+                  </strong>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'var(--bg-chip)', color: 'var(--text-secondary)' }}>
+                    {item.language.toUpperCase()}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.name}</span>
+                  <span className={`support-status ${item.status}`}>
+                    {t[item.status]}
+                    {item.unread_count > 0 && <b className="support-badge">{item.unread_count}</b>}
+                  </span>
+                </div>
+              </button>
+            ))}
+            <div className="support-pages">
+              {page > 1 && (
+                <button className="btn btn-secondary" disabled={busy} onClick={() => setPage(page - 1)}>
+                  ←
+                </button>
+              )}
+              {nextPage && (
+                <button className="btn btn-secondary" disabled={busy} onClick={() => setPage(page + 1)}>
+                  {t.more}
+                </button>
+              )}
+            </div>
           </aside>
           <section className="support-chat">
             {newForm && !operator ? <form className="support-start" onSubmit={start}>
@@ -588,7 +665,20 @@ function SupportCenter({ user, authenticated, operator }) {
               <p className="support-note">{t.safe}</p><button className="btn btn-primary" disabled={busy}>{busy ? t.loading : t.start}</button>
             </form> : conversation ? <>
               <div className="support-chat-header"><div><h2>{conversation.subject}</h2><span className={`support-status ${conversation.status}`}>{t[conversation.status]}</span>
-                {conversation.operator_name && <small>{t.operator}: {conversation.operator_name}</small>}</div>
+                {conversation.operator_name && <small>{t.operator}: {conversation.operator_name}</small>}
+                {operator && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ marginLeft: 10, padding: '3px 8px', fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => setShowCustomerProfile(true)}
+                    title="Mijoz profilini ko‘rish va boshqarish"
+                  >
+                    <User size={12} />
+                    Mijoz profili
+                  </button>
+                )}
+                </div>
                 <div className="support-actions">
                   {operator && conversation.status !== 'closed' && !conversation.operator_id && <button disabled={busy} className="btn btn-primary" onClick={() => action('claim')}>{t.claim}</button>}
                   {conversation.status === 'closed' ? <button disabled={busy} className="btn btn-secondary" onClick={() => action('reopen')}>{t.reopen}</button>
@@ -633,7 +723,17 @@ function SupportCenter({ user, authenticated, operator }) {
                         </div>
                       )}
                       {!message.sticker && (
-                        <small>{message.author_name || (message.sender === 'operator' ? t.operator : conversation.name)}</small>
+                        <small
+                          className={operator && message.sender === 'visitor' ? 'support-msg-author admin-clickable' : ''}
+                          title={operator && message.sender === 'visitor' ? "Mijoz profilini ko'rish va boshqarish" : undefined}
+                          onClick={() => {
+                            if (operator && message.sender === 'visitor') {
+                              setShowCustomerProfile(true);
+                            }
+                          }}
+                        >
+                          {message.author_name || (message.sender === 'operator' ? t.operator : conversation.name)}
+                        </small>
                       )}
                       {message.text && <p>{message.text}</p>}
                       {message.has_image && <PrivateImage api={api} conversationId={selected} messageId={message.id} t={t} />}
@@ -794,6 +894,15 @@ function SupportCenter({ user, authenticated, operator }) {
           </section>
         </div>
       </>}
+
+      {/* Customer Profile Modal for Operator */}
+      {showCustomerProfile && selected && operator && (
+        <CustomerProfileModal
+          conversationId={selected}
+          api={api}
+          onClose={() => setShowCustomerProfile(false)}
+        />
+      )}
     </main>
   );
 }

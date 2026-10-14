@@ -3,6 +3,7 @@ import { catalogApi, resolveMediaUrl } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import Modal from './Modal';
 import PriceInput from './PriceInput';
+import CustomSelect from './CustomSelect';
 import { Image as ImageIcon, Upload, Trash2, Plus, Layers } from 'lucide-react';
 
 const emptyVariant = { name: '', unit: 'dona', price_partner: '0', price_min: '0', price_recommended: '0' };
@@ -198,15 +199,13 @@ export default function ProductToolsModal({ productId, onClose, onChanged }) {
                 <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                   O‘lchov Birligi
                 </label>
-                <select
-                  className="input-field"
+                <CustomSelect
                   value={variant.unit}
-                  onChange={(event) => setVariant({ ...variant, unit: event.target.value })}
-                >
-                  {['dona', 'kg', 'litr', 'metr'].map((unit) => (
-                    <option key={unit} value={unit}>{unit}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setVariant({ ...variant, unit: val })}
+                  options={['dona', 'kg', 'litr', 'metr'].map((unit) => ({ value: unit, label: unit }))}
+                  size="sm"
+                  fullWidth
+                />
               </div>
             </div>
 

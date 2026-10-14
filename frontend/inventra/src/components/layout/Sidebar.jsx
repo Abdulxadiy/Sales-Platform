@@ -328,23 +328,28 @@ export default function Sidebar({
 
           if (item.isSupportWidget && !isEffectiveCollapsed) {
             return (
-              <div
+              <NavLink
                 key={item.to}
-                onClick={() => {
-                  handleNavClick();
-                  window.dispatchEvent(new CustomEvent('open-support-widget'));
-                }}
-                className="sidebar-support-widget"
-                style={{
+                to={item.to}
+                onClick={handleNavClick}
+                className={({ isActive }) => `sidebar-support-widget ${isActive ? 'active' : ''}`}
+                style={({ isActive }) => ({
                   margin: '10px 4px 6px',
                   padding: '11px 14px',
                   borderRadius: 14,
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(16, 185, 129, 0.08))',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  background: isActive
+                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(16, 185, 129, 0.14))'
+                    : 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(16, 185, 129, 0.08))',
+                  border: isActive
+                    ? '1.5px solid var(--primary)'
+                    : '1px solid rgba(245, 158, 11, 0.25)',
                   cursor: 'pointer',
+                  display: 'block',
+                  textDecoration: 'none',
                   transition: 'all 0.2s ease',
-                }}
-                title="Yordam markazi — Tezkor chatni ochish"
+                  boxShadow: isActive ? '0 0 14px rgba(245, 158, 11, 0.2)' : 'none',
+                })}
+                title="Yordam markazi — To‘liq sahifani ochish"
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div
@@ -389,7 +394,7 @@ export default function Sidebar({
                     </div>
                   </div>
                 </div>
-              </div>
+              </NavLink>
             );
           }
 
@@ -398,15 +403,7 @@ export default function Sidebar({
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              onClick={(e) => {
-                if (item.isSupportWidget && isEffectiveCollapsed) {
-                  e.preventDefault();
-                  handleNavClick();
-                  window.dispatchEvent(new CustomEvent('open-support-widget'));
-                  return;
-                }
-                handleNavClick();
-              }}
+              onClick={handleNavClick}
               className={({ isActive }) => `item ${isActive ? 'active' : ''}`}
               title={isEffectiveCollapsed ? item.label : undefined}
             >

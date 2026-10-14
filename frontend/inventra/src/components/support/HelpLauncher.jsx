@@ -21,6 +21,7 @@ import { startSupportPolling } from './polling';
 import VoiceRecorder from './VoiceRecorder';
 import VoicePlayer from './VoicePlayer';
 import StickerPicker, { StickerItem, STICKER_DICT } from './StickerPicker';
+import CustomerProfileModal from './CustomerProfileModal';
 import './support.css';
 
 function PrivateImage({ api, conversationId, messageId }) {
@@ -76,6 +77,7 @@ export default function HelpLauncher() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const [isStartingNew, setIsStartingNew] = useState(false);
@@ -88,12 +90,19 @@ export default function HelpLauncher() {
   const api = useMemo(() => supportApi(isAuthenticated, isAdmin), [isAuthenticated, isAdmin]);
   const hidden = pathname === '/support' || pathname.startsWith('/r/') || pathname.startsWith('/receipt/');
 
-  // Listen for open event from Sidebar or anywhere in the app
+  // Listen for open event from anywhere in the app
   useEffect(() => {
     const handleOpenWidget = () => setIsOpen(true);
     window.addEventListener('open-support-widget', handleOpenWidget);
     return () => window.removeEventListener('open-support-widget', handleOpenWidget);
   }, []);
+
+  // Ensure widget is closed when navigating to /support page
+  useEffect(() => {
+    if (pathname === '/support') {
+      setIsOpen(false);
+    }
+  }, [pathname]);
 
   // Poll unread count when widget is closed
   useEffect(() => {
@@ -457,7 +466,15 @@ export default function HelpLauncher() {
                           </button>
                         </div>
                         {!isOwn && (
-                          <div className="support-widget-msg-avatar" title={isOperatorSender ? 'Operator' : 'Mijoz'}>
+                          <div
+                            className={`support-widget-msg-avatar ${isAdmin ? 'admin-clickable' : ''}`}
+                            title={isAdmin ? "Mijoz profilini ko'rish va boshqarish" : (isOperatorSender ? 'Operator' : 'Mijoz')}
+                            onClick={() => {
+                              if (isAdmin && activeConvId) {
+                                setShowProfileModal(true);
+                              }
+                            }}
+                          >
                             {isOperatorSender ? <Headphones size={13} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>M</span>}
                           </div>
                         )}
@@ -653,6 +670,15 @@ export default function HelpLauncher() {
           </>
         )}
       </button>
+
+      {/* Customer Profile Modal for Admin/Operator */}
+      {showProfileModal && activeConvId && isAdmin && (
+        <CustomerProfileModal
+          conversationId={activeConvId}
+          api={api}
+          onClose={() => setShowProfileModal(false)}
+        />
+      )}
     </>
   );
 }

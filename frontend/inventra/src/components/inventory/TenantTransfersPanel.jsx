@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ArrowRightLeft, Check, RotateCcw, Send } from 'lucide-react';
 import { inventoryApi } from '../../api/client';
+import CustomSelect from '../common/CustomSelect';
 
 const statusLabels = {
   pending: 'Qabul kutilmoqda',
@@ -177,23 +178,67 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
         <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 0, color: 'var(--text-primary)' }}><Send size={17} /> Do‘konlararo ichki transfer</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Faqat bir xil tasdiqlangan sotuvchi profiliga bog‘langan do‘konlar ko‘rinadi. Bu savdo yoki qarz yaratmaydi.</p>
         <form onSubmit={dispatch} style={{ display: 'grid', gap: 10 }}>
-          <select value={destinationId} onChange={(event) => setDestinationId(event.target.value)} required>
-            <option value=''>Manzil do‘konni tanlang</option>
-            {targets.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name}{tenant.address ? ' — ' + tenant.address : ''}</option>)}
-          </select>
+          <CustomSelect
+            value={destinationId}
+            onChange={(val) => setDestinationId(val)}
+            options={[
+              { value: '', label: 'Manzil do‘konni tanlang' },
+              ...targets.map((tenant) => ({
+                value: String(tenant.id),
+                label: `${tenant.name}${tenant.address ? ' — ' + tenant.address : ''}`,
+              })),
+            ]}
+            size="md"
+            fullWidth
+          />
           {draftRows.map((row, index) => {
             const variant = variants.find((item) => String(item.id) === String(row.source_variant_id));
-            return <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 140px minmax(180px, 1fr)', gap: 8 }}>
-              <select value={row.source_variant_id} onChange={(event) => updateDraft(index, 'source_variant_id', event.target.value)} required>
-                <option value=''>Manba mahsulot/varianti</option>
-                {variants.map((item) => <option key={item.id} value={item.id}>{item.product_name} / {item.name || item.variant_name}</option>)}
-              </select>
-              <input type='number' min='0.001' step='0.001' value={row.quantity} onChange={(event) => updateDraft(index, 'quantity', event.target.value)} required />
-              {isOwner && variant ? <select value={row.destination_category_id} onChange={(event) => updateDraft(index, 'destination_category_id', event.target.value)}>
-                <option value=''>Mavjud mos mahsulotni topish</option>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.name} (yangi katalog nusxasi)</option>)}
-              </select> : <span style={{ color: 'var(--text-muted)', fontSize: 12, alignSelf: 'center' }}>Kategoriya topilmasa qabul qiluvchi tanlaydi</span>}
-            </div>;
+            return (
+              <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 140px minmax(180px, 1fr)', gap: 8, alignItems: 'center' }}>
+                <CustomSelect
+                  value={row.source_variant_id}
+                  onChange={(val) => updateDraft(index, 'source_variant_id', val)}
+                  options={[
+                    { value: '', label: 'Manba mahsulot/varianti' },
+                    ...variants.map((item) => ({
+                      value: String(item.id),
+                      label: `${item.product_name} / ${item.name || item.variant_name}`,
+                    })),
+                  ]}
+                  size="md"
+                  fullWidth
+                />
+                <input
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  className="form-input"
+                  style={{ marginTop: 0 }}
+                  value={row.quantity}
+                  onChange={(event) => updateDraft(index, 'quantity', event.target.value)}
+                  required
+                />
+                {isOwner && variant ? (
+                  <CustomSelect
+                    value={row.destination_category_id}
+                    onChange={(val) => updateDraft(index, 'destination_category_id', val)}
+                    options={[
+                      { value: '', label: 'Mavjud mos mahsulotni topish' },
+                      ...categories.map((category) => ({
+                        value: String(category.id),
+                        label: `${category.name} (yangi katalog nusxasi)`,
+                      })),
+                    ]}
+                    size="md"
+                    fullWidth
+                  />
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12, alignSelf: 'center' }}>
+                    Kategoriya topilmasa qabul qiluvchi tanlaydi
+                  </span>
+                )}
+              </div>
+            );
           })}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type='button' className='btn-secondary' onClick={addDraftRow}>Yana mahsulot qo‘shish</button>

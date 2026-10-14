@@ -19,6 +19,7 @@ import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import { useToast } from '../context/ToastContext';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../hooks/useAuth';
+import CustomSelect from '../components/common/CustomSelect';
 
 const pendingQuantity = (item) => Math.max(0, Number(item.quantity || 0) - ['voided_quantity', 'b2b_accepted_quantity', 'b2b_rejected_quantity', 'b2b_return_pending_quantity', 'b2b_discrepancy_closed_quantity'].reduce((sum, field) => sum + Number(item[field] || 0), 0));
 
@@ -932,25 +933,19 @@ export default function B2BTransactions() {
                         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                           Mahalliy kategoriyangiz *
                         </label>
-                        <select
+                        <CustomSelect
                           value={b2bAcceptCategoryByItem[item.id] || ''}
-                          onChange={(event) => setB2BAcceptCategoryByItem((current) => ({ ...current, [item.id]: event.target.value }))}
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '10px 12px',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1px solid var(--border-card)',
-                            background: 'var(--bg-input)',
-                            color: 'var(--text-primary)',
-                            fontSize: 14,
-                          }}
-                        >
-                          <option value="">Kategoriyani tanlang</option>
-                          {b2bAcceptCategories.map((category) => (
-                            <option key={category.id} value={category.id}>{category.name}</option>
-                          ))}
-                        </select>
+                          onChange={(val) => setB2BAcceptCategoryByItem((current) => ({ ...current, [item.id]: val }))}
+                          options={[
+                            { value: '', label: 'Kategoriyani tanlang' },
+                            ...b2bAcceptCategories.map((category) => ({
+                              value: String(category.id),
+                              label: category.name,
+                            })),
+                          ]}
+                          size="md"
+                          fullWidth
+                        />
                       </>
                     )}
                   </div>

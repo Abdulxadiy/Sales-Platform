@@ -1605,3 +1605,166 @@ dialog.confirm-dialog-native[open] .confirm-dialog-card {
 
 /* Focused documentation screenshots with an accessible enlarged view. */
 .doc-focus-figure{margin:24px 0;text-align:center}.doc-focus-trigger{display:block;margin:auto;max-width:100%;padding:0;border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;background:var(--bg-card);cursor:zoom-in}.doc-focus-trigger img{display:block;max-width:100%;height:auto}.doc-focus-figure figcaption{font-size:13px;line-height:1.5;margin:10px 0 4px;color:var(--text-secondary)}.doc-focus-figure>small{font-size:11px;color:var(--text-muted)}.doc-image-dialog{width:95vw;max-width:1600px;max-height:94dvh;padding:16px;border:1px solid var(--border-subtle);border-radius:14px;background:var(--bg-card);color:var(--text-primary)}.doc-image-dialog::backdrop{background:#000b}.doc-image-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;text-align:left}.doc-image-toolbar span{flex:1;font-size:13px}.doc-image-scroll{max-height:78dvh;overflow:auto}.doc-image-scroll img{display:block;margin:auto;height:auto}
+
+/* ==========================================================================
+   Catalog Import Modal & Dropzone Styles
+   ========================================================================== */
+.import-modal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-guide-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.import-steps-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.import-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.import-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.import-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.import-tag-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg-chip);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.import-dropzone {
+  border: 2px dashed var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 26px 20px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--bg-input);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.import-dropzone:hover,
+.import-dropzone.drag-active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: var(--primary-glow);
+}
+
+.import-dropzone-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--bg-chip);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  transition: transform 0.2s ease;
+}
+
+.import-dropzone:hover .import-dropzone-icon {
+  transform: scale(1.08);
+}
+
+.import-file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  gap: 12px;
+}
+
+.import-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.import-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.import-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.import-metric-chip.total {
+  background: var(--bg-chip);
+  color: var(--text-primary);
+}
+
+.import-metric-chip.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald);
+}
+
+.import-metric-chip.error {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--accent-rose);
+}

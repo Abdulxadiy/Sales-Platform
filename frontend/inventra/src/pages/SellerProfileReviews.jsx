@@ -3,6 +3,7 @@ import { CheckCircle2, Clock, RefreshCw, Search, ShieldCheck, XCircle } from 'lu
 import { tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
+import CustomSelect from '../components/common/CustomSelect';
 import { useToast } from '../context/ToastContext';
 
 const PAGE_SIZE = 20;
@@ -127,16 +128,19 @@ export default function SellerProfileReviews() {
       </div>
 
       <div className="glass-card" style={{ padding: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
-        <label style={{ display: 'grid', gap: 5, minWidth: 220, flex: '0 1 260px', fontSize: 13, fontWeight: 600 }}>
-          Holat
-          <select
-            className="input-field"
+        <div style={{ display: 'grid', gap: 5, minWidth: 220, flex: '0 1 260px', fontSize: 13, fontWeight: 600 }}>
+          <span>Holat</span>
+          <CustomSelect
             value={statusFilter}
-            onChange={(event) => { setStatusFilter(event.target.value); setPage(1); }}
-          >
-            {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
+            onChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            options={STATUS_OPTIONS}
+            size="md"
+            fullWidth
+          />
+        </div>
         <form
           onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchText.trim()); }}
           style={{ display: 'flex', flex: '1 1 280px', gap: 8, alignItems: 'end' }}
@@ -221,13 +225,19 @@ export default function SellerProfileReviews() {
             <div style={{ padding: 12, borderRadius: 8, background: 'var(--bg-chip)', color: 'var(--text-secondary)', fontSize: 12 }}>
               Profil qarori rasmiy fiskal provayder ulanishi o‘rnini bosmaydi. Tasdiqlashdan oldin taqdim etilgan ma’lumotlarni tekshiring.
             </div>
-            <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-              Qaror
-              <select className="input-field" value={decision} onChange={(event) => setDecision(event.target.value)}>
-                <option value="approved">Tasdiqlash</option>
-                <option value="rejected">Rad etish</option>
-              </select>
-            </label>
+            <div style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
+              <span>Qaror</span>
+              <CustomSelect
+                value={decision}
+                onChange={(val) => setDecision(val)}
+                options={[
+                  { value: 'approved', label: 'Tasdiqlash' },
+                  { value: 'rejected', label: 'Rad etish' },
+                ]}
+                size="md"
+                fullWidth
+              />
+            </div>
             {decision === 'approved' && (
               <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
                 Amal qilish muddati

@@ -41,5 +41,7 @@ export function supportApi(authenticated, operator = false) {
     send: (id, body) => call(`${id}/messages/`, { method: 'POST', body }),
     image: (id, messageId) => call(`${id}/messages/${messageId}/image/`, { responseType: 'blob' }),
     voice: (id, messageId) => call(`${id}/messages/${messageId}/voice/`, { responseType: 'blob' }),
+    customerProfile: (id) => call(`${id}/customer/`),
+    updateCustomerProfile: (id, body) => call(`${id}/customer/`, { method: 'PATCH', body }),
   };
 }

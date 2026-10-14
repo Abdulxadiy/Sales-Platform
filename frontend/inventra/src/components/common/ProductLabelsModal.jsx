@@ -4,6 +4,7 @@ import { catalogApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { labelDocument, printLabelDocument } from '../../utils/productLabels';
 import { Printer, Barcode, Sparkles, CheckSquare, Square } from 'lucide-react';
+import CustomSelect from './CustomSelect';
 
 export default function ProductLabelsModal({ variant: initialVariant, canGenerate, onClose, onChanged }) {
   const toast = useToast();
@@ -114,15 +115,16 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Qog‘oz formati
             </label>
-            <select
-              className="input-field"
+            <CustomSelect
               value={options.format}
-              onChange={e => update('format', e.target.value)}
-              style={{ padding: '8px 10px', fontSize: 13 }}
-            >
-              <option value="a4">A4 (Varroqli)</option>
-              <option value="label">Yorliq printeri</option>
-            </select>
+              onChange={(val) => update('format', val)}
+              options={[
+                { value: 'a4', label: 'A4 (Varroqli)' },
+                { value: 'label', label: 'Yorliq printeri' },
+              ]}
+              size="sm"
+              fullWidth
+            />
           </div>
 
           <div>

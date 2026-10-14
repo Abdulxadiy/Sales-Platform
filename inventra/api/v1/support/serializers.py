@@ -166,3 +166,25 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def get_author_name(self, obj):
         return obj.author.get_full_name() if obj.author and obj.sender == "operator" else ""
+
+
+class CustomerProfileSerializer(serializers.Serializer):
+    is_registered = serializers.BooleanField()
+    user = serializers.DictField(allow_null=True)
+    guest = serializers.DictField(allow_null=True)
+    tenant = serializers.DictField(allow_null=True)
+    seller_profile = serializers.DictField(allow_null=True)
+    stats = serializers.DictField()
+
+
+class CustomerProfileUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    last_name = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    contact_phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
+    role = serializers.ChoiceField(choices=['owner', 'staff', 'platform_admin'], required=False)
+    is_active = serializers.BooleanField(required=False)
+    tenant_name = serializers.CharField(max_length=100, required=False)
+    tenant_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    tenant_is_active = serializers.BooleanField(required=False)
+

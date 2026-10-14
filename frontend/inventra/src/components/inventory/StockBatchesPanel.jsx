@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { inventoryApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import Pagination from '../common/Pagination';
+import CustomSelect from '../common/CustomSelect';
 
 const STATUSES = { all: 'Barcha partiyalar', expired: 'Muddati o‘tgan', soon: '30 kun ichida tugaydi', valid: 'Muddati yetarli', unknown: 'Muddati kiritilmagan' };
 export default function StockBatchesPanel() {
@@ -25,9 +26,16 @@ export default function StockBatchesPanel() {
   return <div style={{ padding: 20 }}>
     <p role="status">Muddati o‘tgan: <strong>{expired}</strong> partiya. 30 kun ichida tugaydi: <strong>{soon}</strong> partiya.</p>
     <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Avval muddati ertaroq tugaydigan partiya sotiladi. Muddati o‘tgan tovar uchun kassada ogohlantirish chiqadi. Qoldig‘i 0 bo‘lgan partiyalar ko‘rsatilmaydi.</p>
-    <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-      <input className="form-input" aria-label="Partiya qidirish" placeholder="Mahsulot yoki partiya raqami…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-      <select className="form-input" aria-label="Yaroqlilik holati" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>{Object.entries(STATUSES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+    <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+      <input className="form-input" style={{ marginTop: 0 }} aria-label="Partiya qidirish" placeholder="Mahsulot yoki partiya raqami…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+      <div style={{ minWidth: 200, flexShrink: 0 }}>
+        <CustomSelect
+          value={status}
+          onChange={val => { setStatus(val); setPage(1); }}
+          options={Object.entries(STATUSES).map(([key, label]) => ({ value: key, label }))}
+          size="md"
+        />
+      </div>
     </div>
     {loading ? <p>Yuklanmoqda…</p> : <div style={{ overflowX: 'auto' }}><table className="data-table" style={{ width: '100%', textAlign: 'left' }}>
       <thead><tr>{['Mahsulot', 'Partiya', 'Kirim sanasi', 'Yaroqlilik sanasi', 'Qoldiq', ...(showCost ? ['Tannarx'] : []), 'Holat'].map(label => <th key={label}>{label}</th>)}</tr></thead>

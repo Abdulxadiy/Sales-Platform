@@ -25,17 +25,30 @@ export default function VoicePlayer({ api, conversationId, messageId, duration =
     };
   }, [audioUrl]);
 
+  useEffect(() => {
+    if (duration > 0 && (!totalDuration || totalDuration === 0)) {
+      setTotalDuration(duration);
+    }
+  }, [duration, totalDuration]);
+
   const loadAudio = async () => {
     if (audioUrl) return audioUrl;
     try {
       setLoading(true);
       setError(false);
       const blob = await api.voice(conversationId, messageId);
-      const url = URL.createObjectURL(blob);
+      const audioBlob = blob instanceof Blob ? blob : new Blob([blob], { type: 'audio/webm' });
+      const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
+
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.load();
+      }
       setLoading(false);
       return url;
-    } catch (_) {
+    } catch (err) {
+      console.error('Failed to load voice message:', err);
       setLoading(false);
       setError(true);
       return null;
@@ -44,32 +57,50 @@ export default function VoicePlayer({ api, conversationId, messageId, duration =
 
   const handlePlayToggle = async () => {
     if (isPlaying) {
-      audioRef.current?.pause();
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
       setIsPlaying(false);
       return;
     }
 
-    let url = audioUrl;
-    if (!url) {
-      url = await loadAudio();
-      if (!url) return;
-    }
+    try {
+      let url = audioUrl;
+      if (!url) {
+        url = await loadAudio();
+        if (!url) return;
+      }
 
-    if (audioRef.current) {
-      audioRef.current.playbackRate = speed;
-      audioRef.current.play().then(() => {
+      if (audioRef.current) {
+        if (!audioRef.current.src || audioRef.current.src !== url) {
+          audioRef.current.src = url;
+        }
+        audioRef.current.playbackRate = speed;
+        await audioRef.current.play();
         setIsPlaying(true);
-      }).catch(() => {
-        setError(true);
-      });
+      }
+    } catch (err) {
+      console.error('Playback error:', err);
+      setIsPlaying(false);
+      setError(true);
     }
   };
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime);
-      if (audioRef.current.duration && !isNaN(audioRef.current.duration)) {
-        setTotalDuration(audioRef.current.duration);
+      const dur = audioRef.current.duration;
+      if (dur && !isNaN(dur) && isFinite(dur)) {
+        setTotalDuration(dur);
+      }
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      const dur = audioRef.current.duration;
+      if (dur && !isNaN(dur) && isFinite(dur)) {
+        setTotalDuration(dur);
       }
     }
   };
@@ -108,30 +139,40 @@ export default function VoicePlayer({ api, conversationId, messageId, duration =
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const progressRatio = (totalDuration || duration) > 0
-    ? Math.min(1, currentTime / (totalDuration || duration))
+  const activeDuration = totalDuration || duration || 0;
+  const progressRatio = activeDuration > 0
+    ? Math.min(1, currentTime / activeDuration)
     : 0;
 
   if (error) {
     return (
       <div className="support-voice-player error">
         <AlertCircle size={14} />
-        <span>Ovozli xabar yuklanmadi</span>
+        <span>Ovozli xabar tinglab bo‘lmadi</span>
+        <button
+          type="button"
+          onClick={() => { setError(false); setAudioUrl(null); }}
+          style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 11, marginLeft: 6, textDecoration: 'underline' }}
+        >
+          Qayta urinish
+        </button>
       </div>
     );
   }
 
   return (
     <div className={`support-voice-player ${isOwn ? 'own' : ''}`}>
-      {audioUrl && (
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          preload="metadata"
-          onTimeUpdate={handleTimeUpdate}
-          onEnded={handleEnded}
-        />
-      )}
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        onError={() => {
+          setIsPlaying(false);
+          setError(true);
+        }}
+      />
 
       <button
         type="button"

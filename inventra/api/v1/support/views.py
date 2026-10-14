@@ -23,7 +23,14 @@ from apps.accounts.services.tenant_context_service import resolve_active_context
 from apps.support.models import Conversation, Message
 from apps.support.tasks import enqueue_notification
 
-from .serializers import ConversationSerializer, MessageSerializer, SendSerializer, StartSerializer
+from .serializers import (
+    ConversationSerializer,
+    CustomerProfileSerializer,
+    CustomerProfileUpdateSerializer,
+    MessageSerializer,
+    SendSerializer,
+    StartSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -400,7 +407,9 @@ class VoiceView(ConversationView):
     def get(self, request, pk, message_id):
         conversation = self.get_conversation(request, pk)
         message = get_object_or_404(conversation.messages, pk=message_id, has_voice=True)
-        response = HttpResponse(bytes(message.voice_data), content_type="audio/webm")
+        data = bytes(message.voice_data) if message.voice_data else b""
+        response = HttpResponse(data, content_type="audio/webm")
+        response["Content-Length"] = str(len(data))
         response["Content-Disposition"] = f'inline; filename="voice-{message_id}.webm"'
         response["X-Content-Type-Options"] = "nosniff"
         response["Accept-Ranges"] = "bytes"
@@ -415,3 +424,144 @@ class GuestVoiceView(VoiceView):
 class OperatorVoiceView(VoiceView):
     permission_classes = [IsPlatformAdmin]
     inbox = True
+
+
+class CustomerProfileView(SupportView):
+    permission_classes = [IsPlatformAdmin]
+
+    def _get_conversation(self, pk):
+        return get_object_or_404(
+            Conversation.objects.select_related(
+                "user",
+                "tenant",
+                "tenant__owner",
+                "tenant__seller_profile",
+            ),
+            pk=pk,
+        )
+
+    def _build_profile_data(self, conversation):
+        user = conversation.user
+        tenant = conversation.tenant
+        if not tenant and user:
+            tenant = getattr(user, "owned_tenants", None) and user.owned_tenants.first()
+
+        user_data = None
+        guest_data = None
+        if user:
+            user_data = {
+                "id": user.id,
+                "phone_number": user.phone_number,
+                "contact_phone": user.contact_phone or "",
+                "username": user.username or "",
+                "first_name": user.first_name or "",
+                "last_name": user.last_name or "",
+                "full_name": user.get_full_name(),
+                "email": user.email or "",
+                "role": user.role,
+                "role_display": user.get_role_display(),
+                "is_active": user.is_active,
+                "is_staff": user.is_staff,
+                "is_phone_verified": user.is_phone_verified,
+                "profile_completed": user.profile_completed,
+                "created_at": user.created_at,
+                "last_login": user.last_login,
+            }
+        else:
+            guest_data = {
+                "name": conversation.name,
+                "language": conversation.language,
+                "guest_hash": conversation.guest_hash,
+            }
+
+        tenant_data = None
+        seller_profile_data = None
+        if tenant:
+            tenant_data = {
+                "id": tenant.id,
+                "name": tenant.name,
+                "public_code": tenant.public_code,
+                "address": tenant.address or "",
+                "is_active": tenant.is_active,
+                "usd_rate": str(tenant.usd_rate),
+                "created_at": tenant.created_at,
+                "owner_name": tenant.owner.get_full_name() if tenant.owner else "",
+                "owner_phone": tenant.owner.phone_number if tenant.owner else "",
+            }
+            if tenant.seller_profile:
+                sp = tenant.seller_profile
+                seller_profile_data = {
+                    "legal_form": sp.get_legal_form_display(),
+                    "official_name": sp.official_name,
+                    "tax_identifier": sp.tax_identifier,
+                    "status": sp.status,
+                    "status_display": sp.get_status_display(),
+                }
+
+        from apps.catalog.models import Product
+        from apps.sales.models import Sale
+
+        total_convs = (
+            Conversation.objects.filter(user=user).count()
+            if user
+            else (
+                Conversation.objects.filter(guest_hash=conversation.guest_hash).count()
+                if conversation.guest_hash
+                else 1
+            )
+        )
+        total_sales = Sale.objects.filter(tenant=tenant).count() if tenant else 0
+        total_products = Product.objects.filter(tenant=tenant).count() if tenant else 0
+
+        return {
+            "is_registered": bool(user),
+            "user": user_data,
+            "guest": guest_data,
+            "tenant": tenant_data,
+            "seller_profile": seller_profile_data,
+            "stats": {
+                "total_conversations": total_convs,
+                "total_sales": total_sales,
+                "total_products": total_products,
+            },
+        }
+
+    def get(self, request, pk):
+        conversation = self._get_conversation(pk)
+        data = self._build_profile_data(conversation)
+        return Response(CustomerProfileSerializer(data).data)
+
+    @transaction.atomic
+    def patch(self, request, pk):
+        conversation = self._get_conversation(pk)
+        serializer = CustomerProfileUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        user = conversation.user
+        if user:
+            user_updated = False
+            for field in ("first_name", "last_name", "email", "contact_phone", "role", "is_active"):
+                if field in validated:
+                    setattr(user, field, validated[field])
+                    user_updated = True
+            if user_updated:
+                user.save()
+
+        tenant = conversation.tenant or (user and getattr(user, "owned_tenants", None) and user.owned_tenants.first())
+        if tenant:
+            tenant_updated = False
+            if "tenant_name" in validated:
+                tenant.name = validated["tenant_name"]
+                tenant_updated = True
+            if "tenant_address" in validated:
+                tenant.address = validated["tenant_address"]
+                tenant_updated = True
+            if "tenant_is_active" in validated:
+                tenant.is_active = validated["tenant_is_active"]
+                tenant_updated = True
+            if tenant_updated:
+                tenant.save()
+
+        data = self._build_profile_data(conversation)
+        return Response(CustomerProfileSerializer(data).data)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { inventoryApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
+import CustomSelect from '../common/CustomSelect';
 
 export default function BatchSelector({ variantId, value, onChange, allowEmpty = false }) {
   const toast = useToast();
@@ -16,10 +17,30 @@ export default function BatchSelector({ variantId, value, onChange, allowEmpty =
     return () => { live = false; };
   }, [variantId, allowEmpty, toast]);
   if (!variantId) return null;
-  return <label>Partiya (ixtiyoriy)
-    <select className="form-input" value={value} disabled={loading} onChange={event => onChange(event.target.value)}>
-      <option value="">{loading ? 'Yuklanmoqda…' : allowEmpty ? 'Yangi, muddati noma’lum partiya' : 'Avval muddati ertaroq tugaydigan partiya'}</option>
-      {rows.map(row => <option key={row.id} value={row.id}>{row.batch_code || `Partiya #${row.id}`} · {row.expires_on || 'Sana yo‘q'} · {row.quantity} {row.unit}</option>)}
-    </select>
-  </label>;
+  return (
+    <div style={{ display: 'grid', gap: 5 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Partiya (ixtiyoriy)</span>
+      <CustomSelect
+        value={value}
+        disabled={loading}
+        onChange={val => onChange(val)}
+        options={[
+          {
+            value: '',
+            label: loading
+              ? 'Yuklanmoqda…'
+              : allowEmpty
+              ? 'Yangi, muddati noma’lum partiya'
+              : 'Avval muddati ertaroq tugaydigan partiya',
+          },
+          ...rows.map(row => ({
+            value: String(row.id),
+            label: `${row.batch_code || `Partiya #${row.id}`} · ${row.expires_on || 'Sana yo‘q'} · ${row.quantity} ${row.unit}`,
+          })),
+        ]}
+        size="md"
+        fullWidth
+      />
+    </div>
+  );
 }

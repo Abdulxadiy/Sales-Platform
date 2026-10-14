@@ -10,7 +10,7 @@ from PIL import Image
 from rest_framework.test import APIClient
 
 from apps.support.models import Conversation, Message
-from tests.factories import PlatformAdminFactory, StaffFactory
+from tests.factories import PlatformAdminFactory, StaffFactory, UserFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -385,3 +385,57 @@ def test_telegram_reply_voice_and_sticker():
     )
     assert sticker_res.status_code == 201
     assert sticker_res.data["sticker"] == "rocket"
+
+
+@pytest.mark.django_db
+def test_operator_customer_profile_get_and_patch():
+    # 1. Start a conversation as guest
+    g_client = guest()
+    conv_res = start(g_client, name="Dilshod")
+    conv_id = conv_res.data["id"]
+
+    # 2. Operator accesses customer profile
+    admin = PlatformAdminFactory()
+    op_client = APIClient()
+    op_client.force_authenticate(admin)
+
+    res = op_client.get(f"/api/v1/support/inbox/{conv_id}/customer/")
+    assert res.status_code == 200
+    assert res.data["is_registered"] is False
+    assert res.data["guest"]["name"] == "Dilshod"
+    assert res.data["stats"]["total_conversations"] >= 1
+
+    # Non-admin access should be forbidden (403)
+    regular_client = APIClient()
+    regular_user = UserFactory()
+    regular_client.force_authenticate(regular_user)
+    assert regular_client.get(f"/api/v1/support/inbox/{conv_id}/customer/").status_code == 403
+
+    # 3. Attach a registered user to the conversation and test PATCH
+    conv = Conversation.objects.get(pk=conv_id)
+    customer = UserFactory(first_name="Alisher", last_name="Usmonov", email="alisher@example.com", role="owner")
+    conv.user = customer
+    conv.guest_hash = ""
+    conv.save()
+
+    res2 = op_client.get(f"/api/v1/support/inbox/{conv_id}/customer/")
+    assert res2.status_code == 200
+    assert res2.data["is_registered"] is True
+    assert res2.data["user"]["first_name"] == "Alisher"
+    assert res2.data["user"]["role"] == "owner"
+
+    # Operator edits customer profile (e.g. changes first_name, email, blocks user)
+    patch_res = op_client.patch(
+        f"/api/v1/support/inbox/{conv_id}/customer/",
+        {"first_name": "Ali", "email": "ali_new@example.com", "is_active": False},
+        format="json",
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.data["user"]["first_name"] == "Ali"
+    assert patch_res.data["user"]["email"] == "ali_new@example.com"
+    assert patch_res.data["user"]["is_active"] is False
+
+    customer.refresh_from_db()
+    assert customer.first_name == "Ali"
+    assert customer.is_active is False
+

@@ -4,6 +4,7 @@ import { auditApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../hooks/useAuth';
+import CustomSelect from '../components/common/CustomSelect';
 
 export default function Audit() {
   const toast = useToast();
@@ -152,13 +153,26 @@ export default function Audit() {
       </div>
 
       {isAdmin && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-          Do‘kon bo‘yicha:
-          <select className="input-field" value={selectedTenant} onChange={(event) => { setSelectedTenant(event.target.value); setPage(1); }} style={{ width: 'min(360px, 100%)' }}>
-            <option value="">Barcha do‘konlar</option>
-            {tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name} (#{tenant.id})</option>)}
-          </select>
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
+          <span>Do‘kon bo‘yicha:</span>
+          <div style={{ width: 'min(360px, 100%)' }}>
+            <CustomSelect
+              value={selectedTenant}
+              onChange={(val) => {
+                setSelectedTenant(val);
+                setPage(1);
+              }}
+              options={[
+                { value: '', label: 'Barcha do‘konlar' },
+                ...tenants.map((tenant) => ({
+                  value: String(tenant.id),
+                  label: `${tenant.name} (#${tenant.id})`,
+                })),
+              ]}
+              size="sm"
+            />
+          </div>
+        </div>
       )}
 
       {loadError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{loadError} <button className="btn btn-secondary" onClick={loadLogs}>Qayta urinish</button></div>}

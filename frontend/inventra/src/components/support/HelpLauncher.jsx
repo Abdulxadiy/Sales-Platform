@@ -1,30 +1,483 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Headphones } from 'lucide-react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Headphones, X, Send, Paperclip, Maximize2, Sparkles, MessageSquare, Plus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTenant } from '../../context/TenantContext';
 import { supportApi } from '../../api/support';
 import { savedSupportLanguage, supportText } from './translations';
 import { startSupportPolling } from './polling';
 import './support.css';
 
+function PrivateImage({ api, conversationId, messageId }) {
+  const [url, setUrl] = useState('');
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl;
+    api.image(conversationId, messageId).then((blob) => {
+      if (!active) return;
+      objectUrl = URL.createObjectURL(blob);
+      setUrl(objectUrl);
+    }).catch(() => { if (active) setError(true); });
+    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [api, conversationId, messageId]);
+
+  if (error) return <span style={{ fontSize: 11, color: 'var(--accent-rose)' }}>Rasm yuklanmadi</span>;
+  return url ? (
+    <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 6 }}>
+      <img
+        src={url}
+        alt="Biriktirilgan rasm"
+        style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+      />
+    </a>
+  ) : (
+    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Yuklanmoqda...</span>
+  );
+}
+
+const mergeMessages = (previous, incoming) =>
+  Array.from(new Map([...previous, ...incoming].map((m) => [m.id, m])).values()).sort((a, b) => a.id - b.id);
+
 export default function HelpLauncher() {
   const { isAuthenticated, isAdmin, loading, user } = useAuth();
+  const { activeTenant } = useTenant();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const [isOpen, setIsOpen] = useState(false);
   const [unread, setUnread] = useState(0);
-  const hidden = pathname === '/support' || pathname === '/pos' || pathname.startsWith('/r/') || pathname.startsWith('/receipt/');
+  const [conversations, setConversations] = useState([]);
+  const [activeConvId, setActiveConvId] = useState(null);
+  const [activeConv, setActiveConv] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const messagesRef = useRef([]);
+  const [loadingConv, setLoadingConv] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const [isStartingNew, setIsStartingNew] = useState(false);
+  const [newForm, setNewForm] = useState({
+    name: [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || '',
+    subject: '',
+    text: '',
+  });
+
+  const api = useMemo(() => supportApi(isAuthenticated, isAdmin), [isAuthenticated, isAdmin]);
+  const hidden = pathname === '/support' || pathname.startsWith('/r/') || pathname.startsWith('/receipt/');
+
+  // Listen for open event from Sidebar or anywhere in the app
   useEffect(() => {
-    setUnread(0);
+    const handleOpenWidget = () => setIsOpen(true);
+    window.addEventListener('open-support-widget', handleOpenWidget);
+    return () => window.removeEventListener('open-support-widget', handleOpenWidget);
+  }, []);
+
+  // Poll unread count when widget is closed
+  useEffect(() => {
     if (hidden || loading) return;
     let active = true;
     const poller = startSupportPolling(async () => {
-      const result = await supportApi(isAuthenticated, isAdmin).list();
-      if (active) setUnread(result.unread_total || 0);
+      try {
+        const result = await api.list();
+        if (active) setUnread(result.unread_total || 0);
+      } catch (_) {}
     }, { intervalMs: 20000 });
     return () => { active = false; poller.stop(); };
-  }, [isAuthenticated, isAdmin, user?.id, hidden, loading]);
+  }, [api, hidden, loading]);
+
+  // Load conversations when widget opens
+  const loadConversations = useCallback(async () => {
+    try {
+      setLoadingConv(true);
+      const result = await api.list('?page=1');
+      const list = result.results || [];
+      setConversations(list);
+      if (list.length > 0 && !activeConvId) {
+        // Find first open/active conversation or default to latest
+        const openOne = list.find((c) => c.status !== 'closed') || list[0];
+        setActiveConvId(openOne.id);
+        setIsStartingNew(false);
+      } else if (list.length === 0) {
+        setIsStartingNew(true);
+      }
+    } catch (_) {
+      setIsStartingNew(true);
+    } finally {
+      setLoadingConv(false);
+    }
+  }, [api, activeConvId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadConversations();
+    }
+  }, [isOpen, loadConversations]);
+
+  // Handle active conversation polling and messages
+  useEffect(() => {
+    if (!isOpen || !activeConvId) return;
+    let active = true;
+    const poller = startSupportPolling(async () => {
+      try {
+        const [detail, batch] = await Promise.all([
+          api.detail(activeConvId),
+          api.messages(activeConvId, messagesRef.current.length ? `?after_id=${messagesRef.current.at(-1)?.id}` : ''),
+        ]);
+        if (!active) return;
+        setActiveConv(detail);
+        if (batch.results.length) {
+          messagesRef.current = mergeMessages(messagesRef.current, batch.results);
+          setMessages([...messagesRef.current]);
+        }
+        const lastId = messagesRef.current.at(-1)?.id;
+        if (lastId) {
+          api.action(activeConvId, 'read', { through_id: lastId }).catch(() => {});
+        }
+      } catch (_) {}
+    }, { intervalMs: 4000 });
+
+    return () => { active = false; poller.stop(); };
+  }, [isOpen, activeConvId, api]);
+
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  // Handle image attachment preview
+  useEffect(() => {
+    if (!image) { setImagePreview(null); return; }
+    const url = URL.createObjectURL(image);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file && file.size <= 2 * 1024 * 1024) {
+          setImage(file);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!draft.trim() && !image) return;
+    if (busy || !activeConvId) return;
+
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.set('text', draft);
+      body.set('client_id', crypto.randomUUID());
+      if (image) body.set('image', image);
+
+      const sent = await api.send(activeConvId, body);
+      messagesRef.current = mergeMessages(messagesRef.current, [sent]);
+      setMessages([...messagesRef.current]);
+      setDraft('');
+      setImage(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (_) {
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleStartConversation = async (e) => {
+    e.preventDefault();
+    if (!newForm.text.trim() || busy) return;
+
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.set('name', newForm.name || (user?.username || 'Mijoz'));
+      body.set('subject', newForm.subject || 'Yordam so‘rovi');
+      body.set('text', newForm.text);
+      body.set('language', savedSupportLanguage());
+      body.set('consent', 'true');
+      body.set('client_id', crypto.randomUUID());
+      if (image) body.set('image', image);
+
+      const created = await api.create(body, activeTenant?.id);
+      setIsStartingNew(false);
+      setActiveConvId(created.id);
+      setActiveConv(created);
+      messagesRef.current = [];
+      setMessages([]);
+      setDraft('');
+      setImage(null);
+      setNewForm((prev) => ({ ...prev, subject: '', text: '' }));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (_) {
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   if (hidden) return null;
   const title = supportText[savedSupportLanguage()].title;
-  return <Link to="/support" className={`support-launcher ${pathname === '/pos' ? 'compact' : ''}`} aria-label={`${title}${unread ? ` (${unread})` : ''}`} title={title}>
-    <Headphones size={21} /><span>{title}</span>{unread > 0 && <b className="support-badge">{unread}</b>}
-  </Link>;
+
+  return (
+    <>
+      {/* Floating Chat Popup Window */}
+      {isOpen && (
+        <div className="support-widget-window">
+          {/* Header */}
+          <div className="support-widget-header">
+            <div className="support-widget-header-info">
+              <div className="support-widget-avatar">
+                <Headphones size={18} />
+              </div>
+              <div>
+                <h4 className="support-widget-title">Yordam markazi</h4>
+                <div className="support-widget-status">
+                  <span className="support-widget-status-dot" />
+                  <span>Operatorlar onlayn · 24/7</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="support-widget-header-actions">
+              {conversations.length > 1 && !isStartingNew && (
+                <button
+                  type="button"
+                  onClick={() => setIsStartingNew(true)}
+                  className="support-widget-icon-btn"
+                  title="Yangi suhbat ochish"
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/support' + (activeConvId ? `?conversation=${activeConvId}` : ''));
+                }}
+                className="support-widget-icon-btn"
+                title="To‘liq sahifada ochish"
+              >
+                <Maximize2 size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="support-widget-icon-btn"
+                title="Yopish"
+              >
+                <X size={17} />
+              </button>
+            </div>
+          </div>
+
+          {/* Body Content */}
+          <div className="support-widget-body">
+            {isStartingNew ? (
+              /* New Conversation Starter Screen */
+              <div className="support-widget-start">
+                <div className="support-widget-welcome">
+                  <div className="support-widget-welcome-icon">
+                    <Sparkles size={24} color="var(--primary)" />
+                  </div>
+                  <h5>Sizga qanday yordam bera olamiz?</h5>
+                  <p>Savolingiz yoki taklifingiz bo‘lsa, yozing. Texnik mutaxassislarimiz tezkor javob berishadi.</p>
+                </div>
+
+                <form onSubmit={handleStartConversation} className="support-widget-start-form">
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Mavzu (ixtiyoriy)
+                    </label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="Masalan: Kassa yoki hisob-kitob"
+                      value={newForm.subject}
+                      onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })}
+                      style={{ padding: '8px 12px', fontSize: 13 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Savolingiz matni <span style={{ color: 'var(--accent-rose)' }}>*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="input-field"
+                      required
+                      placeholder="Savolingizni bu yerga batafsil yozing..."
+                      value={newForm.text}
+                      onChange={(e) => setNewForm({ ...newForm, text: e.target.value })}
+                      style={{ padding: '8px 12px', fontSize: 13, resize: 'none' }}
+                    />
+                  </div>
+
+                  {conversations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsStartingNew(false)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                    >
+                      ← Oldingi suhbatga qaytish
+                    </button>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={busy || !newForm.text.trim()}
+                    className="btn btn-primary"
+                    style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, marginTop: 4 }}
+                  >
+                    {busy ? 'Yuborilmoqda...' : 'Suhbatni boshlash'}
+                  </button>
+                </form>
+              </div>
+            ) : loadingConv ? (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                Xabarlar yuklanmoqda...
+              </div>
+            ) : (
+              /* Live Chat Thread */
+              <div className="support-widget-messages">
+                {messages.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px 16px', color: 'var(--text-muted)', fontSize: 12.5 }}>
+                    Muloqot boshlandi. Mutaxassis tez orada javob yozadi.
+                  </div>
+                ) : (
+                  messages.map((msg) => {
+                    const isStaff = msg.is_staff;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`support-widget-msg ${isStaff ? 'from-staff' : 'from-user'}`}
+                      >
+                        {isStaff && (
+                          <div className="support-widget-msg-avatar">
+                            <Headphones size={13} />
+                          </div>
+                        )}
+                        <div className="support-widget-bubble">
+                          <div className="support-widget-bubble-text">{msg.text}</div>
+                          {msg.has_image && (
+                            <PrivateImage
+                              api={api}
+                              conversationId={activeConvId}
+                              messageId={msg.id}
+                            />
+                          )}
+                          <div className="support-widget-bubble-time">
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Footer Input Bar (Visible during active conversation) */}
+          {!isStartingNew && activeConv && (
+            <div className="support-widget-footer">
+              {imagePreview && (
+                <div className="support-widget-image-preview">
+                  <img src={imagePreview} alt="Preview" />
+                  <button
+                    type="button"
+                    onClick={() => { setImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    className="support-widget-remove-img"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSendMessage} className="support-widget-input-row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && file.size <= 2 * 1024 * 1024) setImage(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="support-widget-attach-btn"
+                  title="Rasm yuklash (maks. 2MB)"
+                >
+                  <Paperclip size={18} />
+                </button>
+
+                <textarea
+                  rows={1}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder="Xabar yozing... (Enter — jo‘natish)"
+                  className="support-widget-textarea"
+                />
+
+                <button
+                  type="submit"
+                  disabled={busy || (!draft.trim() && !image)}
+                  className="support-widget-send-btn"
+                  title="Xabarni yuborish"
+                >
+                  <Send size={15} />
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Floating Toggle Launcher Button */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`support-launcher ${pathname === '/pos' ? 'compact' : ''} ${isOpen ? 'active-open' : ''}`}
+        aria-label={`${title}${unread ? ` (${unread})` : ''}`}
+        title={isOpen ? 'Chatni yopish' : title}
+      >
+        {isOpen ? (
+          <X size={20} />
+        ) : (
+          <>
+            <Headphones size={21} />
+            <span>{title}</span>
+            {unread > 0 && <b className="support-badge">{unread}</b>}
+          </>
+        )}
+      </button>
+    </>
+  );
 }
+

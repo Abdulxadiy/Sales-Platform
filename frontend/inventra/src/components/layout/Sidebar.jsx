@@ -157,7 +157,12 @@ export default function Sidebar({
           },
         ]
       : []),
-    { to: '/support', label: isAdmin ? 'Yordam: Murojaatlar' : 'Yordam markazi', icon: Headphones },
+    {
+      to: '/support',
+      label: isAdmin ? 'Yordam: Murojaatlar' : 'Yordam markazi',
+      icon: Headphones,
+      isSupportWidget: !isAdmin,
+    },
     {
       to: '/docs',
       label: 'Qo‘llanma & Hujjatlar',
@@ -320,12 +325,88 @@ export default function Sidebar({
       <nav>
         {filteredItems.map((item) => {
           const Icon = item.icon;
+
+          if (item.isSupportWidget && !isEffectiveCollapsed) {
+            return (
+              <div
+                key={item.to}
+                onClick={() => {
+                  handleNavClick();
+                  window.dispatchEvent(new CustomEvent('open-support-widget'));
+                }}
+                className="sidebar-support-widget"
+                style={{
+                  margin: '10px 4px 6px',
+                  padding: '11px 14px',
+                  borderRadius: 14,
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(16, 185, 129, 0.08))',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Yordam markazi — Tezkor chatni ochish"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 10,
+                      background: 'rgba(245, 158, 11, 0.18)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--primary)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon size={17} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {item.label}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9.5,
+                          fontWeight: 800,
+                          padding: '1px 5px',
+                          borderRadius: 999,
+                          background: 'var(--accent-emerald)',
+                          color: '#0C0A09',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                        }}
+                      >
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />
+                        Live
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Savolingiz bormi? Yozing
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
-              onClick={handleNavClick}
+              onClick={(e) => {
+                if (item.isSupportWidget && isEffectiveCollapsed) {
+                  e.preventDefault();
+                  handleNavClick();
+                  window.dispatchEvent(new CustomEvent('open-support-widget'));
+                  return;
+                }
+                handleNavClick();
+              }}
               className={({ isActive }) => `item ${isActive ? 'active' : ''}`}
               title={isEffectiveCollapsed ? item.label : undefined}
             >

@@ -826,22 +826,43 @@ export default function Debts() {
       <Modal isOpen={newCpModalOpen} onClose={() => setNewCpModalOpen(false)} title={editingCp ? "Kontragentni tahrirlash" : "Yangi Mijoz / Kontragent Qo‘shish"}>
         <form onSubmit={handleCreateCounterparty} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Mijoz / Do‘kon Nomi *
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              Mijoz / Do‘kon Nomi <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
-            {!editingCp && <label>B2B hamkor do‘kon kodi (ixtiyoriy)<input className="input-field" value={newCpCode} maxLength={12} onChange={(event) => setNewCpCode(event.target.value.toUpperCase())} placeholder="Hamkor bergan public kod" /></label>}
-          <input
+            <input
               type="text"
               placeholder="Masalan: Sardor aka yoki Smartfon Savdo MCHJ"
               value={newCpName}
               onChange={(e) => setNewCpName(e.target.value)}
               required
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+              className="input-field"
             />
           </div>
 
+          {!editingCp && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  B2B Hamkor Do‘kon Kodi
+                </label>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>(ixtiyoriy)</span>
+              </div>
+              <input
+                type="text"
+                className="input-field"
+                value={newCpCode}
+                maxLength={12}
+                onChange={(event) => setNewCpCode(event.target.value.toUpperCase())}
+                placeholder="Hamkor bergan public kod (masalan: T-ABCD12)"
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                B2B hamkor bilan tovar va hisob-kitoblarni sinxronlashtirish uchun uning public kodini kiriting
+              </div>
+            </div>
+          )}
+
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Telefon Raqami
             </label>
             <PhoneInput
@@ -849,12 +870,12 @@ export default function Debts() {
               disabled={Boolean(editingCp)}
               value={newCpPhone}
               onChange={(e) => setNewCpPhone(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+              className="input-field"
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Qo‘shimcha Izoh
             </label>
             <input
@@ -862,22 +883,22 @@ export default function Debts() {
               placeholder="Masalan: Doimiy ulgurji hamkor, Abu Saxiy 3-qator"
               value={newCpNote}
               onChange={(e) => setNewCpNote(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+              className="input-field"
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
             <button
               type="button"
+              className="btn btn-secondary"
               onClick={() => setNewCpModalOpen(false)}
-              style={{ padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
               Bekor qilish
             </button>
             <button
               type="submit"
+              className="btn btn-primary"
               disabled={submittingCp}
-              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: 'var(--primary-foreground)', fontWeight: 700, cursor: 'pointer' }}
             >
               {submittingCp ? 'Saqlanmoqda...' : 'Saqlash'}
             </button>
@@ -948,20 +969,20 @@ export default function Debts() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                To‘lov Summasi *
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                To‘lov Summasi <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
               <PriceInput
                 placeholder="Masalan: 500 000"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
                 required
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+                className="input-field"
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Valyuta *
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Valyuta <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
               <CustomSelect
                 value={paymentCurrency}
@@ -972,51 +993,61 @@ export default function Debts() {
                 ]}
                 fullWidth
               />
-              <label>To‘lov turi<CustomSelect value={paymentType} onChange={setPaymentType} options={[{ value: 'cash', label: 'Naqd' }, { value: 'card', label: 'Karta' }]} /></label>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                To‘lov Turi <span style={{ color: 'var(--accent-rose)' }}>*</span>
+              </label>
+              <CustomSelect
+                value={paymentType}
+                onChange={setPaymentType}
+                options={[
+                  { value: 'cash', label: '💵 Naqd pul' },
+                  { value: 'card', label: '💳 Bank karta' },
+                ]}
+                fullWidth
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Qaysi Filialga *
+              </label>
+              <CustomSelect
+                value={paymentBranchId}
+                onChange={(val) => setPaymentBranchId(val)}
+                options={branchOptions}
+                fullWidth
+              />
             </div>
           </div>
 
-          {/* Branch Selection */}
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Qaysi Filialga To‘lanmoqda *
-            </label>
-            <CustomSelect
-              value={paymentBranchId}
-              onChange={(val) => setPaymentBranchId(val)}
-              options={branchOptions}
-              fullWidth
-            />
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-              To‘lov tanlangan filial kassasiga va analitikasiga qabul qilinadi
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Izoh / Kassa kvitansiyasi
             </label>
             <input
               type="text"
+              className="input-field"
               placeholder="Masalan: Kassa orqali naqd berildi"
               value={paymentNote}
               onChange={(e) => setPaymentNote(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
             <button
               type="button"
+              className="btn btn-secondary"
               onClick={() => setDebtModalOpen(false)}
-              style={{ padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
               Bekor qilish
             </button>
             <button
               type="submit"
+              className="btn btn-primary"
               disabled={submittingPayment}
-              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--primary)', color: 'var(--primary-foreground)', fontWeight: 700, cursor: 'pointer' }}
             >
               {submittingPayment ? 'Qabul qilinmoqda...' : 'To‘lovni Saqlash'}
             </button>
@@ -1060,19 +1091,19 @@ export default function Debts() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Qaytariladigan Summa *
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Qaytariladigan Summa <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
               <PriceInput
                 value={refundAmount}
                 onChange={(e) => setRefundAmount(e.target.value)}
                 required
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+                className="input-field"
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Valyuta *
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Valyuta <span style={{ color: 'var(--accent-rose)' }}>*</span>
               </label>
               <CustomSelect
                 value={refundCurrency}
@@ -1083,25 +1114,39 @@ export default function Debts() {
                 ]}
                 fullWidth
               />
-              <label>To‘lov turi<CustomSelect value={refundType} onChange={setRefundType} options={[{ value: 'cash', label: 'Naqd' }, { value: 'card', label: 'Karta' }]} /></label>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Qaytarish Turi <span style={{ color: 'var(--accent-rose)' }}>*</span>
+              </label>
+              <CustomSelect
+                value={refundType}
+                onChange={setRefundType}
+                options={[
+                  { value: 'cash', label: '💵 Naqd pul' },
+                  { value: 'card', label: '💳 Bank karta' },
+                ]}
+                fullWidth
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                Qaysi Filialdan *
+              </label>
+              <CustomSelect
+                value={refundBranchId}
+                onChange={(val) => setRefundBranchId(val)}
+                options={branchOptions}
+                fullWidth
+              />
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Qaysi Filialdan Qaytarilmoqda *
-            </label>
-            <CustomSelect
-              value={refundBranchId}
-              onChange={(val) => setRefundBranchId(val)}
-              options={branchOptions}
-              fullWidth
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              Izoh / Sababi *
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              Izoh / Sababi <span style={{ color: 'var(--accent-rose)' }}>*</span>
             </label>
             <input
               type="text"
@@ -1109,22 +1154,22 @@ export default function Debts() {
               value={refundNote}
               onChange={(e) => setRefundNote(e.target.value)}
               required
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-card)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontSize: 14, outline: 'none' }}
+              className="input-field"
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
             <button
               type="button"
+              className="btn btn-secondary"
               onClick={() => setRefundModalOpen(false)}
-              style={{ padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
             >
               Bekor qilish
             </button>
             <button
               type="submit"
               disabled={submittingRefund}
-              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: '#10b981', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}
+              className="btn btn-success"
             >
               {submittingRefund ? 'Qaytarilmoqda...' : 'Haqni Qaytarish'}
             </button>

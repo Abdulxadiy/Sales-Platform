@@ -768,17 +768,18 @@ export default function Catalog() {
                 key={v.id}
                 className="glass-card interactive"
                 style={{
-                  padding: 18,
+                  padding: 16,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 14,
+                  gap: 12,
                   position: 'relative',
+                  borderRadius: 'var(--radius-md, 14px)',
                 }}
               >
                 {/* Product Image / Icon Banner */}
                 <div
                   style={{
-                    height: 165,
+                    height: 150,
                     borderRadius: 12,
                     background: 'var(--bg-surface)',
                     border: '1px solid var(--border-subtle)',
@@ -790,6 +791,49 @@ export default function Catalog() {
                     padding: 8,
                   }}
                 >
+                  {/* Category Pill Tag */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      left: 8,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: 6,
+                      background: 'rgba(12, 10, 9, 0.75)',
+                      color: '#fff',
+                      backdropFilter: 'blur(4px)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      zIndex: 2,
+                    }}
+                  >
+                    {v.category_name || 'Kategoriyasiz'}
+                  </span>
+
+                  {/* Stock Pill Badge */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: 999,
+                      background: isOutOfStock
+                        ? 'rgba(244, 63, 94, 0.92)'
+                        : 'rgba(16, 185, 129, 0.92)',
+                      color: '#fff',
+                      backdropFilter: 'blur(4px)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      zIndex: 2,
+                    }}
+                  >
+                    {stockQty} {v.unit || 'dona'}
+                  </span>
+
                   {v.image ? (
                     <img
                       src={resolveMediaUrl(v.image)}
@@ -819,45 +863,28 @@ export default function Catalog() {
                       height: '100%',
                     }}
                   >
-                    <Package size={40} color="var(--primary)" opacity={0.6} />
+                    <Package size={38} color="var(--primary)" opacity={0.6} />
                   </div>
-
-                  {/* Stock Pill Badge */}
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 10,
-                      right: 10,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '3px 8px',
-                      borderRadius: 999,
-                      background: isOutOfStock
-                        ? 'rgba(244, 63, 94, 0.9)'
-                        : 'rgba(16, 185, 129, 0.9)',
-                      color: '#fff',
-                    }}
-                  >
-                    {stockQty} {v.unit || 'dona'}
-                  </span>
                 </div>
 
-                {/* Info */}
+                {/* Product Info */}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>
-                      {v.category_name || 'Kategoriyasiz'}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-primary)', lineHeight: 1.3, flex: 1 }}>
+                      {v.product_name}
+                    </h4>
                     {v.code && (
                       <span
                         style={{
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: 700,
-                          padding: '2px 7px',
-                          borderRadius: 6,
-                          background: 'rgba(59, 130, 246, 0.12)',
+                          padding: '2px 6px',
+                          borderRadius: 5,
+                          background: 'rgba(245, 158, 11, 0.12)',
                           color: 'var(--primary)',
                           fontFamily: 'monospace',
+                          whiteSpace: 'nowrap',
+                          border: '1px solid rgba(245, 158, 11, 0.22)',
                         }}
                         title="3 Bosqichli Kod (Kategoriya/Subkategoriya/Narx)"
                       >
@@ -865,13 +892,10 @@ export default function Catalog() {
                       </span>
                     )}
                   </div>
-                  <h4 style={{ fontSize: 16, fontWeight: 700, margin: '4px 0 2px', color: 'var(--text-primary)' }}>
-                    {v.product_name}
-                  </h4>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                      Variant: {v.name}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: 4, fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                    <span>
+                      Variant: <strong style={{ color: 'var(--text-primary)' }}>{v.name}</strong>
+                    </span>
                     {v.barcode && (
                       <div
                         style={{
@@ -880,83 +904,113 @@ export default function Catalog() {
                           fontFamily: 'monospace',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 4,
+                          gap: 3,
                         }}
                         title={`Shtrix-kod: ${v.barcode}`}
                       >
-                        <Barcode size={13} opacity={0.7} />
+                        <Barcode size={12} opacity={0.7} />
                         <span>{v.barcode}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Prices */}
+                {/* Unified Price Block */}
                 <div
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
                     padding: '8px 12px',
                     borderRadius: 10,
                     background: 'var(--bg-chip)',
                     border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 4,
                   }}
                 >
-                  <div>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Sotuv narxi</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      Sotuv narxi
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)' }}>
                       {formatPrice(v.price_recommended, v.currency)}
-                    </div>
+                    </span>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Minimal narx</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      {formatPrice(v.price_min, v.currency)}
-                    </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--text-muted)', borderTop: '1px dashed var(--border-subtle)', paddingTop: 4 }}>
+                    <span>Min: <strong style={{ color: 'var(--text-secondary)' }}>{formatPrice(v.price_min, v.currency)}</strong></span>
+                    <span>Hamkor: <strong style={{ color: 'var(--text-secondary)' }}>{formatPrice(v.price_partner, v.currency)}</strong></span>
                   </div>
                 </div>
 
-                {/* Extra info: Hamkor narxi & Barcode */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
-                  <span>Hamkor narxi (1-narx): <strong style={{ color: 'var(--text-secondary)' }}>{formatPrice(v.price_partner, v.currency)}</strong></span>
-                  {v.barcode && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Barcode size={13} color="var(--primary)" />
-                      <span>{v.barcode}</span>
-                    </div>
-                  )}
-                </div>
+                {/* Action Buttons - Compact 2-Row Layout */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto', paddingTop: 2 }}>
+                  {/* Row 1: Quick Tools (Yorliq, Narxlar, Variantlar) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: canChangeProduct ? '1fr 1fr 1fr' : '1fr', gap: 6 }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setLabelVariant(v)}
+                      style={{ padding: '6px 4px', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                      title="Shtrix-kod va narx yorlig‘i chop etish"
+                    >
+                      <Barcode size={13} />
+                      <span>Yorliq</span>
+                    </button>
+                    {canChangeProduct && (
+                      <>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => openEditPrice(v)}
+                          style={{ padding: '6px 4px', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                          title="Narxlarni tezkor tahrirlash"
+                        >
+                          <DollarSign size={13} />
+                          <span>Narx</span>
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setToolsProductId(v.product)}
+                          style={{ padding: '6px 4px', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                          title="Mahsulot rasmlari va yangi variantlar"
+                        >
+                          <ImageIcon size={13} />
+                          <span>Media</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
 
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <button className="btn btn-secondary" onClick={() => setLabelVariant(v)}><Barcode size={14} /> Yorliq chop etish</button>
-                  {canChangeProduct && <>
-                    <button className="btn btn-secondary" onClick={() => openEditPrice(v)}><DollarSign size={14} /> Narxlar</button>
-                    <button className="btn btn-secondary" onClick={() => setToolsProductId(v.product)}><ImageIcon size={14} /> Rasmlar / variantlar</button>
-                  </>}
-                  {canArchiveProduct && <button className="btn btn-secondary" onClick={() => handleArchive(v.id, v.product_name || v.name)}><Archive size={14} /> Arxivlash</button>}
-                </div>
+                  {/* Row 2: Primary Edit + Archive + Delete */}
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => handleOpenEditProduct(v)}
+                      className="btn btn-primary"
+                      style={{ flex: 1, padding: '7px 10px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                      title="Mahsulot ma‘lumotlari va narxlarni to‘liq tahrirlash"
+                    >
+                      <Edit2 size={13} />
+                      <span>Tahrirlash</span>
+                    </button>
 
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 6 }}>
-                  <button
-                    onClick={() => handleOpenEditProduct(v)}
-                    className="btn btn-secondary"
-                    style={{ flex: 1, padding: '7px 10px', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                    title="Mahsulot ma‘lumotlari va narxlarni tahrirlash"
-                  >
-                    <Edit2 size={13} />
-                    <span>Tahrirlash</span>
-                  </button>
+                    {canArchiveProduct && (
+                      <button
+                        onClick={() => handleArchive(v.id, v.product_name || v.name)}
+                        className="btn btn-secondary"
+                        style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Mahsulotni arxivlash"
+                      >
+                        <Archive size={13} />
+                      </button>
+                    )}
 
-                  <button
-                    onClick={() => handleDeleteProduct(v)}
-                    className="btn btn-danger"
-                    style={{ padding: '7px 10px' }}
-                    title="Mahsulotni o‘chirish"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                    <button
+                      onClick={() => handleDeleteProduct(v)}
+                      className="btn btn-danger"
+                      style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Mahsulotni o‘chirish"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

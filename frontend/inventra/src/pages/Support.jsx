@@ -1,6 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Headphones, Phone, Send, Paperclip, X, BookOpen } from 'lucide-react';
+import {
+  ArrowLeft,
+  Headphones,
+  Phone,
+  Send,
+  Paperclip,
+  X,
+  BookOpen,
+  Search,
+  ShieldCheck,
+  Store,
+  Users,
+  FileText,
+  Printer,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { request } from '../api/client';
@@ -9,6 +23,14 @@ import { savedSupportLanguage, supportText } from '../components/support/transla
 import MarkdownViewer from '../components/docs/MarkdownViewer';
 import { startSupportPolling } from '../components/support/polling';
 import '../components/support/support.css';
+
+function getDocIcon(key, category) {
+  if (key.includes('admin')) return ShieldCheck;
+  if (key.includes('owner')) return Store;
+  if (key.includes('staff')) return Users;
+  if (category === 'legal') return FileText;
+  return BookOpen;
+}
 
 function PrivateImage({ api, conversationId, messageId, t }) {
   const [url, setUrl] = useState('');
@@ -61,6 +83,38 @@ function SupportCenter({ user, authenticated, operator }) {
   const [documents, setDocuments] = useState([]);
   const [docKey, setDocKey] = useState(params.get('doc') || `yordam_${language}`);
   const [document, setDocument] = useState(null);
+  const [docSearch, setDocSearch] = useState('');
+
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc) => {
+      if (doc.key.startsWith('yordam_')) {
+        return doc.key === `yordam_${language}`;
+      }
+      return true;
+    });
+  }, [documents, language]);
+
+  const searchedDocuments = useMemo(() => {
+    if (!docSearch.trim()) return filteredDocuments;
+    const q = docSearch.toLowerCase();
+    return filteredDocuments.filter((doc) =>
+      doc.title.toLowerCase().includes(q) || doc.key.toLowerCase().includes(q)
+    );
+  }, [filteredDocuments, docSearch]);
+
+  const groupedDocuments = useMemo(() => {
+    const groups = { practical: [], manual: [], legal: [] };
+    searchedDocuments.forEach((doc) => {
+      const cat = doc.category || 'practical';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(doc);
+    });
+    return groups;
+  }, [searchedDocuments]);
+
+  const activeDocMeta = useMemo(() => {
+    return documents.find((d) => d.key === docKey) || null;
+  }, [documents, docKey]);
   const endRef = useRef(null);
   const readRef = useRef(0);
   const startRequest = useRef(null);
@@ -233,29 +287,48 @@ function SupportCenter({ user, authenticated, operator }) {
   const canSend = conversation && conversation.status !== 'closed' && (!operator || (conversation.operator_id === user?.id && conversation.status === 'active'));
   return (
     <main className={`support-shell ${authenticated ? 'in-layout' : ''}`} lang={language}>
-      <header className="support-top" style={authenticated ? { justifyContent: 'flex-end', marginBottom: 14 } : undefined}>
-        {!authenticated && (
-          <Link to="/login" className="support-back">
-            <ArrowLeft size={18} />
-            {t.login}
-          </Link>
-        )}
-        <select
-          className="input-field"
-          style={{ width: 'auto' }}
-          aria-label="Language"
-          value={language}
-          onChange={(e) => {
-            setLanguage(e.target.value);
-            localStorage.setItem('inventra_support_language', e.target.value);
-            setDocKey(`yordam_${e.target.value}`);
-          }}
-        >
-          <option value="uz">O‘zbekcha</option>
-          <option value="ru">Русский</option>
-          <option value="en">English</option>
-        </select>
-      </header>
+      <div className="support-top-bar">
+        <div className="support-top-bar-left">
+          {!authenticated && (
+            <Link to="/login" className="support-back">
+              <ArrowLeft size={16} />
+              <span>{t.login}</span>
+            </Link>
+          )}
+          {metadata && (
+            <div className="support-contact-chips">
+              <a className="btn btn-secondary support-chip-btn" href={`tel:${metadata.phone}`}>
+                <Phone size={14} />
+                <span>{metadata.phone}</span>
+              </a>
+              <a className="btn btn-secondary support-chip-btn" href={`https://t.me/${metadata.telegram_username}`} target="_blank" rel="noreferrer">
+                <Send size={14} />
+                <span>@{metadata.telegram_username}</span>
+              </a>
+            </div>
+          )}
+        </div>
+        <div className="support-top-bar-right">
+          <select
+            className="input-field support-lang-select"
+            aria-label="Language"
+            value={language}
+            onChange={(e) => {
+              const newLang = e.target.value;
+              setLanguage(newLang);
+              localStorage.setItem('inventra_support_language', newLang);
+              if (docKey.startsWith('yordam_')) {
+                setDocKey(`yordam_${newLang}`);
+              }
+            }}
+          >
+            <option value="uz">O‘zbekcha</option>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+
       {!authenticated && (
         <div className="support-heading">
           <Headphones size={30} />
@@ -265,25 +338,122 @@ function SupportCenter({ user, authenticated, operator }) {
           </div>
         </div>
       )}
-      <div className="support-contact-row" style={authenticated ? { marginTop: 0 } : undefined}>
-        {metadata && (
-          <>
-            <a className="btn btn-secondary" href={`tel:${metadata.phone}`}><Phone size={16} />{metadata.phone}</a>
-            <a className="btn btn-secondary" href={`https://t.me/${metadata.telegram_username}`} target="_blank" rel="noreferrer"><Send size={16} />@{metadata.telegram_username}</a>
-          </>
-        )}
+
+      <div className="support-nav-row">
+        <div className="support-tabs" style={{ margin: 0 }}>
+          <button className={`btn ${tab === 'chat' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('chat')}>
+            <Headphones size={16} />
+            <span>{operator ? t.inbox : t.chat}</span>
+          </button>
+          <button className={`btn ${tab === 'guide' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('guide')}>
+            <BookOpen size={16} />
+            <span>{t.guide}</span>
+          </button>
+        </div>
+        <p className="support-note" style={{ margin: 0 }}>
+          {t.noHours}
+        </p>
       </div>
-      <p className="support-note">{t.noHours}</p>
-      {!authenticated && <p className="support-note">{t.guest}</p>}
-      <div className="support-tabs"><button className={`btn ${tab === 'chat' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('chat')}><Headphones size={16} />{operator ? t.inbox : t.chat}</button>
-        <button className={`btn ${tab === 'guide' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('guide')}><BookOpen size={16} />{t.guide}</button></div>
+
+      {!authenticated && <p className="support-note" style={{ marginBottom: 14 }}>{t.guest}</p>}
+
       {error && <div className="support-error" role="alert">{error}<button className="btn btn-secondary" disabled={busy} onClick={() => { setError(''); listPollerRef.current?.retry(); messagePollerRef.current?.retry(); }}>{t.retry}</button></div>}
-      {tab === 'guide' ? <section className="support-docs">
-        <select className="input-field" aria-label={t.guide} value={docKey} onChange={(e) => setDocKey(e.target.value)}>
-          {documents.map((doc) => <option key={doc.key} value={doc.key}>{doc.title}</option>)}
-        </select>
-        {document ? <MarkdownViewer content={document.content} /> : <p>{t.loading}</p>}
-      </section> : <>
+
+      {tab === 'guide' ? (
+        <div className="support-docs-workspace">
+          <aside className="support-docs-sidebar">
+            <div className="support-docs-search-wrap">
+              <Search size={15} className="support-docs-search-icon" />
+              <input
+                type="text"
+                className="input-field support-docs-search-input"
+                placeholder={t.searchDocs || "Hujjatlarni qidirish..."}
+                value={docSearch}
+                onChange={(e) => setDocSearch(e.target.value)}
+              />
+              {docSearch && (
+                <button
+                  type="button"
+                  onClick={() => setDocSearch('')}
+                  className="support-docs-search-clear"
+                  title="Tozalash"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {Object.entries(groupedDocuments).map(([catKey, catDocs]) => {
+              if (!catDocs.length) return null;
+              return (
+                <div key={catKey} className="support-docs-category-group">
+                  <div className="support-docs-category-title">
+                    {t[catKey] || catKey}
+                  </div>
+                  <div className="support-docs-category-list">
+                    {catDocs.map((doc) => {
+                      const Icon = getDocIcon(doc.key, doc.category);
+                      const isActive = docKey === doc.key;
+                      return (
+                        <button
+                          key={doc.key}
+                          type="button"
+                          onClick={() => setDocKey(doc.key)}
+                          className={`support-thread support-doc-thread ${isActive ? 'selected' : ''}`}
+                        >
+                          <Icon size={16} className="support-doc-icon" />
+                          <span className="support-doc-title">{doc.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {!searchedDocuments.length && (
+              <p className="support-note" style={{ padding: '16px 8px', textAlign: 'center' }}>
+                {t.noDocs || "Hujjat topilmadi"}
+              </p>
+            )}
+          </aside>
+
+          <section className="support-docs-panel">
+            {document ? (
+              <>
+                <div className="support-docs-header">
+                  <div>
+                    <span className="support-doc-badge">
+                      {t[activeDocMeta?.category] || 'Qo‘llanma'}
+                    </span>
+                    <h2 className="support-docs-title">
+                      {activeDocMeta?.title || document.title}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="btn btn-secondary doc-hide-print"
+                    style={{ fontSize: 12.5, padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    title={t.print || "Chop etish"}
+                  >
+                    <Printer size={15} />
+                    <span>{t.print || "Chop etish"}</span>
+                  </button>
+                </div>
+                <div className="support-docs-body">
+                  <MarkdownViewer content={document.content} />
+                </div>
+              </>
+            ) : (
+              <div className="support-empty">
+                <BookOpen size={44} style={{ opacity: 0.35, marginBottom: 10 }} />
+                <p>{t.loading}</p>
+              </div>
+            )}
+          </section>
+        </div>
+      ) : <>
         <p className="support-note">{t.ai}</p>
         <div className="support-workspace">
           <aside className="support-list" aria-label={operator ? t.inbox : t.chat}>

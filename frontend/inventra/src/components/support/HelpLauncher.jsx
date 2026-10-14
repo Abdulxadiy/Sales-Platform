@@ -1,11 +1,26 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Headphones, X, Send, Paperclip, Maximize2, Sparkles, MessageSquare, Plus } from 'lucide-react';
+import {
+  Headphones,
+  X,
+  Send,
+  Paperclip,
+  Maximize2,
+  Sparkles,
+  MessageSquare,
+  Plus,
+  Mic,
+  Smile,
+  CornerUpLeft,
+} from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import { supportApi } from '../../api/support';
 import { savedSupportLanguage, supportText } from './translations';
 import { startSupportPolling } from './polling';
+import VoiceRecorder from './VoiceRecorder';
+import VoicePlayer from './VoicePlayer';
+import StickerPicker, { StickerItem, STICKER_DICT } from './StickerPicker';
 import './support.css';
 
 function PrivateImage({ api, conversationId, messageId }) {
@@ -58,6 +73,9 @@ export default function HelpLauncher() {
   const [draft, setDraft] = useState('');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const [isStartingNew, setIsStartingNew] = useState(false);
@@ -183,16 +201,68 @@ export default function HelpLauncher() {
       body.set('text', draft);
       body.set('client_id', crypto.randomUUID());
       if (image) body.set('image', image);
+      if (replyingTo) body.set('reply_to_id', String(replyingTo.id));
 
       const sent = await api.send(activeConvId, body);
       messagesRef.current = mergeMessages(messagesRef.current, [sent]);
       setMessages([...messagesRef.current]);
       setDraft('');
       setImage(null);
+      setReplyingTo(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (_) {
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleSendVoice = async (audioBlob, duration) => {
+    if (busy || !activeConvId) return;
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.set('client_id', crypto.randomUUID());
+      body.set('voice', audioBlob, 'voice.webm');
+      body.set('voice_duration', String(duration));
+      if (replyingTo) body.set('reply_to_id', String(replyingTo.id));
+
+      const sent = await api.send(activeConvId, body);
+      messagesRef.current = mergeMessages(messagesRef.current, [sent]);
+      setMessages([...messagesRef.current]);
+      setReplyingTo(null);
+      setIsRecordingVoice(false);
+    } catch (_) {
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSendSticker = async (stickerId) => {
+    if (busy || !activeConvId) return;
+    setBusy(true);
+    try {
+      const body = new FormData();
+      body.set('client_id', crypto.randomUUID());
+      body.set('sticker', stickerId);
+      if (replyingTo) body.set('reply_to_id', String(replyingTo.id));
+
+      const sent = await api.send(activeConvId, body);
+      messagesRef.current = mergeMessages(messagesRef.current, [sent]);
+      setMessages([...messagesRef.current]);
+      setReplyingTo(null);
+      setShowStickerPicker(false);
+    } catch (_) {
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const scrollToMessage = (msgId) => {
+    const el = document.getElementById(`widget-msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('support-message-highlight');
+      setTimeout(() => el.classList.remove('support-message-highlight'), 1200);
     }
   };
 
@@ -366,25 +436,69 @@ export default function HelpLauncher() {
                   </div>
                 ) : (
                   messages.map((msg) => {
-                    const isStaff = msg.is_staff;
+                    const isOwn = isAdmin
+                      ? (msg.sender === 'operator' || (msg.author && msg.author === user?.id))
+                      : (msg.sender === 'visitor');
+                    const isOperatorSender = msg.sender === 'operator' || msg.is_staff;
                     return (
                       <div
                         key={msg.id}
-                        className={`support-widget-msg ${isStaff ? 'from-staff' : 'from-user'}`}
+                        id={`widget-msg-${msg.id}`}
+                        className={`support-widget-msg ${isOwn ? 'is-own from-user own' : 'from-staff other'}`}
                       >
-                        {isStaff && (
-                          <div className="support-widget-msg-avatar">
-                            <Headphones size={13} />
+                        <div className="support-msg-action-bar">
+                          <button
+                            type="button"
+                            className="support-msg-reply-btn"
+                            title="Javob yozish (Reply)"
+                            onClick={() => setReplyingTo(msg)}
+                          >
+                            <CornerUpLeft size={12} />
+                          </button>
+                        </div>
+                        {!isOwn && (
+                          <div className="support-widget-msg-avatar" title={isOperatorSender ? 'Operator' : 'Mijoz'}>
+                            {isOperatorSender ? <Headphones size={13} /> : <span style={{ fontSize: 11, fontWeight: 700 }}>M</span>}
                           </div>
                         )}
-                        <div className="support-widget-bubble">
-                          <div className="support-widget-bubble-text">{msg.text}</div>
+                        <div className={`support-widget-bubble ${msg.sticker ? 'support-sticker-bubble' : ''}`}>
+                          {msg.reply_to && (
+                            <div
+                              className="support-message-reply-quote"
+                              onClick={() => scrollToMessage(msg.reply_to.id)}
+                              title="Asl xabarga o‘tish"
+                            >
+                              <span className="support-message-reply-author">{msg.reply_to.author_name}</span>
+                              <span className="support-message-reply-text">
+                                {msg.reply_to.sticker
+                                  ? `✨ Stiker: ${STICKER_DICT[msg.reply_to.sticker]?.label || 'Stiker'}`
+                                  : msg.reply_to.has_voice
+                                  ? `🎤 Ovozli xabar (${msg.reply_to.voice_duration}s)`
+                                  : msg.reply_to.has_image
+                                  ? '🖼️ Rasm'
+                                  : msg.reply_to.text}
+                              </span>
+                            </div>
+                          )}
+                          {msg.text && <div className="support-widget-bubble-text">{msg.text}</div>}
                           {msg.has_image && (
                             <PrivateImage
                               api={api}
                               conversationId={activeConvId}
                               messageId={msg.id}
                             />
+                          )}
+                          {msg.has_voice && (
+                            <VoicePlayer
+                              api={api}
+                              conversationId={activeConvId}
+                              messageId={msg.id}
+                              duration={msg.voice_duration}
+                              isOwn={isOwn}
+                            />
+                          )}
+                          {msg.sticker && (
+                            <StickerItem stickerId={msg.sticker} showLabel={false} />
                           )}
                           <div className="support-widget-bubble-time">
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -401,59 +515,121 @@ export default function HelpLauncher() {
 
           {/* Footer Input Bar (Visible during active conversation) */}
           {!isStartingNew && activeConv && (
-            <div className="support-widget-footer">
-              {imagePreview && (
-                <div className="support-widget-image-preview">
-                  <img src={imagePreview} alt="Preview" />
+            <div className="support-widget-footer" style={{ position: 'relative' }}>
+              {replyingTo && (
+                <div className="support-reply-banner">
+                  <div className="support-reply-banner-content">
+                    <span className="support-reply-banner-title">
+                      {replyingTo.author_name || (replyingTo.sender === 'operator' || replyingTo.is_staff ? 'Operator' : 'Siz')}
+                    </span>
+                    <span className="support-reply-banner-text">
+                      {replyingTo.sticker
+                        ? `✨ Stiker: ${STICKER_DICT[replyingTo.sticker]?.label || 'Stiker'}`
+                        : replyingTo.has_voice
+                        ? `🎤 Ovozli xabar (${replyingTo.voice_duration}s)`
+                        : replyingTo.has_image
+                        ? '🖼️ Rasm'
+                        : replyingTo.text}
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => { setImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                    className="support-widget-remove-img"
+                    className="support-reply-banner-close"
+                    onClick={() => setReplyingTo(null)}
+                    title="Bekor qilish"
                   >
-                    <X size={12} />
+                    <X size={13} />
                   </button>
                 </div>
               )}
 
-              <form onSubmit={handleSendMessage} className="support-widget-input-row">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file && file.size <= 2 * 1024 * 1024) setImage(file);
-                  }}
+              {isRecordingVoice ? (
+                <VoiceRecorder
+                  onSend={handleSendVoice}
+                  onCancel={() => setIsRecordingVoice(false)}
+                  isCompact={true}
                 />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="support-widget-attach-btn"
-                  title="Rasm yuklash (maks. 2MB)"
-                >
-                  <Paperclip size={18} />
-                </button>
+              ) : (
+                <>
+                  {imagePreview && (
+                    <div className="support-widget-image-preview">
+                      <img src={imagePreview} alt="Preview" />
+                      <button
+                        type="button"
+                        onClick={() => { setImage(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                        className="support-widget-remove-img"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
 
-                <textarea
-                  rows={1}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onPaste={handlePaste}
-                  placeholder="Xabar yozing... (Enter — jo‘natish)"
-                  className="support-widget-textarea"
-                />
+                  <form onSubmit={handleSendMessage} className="support-widget-input-row">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && file.size <= 2 * 1024 * 1024) setImage(file);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="support-widget-attach-btn"
+                      title="Rasm yuklash (maks. 2MB)"
+                    >
+                      <Paperclip size={18} />
+                    </button>
 
-                <button
-                  type="submit"
-                  disabled={busy || (!draft.trim() && !image)}
-                  className="support-widget-send-btn"
-                  title="Xabarni yuborish"
-                >
-                  <Send size={15} />
-                </button>
-              </form>
+                    <button
+                      type="button"
+                      onClick={() => setIsRecordingVoice(true)}
+                      className="support-widget-attach-btn"
+                      title="Ovozli xabar yozish"
+                    >
+                      <Mic size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowStickerPicker((prev) => !prev)}
+                      className={`support-widget-attach-btn ${showStickerPicker ? 'active' : ''}`}
+                      title="Stiker yuborish"
+                    >
+                      <Smile size={18} />
+                    </button>
+
+                    {showStickerPicker && (
+                      <StickerPicker
+                        onSelect={handleSendSticker}
+                        onClose={() => setShowStickerPicker(false)}
+                      />
+                    )}
+
+                    <textarea
+                      rows={1}
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onPaste={handlePaste}
+                      placeholder="Xabar yozing... (Enter — jo‘natish)"
+                      className="support-widget-textarea"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={busy || (!draft.trim() && !image)}
+                      className="support-widget-send-btn"
+                      title="Xabarni yuborish"
+                    >
+                      <Send size={15} />
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -14,6 +14,9 @@ import {
   Users,
   FileText,
   Printer,
+  Mic,
+  Smile,
+  CornerUpLeft,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
@@ -22,6 +25,9 @@ import { publicSupportRequest, supportApi } from '../api/support';
 import { savedSupportLanguage, supportText } from '../components/support/translations';
 import MarkdownViewer from '../components/docs/MarkdownViewer';
 import { startSupportPolling } from '../components/support/polling';
+import VoiceRecorder from '../components/support/VoiceRecorder';
+import VoicePlayer from '../components/support/VoicePlayer';
+import StickerPicker, { StickerItem, STICKER_DICT } from '../components/support/StickerPicker';
 import '../components/support/support.css';
 
 function getDocIcon(key, category) {
@@ -74,6 +80,9 @@ function SupportCenter({ user, authenticated, operator }) {
   const [draft, setDraft] = useState('');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [newImage, setNewImage] = useState(null);
   const [newImagePreview, setNewImagePreview] = useState(null);
   const newFileRef = useRef(null);
@@ -231,6 +240,7 @@ function SupportCenter({ user, authenticated, operator }) {
   const choose = (id) => {
     setSelected(id); setParams(id ? { conversation: id } : {}, { replace: true });
     setNewForm(false); setDraft(''); setImage(null); setNewImage(null); sendRequest.current = null;
+    setReplyingTo(null); setIsRecordingVoice(false); setShowStickerPicker(false);
     if (fileRef.current) fileRef.current.value = '';
     if (newFileRef.current) newFileRef.current.value = '';
   };
@@ -265,14 +275,46 @@ function SupportCenter({ user, authenticated, operator }) {
     if (event) event.preventDefault();
     if (!draft.trim() && !image) return;
     run(async () => {
-      const signature = `${draft}:${image?.name}:${image?.size}:${image?.lastModified}`;
+      const signature = `${draft}:${image?.name}:${image?.size}:${image?.lastModified}:${replyingTo?.id || ''}`;
       if (sendRequest.current?.signature !== signature) sendRequest.current = { signature, id: crypto.randomUUID() };
       const body = new FormData(); body.set('text', draft); body.set('client_id', sendRequest.current.id);
       if (image) body.set('image', image);
+      if (replyingTo) body.set('reply_to_id', String(replyingTo.id));
       const message = await api.send(selected, body);
       messagesRef.current = mergeMessages(messagesRef.current, [message]); setMessages(messagesRef.current);
-      setDraft(''); setImage(null); sendRequest.current = null; if (fileRef.current) fileRef.current.value = '';
+      setDraft(''); setImage(null); setReplyingTo(null); sendRequest.current = null; if (fileRef.current) fileRef.current.value = '';
     });
+  };
+  const sendVoice = (audioBlob, duration) => {
+    run(async () => {
+      const body = new FormData();
+      body.set('client_id', crypto.randomUUID());
+      body.set('voice', audioBlob, 'voice.webm');
+      body.set('voice_duration', String(duration));
+      if (replyingTo) body.set('reply_to_id', String(replyingTo.id));
+      const message = await api.send(selected, body);
+      messagesRef.current = mergeMessages(messagesRef.current, [message]); setMessages(messagesRef.current);
+      setReplyingTo(null); setIsRecordingVoice(false);
+    });
+  };
+  const sendSticker = (stickerId) => {
+    run(async () => {
+      const body = new FormData();
+      body.set('client_id', crypto.randomUUID());
+      body.set('sticker', stickerId);
+      if (replyingTo) body.set('reply_to_id', String(replyingTo.id));
+      const message = await api.send(selected, body);
+      messagesRef.current = mergeMessages(messagesRef.current, [message]); setMessages(messagesRef.current);
+      setReplyingTo(null); setShowStickerPicker(false);
+    });
+  };
+  const scrollToMessage = (msgId) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('support-message-highlight');
+      setTimeout(() => el.classList.remove('support-message-highlight'), 1200);
+    }
   };
   const action = (value) => run(async () => {
     const detail = await api.action(selected, value); setConversation(detail);
@@ -556,86 +598,196 @@ function SupportCenter({ user, authenticated, operator }) {
               <div className="support-messages" role="log" aria-live="polite" aria-label={t.chat}>
                 {hasOlder && <button className="btn btn-secondary" disabled={busy} onClick={older}>{t.older}</button>}
                 {messages.map((message) => message.sender === 'system' ? <p key={message.id} className="support-event">{t[`${message.event}Event`] || message.event}</p> :
-                  <article key={message.id} className={`support-message ${message.sender === (operator ? 'operator' : 'visitor') ? 'own' : ''}`}>
-                    <small>{message.author_name || (message.sender === 'operator' ? t.operator : conversation.name)}</small>
-                    {message.text && <p>{message.text}</p>}
-                    {message.has_image && <PrivateImage api={api} conversationId={selected} messageId={message.id} t={t} />}
-                    <time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-GB')}</time>
-                  </article>)}<div ref={endRef} />
+                  <div
+                    key={message.id}
+                    id={`msg-${message.id}`}
+                    className={`support-message-wrap ${message.sender === (operator ? 'operator' : 'visitor') ? 'own' : ''}`}
+                  >
+                    <div className="support-msg-action-bar">
+                      <button
+                        type="button"
+                        className="support-msg-reply-btn"
+                        title="Javob yozish (Reply)"
+                        onClick={() => setReplyingTo(message)}
+                      >
+                        <CornerUpLeft size={13} />
+                      </button>
+                    </div>
+                    <article className={`support-message ${message.sender === (operator ? 'operator' : 'visitor') ? 'own' : ''} ${message.sticker ? 'support-sticker-bubble' : ''}`}>
+                      {message.reply_to && (
+                        <div
+                          className="support-message-reply-quote"
+                          onClick={() => scrollToMessage(message.reply_to.id)}
+                          title="Asl xabarga o‘tish"
+                        >
+                          <span className="support-message-reply-author">{message.reply_to.author_name}</span>
+                          <span className="support-message-reply-text">
+                            {message.reply_to.sticker
+                              ? `✨ Stiker: ${STICKER_DICT[message.reply_to.sticker]?.label || 'Stiker'}`
+                              : message.reply_to.has_voice
+                              ? `🎤 Ovozli xabar (${message.reply_to.voice_duration}s)`
+                              : message.reply_to.has_image
+                              ? '🖼️ Rasm'
+                              : message.reply_to.text}
+                          </span>
+                        </div>
+                      )}
+                      {!message.sticker && (
+                        <small>{message.author_name || (message.sender === 'operator' ? t.operator : conversation.name)}</small>
+                      )}
+                      {message.text && <p>{message.text}</p>}
+                      {message.has_image && <PrivateImage api={api} conversationId={selected} messageId={message.id} t={t} />}
+                      {message.has_voice && (
+                        <VoicePlayer
+                          api={api}
+                          conversationId={selected}
+                          messageId={message.id}
+                          duration={message.voice_duration}
+                          isOwn={message.sender === (operator ? 'operator' : 'visitor')}
+                        />
+                      )}
+                      {message.sticker && (
+                        <StickerItem stickerId={message.sticker} showLabel={false} />
+                      )}
+                      <time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString(language === 'uz' ? 'uz-UZ' : language === 'ru' ? 'ru-RU' : 'en-GB')}</time>
+                    </article>
+                  </div>)}<div ref={endRef} />
               </div>
               {canSend ? <form className="support-compose" onSubmit={send}>
-                <div className="support-tg-input-box">
-                  {image && (
-                    <div className="support-attachment-chip">
-                      <img src={imagePreview} alt="preview" className="support-attachment-thumb" />
-                      <div className="support-attachment-info">
-                        <span className="support-attachment-name">{image.name}</span>
-                        <span className="support-attachment-size">{(image.size / 1024).toFixed(0)} KB</span>
+                <div className="support-tg-input-box" style={{ position: 'relative' }}>
+                  {replyingTo && (
+                    <div className="support-reply-banner">
+                      <div className="support-reply-banner-content">
+                        <span className="support-reply-banner-title">
+                          {replyingTo.author_name || (replyingTo.sender === 'operator' ? t.operator : 'Mijoz')}
+                        </span>
+                        <span className="support-reply-banner-text">
+                          {replyingTo.sticker
+                            ? `✨ Stiker: ${STICKER_DICT[replyingTo.sticker]?.label || 'Stiker'}`
+                            : replyingTo.has_voice
+                            ? `🎤 Ovozli xabar (${replyingTo.voice_duration}s)`
+                            : replyingTo.has_image
+                            ? '🖼️ Rasm'
+                            : replyingTo.text}
+                        </span>
                       </div>
                       <button
                         type="button"
-                        className="support-attachment-remove"
-                        title={t.remove}
-                        onClick={() => {
-                          setImage(null);
-                          if (fileRef.current) fileRef.current.value = '';
-                        }}
+                        className="support-reply-banner-close"
+                        onClick={() => setReplyingTo(null)}
+                        title="Bekor qilish"
                       >
-                        <X size={15} />
+                        <X size={14} />
                       </button>
                     </div>
                   )}
-                  <textarea
-                    className="support-tg-textarea"
-                    aria-label={t.question}
-                    placeholder={t.placeholder}
-                    rows={2}
-                    maxLength={4000}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onPaste={(e) => handlePaste(e, setImage)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (!busy && (draft.trim() || image)) {
-                          send(e);
-                        }
-                      }
-                    }}
-                  />
-                  <div className="support-tg-toolbar">
-                    <div className="support-tg-toolbar-left">
-                      <label className="support-tg-clip-btn" title="Rasm biriktirish (PNG, JPEG, WebP, maks. 2 MB)">
-                        <Paperclip size={18} />
-                        <input
-                          ref={fileRef}
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          className="support-file"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file && (file.size > 2 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))) {
-                              setError(t.imageLimit);
-                              e.target.value = '';
-                              return;
+
+                  {isRecordingVoice ? (
+                    <VoiceRecorder
+                      onSend={sendVoice}
+                      onCancel={() => setIsRecordingVoice(false)}
+                    />
+                  ) : (
+                    <>
+                      {image && (
+                        <div className="support-attachment-chip">
+                          <img src={imagePreview} alt="preview" className="support-attachment-thumb" />
+                          <div className="support-attachment-info">
+                            <span className="support-attachment-name">{image.name}</span>
+                            <span className="support-attachment-size">{(image.size / 1024).toFixed(0)} KB</span>
+                          </div>
+                          <button
+                            type="button"
+                            className="support-attachment-remove"
+                            title={t.remove}
+                            onClick={() => {
+                              setImage(null);
+                              if (fileRef.current) fileRef.current.value = '';
+                            }}
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                      )}
+                      <textarea
+                        className="support-tg-textarea"
+                        aria-label={t.question}
+                        placeholder={t.placeholder}
+                        rows={2}
+                        maxLength={4000}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onPaste={(e) => handlePaste(e, setImage)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (!busy && (draft.trim() || image)) {
+                              send(e);
                             }
-                            setImage(file || null);
-                          }}
-                        />
-                      </label>
-                      <span className="support-tg-hint">
-                        Enter — yuborish, Shift+Enter — yangi qator, Ctrl+V — rasm
-                      </span>
-                    </div>
-                    <button
-                      type="submit"
-                      className="btn btn-primary support-tg-send-btn"
-                      disabled={busy || (!draft.trim() && !image)}
-                      title={t.send}
-                    >
-                      <Send size={16} />
-                    </button>
-                  </div>
+                          }
+                        }}
+                      />
+                      <div className="support-tg-toolbar">
+                        <div className="support-tg-toolbar-left" style={{ position: 'relative' }}>
+                          <label className="support-tg-clip-btn" title="Rasm biriktirish (PNG, JPEG, WebP, maks. 2 MB)">
+                            <Paperclip size={18} />
+                            <input
+                              ref={fileRef}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="support-file"
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file && (file.size > 2 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))) {
+                                  setError(t.imageLimit);
+                                  e.target.value = '';
+                                  return;
+                                }
+                                setImage(file || null);
+                              }}
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            className="support-tg-clip-btn"
+                            title="Ovozli xabar yozish"
+                            onClick={() => setIsRecordingVoice(true)}
+                          >
+                            <Mic size={18} />
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`support-tg-clip-btn ${showStickerPicker ? 'active' : ''}`}
+                            title="Stiker yuborish"
+                            onClick={() => setShowStickerPicker((prev) => !prev)}
+                          >
+                            <Smile size={18} />
+                          </button>
+
+                          {showStickerPicker && (
+                            <StickerPicker
+                              onSelect={sendSticker}
+                              onClose={() => setShowStickerPicker(false)}
+                            />
+                          )}
+
+                          <span className="support-tg-hint">
+                            Enter — yuborish, Shift+Enter — yangi qator, Ctrl+V — rasm
+                          </span>
+                        </div>
+                        <button
+                          type="submit"
+                          className="btn btn-primary support-tg-send-btn"
+                          disabled={busy || (!draft.trim() && !image)}
+                          title={t.send}
+                        >
+                          <Send size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </form> : <p className="support-note support-compose">{otherOperator ? t.busy : t[conversation.status]}</p>}
             </> : <div className="support-empty"><Headphones size={44} /><p>{selected ? t.loading : t.select}</p></div>}

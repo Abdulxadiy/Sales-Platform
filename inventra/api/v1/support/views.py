@@ -179,9 +179,13 @@ class ConversationsView(SupportView):
             sender="visitor",
             author=request.user if request.user.is_authenticated else None,
             client_id=values["client_id"],
-            text=values["text"],
+            text=values.get("text", ""),
             image_data=values.get("image"),
             has_image=bool(values.get("image")),
+            voice_data=values.get("voice"),
+            has_voice=bool(values.get("voice")),
+            voice_duration=values.get("voice_duration", 0),
+            sticker=values.get("sticker", ""),
         )
         transaction.on_commit(lambda: enqueue_notification(conversation.pk))
         return Response(ConversationSerializer(conversation).data, status=201)
@@ -287,7 +291,10 @@ class OperatorConversationView(ConversationView):
 class MessagesView(ConversationView):
     def get(self, request, pk):
         conversation = self.get_conversation(request, pk)
-        queryset = conversation.messages.defer("image_data").select_related("author")
+        queryset = (
+            conversation.messages.defer("image_data", "voice_data")
+            .select_related("author", "reply_to", "reply_to__author", "reply_to__conversation")
+        )
         after = request.query_params.get("after_id")
         before = request.query_params.get("before_id")
         if after and before:
@@ -309,7 +316,12 @@ class MessagesView(ConversationView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         sender = "operator" if self.inbox else "visitor"
-        existing = conversation.messages.filter(client_id=data["client_id"]).defer("image_data").first()
+        existing = (
+            conversation.messages.filter(client_id=data["client_id"])
+            .defer("image_data", "voice_data")
+            .select_related("author", "reply_to", "reply_to__author", "reply_to__conversation")
+            .first()
+        )
         if existing:
             author_id = request.user.pk if request.user.is_authenticated else None
             if existing.sender != sender or existing.author_id != author_id:
@@ -319,14 +331,30 @@ class MessagesView(ConversationView):
             raise ValidationError("Reopen the conversation before sending a message.")
         if self.inbox and (conversation.operator_id != request.user.pk or conversation.status != "active"):
             return Response({"detail": "Accept the conversation before replying."}, status=409)
+
+        reply_to = None
+        reply_to_id = data.get("reply_to_id")
+        if reply_to_id:
+            reply_to = (
+                conversation.messages.filter(id=reply_to_id)
+                .defer("image_data", "voice_data")
+                .select_related("author", "conversation")
+                .first()
+            )
+
         message = Message.objects.create(
             conversation=conversation,
             sender=sender,
             author=request.user if request.user.is_authenticated else None,
             client_id=data["client_id"],
-            text=data["text"],
+            text=data.get("text", ""),
             image_data=data.get("image"),
             has_image=bool(data.get("image")),
+            voice_data=data.get("voice"),
+            has_voice=bool(data.get("voice")),
+            voice_duration=data.get("voice_duration", 0),
+            sticker=data.get("sticker", ""),
+            reply_to=reply_to,
         )
         previous_update = conversation.updated_at
         conversation.updated_at = timezone.now()
@@ -364,5 +392,26 @@ class GuestImageView(ImageView):
 
 
 class OperatorImageView(ImageView):
+    permission_classes = [IsPlatformAdmin]
+    inbox = True
+
+
+class VoiceView(ConversationView):
+    def get(self, request, pk, message_id):
+        conversation = self.get_conversation(request, pk)
+        message = get_object_or_404(conversation.messages, pk=message_id, has_voice=True)
+        response = HttpResponse(bytes(message.voice_data), content_type="audio/webm")
+        response["Content-Disposition"] = f'inline; filename="voice-{message_id}.webm"'
+        response["X-Content-Type-Options"] = "nosniff"
+        response["Accept-Ranges"] = "bytes"
+        return response
+
+
+class GuestVoiceView(VoiceView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+
+class OperatorVoiceView(VoiceView):
     permission_classes = [IsPlatformAdmin]
     inbox = True

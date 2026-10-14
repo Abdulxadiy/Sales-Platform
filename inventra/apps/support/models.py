@@ -51,6 +51,14 @@ class Message(models.Model):
     # Small, private images never pass through the public /media/ route.
     image_data = models.BinaryField(null=True, editable=False)
     has_image = models.BooleanField(default=False)
+    # Telegram-like features: Voice, Reply, and Stickers
+    voice_data = models.BinaryField(null=True, editable=False)
+    has_voice = models.BooleanField(default=False)
+    voice_duration = models.PositiveIntegerField(default=0)
+    sticker = models.CharField(max_length=100, blank=True)
+    reply_to = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="replies"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

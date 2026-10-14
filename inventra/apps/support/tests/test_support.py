@@ -332,3 +332,56 @@ def test_unrelated_database_error_is_not_hidden_as_support_setup():
     with patch("api.v1.support.views.with_unread", side_effect=ProgrammingError("invalid column")):
         with pytest.raises(ProgrammingError, match="invalid column"):
             guest().get("/api/v1/support/guest/")
+
+
+def test_telegram_reply_voice_and_sticker():
+    client = guest()
+    conv_res = start(client)
+    assert conv_res.status_code == 201
+    pk = conv_res.data["id"]
+
+    # 1. Test Reply: post first message, then reply to it
+    msg1_res = client.post(
+        f"/api/v1/support/guest/{pk}/messages/",
+        {"text": "First message", "client_id": str(uuid.uuid4())},
+        format="json",
+    )
+    assert msg1_res.status_code == 201
+    msg1_id = msg1_res.data["id"]
+
+    msg2_res = client.post(
+        f"/api/v1/support/guest/{pk}/messages/",
+        {"text": "Replying to first message", "reply_to_id": msg1_id, "client_id": str(uuid.uuid4())},
+        format="json",
+    )
+    assert msg2_res.status_code == 201
+    assert msg2_res.data["reply_to"] is not None
+    assert msg2_res.data["reply_to"]["id"] == msg1_id
+    assert msg2_res.data["reply_to"]["text"] == "First message"
+
+    # 2. Test Voice: send audio upload and download via voice endpoint
+    fake_audio = SimpleUploadedFile("voice.webm", b"RIFFFAKEOPUSDATA", content_type="audio/webm")
+    voice_res = client.post(
+        f"/api/v1/support/guest/{pk}/messages/",
+        {"voice": fake_audio, "voice_duration": 12, "client_id": str(uuid.uuid4())},
+        format="multipart",
+    )
+    assert voice_res.status_code == 201
+    assert voice_res.data["has_voice"] is True
+    assert voice_res.data["voice_duration"] == 12
+    voice_msg_id = voice_res.data["id"]
+
+    # Stream voice
+    stream_res = client.get(f"/api/v1/support/guest/{pk}/messages/{voice_msg_id}/voice/")
+    assert stream_res.status_code == 200
+    assert stream_res["Content-Type"] == "audio/webm"
+    assert stream_res.content == b"RIFFFAKEOPUSDATA"
+
+    # 3. Test Sticker: send sticker
+    sticker_res = client.post(
+        f"/api/v1/support/guest/{pk}/messages/",
+        {"sticker": "rocket", "client_id": str(uuid.uuid4())},
+        format="json",
+    )
+    assert sticker_res.status_code == 201
+    assert sticker_res.data["sticker"] == "rocket"

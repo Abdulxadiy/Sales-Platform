@@ -40,5 +40,6 @@ export function supportApi(authenticated, operator = false) {
     messages: (id, query = '') => call(`${id}/messages/${query}`),
     send: (id, body) => call(`${id}/messages/`, { method: 'POST', body }),
     image: (id, messageId) => call(`${id}/messages/${messageId}/image/`, { responseType: 'blob' }),
+    voice: (id, messageId) => call(`${id}/messages/${messageId}/voice/`, { responseType: 'blob' }),
   };
 }

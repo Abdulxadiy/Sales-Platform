@@ -32,14 +32,26 @@ def validate_support_image(upload):
         raise serializers.ValidationError("Use a valid PNG, JPEG or WebP image (up to 16 MP).") from exc
 
 
+def validate_support_voice(upload):
+    if upload.size > 10 * 1024 * 1024:
+        raise serializers.ValidationError("Voice limit: 10 MB.")
+    content_type = getattr(upload, "content_type", "")
+    if content_type and not (content_type.startswith("audio/") or content_type in ("video/webm", "application/ogg")):
+        raise serializers.ValidationError("Faqat audio fayllar ruxsat etiladi.")
+    return upload.read()
+
+
 class StartSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
     subject = serializers.CharField(max_length=160)
     language = serializers.ChoiceField(choices=["uz", "ru", "en"])
-    text = serializers.CharField(max_length=4000)
+    text = serializers.CharField(max_length=4000, required=False, allow_blank=True, default="")
     client_id = serializers.UUIDField()
     consent = serializers.BooleanField()
     image = serializers.FileField(required=False)
+    voice = serializers.FileField(required=False)
+    voice_duration = serializers.IntegerField(required=False, default=0, min_value=0)
+    sticker = serializers.CharField(required=False, allow_blank=True, max_length=100, default="")
 
     def validate_consent(self, value):
         if not value:
@@ -49,18 +61,33 @@ class StartSerializer(serializers.Serializer):
     def validate_image(self, upload):
         return validate_support_image(upload)
 
+    def validate_voice(self, upload):
+        return validate_support_voice(upload)
+
+    def validate(self, data):
+        if not data.get("text") and not data.get("image") and not data.get("voice") and not data.get("sticker"):
+            raise serializers.ValidationError("Xabar, rasm, ovozli xabar yoki stiker talab qilinadi.")
+        return data
+
 
 class SendSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=4000, required=False, allow_blank=True, default="")
     client_id = serializers.UUIDField()
     image = serializers.FileField(required=False)
+    voice = serializers.FileField(required=False)
+    voice_duration = serializers.IntegerField(required=False, default=0, min_value=0)
+    sticker = serializers.CharField(required=False, allow_blank=True, max_length=100, default="")
+    reply_to_id = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_image(self, upload):
         return validate_support_image(upload)
 
+    def validate_voice(self, upload):
+        return validate_support_voice(upload)
+
     def validate(self, data):
-        if not data.get("text") and not data.get("image"):
-            raise serializers.ValidationError("A message or image is required.")
+        if not data.get("text") and not data.get("image") and not data.get("voice") and not data.get("sticker"):
+            raise serializers.ValidationError("A message, image, voice or sticker is required.")
         return data
 
 
@@ -88,12 +115,54 @@ class ConversationSerializer(serializers.ModelSerializer):
         return obj.operator.get_full_name() if obj.operator else ""
 
 
-class MessageSerializer(serializers.ModelSerializer):
+class ReplyPreviewSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ["id", "sender", "author_name", "client_id", "text", "event", "has_image", "created_at"]
+        fields = [
+            "id",
+            "sender",
+            "author_name",
+            "text",
+            "has_image",
+            "has_voice",
+            "voice_duration",
+            "sticker",
+        ]
+
+    def get_author_name(self, obj):
+        if obj.sender == "operator":
+            return obj.author.get_full_name() if obj.author else "Operator"
+        elif obj.sender == "visitor":
+            return (
+                obj.conversation.name
+                if hasattr(obj, "conversation") and obj.conversation and obj.conversation.name
+                else "Mijoz"
+            )
+        return "Tizim"
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+    reply_to = ReplyPreviewSerializer(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "sender",
+            "author_name",
+            "client_id",
+            "text",
+            "event",
+            "has_image",
+            "has_voice",
+            "voice_duration",
+            "sticker",
+            "reply_to",
+            "created_at",
+        ]
 
     def get_author_name(self, obj):
         return obj.author.get_full_name() if obj.author and obj.sender == "operator" else ""

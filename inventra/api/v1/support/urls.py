@@ -3,20 +3,36 @@ from django.urls import path
 from . import views
 
 urlpatterns = [path("metadata/", views.MetadataView.as_view())]
-for prefix, listing, detail, messages, image in [
-    ("conversations/", views.ConversationsView, views.ConversationView, views.MessagesView, views.ImageView),
+for prefix, listing, detail, messages, image, voice in [
+    (
+        "conversations/",
+        views.ConversationsView,
+        views.ConversationView,
+        views.MessagesView,
+        views.ImageView,
+        views.VoiceView,
+    ),
     (
         "guest/",
         views.GuestConversationsView,
         views.GuestConversationView,
         views.GuestMessagesView,
         views.GuestImageView,
+        views.GuestVoiceView,
     ),
-    ("inbox/", views.InboxView, views.OperatorConversationView, views.OperatorMessagesView, views.OperatorImageView),
+    (
+        "inbox/",
+        views.InboxView,
+        views.OperatorConversationView,
+        views.OperatorMessagesView,
+        views.OperatorImageView,
+        views.OperatorVoiceView,
+    ),
 ]:
     urlpatterns += [
         path(prefix, listing.as_view()),
         path(prefix + "<uuid:pk>/", detail.as_view()),
         path(prefix + "<uuid:pk>/messages/", messages.as_view()),
         path(prefix + "<uuid:pk>/messages/<int:message_id>/image/", image.as_view()),
+        path(prefix + "<uuid:pk>/messages/<int:message_id>/voice/", voice.as_view()),
     ]

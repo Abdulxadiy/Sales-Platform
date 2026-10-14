@@ -64,9 +64,17 @@ export default function Sidebar({
     }
   };
 
+  const userPerms = user?.permissions || [];
+  const canAccessDashboard =
+    !user ||
+    isAdmin ||
+    isOwner ||
+    userPerms.includes('*') ||
+    userPerms.includes('analytics.view_dashboard');
+
   // Role-based Nav Items (Clean, readable, no overlapping static badges)
   const navItems = [
-    ...(!user || isAdmin || isOwner
+    ...(canAccessDashboard
       ? [
           {
             to: '/',

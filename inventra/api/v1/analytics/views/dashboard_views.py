@@ -6,18 +6,19 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.mixins import TenantContextMixin
-from api.permissions import IsOwner
+from api.permissions import HasEmployeePermission
 from apps.analytics.services.analytics_service import AnalyticsService, AnalyticsServiceError
 
 
 class DashboardView(TenantContextMixin, APIView):
     """
     Savdo Analitikasi va Boshqaruv Paneli (Dashboard).
-    Faqat do'kon egasi (owner) ko'rishi mumkin.
+    Do'kon egasi yoki 'analytics.view_dashboard' ruxsatiga ega xodimlar ko'rishi mumkin.
     Platforma administratori uchun do'konning ichki tijorat va moliyaviy ma'lumotlari
     maxfiylik siyosatiga muvofiq qat'iy cheklangan (403 Forbidden).
     """
-    permission_classes = [IsOwner]
+    required_permission = "analytics.view_dashboard"
+    permission_classes = [HasEmployeePermission]
 
     @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
     def get(self, request):

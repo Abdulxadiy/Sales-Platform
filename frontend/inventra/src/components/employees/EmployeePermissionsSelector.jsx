@@ -13,6 +13,7 @@ import {
   Search,
   Users,
   RotateCcw,
+  TrendingUp,
 } from 'lucide-react';
 
 const CATEGORY_META = {
@@ -40,6 +41,12 @@ const CATEGORY_META = {
     color: '#8b5cf6',
     description: 'POS kassa savdosi, sotuvni bekor qilish, mijozlar va qarz to‘lovlari',
   },
+  analytics: {
+    name: 'Hisobot va Analitika',
+    icon: TrendingUp,
+    color: '#06b6d4',
+    description: 'Dashboard analitikasi, savdo ko‘rsatkichlari va davriy hisobotlar',
+  },
 };
 
 const PERMISSION_DESCRIPTIONS = {
@@ -66,6 +73,8 @@ const PERMISSION_DESCRIPTIONS = {
   manage_counterparty: 'Mijozlar (kontragentlar) ro‘yxatini boshqarish',
   manage_b2b: 'B2B shartnomalar va ulgurji transferlarni boshqarish',
   record_debt_payment: 'Mijozlardan qarz to‘lovlarini qabul qilish va kiritish',
+  view_dashboard: 'Dashboard, savdo grafiklari va umumiy biznes ko‘rsatkichlarini ko‘rish',
+  view_reports: 'Moliyaviy va umumiy davriy hisobotlarni ko‘rish hamda yuklab olish',
 };
 
 // PRESETS by codename
@@ -110,6 +119,8 @@ const PRESETS = {
     'add_stock_intake',
     'adjust_stock',
     'transfer_stock',
+    'view_dashboard',
+    'view_reports',
   ],
 };
 
@@ -230,12 +241,7 @@ export default function EmployeePermissionsSelector({
   disabled = false,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState({
-    cashbox: true,
-    catalog: true,
-    inventory: true,
-    sales: true,
-  });
+  const [expandedCategories, setExpandedCategories] = useState({});
 
   const allAvailableIds = useMemo(
     () => permissionChoices.map((p) => p.id),
@@ -555,6 +561,7 @@ export default function EmployeePermissionsSelector({
           maxHeight: 380,
           overflowY: 'auto',
           paddingRight: 4,
+          minHeight: 0,
         }}
       >
         {Object.keys(groupedCategories).length === 0 ? (
@@ -576,7 +583,7 @@ export default function EmployeePermissionsSelector({
             const catSelectedCount = catAllIds.filter((id) => selectedSet.has(id)).length;
             const isCatAllSelected = catAllIds.length > 0 && catSelectedCount === catAllIds.length;
             const isCatIndeterminate = catSelectedCount > 0 && catSelectedCount < catAllIds.length;
-            const isExpanded = searchQuery.trim().length > 0 || expandedCategories[catKey] !== false;
+            const isExpanded = searchQuery.trim().length > 0 || Boolean(expandedCategories[catKey]);
 
             return (
               <div
@@ -589,6 +596,7 @@ export default function EmployeePermissionsSelector({
                     : '1px solid var(--border-subtle, rgba(255, 255, 255, 0.06))',
                   overflow: 'hidden',
                   transition: 'border-color 0.2s ease',
+                  flexShrink: 0,
                 }}
               >
                 {/* Section Header */}

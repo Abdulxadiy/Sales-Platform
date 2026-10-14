@@ -72,6 +72,8 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
         style={{
           width: '100%',
           maxWidth: `${maxWidth}px`,
+          maxHeight: 'min(90vh, 850px)',
+          overflowY: 'auto',
           boxSizing: 'border-box',
           padding: '24px 28px',
           background: 'var(--bg-modal, var(--bg-surface))',

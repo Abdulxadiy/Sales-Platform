@@ -36,7 +36,13 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isOwner, user } = useAuth();
+  const userPerms = user?.permissions || [];
+  const canViewDashboard =
+    isAdmin ||
+    isOwner ||
+    userPerms.includes('*') ||
+    userPerms.includes('analytics.view_dashboard');
 
   const [period, setPeriod] = useState('today');
   const [data, setData] = useState(null);
@@ -104,10 +110,10 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [isAdmin]);
 
-  // Fetch financial dashboard for store owners ONLY (never called for platform_admin)
+  // Fetch financial dashboard for store owners & permitted staff (never called for platform_admin)
   const fetchDashboard = useCallback(
     async (selectedPeriod) => {
-      if (isAdmin) return;
+      if (isAdmin || !canViewDashboard) return;
 
       setLoading(true);
       try {
@@ -119,14 +125,14 @@ export default function Dashboard() {
         setLoading(false);
       }
     },
-    [isAdmin, toast]
+    [isAdmin, canViewDashboard, toast]
   );
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isAdmin && canViewDashboard) {
       fetchDashboard(period);
     }
-  }, [period, isAdmin, fetchDashboard]);
+  }, [period, isAdmin, canViewDashboard, fetchDashboard]);
 
   const handleCreateTenant = async (e) => {
     e.preventDefault();
@@ -710,8 +716,47 @@ export default function Dashboard() {
   }
 
   // =========================================================================
-  // 2. STORE OWNER VIEW (Store-level Real-time Financial Dashboard & Analytics)
-  // Visible ONLY to authenticated store owner
+  // 2. PERMISSION CHECK FOR NON-ADMIN USERS
+  // =========================================================================
+  if (!canViewDashboard) {
+    return (
+      <div style={{ maxWidth: 600, margin: '60px auto', textAlign: 'center', padding: '40px 24px' }} className="glass-card">
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(99, 102, 241, 0.1)',
+            color: 'var(--primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}
+        >
+          <TrendingUp size={28} />
+        </div>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)' }}>
+          Dashboard va Analitika
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 24px' }}>
+          Sizning hisobingizda do‘konning savdo analitikasi va moliyaviy ko‘rsatkichlarini ko‘rish ruxsati mavjud emas. Ushbu bo‘limdan foydalanish uchun do‘kon rahbariga murojaat qiling.
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => navigate('/pos')}>
+            Kassaga o‘tish (POS)
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/sales')}>
+            Savdolar tarixi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // 3. STORE DASHBOARD VIEW (Real-time Financial Dashboard & Analytics)
+  // Visible to authenticated store owner & staff with analytics.view_dashboard
   // =========================================================================
   const kpi = data?.kpi || data || {};
   const overview = data?.store_overview || data?.kpi || {};

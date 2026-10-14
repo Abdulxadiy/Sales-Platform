@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 
 from apps.analytics.services.analytics_service import AnalyticsService, AnalyticsServiceError
+from apps.permissions.models import Permission
 from apps.sales.models import Sale, SaleItem, Counterparty
 from tests.factories import (
     TenantFactory,
@@ -267,12 +268,19 @@ def test_dashboard_api_permissions_and_access(api_client, tenant, owner, platfor
     resp = api_client.get(DASHBOARD_URL)
     assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
-    # Staff -> 403
+    # Staff without permission -> 403
     staff = StaffFactory()
-    EmployeeFactory(user=staff, tenant=tenant, is_active=True)
+    emp = EmployeeFactory(user=staff, tenant=tenant, is_active=True)
     api_client.force_authenticate(user=staff)
     resp = api_client.get(DASHBOARD_URL)
     assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    # Staff with analytics.view_dashboard -> 200
+    perm = Permission.objects.get(category="analytics", codename="view_dashboard")
+    emp.permissions.add(perm)
+    resp = api_client.get(DASHBOARD_URL)
+    assert resp.status_code == status.HTTP_200_OK
+    assert "kpi" in resp.data
 
     # Owner -> 200
     api_client.force_authenticate(user=owner)

@@ -15,6 +15,8 @@ import {
   FolderTree,
   X,
   PackagePlus,
+  RotateCcw,
+  Camera,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { catalogApi, resolveMediaUrl } from '../api/client';
@@ -27,6 +29,7 @@ import ProductToolsModal from '../components/common/ProductToolsModal';
 import CatalogImportModal from '../components/common/CatalogImportModal';
 import ProductLabelsModal from '../components/common/ProductLabelsModal';
 import PriceInput from '../components/common/PriceInput';
+import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useTenant } from '../context/TenantContext';
 
@@ -36,6 +39,7 @@ const defaultProductForm = {
   unit: 'dona',
   variant_name: 'Standart',
   code: '',
+  barcode: '',
   price_partner: '',
   price_min: '',
   price_recommended: '',
@@ -44,6 +48,8 @@ const defaultProductForm = {
   intake_cost_price: '',
   intake_supplier: '',
   intake_note: '',
+  intake_expires_on: '',
+  intake_batch_code: '',
 };
 
 const defaultCategoryForm = {
@@ -69,6 +75,9 @@ export default function Catalog() {
   const [variants, setVariants] = useState([]);
   const [selectedCat, setSelectedCat] = useState('');
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('active'); // 'active' | 'archived'
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
+  const [scannerTarget, setScannerTarget] = useState('search'); // 'search' | 'product_barcode' | 'edit_barcode'
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 24;
@@ -80,7 +89,7 @@ export default function Catalog() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCat, search]);
+  }, [selectedCat, search, activeTab]);
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -144,12 +153,13 @@ export default function Catalog() {
     }
   }, [toast]);
 
-  const loadVariants = useCallback(async (cat = '', query = '') => {
+  const loadVariants = useCallback(async (cat = '', query = '', isArchived = false) => {
     setLoading(true);
     try {
       const res = await catalogApi.getVariants({
         category: cat || undefined,
         search: query || undefined,
+        archived: isArchived ? 'true' : undefined,
       });
       const list = res.results || res;
       setVariants(Array.isArray(list) ? list : []);
@@ -158,12 +168,12 @@ export default function Catalog() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     loadCategories();
-    loadVariants();
-  }, [loadCategories, loadVariants]);
+    loadVariants('', '', activeTab === 'archived');
+  }, [loadCategories, loadVariants, activeTab]);
 
   useEffect(() => {
     if (searchParams.get('new') === '1' || searchParams.get('action') === 'new_product') {
@@ -179,16 +189,55 @@ export default function Catalog() {
     }
   }, [searchParams, setSearchParams, setProductForm]);
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    loadVariants(selectedCat, search, tab === 'archived');
+  };
+
   const handleSearch = (e) => {
     const val = e.target.value;
     setSearch(val);
-    loadVariants(selectedCat, val);
+    loadVariants(selectedCat, val, activeTab === 'archived');
   };
 
   const handleCatChange = (e) => {
     const val = e.target.value;
     setSelectedCat(val);
-    loadVariants(val, search);
+    loadVariants(val, search, activeTab === 'archived');
+  };
+
+  const handleCameraScan = (code) => {
+    const cleanCode = (code || '').trim();
+    if (!cleanCode) return;
+    if (scannerTarget === 'product_barcode') {
+      setProductForm((prev) => ({ ...prev, barcode: cleanCode }));
+      toast.success(`Shtrix-kod kiritildi: ${cleanCode}`);
+    } else if (scannerTarget === 'edit_barcode') {
+      setEditProductForm((prev) => ({ ...prev, barcode: cleanCode }));
+      toast.success(`Shtrix-kod kiritildi: ${cleanCode}`);
+    } else {
+      setSearch(cleanCode);
+      loadVariants(selectedCat, cleanCode, activeTab === 'archived');
+      toast.info(`"${cleanCode}" shtrix-kodi bo‘yicha qidirilmoqda...`);
+    }
+  };
+
+  const handleUnarchive = async (id, name) => {
+    const isConfirmed = await confirm({
+      title: 'Tovarni arxivdan chiqarish',
+      message: `"${name}" tovarini arxivdan chiqarmoqchimisiz? U yana POS kassa va faol katalogda ko‘rinadi.`,
+      confirmText: 'Arxivdan chiqarish',
+      cancelText: 'Bekor qilish',
+      type: 'info',
+    });
+    if (!isConfirmed) return;
+    try {
+      await catalogApi.unarchiveVariant(id);
+      toast.success('Tovar arxivdan chiqarildi');
+      loadVariants(selectedCat, search, true);
+    } catch (err) {
+      toast.error(err.message || 'Arxivdan chiqarishda xatolik');
+    }
   };
 
   const formatPrice = (val, cur = 'UZS') => {
@@ -292,6 +341,9 @@ export default function Catalog() {
         if (productForm.code.trim()) {
           formData.append('code', productForm.code.trim());
         }
+        if (productForm.barcode?.trim()) {
+          formData.append('barcode', productForm.barcode.trim());
+        }
         formData.append('price_partner', productForm.price_partner || '0');
         formData.append('price_min', productForm.price_min || '0');
         formData.append('price_recommended', productForm.price_recommended || '0');
@@ -306,6 +358,12 @@ export default function Catalog() {
           if (productForm.intake_note?.trim()) {
             formData.append('intake_note', productForm.intake_note.trim());
           }
+          if (productForm.intake_expires_on) {
+            formData.append('expires_on', productForm.intake_expires_on);
+          }
+          if (productForm.intake_batch_code?.trim()) {
+            formData.append('batch_code', productForm.intake_batch_code.trim());
+          }
         }
 
         await catalogApi.createProduct(formData);
@@ -316,6 +374,7 @@ export default function Catalog() {
           unit: productForm.unit,
           variant_name: productForm.variant_name || 'Standart',
           code: productForm.code.trim() || undefined,
+          barcode: productForm.barcode?.trim() || undefined,
           price_partner: parseFloat(productForm.price_partner || 0),
           price_min: parseFloat(productForm.price_min || 0),
           price_recommended: parseFloat(productForm.price_recommended || 0),
@@ -330,6 +389,12 @@ export default function Catalog() {
           if (productForm.intake_note?.trim()) {
             payload.intake_note = productForm.intake_note.trim();
           }
+          if (productForm.intake_expires_on) {
+            payload.expires_on = productForm.intake_expires_on;
+          }
+          if (productForm.intake_batch_code?.trim()) {
+            payload.batch_code = productForm.intake_batch_code.trim();
+          }
         }
 
         await catalogApi.createProduct(payload);
@@ -343,7 +408,7 @@ export default function Catalog() {
       setProductModalOpen(false);
       resetProductForm();
       setProductImage(null);
-      loadVariants(selectedCat, search);
+      loadVariants(selectedCat, search, activeTab === 'archived');
     } catch (err) {
       toast.error(err.message || 'Mahsulotni saqlashda xatolik');
     } finally {
@@ -674,6 +739,53 @@ export default function Catalog() {
         </div>
       </div>
 
+      {/* Status Tabs: Faol vs Arxivlangan */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => handleTabChange('active')}
+          style={{
+            padding: '8px 18px',
+            borderRadius: 'var(--radius-sm)',
+            border: activeTab === 'active' ? '1px solid var(--primary)' : '1px solid var(--border-card)',
+            background: activeTab === 'active' ? 'var(--primary-subtle, rgba(245, 158, 11, 0.12))' : 'var(--bg-card)',
+            color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Package size={16} />
+          <span>Faol tovarlar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('archived')}
+          style={{
+            padding: '8px 18px',
+            borderRadius: 'var(--radius-sm)',
+            border: activeTab === 'archived' ? '1px solid var(--accent-amber)' : '1px solid var(--border-card)',
+            background: activeTab === 'archived' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-card)',
+            color: activeTab === 'archived' ? 'var(--accent-amber)' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: 13,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Archive size={16} />
+          <span>📦 Arxivlangan tovarlar</span>
+        </button>
+      </div>
+
       {/* Filter and Search Bar */}
       <div
         className="glass-card"
@@ -702,6 +814,30 @@ export default function Catalog() {
             style={{ paddingLeft: 42 }}
           />
         </div>
+
+        {/* Camera Barcode Scanner Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setScannerTarget('search');
+            setCameraScannerOpen(true);
+          }}
+          className="btn btn-secondary"
+          title="Telefon / qurilma kamerasi orqali tovar shtrix-kodini skanerlash"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            height: 42,
+            padding: '0 14px',
+            color: 'var(--primary)',
+            borderColor: 'var(--border-card)',
+            cursor: 'pointer',
+          }}
+        >
+          <Camera size={16} />
+          <span>Kamera</span>
+        </button>
 
         <CustomSelect
           value={selectedCat}
@@ -745,20 +881,42 @@ export default function Catalog() {
               gap: 12,
             }}
           >
-            <Package size={44} color="var(--primary)" />
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-              Hech qanday tovar topilmadi
-            </span>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
-              Katalogga birinchi tovaringizni qo‘shish uchun yuqoridagi tugmani bosing
-            </p>
-            <button
-              onClick={() => setProductModalOpen(true)}
-              className="btn btn-primary"
-              style={{ marginTop: 8 }}
-            >
-              + Birinchi Tovarni Qo‘shish
-            </button>
+            {activeTab === 'archived' ? (
+              <>
+                <Archive size={44} color="var(--accent-amber)" />
+                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Arxivlangan tovarlar mavjud emas
+                </span>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                  Barcha tovarlaringiz faol holatda savdoga chiqarilgan
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('active')}
+                  className="btn btn-secondary"
+                  style={{ marginTop: 8 }}
+                >
+                  Faol tovarlarga qaytish
+                </button>
+              </>
+            ) : (
+              <>
+                <Package size={44} color="var(--primary)" />
+                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Hech qanday tovar topilmadi
+                </span>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                  Katalogga birinchi tovaringizni qo‘shish uchun yuqoridagi tugmani bosing
+                </p>
+                <button
+                  onClick={() => setProductModalOpen(true)}
+                  className="btn btn-primary"
+                  style={{ marginTop: 8 }}
+                >
+                  + Birinchi Tovarni Qo‘shish
+                </button>
+              </>
+            )}
           </div>
         ) : (
           paginatedVariants.map((v) => {
@@ -981,38 +1139,73 @@ export default function Catalog() {
                     )}
                   </div>
 
-                  {/* Row 2: Primary Edit + Archive + Delete */}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      onClick={() => handleOpenEditProduct(v)}
-                      className="btn btn-primary"
-                      style={{ flex: 1, padding: '7px 10px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                      title="Mahsulot ma‘lumotlari va narxlarni to‘liq tahrirlash"
-                    >
-                      <Edit2 size={13} />
-                      <span>Tahrirlash</span>
-                    </button>
-
-                    {canArchiveProduct && (
+                  {/* Row 2: Actions */}
+                  {activeTab === 'archived' ? (
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <button
-                        onClick={() => handleArchive(v.id, v.product_name || v.name)}
+                        onClick={() => handleUnarchive(v.id, v.product_name || v.name)}
                         className="btn btn-secondary"
-                        style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Mahsulotni arxivlash"
+                        style={{
+                          flex: 1,
+                          padding: '7px 10px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          color: 'var(--accent-emerald)',
+                          borderColor: 'rgba(16, 185, 129, 0.4)',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                        }}
+                        title="Tovarni arxivdan chiqarib faol savdoga qaytarish"
                       >
-                        <Archive size={13} />
+                        <RotateCcw size={13} />
+                        <span>Arxivdan chiqarish</span>
                       </button>
-                    )}
 
-                    <button
-                      onClick={() => handleDeleteProduct(v)}
-                      className="btn btn-danger"
-                      style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      title="Mahsulotni o‘chirish"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => handleDeleteProduct(v)}
+                        className="btn btn-danger"
+                        style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Mahsulotni o‘chirish"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => handleOpenEditProduct(v)}
+                        className="btn btn-primary"
+                        style={{ flex: 1, padding: '7px 10px', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                        title="Mahsulot ma‘lumotlari va narxlarni to‘liq tahrirlash"
+                      >
+                        <Edit2 size={13} />
+                        <span>Tahrirlash</span>
+                      </button>
+
+                      {canArchiveProduct && (
+                        <button
+                          onClick={() => handleArchive(v.id, v.product_name || v.name)}
+                          className="btn btn-secondary"
+                          style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Mahsulotni arxivlash"
+                        >
+                          <Archive size={13} />
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleDeleteProduct(v)}
+                        className="btn btn-danger"
+                        style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Mahsulotni o‘chirish"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -1131,6 +1324,44 @@ export default function Catalog() {
             <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
               Format: {`{Ota kategoriya}/{Subkategoriya}/{Min narx // 1000}`} (erkin tahrirlash mumkin)
             </span>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                Shtrix-kod (Barcode)
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setScannerTarget('product_barcode');
+                  setCameraScannerOpen(true);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--primary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title="Telefon kamerasi orqali shtrix-kodni o‘qish"
+              >
+                <Camera size={13} />
+                <span>Kameradan o‘qish</span>
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="Masalan: 4780001234567 (ixtiyoriy yoki kameradan o‘qing)"
+              value={productForm.barcode || ''}
+              onChange={(e) => setProductForm({ ...productForm, barcode: e.target.value })}
+              className="input-field"
+              style={{ fontFamily: 'monospace' }}
+            />
           </div>
 
           {(() => {
@@ -1326,6 +1557,41 @@ export default function Catalog() {
                             onChange={(e) => setProductForm((prev) => ({ ...prev, intake_note: e.target.value }))}
                             className="input-field"
                           />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                            Yaroqlilik Muddati (Sanasi)
+                          </label>
+                          <input
+                            type="date"
+                            value={productForm.intake_expires_on || ''}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_expires_on: e.target.value }))}
+                            className="input-field"
+                            title="Partiyaning yaroqlilik sanasi (ixtiyoriy)"
+                          />
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
+                            Tugash sanasi (muddati o‘tgan tovarlar kassada ogohlantiriladi)
+                          </span>
+                        </div>
+
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                            Partiya Raqami / Seriya
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Masalan: B-2026/09"
+                            maxLength={80}
+                            value={productForm.intake_batch_code || ''}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_batch_code: e.target.value }))}
+                            className="input-field"
+                          />
+                          <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
+                            Partiya kodi (ixtiyoriy)
+                          </span>
                         </div>
                       </div>
 
@@ -2163,9 +2429,33 @@ export default function Catalog() {
           })()}
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-              Shtrix-Kod (Skaner uchun)
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 600 }}>
+                Shtrix-Kod (Skaner uchun)
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setScannerTarget('edit_barcode');
+                  setCameraScannerOpen(true);
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--primary)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title="Kameradan shtrix-kodni o‘qish"
+              >
+                <Camera size={13} />
+                <span>Kameradan o‘qish</span>
+              </button>
+            </div>
             <input
               type="text"
               placeholder="Masalan: 4780001234567"
@@ -2246,6 +2536,18 @@ export default function Catalog() {
           </div>
         </form>
       </Modal>
+
+      {/* Camera Barcode Scanner Modal */}
+      <CameraBarcodeScanner
+        isOpen={cameraScannerOpen}
+        onClose={() => setCameraScannerOpen(false)}
+        onScan={handleCameraScan}
+        title={
+          scannerTarget === 'product_barcode' || scannerTarget === 'edit_barcode'
+            ? 'Mahsulot Shtrix-kodini O‘qish'
+            : 'Katalog Shtrix-kod Skaneri'
+        }
+      />
     </div>
   );
 }

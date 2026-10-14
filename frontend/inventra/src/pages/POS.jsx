@@ -12,12 +12,14 @@ import {
   ShoppingBag,
   Printer,
   FileText,
+  Camera,
 } from 'lucide-react';
 import { catalogApi, salesApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
+import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
 import Pagination from '../components/common/Pagination';
 import PriceInput from '../components/common/PriceInput';
 import { useToast } from '../context/ToastContext';
@@ -76,6 +78,7 @@ export default function POS() {
   const [completedSales, setCompletedSales] = useState([]);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [posInvoiceModalOpen, setPosInvoiceModalOpen] = useState(false);
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const [selectedPosInvoiceSale, setSelectedPosInvoiceSale] = useState(null);
   const [receiptPaperWidth, setReceiptPaperWidth] = usePersistedState('inventra_receipt_paper_width', '58mm');
 
@@ -449,6 +452,26 @@ export default function POS() {
     }
   };
 
+  const handleCameraBarcodeScan = (code) => {
+    const q = (code || '').trim().toLowerCase();
+    if (!q) return;
+    const exactMatch = allVariantsRef.current.find(
+      (v) =>
+        v.barcode?.toLowerCase() === q ||
+        v.code?.toLowerCase() === q ||
+        v.sku?.toLowerCase() === q
+    );
+    if (exactMatch) {
+      if (addToCart(exactMatch)) {
+        setSearchQuery('');
+        toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
+      }
+    } else {
+      setSearchQuery(code);
+      toast.info(`"${code}" kodi bo‘yicha qidirilmoqda...`);
+    }
+  };
+
   // Complete Sale
   const handleConfirmSale = async (e) => {
     e.preventDefault();
@@ -537,6 +560,31 @@ export default function POS() {
               }}
             />
           </div>
+
+          {/* Camera Barcode Scanner Button */}
+          <button
+            type="button"
+            onClick={() => setCameraScannerOpen(true)}
+            title="Telefon / qurilma kamerasi orqali shtrix-kod skanerlash"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border-card)',
+              background: 'var(--bg-input)',
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 13,
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Camera size={16} />
+            <span>Kamera</span>
+          </button>
 
           {/* 1-Narx (Partner) Switch Button */}
           <button
@@ -1785,6 +1833,14 @@ export default function POS() {
         isOpen={posInvoiceModalOpen}
         onClose={() => setPosInvoiceModalOpen(false)}
         sale={selectedPosInvoiceSale}
+      />
+
+      {/* Camera Barcode Scanner Modal */}
+      <CameraBarcodeScanner
+        isOpen={cameraScannerOpen}
+        onClose={() => setCameraScannerOpen(false)}
+        onScan={handleCameraBarcodeScan}
+        title="POS Shtrix-kod Skaneri"
       />
     </div>
   );

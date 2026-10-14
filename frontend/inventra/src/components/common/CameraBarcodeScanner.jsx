@@ -48,6 +48,7 @@ export default function CameraBarcodeScanner({
   const [hasTorch, setHasTorch] = useState(false);
   const [scannedCode, setScannedCode] = useState(null);
 
+  const dialogRef = useRef(null);
   const scannerRef = useRef(null);
   const isStoppingRef = useRef(false);
   const hasDetectedRef = useRef(false);
@@ -225,26 +226,84 @@ export default function CameraBarcodeScanner({
     startScanner(cameras[nextIndex]?.id);
   };
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen) {
+      if (!dialog.open) {
+        try {
+          dialog.showModal();
+        } catch {
+          // Ignore error if already open
+        }
+      }
+    } else {
+      if (dialog.open) {
+        try {
+          dialog.close();
+        } catch {
+          // Ignore error if already closed
+        }
+      }
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleCancel = (e) => {
+      e.preventDefault();
+      onClose();
+    };
+
+    const handleBackdropClick = (event) => {
+      if (event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      const isDialogContent =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+
+      if (!isDialogContent) {
+        onClose();
+      }
+    };
+
+    dialog.addEventListener('cancel', handleCancel);
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+      dialog.addEventListener('click', handleBackdropClick);
+    }
+
+    return () => {
+      dialog.removeEventListener('cancel', handleCancel);
+      if (!('closedBy' in HTMLDialogElement.prototype)) {
+        dialog.removeEventListener('click', handleBackdropClick);
+      }
+    };
+  }, [onClose]);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
+      className="custom-dialog camera-scanner-dialog"
+      closedby="any"
+      aria-labelledby="camera-modal-title"
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'rgba(0, 0, 0, 0.88)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        animation: 'fadeIn 0.15s ease-out',
+        border: 'none',
+        background: 'transparent',
+        padding: 0,
+        margin: 'auto',
+        outline: 'none',
+        overflow: 'visible',
+        maxWidth: '90vw',
+        width: 'min(calc(100vw - 32px), 440px)',
       }}
     >
       <div
+        className="dialog-content"
         style={{
           width: '100%',
           maxWidth: 440,
@@ -255,6 +314,7 @@ export default function CameraBarcodeScanner({
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(245, 158, 11, 0.2)',
           display: 'flex',
           flexDirection: 'column',
+          position: 'relative',
         }}
       >
         {/* Modal Header */}
@@ -284,7 +344,7 @@ export default function CameraBarcodeScanner({
               <Camera size={18} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+              <h3 id="camera-modal-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {title}
               </h3>
               <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
@@ -560,6 +620,11 @@ export default function CameraBarcodeScanner({
       </div>
 
       <style>{`
+        dialog.camera-scanner-dialog::backdrop {
+          background: rgba(0, 0, 0, 0.88);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
         @keyframes scannerLaser {
           0% { top: 6%; }
           50% { top: 92%; }
@@ -571,6 +636,6 @@ export default function CameraBarcodeScanner({
           object-fit: cover !important;
         }
       `}</style>
-    </div>
+    </dialog>
   );
 }

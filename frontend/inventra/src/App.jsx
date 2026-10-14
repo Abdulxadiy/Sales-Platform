@@ -57,6 +57,21 @@ function RoleProtectedRoute({ children, allowedRoles }) {
   return children;
 }
 
+function SupportRoute() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div style={{ padding: 24 }}>Sessiya tekshirilmoqda...</div>;
+  if (isAuthenticated) {
+    return (
+      <ProtectedRoute>
+        <Layout>
+          <Support />
+        </Layout>
+      </ProtectedRoute>
+    );
+  }
+  return <Support />;
+}
+
 export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
@@ -68,7 +83,7 @@ export default function App() {
                 <Suspense fallback={<div style={{ padding: 24 }}>Sahifa yuklanmoqda...</div>}>
                 <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/support" element={<Support />} />
+                <Route path="/support" element={<SupportRoute />} />
                 <Route path="/setup-account" element={<SetupAccount />} />
                 <Route path="/reset-password" element={<SetupAccount />} />
                 <Route path="/accept-terms" element={<AcceptTerms />} />

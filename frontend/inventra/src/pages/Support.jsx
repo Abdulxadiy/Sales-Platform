@@ -51,6 +51,10 @@ function SupportCenter({ user, authenticated, operator }) {
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
   const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [newImage, setNewImage] = useState(null);
+  const [newImagePreview, setNewImagePreview] = useState(null);
+  const newFileRef = useRef(null);
   const [newForm, setNewForm] = useState(false);
   const [form, setForm] = useState({ name: [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || '', subject: '', text: '', consent: false });
   const [tab, setTab] = useState(params.has('doc') ? 'guide' : 'chat');
@@ -64,6 +68,40 @@ function SupportCenter({ user, authenticated, operator }) {
   const fileRef = useRef(null);
   const listPollerRef = useRef(null);
   const messagePollerRef = useRef(null);
+
+  useEffect(() => {
+    if (!image) { setImagePreview(null); return; }
+    const url = URL.createObjectURL(image);
+    setImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
+
+  useEffect(() => {
+    if (!newImage) { setNewImagePreview(null); return; }
+    const url = URL.createObjectURL(newImage);
+    setNewImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [newImage]);
+
+  const handlePaste = (e, setImageFn) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        if (file.size > 2 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+          setError(t.imageLimit);
+          return;
+        }
+        setImageFn(file);
+        break;
+      }
+    }
+  };
+
   const listQuery = `?page=${page}&status=${filter}&mine=${mine}`;
   const loadList = useCallback(async () => {
     const result = await api.list(listQuery);
@@ -138,8 +176,9 @@ function SupportCenter({ user, authenticated, operator }) {
 
   const choose = (id) => {
     setSelected(id); setParams(id ? { conversation: id } : {}, { replace: true });
-    setNewForm(false); setDraft(''); setImage(null); sendRequest.current = null;
+    setNewForm(false); setDraft(''); setImage(null); setNewImage(null); sendRequest.current = null;
     if (fileRef.current) fileRef.current.value = '';
+    if (newFileRef.current) newFileRef.current.value = '';
   };
   const run = async (fn) => {
     setBusy(true); setError('');
@@ -148,18 +187,29 @@ function SupportCenter({ user, authenticated, operator }) {
     finally { setBusy(false); }
   };
   const start = (event) => {
-    event.preventDefault();
+    if (event) event.preventDefault();
     run(async () => {
-      const body = { ...form, language };
-      const signature = JSON.stringify(body);
+      const signature = `${form.name}:${form.subject}:${form.text}:${newImage?.name}:${newImage?.size}`;
       if (startRequest.current?.signature !== signature) startRequest.current = { signature, id: crypto.randomUUID() };
-      const created = await api.create({ ...body, client_id: startRequest.current.id }, activeTenant?.id);
+      const body = new FormData();
+      body.set('name', form.name);
+      body.set('subject', form.subject);
+      body.set('text', form.text);
+      body.set('language', language);
+      body.set('consent', form.consent ? 'true' : 'false');
+      body.set('client_id', startRequest.current.id);
+      if (newImage) body.set('image', newImage);
+      const created = await api.create(body, activeTenant?.id);
       startRequest.current = null;
-      choose(created.id); setForm((old) => ({ ...old, subject: '', text: '' }));
+      choose(created.id);
+      setForm((old) => ({ ...old, subject: '', text: '' }));
+      setNewImage(null);
+      if (newFileRef.current) newFileRef.current.value = '';
     });
   };
   const send = (event) => {
-    event.preventDefault();
+    if (event) event.preventDefault();
+    if (!draft.trim() && !image) return;
     run(async () => {
       const signature = `${draft}:${image?.name}:${image?.size}:${image?.lastModified}`;
       if (sendRequest.current?.signature !== signature) sendRequest.current = { signature, id: crypto.randomUUID() };
@@ -182,17 +232,46 @@ function SupportCenter({ user, authenticated, operator }) {
   const otherOperator = operator && conversation?.operator_id && conversation.operator_id !== user?.id;
   const canSend = conversation && conversation.status !== 'closed' && (!operator || (conversation.operator_id === user?.id && conversation.status === 'active'));
   return (
-    <main className="support-shell" lang={language}>
-      <header className="support-top">
-        <Link to={authenticated ? '/' : '/login'} className="support-back"><ArrowLeft size={18} />{authenticated ? t.back : t.login}</Link>
-        <select className="input-field" style={{ width: 'auto' }} aria-label="Language" value={language} onChange={(e) => {
-          setLanguage(e.target.value); localStorage.setItem('inventra_support_language', e.target.value); setDocKey(`yordam_${e.target.value}`);
-        }}><option value="uz">O‘zbekcha</option><option value="ru">Русский</option><option value="en">English</option></select>
+    <main className={`support-shell ${authenticated ? 'in-layout' : ''}`} lang={language}>
+      <header className="support-top" style={authenticated ? { justifyContent: 'flex-end', marginBottom: 14 } : undefined}>
+        {!authenticated && (
+          <Link to="/login" className="support-back">
+            <ArrowLeft size={18} />
+            {t.login}
+          </Link>
+        )}
+        <select
+          className="input-field"
+          style={{ width: 'auto' }}
+          aria-label="Language"
+          value={language}
+          onChange={(e) => {
+            setLanguage(e.target.value);
+            localStorage.setItem('inventra_support_language', e.target.value);
+            setDocKey(`yordam_${e.target.value}`);
+          }}
+        >
+          <option value="uz">O‘zbekcha</option>
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+        </select>
       </header>
-      <div className="support-heading"><Headphones size={30} /><div><h1>{t.title}</h1><p>{t.subtitle}</p></div></div>
-      <div className="support-contact-row">
-        {metadata && <><a className="btn btn-secondary" href={`tel:${metadata.phone}`}><Phone size={16} />{metadata.phone}</a>
-          <a className="btn btn-secondary" href={`https://t.me/${metadata.telegram_username}`} target="_blank" rel="noreferrer"><Send size={16} />@{metadata.telegram_username}</a></>}
+      {!authenticated && (
+        <div className="support-heading">
+          <Headphones size={30} />
+          <div>
+            <h1>{t.title}</h1>
+            <p>{t.subtitle}</p>
+          </div>
+        </div>
+      )}
+      <div className="support-contact-row" style={authenticated ? { marginTop: 0 } : undefined}>
+        {metadata && (
+          <>
+            <a className="btn btn-secondary" href={`tel:${metadata.phone}`}><Phone size={16} />{metadata.phone}</a>
+            <a className="btn btn-secondary" href={`https://t.me/${metadata.telegram_username}`} target="_blank" rel="noreferrer"><Send size={16} />@{metadata.telegram_username}</a>
+          </>
+        )}
       </div>
       <p className="support-note">{t.noHours}</p>
       {!authenticated && <p className="support-note">{t.guest}</p>}
@@ -224,7 +303,74 @@ function SupportCenter({ user, authenticated, operator }) {
             {newForm && !operator ? <form className="support-start" onSubmit={start}>
               <h2>{t.new}</h2>
               {[['name', 100], ['subject', 160]].map(([key, limit]) => <label key={key}>{t[key]}<input className="input-field" value={form[key]} maxLength={limit} required onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></label>)}
-              <label>{t.question}<textarea className="input-field" rows={5} maxLength={4000} value={form.text} required onChange={(e) => setForm({ ...form, text: e.target.value })} /></label>
+              <label>
+                {t.question}
+                <div className="support-tg-input-box">
+                  {newImage && (
+                    <div className="support-attachment-chip">
+                      <img src={newImagePreview} alt="preview" className="support-attachment-thumb" />
+                      <div className="support-attachment-info">
+                        <span className="support-attachment-name">{newImage.name}</span>
+                        <span className="support-attachment-size">{(newImage.size / 1024).toFixed(0)} KB</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="support-attachment-remove"
+                        title={t.remove}
+                        onClick={() => {
+                          setNewImage(null);
+                          if (newFileRef.current) newFileRef.current.value = '';
+                        }}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  )}
+                  <textarea
+                    className="support-tg-textarea"
+                    rows={4}
+                    maxLength={4000}
+                    placeholder={t.placeholder}
+                    value={form.text}
+                    required
+                    onChange={(e) => setForm({ ...form, text: e.target.value })}
+                    onPaste={(e) => handlePaste(e, setNewImage)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (form.name && form.subject && form.text.trim() && form.consent && !busy) {
+                          start(e);
+                        }
+                      }
+                    }}
+                  />
+                  <div className="support-tg-toolbar">
+                    <div className="support-tg-toolbar-left">
+                      <label className="support-tg-clip-btn" title="Rasm biriktirish (PNG, JPEG, WebP, maks. 2 MB)">
+                        <Paperclip size={18} />
+                        <input
+                          ref={newFileRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="support-file"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file && (file.size > 2 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))) {
+                              setError(t.imageLimit);
+                              e.target.value = '';
+                              return;
+                            }
+                            setNewImage(file || null);
+                          }}
+                        />
+                      </label>
+                      <span className="support-tg-hint">
+                        Enter — yuborish, Shift+Enter — yangi qator, Ctrl+V — rasm
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </label>
               <label className="support-consent"><input type="checkbox" required checked={form.consent} onChange={(e) => setForm({ ...form, consent: e.target.checked })} />{t.consent}</label>
               <button type="button" className="support-link" onClick={() => { setDocKey('maxfiylik_siyosati'); setTab('guide'); }}>{t.privacy}</button>
               <p className="support-note">{t.safe}</p><button className="btn btn-primary" disabled={busy}>{busy ? t.loading : t.start}</button>
@@ -248,13 +394,79 @@ function SupportCenter({ user, authenticated, operator }) {
                   </article>)}<div ref={endRef} />
               </div>
               {canSend ? <form className="support-compose" onSubmit={send}>
-                <textarea className="input-field" aria-label={t.question} placeholder={t.placeholder} rows={2} maxLength={4000} value={draft} onChange={(e) => setDraft(e.target.value)} />
-                <div className="support-compose-actions"><label className="btn btn-secondary"><Paperclip size={16} />{t.image}<input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="support-file" onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file && (file.size > 2 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))) { setError(t.imageLimit); e.target.value = ''; return; }
-                  setImage(file || null);
-                }} /></label><span className="support-note">{t.imageLimit}</span><button className="btn btn-primary" disabled={busy || (!draft.trim() && !image)}><Send size={16} />{busy ? t.loading : t.send}</button></div>
-                {image && <div>{image.name}<button className="support-link" type="button" aria-label={t.remove} onClick={() => { setImage(null); fileRef.current.value = ''; }}><X size={16} /></button></div>}
+                <div className="support-tg-input-box">
+                  {image && (
+                    <div className="support-attachment-chip">
+                      <img src={imagePreview} alt="preview" className="support-attachment-thumb" />
+                      <div className="support-attachment-info">
+                        <span className="support-attachment-name">{image.name}</span>
+                        <span className="support-attachment-size">{(image.size / 1024).toFixed(0)} KB</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="support-attachment-remove"
+                        title={t.remove}
+                        onClick={() => {
+                          setImage(null);
+                          if (fileRef.current) fileRef.current.value = '';
+                        }}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  )}
+                  <textarea
+                    className="support-tg-textarea"
+                    aria-label={t.question}
+                    placeholder={t.placeholder}
+                    rows={2}
+                    maxLength={4000}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onPaste={(e) => handlePaste(e, setImage)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!busy && (draft.trim() || image)) {
+                          send(e);
+                        }
+                      }
+                    }}
+                  />
+                  <div className="support-tg-toolbar">
+                    <div className="support-tg-toolbar-left">
+                      <label className="support-tg-clip-btn" title="Rasm biriktirish (PNG, JPEG, WebP, maks. 2 MB)">
+                        <Paperclip size={18} />
+                        <input
+                          ref={fileRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="support-file"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file && (file.size > 2 * 1024 * 1024 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type))) {
+                              setError(t.imageLimit);
+                              e.target.value = '';
+                              return;
+                            }
+                            setImage(file || null);
+                          }}
+                        />
+                      </label>
+                      <span className="support-tg-hint">
+                        Enter — yuborish, Shift+Enter — yangi qator, Ctrl+V — rasm
+                      </span>
+                    </div>
+                    <button
+                      type="submit"
+                      className="btn btn-primary support-tg-send-btn"
+                      disabled={busy || (!draft.trim() && !image)}
+                      title={t.send}
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
+                </div>
               </form> : <p className="support-note support-compose">{otherOperator ? t.busy : t[conversation.status]}</p>}
             </> : <div className="support-empty"><Headphones size={44} /><p>{selected ? t.loading : t.select}</p></div>}
           </section>

@@ -14,7 +14,7 @@ import NotificationCard from '../notifications/NotificationCard';
 import FloatingNotificationToast from '../notifications/FloatingNotificationToast';
 import { usePersistedState } from '../../hooks/usePersistedState';
 
-export default function Layout() {
+export default function Layout({ children }) {
   const location = useLocation();
   const toast = useToast();
   const confirm = useConfirm();
@@ -267,6 +267,13 @@ export default function Layout() {
           title: 'Foydalanish Qo‘llanmasi & Hujjatlar',
           subtitle: 'Tizimni boshqarish bo‘yicha qo‘llanmalar va rasmiy huquqiy kelishuvlar',
         };
+      case '/support':
+        return {
+          title: isAdmin ? 'Yordam: Murojaatlar Boshqaruvi' : 'Yordam Markazi',
+          subtitle: isAdmin
+            ? 'Foydalanuvchilar va mehmonlarning murojaatlarini ko‘rib chiqish'
+            : 'Savollaringiz va takliflaringiz bo‘yicha qo‘llab-quvvatlash xizmati',
+        };
       default:
         return { title: 'Inventra', subtitle: '' };
     }
@@ -351,9 +358,9 @@ export default function Layout() {
         <main style={{ marginTop: 24, position: 'relative', zIndex: 1 }}>
           <React.Suspense fallback={null}>
             <div className="animate-fade-in" key={location.pathname}>
-            {!isAdmin && !activeTenant && !['/my-tenants', '/profile', '/docs'].includes(location.pathname)
+            {!isAdmin && !activeTenant && !['/my-tenants', '/profile', '/docs', '/support'].includes(location.pathname)
               ? <div className="glass-card" style={{ padding: 24 }}>Yuqoridagi menyudan do‘konni tanlang.</div>
-              : <Outlet key={`${user?.id}:${activeTenant?.id || 'platform'}`} />}
+              : (children || <Outlet key={`${user?.id}:${activeTenant?.id || 'platform'}`} />)}
             </div>
           </React.Suspense>
         </main>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Lock, User, KeyRound, ArrowRight, ArrowLeft, ShieldCheck, Eye, EyeOff, Sun, Moon, Play, RefreshCw, Mail, AlertCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Lock, User, KeyRound, ArrowRight, ArrowLeft, ShieldCheck, Eye, EyeOff, Sun, Moon, Play, RefreshCw, Mail, AlertCircle, Headphones } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../context/ThemeContext';
@@ -408,8 +408,6 @@ export default function Login() {
           </p>
         </div>
 
-        <a className="support-login-link" href="/support">Yordam markazi · Помощь · Help</a>
-
         {errorMsg && (
           <div
             style={{
@@ -738,6 +736,36 @@ export default function Login() {
             </div>
           </form>
         )}
+
+        <div
+          style={{
+            marginTop: 22,
+            paddingTop: 16,
+            borderTop: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Link
+            to="/support"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+          >
+            <Headphones size={15} />
+            <span>Yordam markazi · Qo‘llab-quvvatlash</span>
+          </Link>
+        </div>
       </div>
 
       {/* Password Reset Modal */}

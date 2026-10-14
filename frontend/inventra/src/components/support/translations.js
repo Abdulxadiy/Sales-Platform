@@ -17,6 +17,7 @@ export const supportText = {
     unavailable: 'Ulanib bo‘lmadi. Qayta urinib ko‘ring.', busy: 'Bu suhbatga boshqa operator javob bermoqda.',
     noHours: 'Operator javobi kelguncha xabaringiz saqlanadi. Ish vaqti hozircha e’lon qilinmagan.',
     safe: 'Parol, OTP kodi va bank karta ma’lumotlarini yubormang.', imageError: 'Rasmni yuklab bo‘lmadi.',
+    searchDocs: 'Hujjatlarni qidirish…', practical: 'Amaliy Yo‘riqnomalar', manual: 'Tizim Reglamentlari', legal: 'Huquqiy Hujjatlar', print: 'Chop etish', noDocs: 'Hujjat topilmadi.',
   },
   ru: {
     title: 'Центр поддержки', subtitle: 'Напишите вопрос — оператор ответит здесь.',
@@ -36,6 +37,7 @@ export const supportText = {
     unavailable: 'Не удалось подключиться. Попробуйте снова.', busy: 'На этот чат отвечает другой оператор.',
     noHours: 'Сообщение сохранится до ответа оператора. Часы работы пока не опубликованы.',
     safe: 'Не отправляйте пароли, OTP-коды и данные банковских карт.', imageError: 'Не удалось загрузить изображение.',
+    searchDocs: 'Поиск документов…', practical: 'Практические руководства', manual: 'Регламенты системы', legal: 'Юридические документы', print: 'Печать', noDocs: 'Документы не найдены.',
   },
   en: {
     title: 'Help center', subtitle: 'Send your question — an operator will reply here.',
@@ -55,6 +57,7 @@ export const supportText = {
     unavailable: 'Could not connect. Please try again.', busy: 'Another operator is handling this conversation.',
     noHours: 'Your message will be saved until an operator replies. Working hours have not been published yet.',
     safe: 'Do not send passwords, OTP codes or bank card details.', imageError: 'Could not load the image.',
+    searchDocs: 'Search documents…', practical: 'Practical Guides', manual: 'System Regulations', legal: 'Legal Documents', print: 'Print', noDocs: 'No documents found.',
   },
 };
 

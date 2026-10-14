@@ -450,111 +450,129 @@ export default function Inventory() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Top Bar with Actions & Tabs */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 6, background: 'var(--bg-card)', padding: 4, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-          <button
-            onClick={() => setActiveTab('stock')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-xs)',
-              border: 'none',
-              background: activeTab === 'stock' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'stock' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Ombor Qoldiqlari
-          </button>
-          <button
-            onClick={() => setActiveTab('transfers')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-xs)',
-              border: 'none',
-              background: activeTab === 'transfers' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'transfers' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span>Transferlar</span>
-            {transfers.filter((t) => t.status === 'pending' && String(t.destination_tenant) === String(activeTenant?.id)).length > 0 && (
-              <span
-                style={{
-                  fontSize: 10.5,
-                  padding: '1px 6px',
-                  borderRadius: 999,
-                  background: activeTab === 'transfers' ? 'rgba(255,255,255,0.25)' : 'var(--accent-amber, #f59e0b)',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                }}
-              >
-                {transfers.filter((t) => t.status === 'pending' && String(t.destination_tenant) === String(activeTenant?.id)).length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('deficits')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-xs)',
-              border: 'none',
-              background: activeTab === 'deficits' ? 'var(--accent-rose, #ef4444)' : 'transparent',
-              color: activeTab === 'deficits' ? '#ffffff' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span>Kamchiliklar</span>
-            {deficitCount > 0 && (
-              <span
-                style={{
-                  fontSize: 10.5,
-                  padding: '1px 6px',
-                  borderRadius: 999,
-                  background: activeTab === 'deficits' ? 'rgba(255,255,255,0.25)' : 'var(--accent-rose, #ef4444)',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                }}
-              >
-                {deficitCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('movements')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-xs)',
-              border: 'none',
-              background: activeTab === 'movements' ? 'var(--primary)' : 'transparent',
-              color: activeTab === 'movements' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            Harakatlar Tarixi
-          </button>
-          <button className={activeTab === 'batches' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setActiveTab('batches')}>Partiyalar va yaroqlilik</button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Row 1: Section Tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 6, background: 'var(--bg-card)', padding: 4, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setActiveTab('stock')}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: activeTab === 'stock' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'stock' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Ombor Qoldiqlari
+            </button>
+            <button
+              onClick={() => setActiveTab('transfers')}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: activeTab === 'transfers' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'transfers' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>Transferlar</span>
+              {transfers.filter((t) => t.status === 'pending' && String(t.destination_tenant) === String(activeTenant?.id)).length > 0 && (
+                <span
+                  style={{
+                    fontSize: 10.5,
+                    padding: '1px 6px',
+                    borderRadius: 999,
+                    background: activeTab === 'transfers' ? 'rgba(255,255,255,0.25)' : 'var(--accent-amber, #f59e0b)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                  }}
+                >
+                  {transfers.filter((t) => t.status === 'pending' && String(t.destination_tenant) === String(activeTenant?.id)).length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('deficits')}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: activeTab === 'deficits' ? 'var(--accent-rose, #ef4444)' : 'transparent',
+                color: activeTab === 'deficits' ? '#ffffff' : 'var(--text-secondary)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span>Kamchiliklar</span>
+              {deficitCount > 0 && (
+                <span
+                  style={{
+                    fontSize: 10.5,
+                    padding: '1px 6px',
+                    borderRadius: 999,
+                    background: activeTab === 'deficits' ? 'rgba(255,255,255,0.25)' : 'var(--accent-rose, #ef4444)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                  }}
+                >
+                  {deficitCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('movements')}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: activeTab === 'movements' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'movements' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Harakatlar Tarixi
+            </button>
+            <button
+              onClick={() => setActiveTab('batches')}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 'var(--radius-xs)',
+                border: 'none',
+                background: activeTab === 'batches' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'batches' ? 'var(--primary-foreground)' : 'var(--text-secondary)',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Partiyalar va yaroqlilik
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {/* Row 2: Action Buttons - ALWAYS stays cleanly below the tabs on all sections */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           {activeTab === 'stock' && <ExcelExportButton endpoint="/inventory/stock/export/" ids={filteredStock.map(row => row.id)} filename="inventra-ombor.xlsx" disabled={loading} />}
           <button
             onClick={() => {

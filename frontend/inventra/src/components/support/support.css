@@ -658,25 +658,30 @@
 
 .support-launcher {
   position: fixed;
-  right: 22px;
-  bottom: 20px;
+  right: 24px;
+  bottom: 34px;
   z-index: 80;
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 12px 18px;
   background: var(--primary);
   color: var(--text-on-primary, #171717);
   border-radius: 30px;
-  box-shadow: 0 6px 24px #0003;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, bottom 0.2s ease;
+}
+.support-launcher:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
 }
 .support-launcher.compact {
   padding: 10px;
-  bottom: 12px;
-  right: 12px;
+  bottom: 24px;
+  right: 18px;
 }
 .support-login-link {
   display: block;
@@ -700,8 +705,8 @@
 
 .support-widget-window {
   position: fixed;
-  bottom: 80px;
-  right: 22px;
+  bottom: 94px;
+  right: 24px;
   width: 380px;
   max-width: calc(100vw - 32px);
   height: 540px;
@@ -1088,9 +1093,9 @@
     max-width: 95%;
   }
   .support-launcher {
-    right: 12px;
-    bottom: 12px;
-    padding: 10px;
+    right: 16px;
+    bottom: 22px;
+    padding: 11px;
   }
   .support-launcher > span:not(.support-badge) {
     display: none;

@@ -13,6 +13,7 @@ import {
   Printer,
   FileText,
   Camera,
+  Info,
 } from 'lucide-react';
 import { catalogApi, salesApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
@@ -621,27 +622,196 @@ export default function POS() {
               }}
             />
           </button>
-          <button type="button" className="btn-secondary" onClick={() => setUsdCalculatorOpen((open) => !open)}>
-            <Banknote size={16} /> USD kalkulyator
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setUsdCalculatorOpen((open) => !open)}
+            style={{
+              borderColor: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
+              color: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
+            }}
+          >
+            <Banknote size={16} />
+            <span>USD kalkulyator</span>
           </button>
         </div>
 
-        {usdCalculatorOpen && <section style={{ display: 'flex', alignItems: 'end', flexWrap: 'wrap', gap: 10, padding: 12, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-          <label style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 11 }}>Ichki kurs (ma’lumot uchun)
-            <strong style={{ color: 'var(--text-primary)', fontSize: 13 }}>1 USD = {usdRate.toLocaleString('uz-UZ')} UZS</strong>
-          </label>
-          <label style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 11 }}>Jami (UZS)
-            <PriceInput value={usdCalculatorSaleTotalUzs} onChange={(event) => setUsdCalculatorSaleTotalUzs(event.target.value)} placeholder="549 000" />
-          </label>
-          <label style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 11 }}>Mijoz bergan USD
-            <PriceInput value={usdCalculatorAmount} onChange={(event) => setUsdCalculatorAmount(event.target.value)} placeholder="100" />
-          </label>
-          <div style={{ color: 'var(--text-primary)', fontSize: 13 }}>
-            USD qiymati: <strong>{(Number(usdCalculatorAmount || 0) * usdRate).toLocaleString('uz-UZ')} UZS</strong>
-            {Number(usdCalculatorAmount) * usdRate >= Number(usdCalculatorSaleTotalUzs) && Number(usdCalculatorSaleTotalUzs) > 0 && <span> · Hisobiy qaytim: <strong>{(Number(usdCalculatorAmount || 0) * usdRate - Number(usdCalculatorSaleTotalUzs || 0)).toLocaleString('uz-UZ')} UZS</strong></span>}
-          </div>
-          <small style={{ flexBasis: '100%', color: 'var(--text-muted)' }}>Faqat alohida ma’lumot kalkulyatori: valyutani POS to‘lovi sifatida qabul qilmaydi va savdo/tender/fiskal chekga yozilmaydi.</small>
-        </section>}
+        {usdCalculatorOpen && (() => {
+          const usdAmount = parseFloat(String(usdCalculatorAmount || '').replace(/\s/g, '')) || 0;
+          const saleTotal = parseFloat(String(usdCalculatorSaleTotalUzs || '').replace(/\s/g, '')) || 0;
+          const effectiveSaleTotal = saleTotal > 0 ? saleTotal : (cartTotalUZS > 0 ? cartTotalUZS : 0);
+          const usdValueUzs = Math.round(usdAmount * usdRate);
+          const changeUzs = usdValueUzs - effectiveSaleTotal;
+
+          return (
+            <section
+              style={{
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-card)',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(245, 158, 11, 0.12)', color: 'var(--primary, #f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Banknote size={16} />
+                  </div>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
+                    Valyuta (USD) Hisob-kitob Kalkulyatori
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 20,
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      color: 'var(--accent-emerald)',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
+                    1 USD = {usdRate > 0 ? usdRate.toLocaleString('uz-UZ') : '—'} UZS
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setUsdCalculatorOpen(false)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                    title="Yopish"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Inputs Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                {/* 1. Hisob / Savat Summasi (UZS) */}
+                <div style={{ background: 'var(--bg-input)', padding: 10, borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      To‘lov / Savat summasi (UZS)
+                    </label>
+                    {cartTotalUZS > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setUsdCalculatorSaleTotalUzs(String(cartTotalUZS))}
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          color: 'var(--primary, #f59e0b)',
+                          background: 'rgba(245, 158, 11, 0.1)',
+                          border: 'none',
+                          borderRadius: 4,
+                          padding: '2px 6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Savatdan olish ({cartTotalUZS.toLocaleString()} UZS)
+                      </button>
+                    )}
+                  </div>
+                  <PriceInput
+                    value={usdCalculatorSaleTotalUzs}
+                    onChange={(event) => setUsdCalculatorSaleTotalUzs(event.target.value)}
+                    placeholder="0"
+                    style={{ width: '100%', fontSize: 13, fontWeight: 700 }}
+                  />
+                </div>
+
+                {/* 2. Mijoz Bergan Valyuta ($ USD) */}
+                <div style={{ background: 'var(--bg-input)', padding: 10, borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      Mijoz bergan summa ($ USD)
+                    </label>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {['10', '20', '50', '100'].map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setUsdCalculatorAmount(preset)}
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            padding: '1px 5px',
+                            borderRadius: 4,
+                            border: '1px solid var(--border-subtle)',
+                            background: 'var(--bg-card)',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ${preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <PriceInput
+                    value={usdCalculatorAmount}
+                    onChange={(event) => setUsdCalculatorAmount(event.target.value)}
+                    placeholder="0"
+                    style={{ width: '100%', fontSize: 13, fontWeight: 700 }}
+                  />
+                </div>
+              </div>
+
+              {/* Calculation Result Banner */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border-card)',
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>USD ning so‘mdagi qiymati:</span>
+                  <strong style={{ fontSize: 15, color: 'var(--primary, #f59e0b)', fontWeight: 800 }}>
+                    {usdAmount > 0 ? `${usdValueUzs.toLocaleString('uz-UZ')} UZS` : '0 UZS'}
+                  </strong>
+                </div>
+
+                {effectiveSaleTotal > 0 && usdAmount > 0 && (
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>
+                      {changeUzs >= 0 ? 'Mijozga qaytim (so‘mda):' : 'Yetishmayotgan summa:'}
+                    </span>
+                    <strong
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 800,
+                        color: changeUzs >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose, #ef4444)',
+                      }}
+                    >
+                      {Math.abs(changeUzs).toLocaleString('uz-UZ')} UZS
+                    </strong>
+                  </div>
+                )}
+              </div>
+
+              {/* Disclaimer Note */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                <Info size={13} style={{ flexShrink: 0 }} />
+                <span>Faqat ma’lumot kalkulyatori: valyuta to‘lov sifatida qabul qilinmaydi va chekka faqat UZS yoziladi.</span>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* Category Pills Bar */}
         <div

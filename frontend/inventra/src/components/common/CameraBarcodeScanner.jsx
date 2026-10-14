@@ -248,11 +248,11 @@ export default function CameraBarcodeScanner({
         style={{
           width: '100%',
           maxWidth: 440,
-          background: 'var(--bg-card, #12151b)',
-          border: '1px solid var(--border-card, #252b36)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-card)',
           borderRadius: 16,
           overflow: 'hidden',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 158, 11, 0.15)',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(245, 158, 11, 0.2)',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -264,15 +264,15 @@ export default function CameraBarcodeScanner({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '14px 18px',
-            borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
-            background: 'var(--bg-surface-elevated, #161a22)',
+            borderBottom: '1px solid var(--border-subtle)',
+            background: 'var(--bg-card)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
               style={{
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 borderRadius: 8,
                 background: 'rgba(245, 158, 11, 0.15)',
                 color: 'var(--primary, #f59e0b)',
@@ -284,10 +284,10 @@ export default function CameraBarcodeScanner({
               <Camera size={18} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fff)' }}>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
                 {title}
               </h3>
-              <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                 Shtrix-kodni to‘rtburchak ichiga to‘g‘rilang
               </span>
             </div>
@@ -299,13 +299,14 @@ export default function CameraBarcodeScanner({
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               padding: 6,
               borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'color 0.15s ease',
             }}
           >
             <X size={20} />
@@ -497,10 +498,10 @@ export default function CameraBarcodeScanner({
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: (hasTorch || cameras.length > 1) ? 'space-between' : 'flex-end',
             padding: '12px 18px',
-            background: 'var(--bg-surface-elevated, #161a22)',
-            borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+            background: 'var(--bg-card)',
+            borderTop: '1px solid var(--border-subtle)',
           }}
         >
           <div style={{ display: 'flex', gap: 8 }}>
@@ -551,7 +552,7 @@ export default function CameraBarcodeScanner({
             type="button"
             className="btn btn-secondary"
             onClick={onClose}
-            style={{ fontSize: 12, padding: '6px 14px' }}
+            style={{ fontSize: 13, fontWeight: 600, padding: '8px 18px', cursor: 'pointer' }}
           >
             Bekor qilish
           </button>

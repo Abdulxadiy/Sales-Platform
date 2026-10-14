@@ -11,10 +11,12 @@ from .views import (
     ProductImageDeleteView,
     ProductImageUploadView,
     ProductListCreateView,
+    ProductUnarchiveView,
     ProductVariantArchiveView,
     ProductVariantCreateView,
     ProductVariantDetailView,
     ProductVariantListView,
+    ProductVariantUnarchiveView,
 )
 
 urlpatterns = [
@@ -29,6 +31,7 @@ urlpatterns = [
     path("products/", ProductListCreateView.as_view(), name="product-list-create"),
     path("products/<int:pk>/", ProductDetailView.as_view(), name="product-detail"),
     path("products/<int:pk>/archive/", ProductArchiveView.as_view(), name="product-archive"),
+    path("products/<int:pk>/unarchive/", ProductUnarchiveView.as_view(), name="product-unarchive"),
     path("products/<int:pk>/images/", ProductImageUploadView.as_view(), name="product-image-upload"),
     path("products/<int:pk>/images/<int:image_id>/", ProductImageDeleteView.as_view(), name="product-image-delete"),
     path("products/<int:product_id>/variants/", ProductVariantCreateView.as_view(), name="product-variant-create"),
@@ -36,4 +39,5 @@ urlpatterns = [
     path("variants/", ProductVariantListView.as_view(), name="product-variant-list"),
     path("variants/<int:pk>/", ProductVariantDetailView.as_view(), name="product-variant-detail"),
     path("variants/<int:pk>/archive/", ProductVariantArchiveView.as_view(), name="product-variant-archive"),
+    path("variants/<int:pk>/unarchive/", ProductVariantUnarchiveView.as_view(), name="product-variant-unarchive"),
 ]

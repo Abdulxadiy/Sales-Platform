@@ -149,6 +149,26 @@ class ProductService:
         product.variants.update(is_active=False)
         return product
 
+    @staticmethod
+    @transaction.atomic
+    def unarchive(product: Product) -> Product:
+        """Unarchive / restore a Product AND cascade to all its variants."""
+        product.is_active = True
+        product.save(update_fields=["is_active"])
+        product.variants.update(is_active=True)
+        return product
+
+    @staticmethod
+    @transaction.atomic
+    def unarchive_variant(variant: ProductVariant) -> ProductVariant:
+        """Unarchive / restore a ProductVariant and ensure its parent product is active."""
+        variant.is_active = True
+        variant.save(update_fields=["is_active"])
+        if not variant.product.is_active:
+            variant.product.is_active = True
+            variant.product.save(update_fields=["is_active"])
+        return variant
+
     @classmethod
     @transaction.atomic
     def delete(cls, product: Product) -> bool:

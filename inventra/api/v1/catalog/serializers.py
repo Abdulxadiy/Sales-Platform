@@ -172,6 +172,8 @@ class ProductCreateSerializer(serializers.Serializer):
     )
     supplier = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     intake_note = serializers.CharField(required=False, allow_blank=True, default="")
+    expires_on = serializers.DateField(required=False, allow_null=True)
+    batch_code = serializers.CharField(max_length=80, required=False, allow_blank=True, default="")
 
 
 class ProductUpdateSerializer(serializers.Serializer):

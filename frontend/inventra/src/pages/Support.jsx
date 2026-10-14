@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Store,
   Users,
+  User,
   FileText,
   Printer,
   Mic,

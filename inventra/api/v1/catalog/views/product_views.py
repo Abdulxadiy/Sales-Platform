@@ -59,13 +59,20 @@ class ProductListCreateView(CatalogAPIView):
 
     @extend_schema(request=None, responses={200: optional_pagination(ProductOutputSerializer)})
     def get(self, request):
+        archived = request.query_params.get("archived")
+        is_archived = archived and archived.lower() in ("true", "1")
+
         variant_prefetch = Prefetch(
             "variants",
-            queryset=ProductVariant.objects.filter(is_active=True).select_related("stock").prefetch_related("stock_batches"),
+            queryset=(
+                ProductVariant.objects.all()
+                if is_archived
+                else ProductVariant.objects.filter(is_active=True)
+            ).select_related("stock").prefetch_related("stock_batches"),
         )
 
         qs = (
-            Product.objects.filter(tenant=self.tenant, is_active=True)
+            Product.objects.filter(tenant=self.tenant, is_active=not is_archived)
             .select_related("category")
             .prefetch_related(variant_prefetch, "gallery_images")
         )
@@ -107,6 +114,8 @@ class ProductListCreateView(CatalogAPIView):
         initial_cost_price = val_data.pop("initial_cost_price", None)
         supplier = val_data.pop("supplier", "").strip()
         intake_note = val_data.pop("intake_note", "").strip()
+        expires_on = val_data.pop("expires_on", None)
+        batch_code = val_data.pop("batch_code", "").strip()
 
         if initial_quantity and not PermissionService.has_permission(
             request.user, "inventory.add_stock_intake", tenant=self.tenant, employee=self.employee,
@@ -133,6 +142,8 @@ class ProductListCreateView(CatalogAPIView):
                         cost_price=initial_cost_price if initial_cost_price is not None else Decimal("0"),
                         created_by=request.user,
                         note=combined_note,
+                        batch_code=batch_code,
+                        expires_on=expires_on,
                     )
         except (ProductServiceError, StockServiceError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -236,6 +247,20 @@ class ProductArchiveView(CatalogAPIView):
     def post(self, request, pk):
         product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
         product = ProductService.archive(product)
+        return Response(ProductOutputSerializer(product, context={"request": request}).data)
+
+
+class ProductUnarchiveView(CatalogAPIView):
+    """POST /api/v1/catalog/products/{pk}/unarchive/ -- restores product
+    and all its variants (see ProductService.unarchive())."""
+
+    permission_classes = [HasEmployeePermission]
+    required_permission = "catalog.archive_product"
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: ProductOutputSerializer})
+    def post(self, request, pk):
+        product = get_object_or_404(Product, pk=pk, tenant=self.tenant)
+        product = ProductService.unarchive(product)
         return Response(ProductOutputSerializer(product, context={"request": request}).data)
 
 
@@ -351,6 +376,20 @@ class ProductVariantArchiveView(CatalogAPIView):
         return Response(ProductVariantOutputSerializer(variant, context={"request": request}).data)
 
 
+class ProductVariantUnarchiveView(CatalogAPIView):
+    """POST /api/v1/catalog/variants/{pk}/unarchive/ -- restores ONE
+    variant and ensures its parent Product is active."""
+
+    permission_classes = [HasEmployeePermission]
+    required_permission = "catalog.archive_product"
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: ProductVariantOutputSerializer})
+    def post(self, request, pk):
+        variant = get_object_or_404(ProductVariant, pk=pk, tenant=self.tenant)
+        variant = ProductService.unarchive_variant(variant)
+        return Response(ProductVariantOutputSerializer(variant, context={"request": request}).data)
+
+
 class ProductImageUploadView(CatalogAPIView):
     """POST /api/v1/catalog/products/{pk}/images/ -- uploads an image (up to 3 max)."""
     permission_classes = [HasEmployeePermission]
@@ -413,18 +452,29 @@ class ProductVariantListView(CatalogAPIView):
       - currency: UZS / USD
       - min_price, max_price: narxlar oralig'i (price_min bo'yicha)
       - in_stock: true bo'lsa faqat omborda mavjud tovarlar (quantity > 0)
+      - archived: true bo'lsa faqat arxivlangan tovarlar
     """
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.view_product"
 
     @extend_schema(request=None, responses={200: optional_pagination(ProductVariantOutputSerializer)})
     def get(self, request):
-        qs = (
-            ProductVariant.objects.filter(
-                tenant=self.tenant, is_active=True, product__is_active=True
+        archived = request.query_params.get("archived")
+        if archived and archived.lower() in ("true", "1"):
+            qs = (
+                ProductVariant.objects.filter(tenant=self.tenant)
+                .filter(Q(is_active=False) | Q(product__is_active=False))
+                .select_related("product", "product__category", "stock")
+                .prefetch_related("stock_batches")
             )
-            .select_related("product", "product__category", "stock").prefetch_related("stock_batches")
-        )
+        else:
+            qs = (
+                ProductVariant.objects.filter(
+                    tenant=self.tenant, is_active=True, product__is_active=True
+                )
+                .select_related("product", "product__category", "stock")
+                .prefetch_related("stock_batches")
+            )
 
         in_stock = request.query_params.get("in_stock")
         if in_stock and in_stock.lower() in ("true", "1"):

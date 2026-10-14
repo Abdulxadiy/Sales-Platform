@@ -520,6 +520,14 @@ export const catalogApi = {
     request(`/catalog/products/${id}/`, {
       method: 'DELETE',
     }),
+  archiveProduct: (id) =>
+    request(`/catalog/products/${id}/archive/`, {
+      method: 'POST',
+    }),
+  unarchiveProduct: (id) =>
+    request(`/catalog/products/${id}/unarchive/`, {
+      method: 'POST',
+    }),
   uploadProductImage: (productId, formData) =>
     request(`/catalog/products/${productId}/images/`, {
       method: 'POST',
@@ -541,6 +549,7 @@ export const catalogApi = {
     if (params.barcode) query.append('barcode', params.barcode);
     if (params.category) query.append('category', params.category);
     if (params.in_stock !== undefined) query.append('in_stock', params.in_stock);
+    if (params.archived !== undefined) query.append('archived', params.archived);
     const qs = query.toString();
     return request(`/catalog/variants/${qs ? `?${qs}` : ''}`);
   },
@@ -551,6 +560,10 @@ export const catalogApi = {
     }),
   archiveVariant: (id) =>
     request(`/catalog/variants/${id}/archive/`, {
+      method: 'POST',
+    }),
+  unarchiveVariant: (id) =>
+    request(`/catalog/variants/${id}/unarchive/`, {
       method: 'POST',
     }),
 };

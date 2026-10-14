@@ -683,6 +683,8 @@ export default function Catalog() {
           alignItems: 'center',
           gap: 14,
           flexWrap: 'wrap',
+          position: 'relative',
+          zIndex: 10,
         }}
       >
         <div style={{ flex: 1, minWidth: 260, position: 'relative' }}>

@@ -688,6 +688,8 @@ export default function Inventory() {
             alignItems: 'center',
             flexWrap: 'wrap',
             background: 'var(--bg-card)',
+            position: 'relative',
+            zIndex: 10,
           }}
         >
             <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
@@ -901,6 +903,8 @@ export default function Inventory() {
             flexDirection: 'column',
             gap: 12,
             background: 'var(--bg-card)',
+            position: 'relative',
+            zIndex: 10,
           }}
         >
           {/* Row 1: Search, Movement Type, Reset */}

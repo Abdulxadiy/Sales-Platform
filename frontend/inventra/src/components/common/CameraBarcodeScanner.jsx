@@ -1,0 +1,575 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Camera, X, Zap, ZapOff, RefreshCw, AlertCircle } from 'lucide-react';
+
+const SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.ITF,
+];
+
+function playBeep() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch {
+    // AudioContext might be restricted until user gesture; ignore
+  }
+}
+
+export default function CameraBarcodeScanner({
+  isOpen,
+  onClose,
+  onScan,
+  title = 'Shtrix-kodni skanerlash',
+}) {
+  const [cameras, setCameras] = useState([]);
+  const [selectedCamIndex, setSelectedCamIndex] = useState(0);
+  const [isScanning, setIsScanning] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [torchOn, setTorchOn] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
+  const [scannedCode, setScannedCode] = useState(null);
+
+  const scannerRef = useRef(null);
+  const isStoppingRef = useRef(false);
+  const hasDetectedRef = useRef(false);
+  const elementId = 'camera-barcode-scanner-viewport';
+
+  const stopScanner = useCallback(async () => {
+    if (isStoppingRef.current || !scannerRef.current) return;
+    isStoppingRef.current = true;
+    try {
+      if (scannerRef.current.isScanning) {
+        await scannerRef.current.stop();
+      }
+      scannerRef.current.clear();
+    } catch {
+      // Ignore cleanup error
+    } finally {
+      scannerRef.current = null;
+      isStoppingRef.current = false;
+      setIsScanning(false);
+      setTorchOn(false);
+    }
+  }, []);
+
+  const handleDetected = useCallback(
+    (decodedText) => {
+      if (hasDetectedRef.current) return;
+      hasDetectedRef.current = true;
+      setScannedCode(decodedText);
+      playBeep();
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(100);
+        } catch {}
+      }
+
+      setTimeout(async () => {
+        await stopScanner();
+        onScan(decodedText);
+        onClose();
+      }, 350);
+    },
+    [onScan, onClose, stopScanner]
+  );
+
+  const startScanner = useCallback(
+    async (cameraId) => {
+      if (!isOpen) return;
+      setErrorMessage('');
+      hasDetectedRef.current = false;
+      setScannedCode(null);
+
+      try {
+        await stopScanner();
+
+        const html5QrCode = new Html5Qrcode(elementId, {
+          formatsToSupport: SUPPORTED_FORMATS,
+          verbose: false,
+        });
+        scannerRef.current = html5QrCode;
+
+        const config = {
+          fps: 15,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const edge = Math.floor(minEdge * 0.75);
+            return { width: Math.max(edge, 220), height: Math.max(Math.floor(edge * 0.6), 140) };
+          },
+          aspectRatio: 1.0,
+        };
+
+        const cameraConfig = cameraId
+          ? { deviceId: { exact: cameraId } }
+          : { facingMode: 'environment' };
+
+        await html5QrCode.start(
+          cameraConfig,
+          config,
+          (decodedText) => {
+            handleDetected(decodedText);
+          },
+          () => {
+            // Frame scan failure (no code in current frame); ignore
+          }
+        );
+
+        setIsScanning(true);
+
+        // Check if camera capabilities support torch
+        try {
+          const stream = html5QrCode.getRunningTrackCameraCapabilities?.();
+          if (stream?.torchFeature?.()?.isSupported?.()) {
+            setHasTorch(true);
+          } else {
+            // Test track directly if available
+            const videoElem = document.querySelector(`#${elementId} video`);
+            const track = videoElem?.srcObject?.getVideoTracks?.()[0];
+            const caps = track?.getCapabilities?.();
+            setHasTorch(Boolean(caps?.torch));
+          }
+        } catch {
+          setHasTorch(false);
+        }
+      } catch (err) {
+        setIsScanning(false);
+        const msg = String(err?.message || err || '');
+        if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
+          setErrorMessage('Kameraga ruxsat berilmadi. Iltimos, brauzer sozlamalarida kameraga ruxsat bering.');
+        } else if (msg.includes('NotFoundError') || msg.includes('DevicesNotFoundError')) {
+          setErrorMessage('Qurilmada kamera topilmadi.');
+        } else {
+          setErrorMessage('Kamerani ishga tushirishda xatolik yuz berdi. Qayta urinib ko‘ring.');
+        }
+      }
+    },
+    [isOpen, stopScanner, handleDetected]
+  );
+
+  // Initialize camera list on open
+  useEffect(() => {
+    let active = true;
+    if (!isOpen) return;
+
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (!active) return;
+        if (devices && devices.length > 0) {
+          setCameras(devices);
+          // Prefer environment/back camera if labeled
+          const backCamIndex = devices.findIndex(
+            (d) =>
+              d.label?.toLowerCase().includes('back') ||
+              d.label?.toLowerCase().includes('orqa') ||
+              d.label?.toLowerCase().includes('environment')
+          );
+          const initialIndex = backCamIndex >= 0 ? backCamIndex : 0;
+          setSelectedCamIndex(initialIndex);
+          startScanner(devices[initialIndex]?.id);
+        } else {
+          startScanner(null);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          startScanner(null);
+        }
+      });
+
+    return () => {
+      active = false;
+      stopScanner();
+    };
+  }, [isOpen, startScanner, stopScanner]);
+
+  const toggleTorch = async () => {
+    if (!scannerRef.current || !hasTorch) return;
+    try {
+      const nextTorch = !torchOn;
+      const videoElem = document.querySelector(`#${elementId} video`);
+      const track = videoElem?.srcObject?.getVideoTracks?.()[0];
+      if (track?.applyConstraints) {
+        await track.applyConstraints({
+          advanced: [{ torch: nextTorch }],
+        });
+        setTorchOn(nextTorch);
+      }
+    } catch {
+      // Torch toggle failed
+    }
+  };
+
+  const switchCamera = () => {
+    if (cameras.length <= 1) return;
+    const nextIndex = (selectedCamIndex + 1) % cameras.length;
+    setSelectedCamIndex(nextIndex);
+    startScanner(cameras[nextIndex]?.id);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(0, 0, 0, 0.88)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        animation: 'fadeIn 0.15s ease-out',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 440,
+          background: 'var(--bg-card, #12151b)',
+          border: '1px solid var(--border-card, #252b36)',
+          borderRadius: 16,
+          overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(245, 158, 11, 0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+            background: 'var(--bg-surface-elevated, #161a22)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: 'var(--primary, #f59e0b)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Camera size={18} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary, #fff)' }}>
+                {title}
+              </h3>
+              <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                Shtrix-kodni to‘rtburchak ichiga to‘g‘rilang
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Yopish"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted, #94a3b8)',
+              cursor: 'pointer',
+              padding: 6,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Viewport Area */}
+        <div
+          style={{
+            position: 'relative',
+            background: '#000',
+            width: '100%',
+            aspectRatio: '4/3',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* HTML5 QR Code Container */}
+          <div
+            id={elementId}
+            style={{
+              width: '100%',
+              height: '100%',
+              overflow: 'hidden',
+            }}
+          />
+
+          {/* Futuristic Targeting Reticle & Scan Line */}
+          {isScanning && !errorMessage && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  position: 'relative',
+                  width: '75%',
+                  height: '55%',
+                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
+                  borderRadius: 12,
+                }}
+              >
+                {/* 4 Corner Markers */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    left: -2,
+                    width: 22,
+                    height: 22,
+                    borderTop: '3px solid var(--primary, #f59e0b)',
+                    borderLeft: '3px solid var(--primary, #f59e0b)',
+                    borderTopLeftRadius: 10,
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    width: 22,
+                    height: 22,
+                    borderTop: '3px solid var(--primary, #f59e0b)',
+                    borderRight: '3px solid var(--primary, #f59e0b)',
+                    borderTopRightRadius: 10,
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    left: -2,
+                    width: 22,
+                    height: 22,
+                    borderBottom: '3px solid var(--primary, #f59e0b)',
+                    borderLeft: '3px solid var(--primary, #f59e0b)',
+                    borderBottomLeftRadius: 10,
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    right: -2,
+                    width: 22,
+                    height: 22,
+                    borderBottom: '3px solid var(--primary, #f59e0b)',
+                    borderRight: '3px solid var(--primary, #f59e0b)',
+                    borderBottomRightRadius: 10,
+                  }}
+                />
+
+                {/* Animated Laser Line */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: '5%',
+                    right: '5%',
+                    height: 2,
+                    background: 'linear-gradient(90deg, transparent, var(--primary, #f59e0b), #fbbf24, transparent)',
+                    boxShadow: '0 0 12px var(--primary, #f59e0b)',
+                    animation: 'scannerLaser 2s infinite ease-in-out',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Success Flash Notification */}
+          {scannedCode && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(16, 185, 129, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'column',
+                gap: 8,
+                zIndex: 10,
+                backdropFilter: 'blur(3px)',
+              }}
+            >
+              <span
+                style={{
+                  background: 'var(--accent-emerald, #10b981)',
+                  color: '#fff',
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
+                }}
+              >
+                ✓ {scannedCode}
+              </span>
+              <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>
+                O‘qildi! Yuklanmoqda...
+              </span>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {errorMessage && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 20,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                gap: 12,
+                background: 'rgba(20, 24, 32, 0.95)',
+                padding: 20,
+                borderRadius: 12,
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+              }}
+            >
+              <AlertCircle size={36} color="var(--accent-rose, #ef4444)" />
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #cbd5e1)', lineHeight: 1.5 }}>
+                {errorMessage}
+              </p>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => startScanner(cameras[selectedCamIndex]?.id || null)}
+                style={{ fontSize: 12, padding: '6px 14px', marginTop: 4 }}
+              >
+                Qayta urinish
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions / Camera Controls */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 18px',
+            background: 'var(--bg-surface-elevated, #161a22)',
+            borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+          }}
+        >
+          <div style={{ display: 'flex', gap: 8 }}>
+            {/* Flash/Torch button if supported */}
+            {hasTorch && (
+              <button
+                type="button"
+                onClick={toggleTorch}
+                title={torchOn ? 'Chiroqni o‘chirish' : 'Chiroqni yoqish'}
+                className="btn btn-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  padding: '6px 12px',
+                  color: torchOn ? 'var(--primary, #f59e0b)' : undefined,
+                  borderColor: torchOn ? 'var(--primary, #f59e0b)' : undefined,
+                }}
+              >
+                {torchOn ? <Zap size={15} /> : <ZapOff size={15} />}
+                <span>{torchOn ? 'Chiroq: Yoqiq' : 'Chiroq'}</span>
+              </button>
+            )}
+
+            {/* Switch Camera Button if multiple devices */}
+            {cameras.length > 1 && (
+              <button
+                type="button"
+                onClick={switchCamera}
+                title="Kamerani almashtirish"
+                className="btn btn-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  padding: '6px 12px',
+                }}
+              >
+                <RefreshCw size={14} />
+                <span>Kamera #{selectedCamIndex + 1}</span>
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            style={{ fontSize: 12, padding: '6px 14px' }}
+          >
+            Bekor qilish
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes scannerLaser {
+          0% { top: 6%; }
+          50% { top: 92%; }
+          100% { top: 6%; }
+        }
+        #${elementId} video {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+        }
+      `}</style>
+    </div>
+  );
+}

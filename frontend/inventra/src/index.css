@@ -1768,3 +1768,14 @@ dialog.confirm-dialog-native[open] .confirm-dialog-card {
   background: rgba(244, 63, 94, 0.15);
   color: var(--accent-rose);
 }
+
+/* Stacking context fix: ensure cards containing open CustomSelect dropdowns sit on top of sibling tables */
+.glass-card:has(.custom-select-wrapper[data-open="true"]),
+.table-responsive:has(.custom-select-wrapper[data-open="true"]) {
+  position: relative !important;
+  z-index: 60 !important;
+}
+
+.custom-select-wrapper[data-open="true"] {
+  z-index: 100 !important;
+}

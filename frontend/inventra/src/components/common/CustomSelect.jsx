@@ -92,6 +92,25 @@ export default function CustomSelect({
     };
   }, [isOpen]);
 
+  // Elevate parent stacking context when open so dropdown menu floats above sibling cards/tables
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const parent = containerRef.current.closest('.glass-card, .table-responsive, [class*="card"]');
+    if (!parent) return;
+
+    const originalZIndex = parent.style.zIndex;
+    const originalPos = parent.style.position;
+    parent.style.zIndex = '60';
+    if (!originalPos || originalPos === 'static') {
+      parent.style.position = 'relative';
+    }
+
+    return () => {
+      parent.style.zIndex = originalZIndex;
+      parent.style.position = originalPos;
+    };
+  }, [isOpen]);
+
   const handleSelect = (opt) => {
     if (opt.disabled || disabled) return;
     setIsOpen(false);
@@ -152,12 +171,13 @@ export default function CustomSelect({
       ref={containerRef}
       id={id ? `${id}-container` : undefined}
       className={`custom-select-wrapper ${className}`}
+      data-open={isOpen ? 'true' : 'false'}
       style={{
         position: 'relative',
         display: fullWidth ? 'flex' : 'inline-flex',
         width: fullWidth ? '100%' : 'auto',
         userSelect: 'none',
-        zIndex: isOpen ? 50 : undefined,
+        zIndex: isOpen ? 100 : undefined,
       }}
       title={title}
     >
@@ -253,13 +273,13 @@ export default function CustomSelect({
             maxWidth: 360,
             maxHeight: 280,
             overflowY: 'auto',
-            background: 'var(--bg-card, #1e222d)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid var(--border-medium, rgba(255, 255, 255, 0.12))',
+            background: 'var(--bg-modal, var(--bg-card))',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid var(--border-modal, var(--border-card))',
             borderRadius: 'var(--radius-sm, 10px)',
-            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.45)',
-            zIndex: 1050,
+            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.45), 0 4px 14px rgba(0, 0, 0, 0.2)',
+            zIndex: 9999,
             padding: 5,
             display: 'flex',
             flexDirection: 'column',

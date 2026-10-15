@@ -465,7 +465,7 @@ class ProductVariantListView(CatalogAPIView):
                 ProductVariant.objects.filter(tenant=self.tenant)
                 .filter(Q(is_active=False) | Q(product__is_active=False))
                 .select_related("product", "product__category", "stock")
-                .prefetch_related("stock_batches")
+                .prefetch_related("stock_batches", "product__gallery_images")
             )
         else:
             qs = (
@@ -473,7 +473,7 @@ class ProductVariantListView(CatalogAPIView):
                     tenant=self.tenant, is_active=True, product__is_active=True
                 )
                 .select_related("product", "product__category", "stock")
-                .prefetch_related("stock_batches")
+                .prefetch_related("stock_batches", "product__gallery_images")
             )
 
         in_stock = request.query_params.get("in_stock")

@@ -149,6 +149,16 @@ class HasEmployeePermission(BasePermission):
 
     def has_permission(self, request, view):
         codename = self._required_permission(request, view)
+        if isinstance(codename, (list, tuple, set)):
+            return any(
+                PermissionService.has_permission(
+                    request.user,
+                    c,
+                    tenant=getattr(request, 'tenant', None),
+                    employee=getattr(request, 'employee', None),
+                )
+                for c in codename
+            )
         return PermissionService.has_permission(
             request.user,
             codename,

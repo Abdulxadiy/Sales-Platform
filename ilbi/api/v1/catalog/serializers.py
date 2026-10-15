@@ -48,8 +48,24 @@ def _clean_media_url(url: str, request=None) -> str:
     return public_media_url(res)
 
 
+class ProductImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImage
+        fields = ["id", "image", "image_url", "order", "created_at"]
+        read_only_fields = ["id", "image_url", "created_at"]
+
+    def get_image_url(self, obj) -> str | None:
+        if not obj.image:
+            return None
+        return _clean_media_url(obj.image.url, self.context.get("request"))
+
+
 class ProductVariantOutputSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    gallery_images = serializers.SerializerMethodField()
     currency = serializers.CharField(read_only=True)
     product_name = serializers.CharField(source="product.name", read_only=True)
     category_id = serializers.IntegerField(source="product.category_id", read_only=True)
@@ -61,11 +77,11 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
         model = ProductVariant
         fields = [
             "id", "product", "product_name", "category_id", "category_name",
-            "name", "sku", "code", "barcode", "image", "unit",
+            "name", "sku", "code", "barcode", "image", "images", "gallery_images", "unit",
             "currency", "price_partner", "price_min", "price_recommended",
             "stock_quantity", "expired_batches", "is_active",
         ]
-        read_only_fields = ["id", "product", "sku", "is_active", "currency", "stock_quantity"]
+        read_only_fields = ["id", "product", "sku", "is_active", "currency", "stock_quantity", "images", "gallery_images"]
 
     def get_expired_batches(self, obj) -> list[dict]:
         from apps.inventory.services.batch_service import BatchService
@@ -79,10 +95,40 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
         return str(st.quantity) if st else "0.000"
 
     def get_image(self, obj) -> str | None:
-        image = obj.image or obj.product.image
+        image = obj.image or (obj.product.image if hasattr(obj, "product") and obj.product else None)
         if not image:
             return None
         return _clean_media_url(image.url, self.context.get("request"))
+
+    def get_images(self, obj) -> list[str]:
+        request = self.context.get("request")
+        urls = []
+        main_img = obj.image or (obj.product.image if hasattr(obj, "product") and obj.product else None)
+        if main_img:
+            cleaned = _clean_media_url(main_img.url, request)
+            if cleaned and cleaned not in urls:
+                urls.append(cleaned)
+
+        if hasattr(obj, "product") and obj.product:
+            for gi in obj.product.gallery_images.all():
+                if gi.image:
+                    cleaned = _clean_media_url(gi.image.url, request)
+                    if cleaned and cleaned not in urls:
+                        urls.append(cleaned)
+        return urls
+
+    def get_gallery_images(self, obj) -> list[dict]:
+        request = self.context.get("request")
+        res = []
+        if hasattr(obj, "product") and obj.product:
+            for gi in obj.product.gallery_images.all():
+                if gi.image:
+                    res.append({
+                        "id": gi.id,
+                        "image": _clean_media_url(gi.image.url, request),
+                        "order": gi.order,
+                    })
+        return res
 
 
 
@@ -113,20 +159,6 @@ class ProductVariantUpdateSerializer(serializers.Serializer):
     price_partner = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
     price_min = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
     price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
-
-
-class ProductImageSerializer(serializers.ModelSerializer):
-    image_url = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ProductImage
-        fields = ["id", "image", "image_url", "order", "created_at"]
-        read_only_fields = ["id", "image_url", "created_at"]
-
-    def get_image_url(self, obj) -> str | None:
-        if not obj.image:
-            return None
-        return _clean_media_url(obj.image.url, self.context.get("request"))
 
 
 class ProductOutputSerializer(serializers.ModelSerializer):

@@ -30,7 +30,7 @@ from ._base import SalesAPIView
 class CounterpartyListCreateView(SalesAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {
-        'GET': 'sales.manage_counterparty',
+        'GET': ('sales.manage_counterparty', 'sales.record_debt_payment'),
         'POST': 'sales.manage_counterparty',
     }
 
@@ -78,7 +78,7 @@ class CounterpartyListCreateView(SalesAPIView):
 class CounterpartyDetailView(SalesAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {
-        'GET': 'sales.manage_counterparty',
+        'GET': ('sales.manage_counterparty', 'sales.record_debt_payment'),
         'PATCH': 'sales.manage_counterparty',
         'DELETE': 'sales.manage_counterparty',
     }
@@ -122,7 +122,7 @@ class CounterpartyDetailView(SalesAPIView):
 class DebtPaymentListCreateView(SalesAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {
-        'GET': 'sales.manage_counterparty',
+        'GET': ('sales.manage_counterparty', 'sales.record_debt_payment'),
         'POST': 'sales.record_debt_payment',
     }
 
@@ -211,7 +211,7 @@ class DebtPaymentCorrectionView(SalesAPIView):
 class CounterpartySalesListView(SalesAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {
-        'GET': 'sales.manage_counterparty',
+        'GET': ('sales.manage_counterparty', 'sales.record_debt_payment'),
     }
 
     @extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})

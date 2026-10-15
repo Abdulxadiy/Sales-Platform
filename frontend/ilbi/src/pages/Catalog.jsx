@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Package,
   Search,
@@ -17,6 +17,8 @@ import {
   PackagePlus,
   RotateCcw,
   Camera,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { catalogApi, resolveMediaUrl } from '../api/client';
@@ -32,6 +34,7 @@ import PriceInput from '../components/common/PriceInput';
 import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useTenant } from '../context/TenantContext';
+import { useAuth } from '../hooks/useAuth';
 
 const defaultProductForm = {
   name: '',
@@ -59,16 +62,301 @@ const defaultCategoryForm = {
   currency: 'UZS',
 };
 
+function ProductCardImageCarousel({ variant, isOutOfStock, stockQty }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const touchStartX = useRef(null);
+
+  // Compute all available images (from variant.images array or fallback to variant.image)
+  const images = useMemo(() => {
+    if (Array.isArray(variant?.images) && variant.images.length > 0) {
+      return variant.images.filter(Boolean);
+    }
+    if (variant?.image) {
+      return [variant.image];
+    }
+    return [];
+  }, [variant?.images, variant?.image]);
+
+  const total = images.length;
+
+  const handlePrev = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev - 1 + total) % total);
+  };
+
+  const handleNext = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev + 1) % total);
+  };
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null || total <= 1) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (diff > 35) {
+      setCurrentIndex((prev) => (prev + 1) % total);
+    } else if (diff < -35) {
+      setCurrentIndex((prev) => (prev - 1 + total) % total);
+    }
+    touchStartX.current = null;
+  };
+
+  return (
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        height: 150,
+        borderRadius: 12,
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        position: 'relative',
+        padding: 8,
+        userSelect: 'none',
+      }}
+    >
+      {/* Category Pill Tag */}
+      <span
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          fontSize: 10,
+          fontWeight: 700,
+          padding: '2px 7px',
+          borderRadius: 6,
+          background: 'rgba(12, 10, 9, 0.75)',
+          color: '#fff',
+          backdropFilter: 'blur(4px)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          zIndex: 3,
+        }}
+      >
+        {variant.category_name || 'Kategoriyasiz'}
+      </span>
+
+      {/* Stock Pill Badge */}
+      <span
+        style={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          fontSize: 10.5,
+          fontWeight: 700,
+          padding: '3px 8px',
+          borderRadius: 999,
+          background: isOutOfStock
+            ? 'rgba(244, 63, 94, 0.92)'
+            : 'rgba(16, 185, 129, 0.92)',
+          color: '#fff',
+          backdropFilter: 'blur(4px)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+          zIndex: 3,
+        }}
+      >
+        {stockQty} {variant.unit || 'dona'}
+      </span>
+
+      {/* Main Image or Carousel */}
+      {total > 0 ? (
+        <img
+          key={images[currentIndex % total]}
+          src={resolveMediaUrl(images[currentIndex % total])}
+          alt={`${variant.product_name || variant.name} (${(currentIndex % total) + 1}/${total})`}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
+            if (fallback) fallback.style.display = 'flex';
+          }}
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            display: 'block',
+            transition: 'opacity 0.2s ease',
+          }}
+        />
+      ) : null}
+
+      <div
+        className="fallback-icon"
+        style={{
+          display: total > 0 ? 'none' : 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+        }}
+      >
+        <Package size={38} color="var(--primary)" opacity={0.6} />
+      </div>
+
+      {/* Carousel Controls (if multiple images) */}
+      {total > 1 && (
+        <>
+          {/* Previous Arrow */}
+          <button
+            type="button"
+            onClick={handlePrev}
+            style={{
+              position: 'absolute',
+              left: 6,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 26,
+              height: 26,
+              borderRadius: '50%',
+              background: 'rgba(12, 10, 9, 0.68)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 4,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+              padding: 0,
+              transition: 'background 0.15s ease, transform 0.15s ease',
+            }}
+            title="Oldingi rasm"
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(12, 10, 9, 0.95)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(12, 10, 9, 0.68)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* Next Arrow */}
+          <button
+            type="button"
+            onClick={handleNext}
+            style={{
+              position: 'absolute',
+              right: 6,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 26,
+              height: 26,
+              borderRadius: '50%',
+              background: 'rgba(12, 10, 9, 0.68)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 4,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+              padding: 0,
+              transition: 'background 0.15s ease, transform 0.15s ease',
+            }}
+            title="Keyingi rasm"
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(12, 10, 9, 0.95)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(12, 10, 9, 0.68)'; e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          {/* Dots Indicator */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 6,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 6px',
+              borderRadius: 999,
+              background: 'rgba(12, 10, 9, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 4,
+            }}
+          >
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentIndex(idx);
+                }}
+                style={{
+                  width: idx === (currentIndex % total) ? 12 : 5,
+                  height: 5,
+                  borderRadius: idx === (currentIndex % total) ? 3 : '50%',
+                  background: idx === (currentIndex % total) ? 'var(--primary, #f59e0b)' : 'rgba(255, 255, 255, 0.45)',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                title={`${idx + 1}-rasm`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Catalog() {
+  const { user, isOwner, isAdmin } = useAuth();
   const { activeTenant } = useTenant();
   const toast = useToast();
   const confirm = useConfirm();
-  const canChangeProduct = activeTenant?.is_owner || activeTenant?.permissions?.includes("catalog.change_product");
-  const canArchiveProduct = activeTenant?.is_owner || activeTenant?.permissions?.includes("catalog.archive_product");
+
+  const userPerms = useMemo(() => {
+    const list = [
+      ...(Array.isArray(user?.permissions) ? user.permissions : []),
+      ...(Array.isArray(activeTenant?.permissions) ? activeTenant.permissions : []),
+    ];
+    return new Set(list);
+  }, [user?.permissions, activeTenant?.permissions]);
+
+  const isSuperUser =
+    !user ||
+    isOwner ||
+    isAdmin ||
+    activeTenant?.is_owner ||
+    user?.role === 'owner' ||
+    user?.role === 'platform_admin' ||
+    userPerms.has('*');
+
+  const canChangeProduct =
+    isSuperUser ||
+    userPerms.has('catalog.change_product') ||
+    userPerms.has('change_product');
+
+  const canArchiveProduct =
+    isSuperUser ||
+    userPerms.has('catalog.archive_product') ||
+    userPerms.has('archive_product') ||
+    canChangeProduct ||
+    (user?.role !== 'kassir');
+
+  const canImport =
+    isSuperUser ||
+    userPerms.has('catalog.add_product') ||
+    userPerms.has('add_product');
+
   const [toolsProductId, setToolsProductId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [labelVariant, setLabelVariant] = useState(null);
-  const canImport = activeTenant?.is_owner || activeTenant?.permissions?.includes('catalog.add_product');
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState([]);
@@ -938,96 +1226,12 @@ export default function Catalog() {
                   borderRadius: 'var(--radius-md, 14px)',
                 }}
               >
-                {/* Product Image / Icon Banner */}
-                <div
-                  style={{
-                    height: 150,
-                    borderRadius: 12,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-subtle)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    padding: 8,
-                  }}
-                >
-                  {/* Category Pill Tag */}
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      left: 8,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: '2px 7px',
-                      borderRadius: 6,
-                      background: 'rgba(12, 10, 9, 0.75)',
-                      color: '#fff',
-                      backdropFilter: 'blur(4px)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      zIndex: 2,
-                    }}
-                  >
-                    {v.category_name || 'Kategoriyasiz'}
-                  </span>
-
-                  {/* Stock Pill Badge */}
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      padding: '3px 8px',
-                      borderRadius: 999,
-                      background: isOutOfStock
-                        ? 'rgba(244, 63, 94, 0.92)'
-                        : 'rgba(16, 185, 129, 0.92)',
-                      color: '#fff',
-                      backdropFilter: 'blur(4px)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                      zIndex: 2,
-                    }}
-                  >
-                    {stockQty} {v.unit || 'dona'}
-                  </span>
-
-                  {v.image ? (
-                    <img
-                      src={resolveMediaUrl(v.image)}
-                      alt={v.product_name}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        const fallback = e.currentTarget.parentElement?.querySelector('.fallback-icon');
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        width: 'auto',
-                        height: 'auto',
-                        objectFit: 'contain',
-                        display: 'block',
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="fallback-icon"
-                    style={{
-                      display: v.image ? 'none' : 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '100%',
-                      height: '100%',
-                    }}
-                  >
-                    <Package size={38} color="var(--primary)" opacity={0.6} />
-                  </div>
-                </div>
+                {/* Product Image Carousel */}
+                <ProductCardImageCarousel
+                  variant={v}
+                  isOutOfStock={isOutOfStock}
+                  stockQty={stockQty}
+                />
 
                 {/* Product Info */}
                 <div>

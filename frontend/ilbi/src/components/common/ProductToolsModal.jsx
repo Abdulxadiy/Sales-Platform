@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import Modal from './Modal';
 import PriceInput from './PriceInput';
 import CustomSelect from './CustomSelect';
-import { Image as ImageIcon, Upload, Trash2, Plus, Layers } from 'lucide-react';
+import { Image as ImageIcon, Upload, Trash2, Plus, Layers, X } from 'lucide-react';
 
 const emptyVariant = { name: '', unit: 'dona', price_partner: '0', price_min: '0', price_recommended: '0' };
 
@@ -61,44 +61,72 @@ export default function ProductToolsModal({ productId, onClose, onChanged }) {
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Maksimal 3 ta rasm</span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 14, paddingTop: 6, paddingRight: 6 }}>
               {galleryImages.map((image) => (
                 <div
                   key={image.id}
                   style={{
                     position: 'relative',
                     aspectRatio: '1',
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                    border: '1px solid var(--border-card)',
-                    background: 'var(--bg-card)',
                   }}
                 >
-                  <img
-                    src={resolveMediaUrl(image.image)}
-                    alt={product.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      border: '1px solid var(--border-card)',
+                      background: 'var(--bg-card)',
+                    }}
+                  >
+                    <img
+                      src={resolveMediaUrl(image.image)}
+                      alt={product.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                  </div>
                   <button
-                    className="btn btn-danger"
+                    type="button"
                     disabled={busy}
                     onClick={() => perform(() => catalogApi.deleteProductImage(productId, image.id))}
                     style={{
                       position: 'absolute',
-                      top: 6,
-                      right: 6,
-                      width: 26,
-                      height: 26,
+                      top: -6,
+                      right: -6,
+                      width: 22,
+                      height: 22,
                       padding: 0,
                       borderRadius: '50%',
+                      background: '#09090b',
+                      color: '#ffffff',
+                      border: '1.5px solid #ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                      cursor: busy ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.45)',
+                      zIndex: 10,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!busy) {
+                        e.currentTarget.style.background = '#ef4444';
+                        e.currentTarget.style.borderColor = '#ffffff';
+                        e.currentTarget.style.transform = 'scale(1.15)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!busy) {
+                        e.currentTarget.style.background = '#09090b';
+                        e.currentTarget.style.borderColor = '#ffffff';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }
                     }}
                     title="Rasmni o‘chirish"
+                    aria-label="Rasmni o‘chirish"
                   >
-                    <Trash2 size={13} />
+                    <X size={12} strokeWidth={2.6} />
                   </button>
                 </div>
               ))}

@@ -353,8 +353,8 @@ export default function PublicReceiptView() {
             padding: '14px 20px',
             borderRadius: 12,
             border: 'none',
-            background: '#3b82f6',
-            color: '#ffffff',
+            background: 'var(--primary)',
+            color: 'var(--text-on-primary)',
             fontWeight: 700,
             fontSize: 15,
             cursor: 'pointer',
@@ -362,7 +362,7 @@ export default function PublicReceiptView() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: 10,
-            boxShadow: '0 8px 20px rgba(59, 130, 246, 0.4)',
+            boxShadow: 'var(--shadow-md)',
           }}
         >
           <Printer size={18} />

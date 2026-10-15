@@ -27,6 +27,7 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23F0EFEB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* Inverse of light: graphite surfaces, bone-white controls, blue ILBI identity. */
   --bg-app: #0B0909;
   --bg-sidebar: #141212;
@@ -82,6 +83,7 @@
 
 [data-theme="light"] {
   color-scheme: light;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230B0909' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* Light Mode: Warm Bone (#F0EFEB) & Obsidian Black (#0B0909) */
   --bg-app: #F0EFEB;
   --bg-sidebar: #ffffff;
@@ -111,13 +113,13 @@
   --text-on-primary: #F0EFEB;
 
   /* Secondary Accents */
-  --accent-emerald: #047857;
+  --accent-emerald: #036446;
   --accent-cyan: #0369a1;
   --accent-amber: #92400e;
   --accent-rose: #be123c;
   --accent-purple: #6d28d9;
   --warning-rgb: 146, 64, 14;
-  --success-rgb: 4, 120, 87;
+  --success-rgb: 3, 100, 70;
   --danger-rgb: 190, 18, 60;
   --info-rgb: 3, 105, 161;
   --on-success: #ffffff;
@@ -132,7 +134,7 @@
   /* Typography Colors */
   --text-primary: #0B0909;
   --text-secondary: #4a4646;
-  --text-muted: #6c6666;
+  --text-muted: #605a5a;
   --text-inverse: #ffffff;
 
   /* Shadows */
@@ -822,7 +824,9 @@ input[type="number"] {
 
   .header-actions-row {
     width: 100%;
-    justify-content: space-between;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 }
 
@@ -1073,7 +1077,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* Custom Select */
 select.input-field {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23938D8D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: var(--select-arrow);
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 38px;
@@ -1220,6 +1224,11 @@ dialog.custom-dialog[open] .dialog-content {
   /* Hide entire body contents by default */
   body * {
     visibility: hidden;
+  }
+
+  [data-print-surface="paper"],
+  [data-print-surface="paper"] * {
+    visibility: visible !important;
   }
 
   /* Explicitly reveal ONLY printable receipt containers */

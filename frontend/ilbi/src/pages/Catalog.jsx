@@ -159,7 +159,7 @@ function ProductCardImageCarousel({ variant, isOutOfStock, stockQty }) {
           background: isOutOfStock
             ? 'rgba(var(--danger-rgb), 0.92)'
             : 'rgba(var(--success-rgb), 0.92)',
-          color: '#fff',
+          color: isOutOfStock ? 'var(--on-danger)' : 'var(--on-success)',
           backdropFilter: 'blur(4px)',
           boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
           zIndex: 3,

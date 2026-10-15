@@ -712,7 +712,7 @@ export default function HelpLauncher() {
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={handleKeyDown}
                       onPaste={handlePaste}
-                      placeholder="Xabar yozing... (Enter — jo‘natish)"
+                      placeholder="Xabar yozing..."
                       className="support-widget-textarea"
                     />
 

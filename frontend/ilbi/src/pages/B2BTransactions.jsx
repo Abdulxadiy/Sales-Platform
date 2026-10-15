@@ -447,8 +447,8 @@ export default function B2BTransactions() {
                   borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 800,
-                  background: activeTab === 'inbox' ? 'rgba(255, 255, 255, 0.25)' : 'var(--accent-emerald)',
-                  color: '#fff',
+                  background: activeTab === 'inbox' ? 'rgba(0, 0, 0, 0.1)' : 'var(--accent-emerald)',
+                  color: activeTab === 'inbox' ? 'var(--text-on-primary)' : 'var(--on-success)',
                 }}
               >
                 {inbox.total}

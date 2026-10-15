@@ -993,7 +993,7 @@ export default function Shifts() {
                       fontSize: 12,
                       fontWeight: 600,
                       background: isSelected ? 'var(--accent-rose)' : 'var(--bg-card)',
-                      color: isSelected ? '#fff' : 'var(--text-secondary)',
+                      color: isSelected ? 'var(--on-danger)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-subtle)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
@@ -1080,7 +1080,7 @@ export default function Shifts() {
                       border: '1px solid',
                       borderColor: incomeCurrency === cur ? 'var(--accent-emerald)' : 'var(--border-card)',
                       background: incomeCurrency === cur ? 'var(--accent-emerald)' : 'var(--bg-card)',
-                      color: incomeCurrency === cur ? '#fff' : 'var(--text-secondary)',
+                      color: incomeCurrency === cur ? 'var(--on-success)' : 'var(--text-secondary)',
                       cursor: 'pointer',
                     }}
                   >
@@ -1175,7 +1175,7 @@ export default function Shifts() {
                       fontSize: 12,
                       fontWeight: 600,
                       background: isSelected ? 'var(--accent-emerald)' : 'var(--bg-card)',
-                      color: isSelected ? '#fff' : 'var(--text-secondary)',
+                      color: isSelected ? 'var(--on-success)' : 'var(--text-secondary)',
                       border: '1px solid var(--border-subtle)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',

@@ -1041,6 +1041,9 @@
 
 .support-widget-textarea::placeholder {
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .support-widget-send-btn {

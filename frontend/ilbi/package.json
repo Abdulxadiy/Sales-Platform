@@ -11,7 +11,9 @@
     "test": "node --test tests/*.test.js",
     "test:camera": "node tests/cameraScanner.browser.mjs",
     "test:labels": "node tests/productLabels.browser.mjs",
-    "test:theme": "node tests/theme.browser.mjs"
+    "test:theme": "node tests/theme.browser.mjs",
+    "build:theme-preview": "node tests/buildThemePreview.mjs",
+    "test:theme-interactions": "node tests/themeInteractions.browser.mjs"
   },
   "dependencies": {
     "@zxing/library": "^0.21.3",

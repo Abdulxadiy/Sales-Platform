@@ -297,7 +297,7 @@ export default function Tenants() {
               <tr
                 style={{
                   borderBottom: '1px solid var(--border-subtle)',
-                  background: 'rgba(0,0,0,0.2)',
+                  background: 'var(--bg-chip)',
                   fontSize: 12,
                   color: 'var(--text-muted)',
                   textTransform: 'uppercase',

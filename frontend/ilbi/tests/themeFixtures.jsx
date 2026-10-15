@@ -7,12 +7,14 @@ import Select from '../src/components/common/CustomSelect';
 import Confirm from '../src/components/common/ConfirmDialog';
 import Permissions from '../src/components/employees/EmployeePermissionsSelector';
 import Voice from '../src/components/support/VoicePlayer';
+import Loading from '../src/components/common/AppLoadingScreen';
+import Intro from '../src/components/common/IlbiIntroAnimation';
 document.documentElement.dataset.theme=localStorage.getItem('ilbi_theme')==='dark'?'dark':'light';
 const host=document.querySelector('#theme-fixtures');
 host.style.cssText='min-height:100vh;background:var(--bg-app);padding:30px;color:var(--text-primary)';
 const root=createRoot(host);
 window.themeFixtureRoot=root;
-window.themeFixtures={React,root,Confirm};
+window.themeFixtures={React,root,Confirm,Loading,Intro};
 root.render(<div style={{maxWidth:900,margin:'auto',display:'grid',gap:22}}>
  <DatePicker value="2026-10-15" onChange={()=>{}}/>
  <Select value="one" options={[{value:'one',label:'Birinchi variant'},{value:'two',label:'Ikkinchi variant'}]} onChange={()=>{}}/>

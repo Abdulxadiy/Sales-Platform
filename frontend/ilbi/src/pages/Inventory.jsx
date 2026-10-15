@@ -378,8 +378,8 @@ export default function Inventory() {
                     fontSize: 10.5,
                     padding: '1px 6px',
                     borderRadius: 999,
-                    background: activeTab === 'transfers' ? 'rgba(255,255,255,0.25)' : 'var(--accent-amber)',
-                    color: '#ffffff',
+                    background: activeTab === 'transfers' ? 'rgba(0,0,0,0.1)' : 'var(--accent-amber)',
+                    color: activeTab === 'transfers' ? 'var(--text-on-primary)' : 'var(--on-warning)',
                     fontWeight: 800,
                   }}
                 >
@@ -394,7 +394,7 @@ export default function Inventory() {
                 borderRadius: 'var(--radius-xs)',
                 border: 'none',
                 background: activeTab === 'deficits' ? 'var(--accent-rose)' : 'transparent',
-                color: activeTab === 'deficits' ? '#ffffff' : 'var(--text-secondary)',
+                color: activeTab === 'deficits' ? 'var(--on-danger)' : 'var(--text-secondary)',
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: 'pointer',
@@ -411,8 +411,8 @@ export default function Inventory() {
                     fontSize: 10.5,
                     padding: '1px 6px',
                     borderRadius: 999,
-                    background: activeTab === 'deficits' ? 'rgba(255,255,255,0.25)' : 'var(--accent-rose)',
-                    color: '#ffffff',
+                    background: activeTab === 'deficits' ? 'rgba(0,0,0,0.1)' : 'var(--accent-rose)',
+                    color: 'var(--on-danger)',
                     fontWeight: 800,
                   }}
                 >

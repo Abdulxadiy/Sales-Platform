@@ -1177,7 +1177,7 @@ export default function Services() {
                     Aloqa: {formData.receipt_phone}
                   </div>
                 )}
-                <div style={{ fontSize: 9.5, color: '#a1a1aa', marginTop: 6 }}>
+                <div style={{ fontSize: 9.5, color: '#52525b', marginTop: 6 }}>
                   ILBI Savdo Platformasi orqali chop etildi
                 </div>
               </div>

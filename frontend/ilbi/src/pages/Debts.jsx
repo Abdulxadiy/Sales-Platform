@@ -369,7 +369,7 @@ export default function Debts() {
               borderRadius: 'var(--radius-xs)',
               border: 'none',
               background: counterpartyFilter === 'credit' ? 'var(--accent-emerald)' : 'var(--bg-chip)',
-              color: counterpartyFilter === 'credit' ? '#ffffff' : 'var(--text-secondary)',
+              color: counterpartyFilter === 'credit' ? 'var(--on-success)' : 'var(--text-secondary)',
               fontSize: 12.5,
               fontWeight: 700,
               cursor: 'pointer',

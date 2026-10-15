@@ -183,9 +183,9 @@ export function MiniEqualizer({
                   borderRadius: 2,
                   transition: 'height 300ms ease, background-color 300ms ease',
                   boxShadow: bar.isHighlight
-                    ? `0 0 6px ${highlightColor}60`
+                    ? `0 0 6px color-mix(in srgb, ${highlightColor} 38%, transparent)`
                     : !isInactive
-                    ? `0 0 4px ${activeColor}30`
+                    ? `0 0 4px color-mix(in srgb, ${activeColor} 19%, transparent)`
                     : 'none',
                 }}
               />
@@ -402,14 +402,14 @@ export function MiniSparkline({
           style={{ width: '100%', height: '100%', overflow: 'visible' }}
         >
           <defs>
-            <linearGradient id={`sparkGrad-${title.replace(/\s+/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={`sparkGrad-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={strokeColor} stopOpacity="0.25" />
               <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
             </linearGradient>
           </defs>
           <path
             d={areaPath}
-            fill={`url(#sparkGrad-${title.replace(/\s+/g, '')})`}
+            fill={`url(#sparkGrad-${gradientId})`}
           />
           <path
             d={pathData}
@@ -418,7 +418,7 @@ export function MiniSparkline({
             strokeWidth="2.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{ filter: `drop-shadow(0 0 4px ${strokeColor}60)` }}
+            style={{ filter: `drop-shadow(0 0 4px color-mix(in srgb, ${strokeColor} 38%, transparent))` }}
           />
           {lastPoint && (
             <circle

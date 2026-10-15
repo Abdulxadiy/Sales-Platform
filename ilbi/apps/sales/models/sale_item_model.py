@@ -36,6 +36,9 @@ class SaleItem(BaseModel):
         max_digits=12, decimal_places=2, null=True, blank=True
     )
     total_price = models.DecimalField(max_digits=14, decimal_places=2)
+    net_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     voided_quantity = models.DecimalField(

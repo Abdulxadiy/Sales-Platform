@@ -123,6 +123,7 @@ class SaleListCreateView(SalesAPIView):
                 counterparty=counterparty,
                 is_partner_sale=data.get('is_partner_sale', False),
                 idempotency_key=data.get('idempotency_key'),
+                expected_tax_settings=data.get('expected_tax_settings'),
             )
         except (SaleServiceError, StockServiceError) as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)

@@ -46,8 +46,8 @@ def create_tenant_with_owner(platform_admin):
 def test_resolve_date_range():
     # Valid periods
     s_dt, e_dt = AnalyticsService.resolve_date_range("today")
-    assert s_dt.date() == timezone.now().date()
-    assert e_dt.date() == timezone.now().date()
+    assert s_dt.date() == timezone.localdate()
+    assert e_dt.date() == timezone.localdate()
 
     s_dt, e_dt = AnalyticsService.resolve_date_range("this_week")
     assert s_dt.date() <= timezone.now().date()
@@ -327,7 +327,7 @@ def test_dashboard_with_voided_items_and_custom_period(tenant, owner):
         total_price=Decimal("100000.00"),
     )
 
-    today_str = timezone.now().date().strftime("%Y-%m-%d")
+    today_str = timezone.localdate().strftime("%Y-%m-%d")
     summary = AnalyticsService.get_dashboard_summary(
         tenant=tenant,
         period="custom",

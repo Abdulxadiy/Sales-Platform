@@ -146,17 +146,14 @@ export default function Sidebar({
             icon: Users,
           },
           {
-            to: '/services',
-            label: 'Xizmatlar & Sozlamalar',
-            icon: Sliders,
-          },
-          {
             to: '/audit',
             label: 'Audit Jurnali',
             icon: ShieldCheck,
           },
         ]
       : []),
+    ...(isAdmin || isOwner || userPerms.includes('tenants.manage_settings')
+      ? [{ to: '/services', label: 'Xizmatlar & Sozlamalar', icon: Sliders }] : []),
     {
       to: '/support',
       label: isAdmin ? 'Yordam: Murojaatlar' : 'Yordam markazi',

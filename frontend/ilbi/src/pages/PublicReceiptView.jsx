@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { salesApi } from '../api/client';
 import IlbiLogo from '../components/common/IlbiLogo';
+import ReceiptTaxSummary from '../components/common/ReceiptTaxSummary';
 
 export default function PublicReceiptView() {
   const { token } = useParams();
@@ -71,7 +72,7 @@ export default function PublicReceiptView() {
     if (cur === 'USD') {
       return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    return Math.round(num).toLocaleString('uz-UZ') + ' UZS';
+    return num.toLocaleString('uz-UZ', { maximumFractionDigits: 2 }) + ' UZS';
   };
 
   const formatQty = (qty, unit) => {
@@ -113,6 +114,10 @@ export default function PublicReceiptView() {
   }
 
   const cur = receipt.currency || 'UZS';
+  const config = receipt.receipt_snapshot || {};
+  const storeName = config.version ? config.store_name : receipt.store_name;
+  const storeAddress = config.version ? config.store_address : receipt.store_address;
+  const storePhone = config.version ? config.receipt_phone : receipt.store_phone;
   const items = receipt.items || [];
   const isDebt = receipt.payment_type === 'debt';
   const isVoided = receipt.status === 'voided';
@@ -225,11 +230,14 @@ export default function PublicReceiptView() {
             <IlbiLogo size={36} textColor="#0f172a" />
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 4px', color: '#0f172a' }}>
-            {receipt.store_name || ''}
+            {storeName || ''}
           </h1>
-          {(receipt.store_address || receipt.store_phone) && (
+          {config.seller_name && <div style={{ fontSize: 12, color: '#334155' }}>Sotuvchi: {config.seller_name}</div>}
+          {config.seller_tax_identifier && <div style={{ fontSize: 12, color: '#334155' }}>STIR / JShShIR: {config.seller_tax_identifier}</div>}
+          {config.receipt_header && <div style={{ fontSize: 12, color: '#334155', whiteSpace: 'pre-wrap' }}>{config.receipt_header}</div>}
+          {(storeAddress || storePhone) && (
             <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>
-              {[receipt.store_address, receipt.store_phone && `Tel: ${receipt.store_phone}`].filter(Boolean).join(' • ')}
+              {[storeAddress, storePhone && `Tel: ${storePhone}`].filter(Boolean).join(' • ')}
             </div>
           )}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: '#f1f5f9', fontSize: 12, color: '#475569', fontWeight: 600 }}>
@@ -311,12 +319,13 @@ export default function PublicReceiptView() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#475569' }}>
                     <span>
-                      {formatQty(qty, it.unit)} × {formatMoney(unitPrice, cur)}
+                      {formatQty(qty, it.unit)} × {formatMoney(unitPrice, cur)}{config.is_vat_payer && !config.price_includes_vat && ' (QQSsiz)'}
                     </span>
                     <strong style={{ color: '#0f172a', fontSize: 13 }}>
                       {formatMoney(lineTotal, cur)}
                     </strong>
                   </div>
+                  {config.is_vat_payer && config.receipt_show_item_tax !== false && it.tax_rate != null && <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>QQS {Number(it.tax_rate)}%: {formatMoney(it.tax_amount, cur)}</div>}
                 </div>
               );
             })}
@@ -334,11 +343,16 @@ export default function PublicReceiptView() {
           </div>
         </div>
 
+        <div style={{ padding: '0 28px 16px', color: '#0f172a' }}>
+          <ReceiptTaxSummary sale={receipt} formatMoney={formatMoney} />
+          {Number(receipt.refunded_amount || 0) > 0 && config.is_vat_payer && <div style={{ fontSize: 11 }}>QQS asl savdo uchun ko‘rsatilgan.</div>}
+        </div>
         {/* Printable customer copy footer */}
         <div style={{ padding: '20px 28px', background: '#f8fafc', borderTop: '1px dashed #cbd5e1', textAlign: 'center' }}>
           <div style={{ marginTop: 14, fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
             <div style={{ fontWeight: 700, color: '#0f172a' }}>XARIDINGIZ UCHUN TASHAKKUR!</div>
             <div>Ushbu nusxa savdo ma’lumotlarini ko‘rsatadi va rasmiy fiskal chek o‘rnini bosmaydi.</div>
+            {config.receipt_footer && <div style={{ whiteSpace: 'pre-wrap' }}>{config.receipt_footer}</div>}
             <div style={{ marginTop: 4, color: '#94a3b8', fontSize: 10 }}>Chek raqami: {receipt.receipt_number}</div>
           </div>
         </div>

@@ -43,7 +43,7 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-function RoleProtectedRoute({ children, allowedRoles }) {
+function RoleProtectedRoute({ children, allowedRoles, allowedPermission }) {
   const { role, isAuthenticated, user, loading } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
   if (!isAuthenticated) {
@@ -52,7 +52,7 @@ function RoleProtectedRoute({ children, allowedRoles }) {
   if (user && user.terms_accepted === false) {
     return <Navigate to="/accept-terms" replace />;
   }
-  if (!allowedRoles.includes(role)) {
+  if (!allowedRoles.includes(role) && !(allowedPermission && (user?.permissions || []).includes(allowedPermission))) {
     return <Navigate to="/" replace />;
   }
   return children;
@@ -142,7 +142,7 @@ export default function App() {
                   <Route
                     path="services"
                     element={
-                      <RoleProtectedRoute allowedRoles={['owner', 'platform_admin']}>
+                      <RoleProtectedRoute allowedRoles={['owner', 'platform_admin']} allowedPermission="tenants.manage_settings">
                         <Services />
                       </RoleProtectedRoute>
                     }

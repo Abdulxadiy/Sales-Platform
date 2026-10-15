@@ -1,5 +1,5 @@
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Sliders,
   Coins,
@@ -22,11 +22,16 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../context/ToastContext';
 import CustomSelect from '../components/common/CustomSelect';
 import PriceInput from '../components/common/PriceInput';
-import PhoneInput from '../components/common/PhoneInput';
+import ReceiptSettingsPanel from '../components/common/ReceiptSettingsPanel';
+import { receiptDefaults } from '../utils/receiptTax';
+import { useTenant } from '../context/TenantContext';
 
 export default function Services() {
   const { user, isAdmin } = useAuth();
   const toast = useToast();
+  const { activeTenant } = useTenant();
+  const activeTenantId = activeTenant?.id;
+  const loadGeneration = useRef(0);
 
   const [activeTab, setActiveTab] = useState('currency'); // 'currency' | 'telegram' | 'receipt' | 'automation'
   const [selectedTenantId, setSelectedTenantId] = useState(user?.tenant_id || null);
@@ -45,6 +50,8 @@ export default function Services() {
 
   // Main Form Data
   const [formData, setFormData] = useState({
+    ...receiptDefaults,
+    address: '',
     name: '',
     description: '',
     usd_rate: '12800.00',
@@ -68,6 +75,7 @@ export default function Services() {
 
   // Load current tenant settings
   const loadTenantData = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     if (isAdmin && !selectedTenantId) {
       setLoading(false);
       return;
@@ -77,9 +85,13 @@ export default function Services() {
     setTenant(null);
     try {
       const params = isAdmin && selectedTenantId ? { tenant_id: selectedTenantId } : {};
+      if (!isAdmin && !activeTenantId) { setLoading(false); return; }
       const data = await tenantApi.getCurrentTenant(params);
+      if (generation !== loadGeneration.current) return;
       setTenant(data);
       setFormData({
+        ...Object.fromEntries(Object.entries(receiptDefaults).map(([key, fallback]) => [key, data[key] ?? fallback])),
+        address: data.address || '',
         name: data.name || '',
         description: data.description || '',
         usd_rate: data.usd_rate ? String(data.usd_rate) : '12800.00',
@@ -105,14 +117,16 @@ export default function Services() {
       const rate = parseFloat(data.usd_rate) || 12800;
       setCalcUzs((100 * rate).toLocaleString('uz-UZ'));
     } catch (err) {
+      if (generation !== loadGeneration.current) return;
       setLoadError('Do‘kon sozlamalarini yuklab bo‘lmadi: ' + err.message);
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
-  }, [isAdmin, selectedTenantId]);
+  }, [isAdmin, selectedTenantId, activeTenantId]);
 
   useEffect(() => {
     loadTenantData();
+    return () => { loadGeneration.current++; };
   }, [loadTenantData]);
 
   // Handle Calculator Changes
@@ -142,6 +156,7 @@ export default function Services() {
   // Save Tenant Settings
   const handleSave = async (e) => {
     if (e) e.preventDefault();
+    const generation = loadGeneration.current;
     setSaving(true);
     try {
       const payload = {
@@ -152,6 +167,7 @@ export default function Services() {
       };
       const params = isAdmin && selectedTenantId ? { tenant_id: selectedTenantId } : {};
       const updated = await tenantApi.updateCurrentTenant(payload, params);
+      if (generation !== loadGeneration.current) return;
       setTenant(updated);
       toast.success('Sozlamalar muvaffaqiyatli saqlandi');
     } catch (err) {
@@ -206,7 +222,7 @@ export default function Services() {
   const tabs = [
     { key: 'currency', label: 'Valyuta & Kurs', icon: Coins },
     { key: 'telegram', label: 'Telegram & Bildirishnomalar', icon: Send },
-    { key: 'receipt', label: 'Chek & Kassa', icon: Receipt },
+    { key: 'receipt', label: 'Chek va soliqlar', icon: Receipt },
     { key: 'automation', label: 'Avtomatlashtirish & Xizmatlar', icon: Cpu },
   ];
 
@@ -1010,180 +1026,8 @@ export default function Services() {
       {/* TAB 3: CHEK & KASSA SOZLAMALARI */}
       {/* ========================================================================= */}
       {activeTab === 'receipt' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
-          {/* Settings inputs */}
-          <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                Chek Rekvizitlari & Matnlari
-              </h3>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                Sotuv chekida chop etiladigan do‘kon sarlavhasi, yakuniy izohi va kontakt raqamlari
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Chek Yuqori Qismi (Sarlavha)
-              </label>
-              <input
-                type="text"
-                placeholder="Masalan: Bizni tanlaganingizdan mamnunmiz!"
-                value={formData.receipt_header}
-                onChange={(e) => setFormData({ ...formData, receipt_header: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Chek Pastki Qismi (Yakuniy Eslatma)
-              </label>
-              <textarea
-                rows={3}
-                placeholder="Qaytarish shartlarini tegishli tovar toifasiga mos yozing"
-                value={formData.receipt_footer}
-                onChange={(e) => setFormData({ ...formData, receipt_footer: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                  resize: 'vertical',
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Chekda Ko‘rsatiladigan Telefon
-              </label>
-              <PhoneInput
-                value={formData.receipt_phone}
-                onChange={(e) => setFormData({ ...formData, receipt_phone: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-card)',
-                  background: 'var(--bg-input)',
-                  color: 'var(--text-primary)',
-                  fontSize: 14,
-                  outline: 'none',
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="btn btn-primary"
-                style={{ padding: '10px 24px', fontSize: 14, fontWeight: 700 }}
-              >
-                <Save size={16} />
-                <span>{saving ? 'Saqlanmoqda...' : 'Chek Sozlamalarini Saqlash'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Live Receipt Visual Preview */}
-          <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Receipt size={18} color="var(--primary)" />
-              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-                Chek Ko‘rinishi (Jonli Preview)
-              </h3>
-            </div>
-
-            {/* Thermal paper mock card */}
-            <div
-              style={{
-                background: '#fafafa',
-                color: '#18181b',
-                borderRadius: 8,
-                padding: '24px 20px',
-                fontFamily: 'monospace, monospace',
-                fontSize: 12,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                border: '1px dashed #d4d4d8',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-              }}
-            >
-              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase' }}>
-                  {tenant?.name || 'ILBI SAVDO'}
-                </div>
-                {formData.receipt_header && (
-                  <div style={{ fontSize: 11, fontStyle: 'italic', color: '#52525b' }}>
-                    {formData.receipt_header}
-                  </div>
-                )}
-                <div style={{ fontSize: 10.5, color: '#71717a' }}>
-                  Namuna: {previewDate.toLocaleDateString('uz-UZ')} {previewDate.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })} | Chek #1042
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px dashed #a1a1aa' }} />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                  <span>Nomi</span>
-                  <span>Summa</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>1. Smartfon Galaxy A54 (1x)</span>
-                  <span>3,850,000 UZS</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>2. Himoya oynasi 9D (2x)</span>
-                  <span>70,000 UZS</span>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px dashed #a1a1aa' }} />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800 }}>
-                <span>JAMI TO‘LOV:</span>
-                <span>3,920,000 UZS</span>
-              </div>
-
-              <div style={{ borderTop: '1px dashed #a1a1aa' }} />
-
-              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {formData.receipt_footer && (
-                  <div style={{ fontSize: 11, color: '#3f3f46', lineHeight: 1.4 }}>
-                    {formData.receipt_footer}
-                  </div>
-                )}
-                {formData.receipt_phone && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#18181b', marginTop: 2 }}>
-                    Aloqa: {formData.receipt_phone}
-                  </div>
-                )}
-                <div style={{ fontSize: 9.5, color: '#52525b', marginTop: 6 }}>
-                  ILBI Savdo Platformasi orqali chop etildi
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ReceiptSettingsPanel tenant={tenant} value={formData} onChange={setFormData}
+          onSave={handleSave} saving={saving} previewDate={previewDate} />
       )}
 
       {/* ========================================================================= */}

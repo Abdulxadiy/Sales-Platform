@@ -25,7 +25,6 @@ from api.pagination import StandardResultsSetPagination
 from api.permissions import (
     HasEmployeePermission,
     IsActiveOwner,
-    IsOwnerOrPlatformAdmin,
     IsPlatformAdmin,
     IsTenantMember,
     IsTenantOwnerOrPlatformAdmin,
@@ -35,6 +34,7 @@ from apps.accounts.services.password_reset_service import request_password_reset
 from apps.core.models import AuditAction
 from apps.core.services.audit_service import AuditService
 from apps.tenants.models import SellerProfile, Tenant
+from apps.accounts.services.permission_service import PermissionService
 from apps.tenants.seller_profile_service import SellerProfileService, SellerProfileServiceError
 from apps.tenants.services import TenantService, TenantServiceError
 
@@ -52,6 +52,7 @@ from .serializers import (
     TenantMySerializer,
     TenantOwnerSerializer,
     TenantStaffSerializer,
+    TenantSettingsSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,21 +60,20 @@ logger = logging.getLogger(__name__)
 
 def _save_tenant_settings_with_audit(serializer, *, request, tenant):
     """Save a tenant edit and its value-free change summary in one transaction."""
-    changed_fields = sorted(
-        field for field, value in serializer.validated_data.items()
-        if getattr(tenant, field) != value
-    )
     with transaction.atomic():
-        serializer.save()
+        locked = Tenant.objects.select_for_update().get(pk=tenant.pk)
+        fresh = type(serializer)(locked, data=serializer.initial_data, partial=serializer.partial, context=serializer.context)
+        fresh.is_valid(raise_exception=True)
+        changed_fields = sorted(field for field, value in fresh.validated_data.items() if getattr(locked, field) != value)
+        for field, value in fresh.validated_data.items():
+            setattr(locked, field, value)
+        locked.save(update_fields=list(fresh.validated_data))
+        serializer.instance = locked
         if changed_fields:
             AuditService.log(
-                action=AuditAction.TENANT_UPDATE,
-                actor=request.user,
-                tenant=tenant,
-                target_model="Tenant",
-                target_id=str(tenant.pk),
-                changes={"fields": changed_fields},
-                description=f"Tenant settings updated: {tenant.pk}",
+                action=AuditAction.TENANT_UPDATE, actor=request.user, tenant=locked,
+                target_model="Tenant", target_id=str(locked.pk), changes={"fields": changed_fields},
+                description=f"Tenant settings updated: {locked.pk}",
             )
 
 
@@ -458,9 +458,14 @@ class TenantActivateView(TenantContextMixin, APIView):
 class CurrentTenantView(TenantContextMixin, APIView):
     """
     GET /api/v1/tenants/current/ -- retrieve current tenant settings.
-    PATCH /api/v1/tenants/current/ -- update settings (owner or platform_admin).
+    PATCH /api/v1/tenants/current/ -- update settings with tenants.manage_settings.
     """
     permission_classes = [IsAuthenticated]
+
+    def _can_manage(self, request, tenant):
+        return PermissionService.has_permission(
+            request.user, "tenants.manage_settings", tenant=tenant, employee=self.employee,
+        )
 
     def _get_tenant(self, request):
         user = request.user
@@ -478,6 +483,8 @@ class CurrentTenantView(TenantContextMixin, APIView):
             return Response(TenantAdminSerializer(tenant).data)
         elif request.user.role == "owner":
             return Response(TenantOwnerSerializer(tenant).data)
+        if self._can_manage(request, tenant):
+            return Response(TenantSettingsSerializer(tenant).data)
         return Response(TenantStaffSerializer(tenant).data)
 
     @extend_schema(request=TenantOwnerSerializer, responses={200: TenantOwnerSerializer})
@@ -485,10 +492,10 @@ class CurrentTenantView(TenantContextMixin, APIView):
         tenant = self._get_tenant(request)
         if not tenant:
             return Response({"detail": "Do'kon topilmadi."}, status=status.HTTP_404_NOT_FOUND)
-        if request.user.role not in ("owner", "platform_admin"):
-            return Response({"detail": "Faqat do'kon egasi sozlamalarni o'zgartira oladi."}, status=status.HTTP_403_FORBIDDEN)
+        if not self._can_manage(request, tenant):
+            return Response({"detail": "Do‘kon sozlamalarini boshqarish ruxsati kerak."}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer_class = TenantAdminSerializer if request.user.role == "platform_admin" else TenantOwnerSerializer
+        serializer_class = TenantAdminSerializer if request.user.role == "platform_admin" else TenantSettingsSerializer
         serializer = serializer_class(tenant, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         _save_tenant_settings_with_audit(serializer, request=request, tenant=tenant)
@@ -521,7 +528,8 @@ class TenantTestTelegramView(TenantContextMixin, APIView):
     """
     POST /api/v1/tenants/current/test-telegram/ -- send test message to configured Telegram destinations.
     """
-    permission_classes = [IsOwnerOrPlatformAdmin]
+    permission_classes = [HasEmployeePermission]
+    required_permission = "tenants.manage_settings"
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
@@ -583,7 +591,8 @@ class TenantSendReportNowView(TenantContextMixin, APIView):
     """
     POST /api/v1/tenants/current/send-report-now/ -- trigger daily report immediately.
     """
-    permission_classes = [IsOwnerOrPlatformAdmin]
+    permission_classes = [HasEmployeePermission]
+    required_permission = "tenants.manage_settings"
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):
@@ -612,7 +621,8 @@ class TenantSendLowStockReportNowView(TenantContextMixin, APIView):
     """
     POST /api/v1/tenants/current/send-low-stock-report-now/ -- trigger deficit report immediately.
     """
-    permission_classes = [IsOwnerOrPlatformAdmin]
+    permission_classes = [HasEmployeePermission]
+    required_permission = "tenants.manage_settings"
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     def post(self, request):

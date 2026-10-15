@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import IlbiLogo from './IlbiLogo';
 import { useAuth } from '../../hooks/useAuth';
+import ReceiptTaxSummary from './ReceiptTaxSummary';
 
 /**
  * High-resolution QR Code generator optimized for thermal printer heads (203 DPI)
@@ -85,6 +86,7 @@ export function printReceiptSlip(
   // Paper width: 58mm default (matching Uzum 58mm thermal printers) or 80mm
   const storedWidth =
     customPaperWidth ||
+    printEl.dataset.paperWidth ||
     (typeof window !== 'undefined' ? localStore.getItem('ilbi_receipt_paper_width') : null) ||
     '58mm';
 
@@ -366,6 +368,7 @@ export default function ReceiptSlip({
 
   const effectivePaperWidth =
     paperWidth ||
+    (Array.isArray(sales) ? sales[0] : sales)?.receipt_snapshot?.receipt_paper_width ||
     (typeof window !== 'undefined' ? localStore.getItem('ilbi_receipt_paper_width') : null) ||
     '58mm';
   const is58mm = effectivePaperWidth === '58mm';
@@ -383,7 +386,7 @@ export default function ReceiptSlip({
     if (cur === 'USD') {
       return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    return `${Math.round(num).toLocaleString('uz-UZ')} UZS`;
+    return `${num.toLocaleString('uz-UZ', { maximumFractionDigits: 2 })} UZS`;
   };
 
   const formatQty = (qty, unit) => {
@@ -414,6 +417,7 @@ export default function ReceiptSlip({
   return (
     <div
       id={id}
+      data-paper-width={effectivePaperWidth}
       className={`thermal-receipt-paper ${className}`}
       style={{
         background: '#ffffff',
@@ -434,6 +438,7 @@ export default function ReceiptSlip({
       }}
     >
       {salesList.map((sale, sIdx) => {
+        const config = sale?.receipt_snapshot || {};
         const cur = sale?.currency || 'UZS';
         const isUsd = cur === 'USD';
         const receiptNo = sale?.receipt_number || sale?.id || `POS-${Date.now()}`;
@@ -455,7 +460,7 @@ export default function ReceiptSlip({
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
                 <IlbiLogo size={26} textColor="#000000" />
               </div>
-              {(sale?.tenant_name || store) && (
+              {(config.store_name || sale?.tenant_name || store) && (
                 <div
                   style={{
                     fontSize: is58mm ? 14 : 15.5,
@@ -466,17 +471,19 @@ export default function ReceiptSlip({
                     letterSpacing: '0.02em',
                   }}
                 >
-                  {sale?.tenant_name || store}
+                  {config.store_name || sale?.tenant_name || store}
                 </div>
               )}
-              {sale?.tenant_address && (
+              {config.seller_name && <div style={{ fontSize: 10, marginTop: 3 }}>Sotuvchi: {config.seller_name}</div>}
+              {config.seller_tax_identifier && <div style={{ fontSize: 10, marginTop: 2 }}>STIR / JShShIR: {config.seller_tax_identifier}</div>}
+              {(config.store_address || sale?.tenant_address) && (
                 <div style={{ fontSize: is58mm ? 8.5 : 9.5, color: '#000000', marginTop: 2 }}>
-                  {sale.tenant_address}
+                  {config.version ? config.store_address : sale.tenant_address}
                 </div>
               )}
-              {sale?.tenant_phone && (
+              {(config.receipt_phone || sale?.tenant_phone) && (
                 <div style={{ fontSize: is58mm ? 8.5 : 9.5, color: '#000000', marginTop: 1 }}>
-                  Tel: {sale.tenant_phone}
+                  Tel: {config.version ? config.receipt_phone : sale.tenant_phone}
                 </div>
               )}
             </div>
@@ -499,13 +506,14 @@ export default function ReceiptSlip({
                 <span>Sana:</span>
                 <span>{formatDate(sale?.created_at)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              {config.receipt_header && <div style={{ fontSize: 10, marginBottom: 5, whiteSpace: 'pre-wrap', textAlign: 'center' }}>{config.receipt_header}</div>}
+              {config.receipt_show_cashier !== false && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span>Kassir:</span>
                 <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>
                   {sale?.sold_by_name || cashier}
                 </span>
-              </div>
-              {counterparty && (
+              </div>}
+              {counterparty && config.receipt_show_customer !== false && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span>Mijoz:</span>
                   <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>
@@ -572,11 +580,17 @@ export default function ReceiptSlip({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', color: '#000000', marginTop: 1, paddingLeft: 6 }}>
                       <span style={{ fontSize: is58mm ? 9 : 10 }}>
                         {formatQty(qty, unit)} × {formatMoney(unitPrice, cur)}
+                        {config.is_vat_payer && !config.price_includes_vat && ' (QQSsiz)'}
                       </span>
                       <span style={{ fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {formatMoney(lineTotal, cur)}
                       </span>
                     </div>
+                    {config.is_vat_payer && config.receipt_show_item_tax !== false && it.tax_rate != null && (
+                      <div style={{ fontSize: 9, paddingLeft: 6, marginTop: 2 }}>
+                        QQS {Number(it.tax_rate)}%: {formatMoney(it.tax_amount, cur)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -619,6 +633,8 @@ export default function ReceiptSlip({
                 <div>Qaytarilgan: {formatMoney(sale.refunded_amount, cur)}</div>
                 <div><strong>Qaytarishdan keyingi summa: {formatMoney(sale.net_amount ?? totalAmount - Number(sale.refunded_amount), cur)}</strong></div>
               </>}
+              <ReceiptTaxSummary sale={sale} formatMoney={formatMoney} />
+              {Number(sale?.refunded_amount || 0) > 0 && config.is_vat_payer && <div style={{ fontSize: 9 }}>QQS yuqorida asl savdo uchun ko‘rsatilgan.</div>}
 
               {/* Optional Cash & Change Breakdown */}
               {sale?.payment_type === 'cash' && (isUsd ? paidAmountUSD : paidAmountUZS) && (
@@ -653,7 +669,7 @@ export default function ReceiptSlip({
               />
 
               {/* QR Code (Has dashed border frame!) */}
-              {showQrCode && (
+              {showQrCode && sale?.public_token && (
                 <ReceiptQRCode
                   value={
                     typeof window !== 'undefined'
@@ -667,6 +683,8 @@ export default function ReceiptSlip({
               <div style={{ textAlign: 'center', marginTop: 8, fontSize: 9, color: '#000000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                 <div style={{ fontWeight: 700 }}>XARIDINGIZ UCHUN RAHMAT!</div>
                 <div>Iltimos, chekni saqlab qo‘ying.</div>
+                {config.receipt_footer && <div style={{ whiteSpace: 'pre-wrap' }}>{config.receipt_footer}</div>}
+                <div style={{ fontSize: 8 }}>Savdo nusxasi — fiskal chek emas</div>
                 <div style={{ marginTop: 2, fontSize: 8.5, color: '#000000' }}>ilbi.uz</div>
               </div>
             </div>

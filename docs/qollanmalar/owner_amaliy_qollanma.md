@@ -92,6 +92,20 @@ Bu misol demo muhitidan. Hozir production POS fiskal integratsiya tayyor bo‘lg
 
 ## 9. Xodim va yordam
 
+**Xizmatlar & Sozlamalar → Chek va soliqlar** bo‘limida do‘konning soliq rejimi, QQS maqomi va stavkasi,
+narxga QQS kiritilganligi yoki ustiga qo‘shilishi, AOS hamda foyda solig‘i sozlanadi. AOS va foyda solig‘i
+sotuvchining sozlamalari sifatida saqlanadi; xaridor to‘loviga qo‘shilmaydi va bitta chekdan hisoblanmaydi.
+Chekning manzili, telefon va matnlari, 58/80 mm qog‘ozi, kassir/mijoz nomi va mahsulot bo‘yicha QQS ko‘rinishi
+ham shu yerda boshqariladi. STIR va rasmiy nom biriktirilgan sotuvchi profilidan olinadi.
+
+Saqlashdan oldin jonli namunani tekshiring. O‘zgarishlar yangi savdolarga qo‘llanadi; eski savdoning summalari
+va saqlangan chek sozlamalari o‘zgarmaydi. Soliq ma’lumoti saqlanmagan eski cheklar qayta hisoblanmaydi.
+Bu sozlamalar fiskal provayderga ulanishni almashtirmaydi.
+
+Xodimga boshqarishni topshirish uchun ruxsatlar ichidagi **Do‘kon sozlamalarini boshqarish**
+(`tenants.manage_settings`)ni bering. Bu ruxsat chek/soliq, kurs va bildirishnoma sozlamalariga,
+shu jumladan sozlangan hisobotlarni qo‘lda jo‘natishga ham amal qiladi; boshqa do‘konga kirish bermaydi.
+
 ![Xodimlar — qo‘shish va email taklifi](../rasmlar/focused/employees_actions.png)
 
 1. **Xodim qo‘shish** orqali shaxsiy telefon, lavozim va zarur ruxsatlarni belgilang.

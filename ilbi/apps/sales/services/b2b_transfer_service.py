@@ -23,6 +23,7 @@ from apps.sales.models import (
     Sale,
     SaleItem,
 )
+from apps.sales.taxes import cumulative_item_amount
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,8 @@ class B2BTransferService:
         # Round the cumulative refunded quantity, so splitting a return never
         # refunds more (or less) than a single request for the same quantity.
         previous = item.voided_quantity + item.b2b_rejected_quantity + item.b2b_discrepancy_closed_quantity
-        before = (previous * item.unit_price).quantize(Decimal("0.01"))
-        after = ((previous + quantity) * item.unit_price).quantize(Decimal("0.01"))
+        before = cumulative_item_amount(item, previous)
+        after = cumulative_item_amount(item, previous + quantity)
         return max(Decimal("0"), min(after - before, item.total_price - before))
 
     @classmethod
@@ -235,12 +236,12 @@ class B2BTransferService:
                     raise B2BTransferServiceError("Tanlangan variantning valyutasi va o‘lchov birligi jo‘natilgan tovarga mos bo‘lishi kerak.")
 
                 from apps.inventory.services.batch_service import BatchService
-                # Intake into B's stock with cost_price = item.unit_price
+                # Preserve the actual charged unit value, including any added VAT.
                 StockService.intake(
                     tenant=b_tenant,
                     product_variant=target_variant,
                     quantity=accepted_qty,
-                    cost_price=item.unit_price,
+                    cost_price=(item.total_price / item.quantity).quantize(Decimal("0.01")),
                     batch_manifest=BatchService.sale_manifest(sale, item.product_variant, accepted_qty, item.b2b_accepted_quantity) or None,
                     created_by=accepting_user,
                     note=f"B2B qabul qilindi: {sale.receipt_number} ({sale.tenant.name} dan)",

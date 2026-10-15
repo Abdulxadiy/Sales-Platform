@@ -4,6 +4,7 @@ from apps.accounts.services.employee_service import EmployeeService, EmployeeSer
 from apps.accounts.services.membership_policy import MembershipPolicyError, assert_can_own_tenants
 from django.db import transaction
 from apps.tenants.models import SellerProfile, Tenant
+from apps.tenants.receipt_settings import RECEIPT_SETTING_FIELDS
 from django.contrib.auth import get_user_model
 from django.conf import settings
 
@@ -22,7 +23,7 @@ class TenantService:
         "low_stock_report_target", "low_stock_report_time", "low_stock_frequency",
         "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
         "receipt_header", "receipt_footer", "receipt_phone",
-    )
+    ) + RECEIPT_SETTING_FIELDS
 
     @staticmethod
     @transaction.atomic

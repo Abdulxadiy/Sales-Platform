@@ -39,6 +39,7 @@ import { useTenant } from '../context/TenantContext';
 import { getOrCreateRequestKey } from '../utils/requestKey';
 import { useAuth } from '../hooks/useAuth';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { calculateTaxLine, taxExpectation } from '../utils/receiptTax';
 
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 
@@ -64,6 +65,7 @@ export default function POS() {
   );
   const [checkoutVariants, setCheckoutVariants] = useState([]);
   const [usdRate, setUsdRate] = useState(0);
+  const [receiptSettings, setReceiptSettings] = useState(null);
   const [usdCalculatorOpen, setUsdCalculatorOpen] = useState(false);
   const [usdCalculatorAmount, setUsdCalculatorAmount] = useState('');
   const [usdCalculatorSaleTotalUzs, setUsdCalculatorSaleTotalUzs] = useState('');
@@ -116,16 +118,25 @@ export default function POS() {
 
   useEffect(() => {
     let active = true;
+    setReceiptSettings(null);
     tenantApi.getCurrentTenant().then((data) => {
-      if (active) setUsdRate(Number(data.usd_rate || 0));
-    }).catch(() => setUsdRate(0));
+      if (active) {
+        setUsdRate(Number(data.usd_rate || 0));
+        setReceiptSettings(data.receipt_settings || {});
+        if (data.receipt_settings?.receipt_paper_width) setReceiptPaperWidth(data.receipt_settings.receipt_paper_width);
+      }
+    }).catch(() => { if (active) { setUsdRate(0); setReceiptSettings(null); } });
     return () => { active = false; };
-  }, [activeTenant?.id]);
+  }, [activeTenant?.id, setReceiptPaperWidth]);
 
   const previousTenantId = useRef(null);
   useEffect(() => {
     if (previousTenantId.current && String(previousTenantId.current) !== String(activeTenant?.id)) {
       resetCart();
+      setCheckoutOpen(false);
+      setReceiptOpen(false);
+      setSelectedCounterparty('');
+      setSelectedCounterpartyRow(null);
     }
     previousTenantId.current = activeTenant?.id || null;
   }, [activeTenant?.id, resetCart]);
@@ -319,11 +330,11 @@ export default function POS() {
   const cartTotalUZS = useMemo(
     () =>
       cartUZS.reduce(
-        (acc, item) => acc + getItemEffectivePrice(item) * (Number(item.quantity) || 0),
+        (acc, item) => acc + Math.round(calculateTaxLine(item.quantity, getItemEffectivePrice(item), receiptSettings || {}).totalAmount * 100),
         0
       ),
-    [cartUZS, getItemEffectivePrice]
-  );
+    [cartUZS, getItemEffectivePrice, receiptSettings]
+  ) / 100;
 
   const cartTotalUSD = useMemo(
     () =>
@@ -376,8 +387,15 @@ export default function POS() {
     }
 
     let currentVariants;
+    let checkoutSettings;
+    const checkingTenantId = activeTenant?.id;
     try {
+      const tenantData = await tenantApi.getCurrentTenant();
+      if (String(checkingTenantId) !== String(previousTenantId.current)) return;
+      checkoutSettings = tenantData.receipt_settings || {};
+      setReceiptSettings(checkoutSettings);
       const data = await catalogApi.getVariants({ ids: cart.map(item => item.variant.id).join(',') });
+      if (String(checkingTenantId) !== String(previousTenantId.current)) return;
       currentVariants = Array.isArray(data) ? data : data.results || [];
       setCheckoutVariants(currentVariants);
     } catch (error) {
@@ -399,7 +417,8 @@ export default function POS() {
       }
     }
 
-    setPaidAmountUZS(cartTotalUZS > 0 ? String(cartTotalUZS) : '');
+    const refreshedTotal = cartUZS.reduce((sum, item) => sum + Math.round(calculateTaxLine(item.quantity, getItemEffectivePrice(item), checkoutSettings).totalAmount * 100), 0) / 100;
+    setPaidAmountUZS(refreshedTotal > 0 ? String(refreshedTotal) : '');
     setPaidAmountUSD(cartTotalUSD > 0 ? String(cartTotalUSD) : '');
     setCheckoutOpen(true);
   };
@@ -466,7 +485,9 @@ export default function POS() {
 
     setSubmittingSale(true);
     try {
+      if (!receiptSettings) throw new Error('Soliq sozlamalarini yuklash uchun to‘lov oynasini qayta oching.');
       const salePayload = {
+        expected_tax_settings: taxExpectation(receiptSettings),
         payment_type: paymentMethod.toLowerCase(), // 'cash' | 'card' | 'debt'
         is_partner_sale: isPartnerSale,
         counterparty_id: selectedCounterparty ? parseInt(selectedCounterparty, 10) : null,
@@ -1387,7 +1408,7 @@ export default function POS() {
                   {/* Editable Price Row */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingTop: 6, borderTop: '1px dashed var(--border-subtle)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Narx ({isUSD ? '$' : 'UZS'}):</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Narx ({isUSD ? '$' : 'UZS'}{receiptSettings?.is_vat_payer && !receiptSettings.price_includes_vat ? ', QQSsiz' : ''}):</span>
                       <PriceInput
                         value={item.customPrice ?? ''}
                         onChange={(e) => updateItemPrice(item.variant.id, e.target.value)}
@@ -1407,12 +1428,13 @@ export default function POS() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'right' }}>
                       {isUSD
                         ? `$${(numPrice * qty).toFixed(2)}`
-                        : `${(numPrice * qty).toLocaleString()} UZS`}
+                        : `${calculateTaxLine(qty, numPrice, receiptSettings || {}).totalAmount.toLocaleString()} UZS`}
                     </div>
                   </div>
 
                   {/* Advisory warning if entered price is lower than floor price */}
-                  {priceWarning && (
+                  {receiptSettings?.is_vat_payer && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>QQS {Number(receiptSettings.vat_rate)}% {receiptSettings.price_includes_vat ? 'narx ichida' : 'jami summaga qo‘shilgan'}</div>}
+              {priceWarning && (
                     <div style={{ fontSize: 10, color: 'var(--accent-amber)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                       {priceWarning}
                     </div>
@@ -1813,7 +1835,7 @@ export default function POS() {
                 >
                   {cartUSD.map((item) => {
                     const price = getItemEffectivePrice(item);
-                    const lineTotal = price * item.quantity;
+                    const lineTotal = calculateTaxLine(item.quantity, price, receiptSettings || {}).totalAmount;
                     return (
                       <div
                         key={item.variant.id}
@@ -1944,7 +1966,7 @@ export default function POS() {
                 >
                   {cartUZS.map((item) => {
                     const price = getItemEffectivePrice(item);
-                    const lineTotal = price * item.quantity;
+                    const lineTotal = calculateTaxLine(item.quantity, price, receiptSettings || {}).totalAmount;
                     return (
                       <div
                         key={item.variant.id}

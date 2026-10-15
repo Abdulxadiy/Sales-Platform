@@ -161,6 +161,7 @@ class SaleItemOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSe
             "cost_price",
             "original_partner_price",
             "total_price",
+            "net_amount", "tax_amount", "tax_rate",
             "status",
             "voided_quantity",
             "b2b_accepted_quantity",
@@ -198,6 +199,7 @@ class SaleOutputSerializer(serializers.ModelSerializer):
             "currency",
             "is_partner_sale",
             "total_amount",
+            "subtotal_amount", "tax_amount", "receipt_snapshot",
             "refunded_amount",
             "net_amount",
             "payment_type",
@@ -222,6 +224,7 @@ class SaleCreateItemInputSerializer(serializers.Serializer):
 
 
 class SaleCreateInputSerializer(serializers.Serializer):
+    expected_tax_settings = serializers.JSONField(required=False)
     items = SaleCreateItemInputSerializer(many=True)
     payment_type = serializers.ChoiceField(choices=["cash", "card", "debt"], default="cash")
     counterparty_id = serializers.IntegerField(required=False, allow_null=True)
@@ -348,6 +351,7 @@ class PublicReceiptItemSerializer(serializers.ModelSerializer):
             "status",
             "unit_price",
             "total_price",
+            "net_amount", "tax_amount", "tax_rate",
         ]
         read_only_fields = fields
 
@@ -369,6 +373,7 @@ class PublicReceiptSerializer(serializers.ModelSerializer):
             "store_phone",
             "currency",
             "total_amount",
+            "subtotal_amount", "tax_amount", "receipt_snapshot",
             "refunded_amount",
             "net_amount",
             "payment_type",

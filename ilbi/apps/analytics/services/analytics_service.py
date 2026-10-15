@@ -283,9 +283,10 @@ class AnalyticsService:
                 if active_qty <= 0:
                     continue
 
-                item_rev = active_qty * item.unit_price
+                item_rev = active_qty * item.total_price / item.quantity
                 item_cost = active_qty * item.cost_price
-                item_prof = item_rev - item_cost
+                item_net = item.net_amount if item.net_amount is not None else item.total_price
+                item_prof = active_qty * item_net / item.quantity - item_cost
 
                 prod_key = item.product_variant_id
                 product_sales[prod_key]["name"] = f"{item.product_variant.product.name} ({item.product_variant.name})"
@@ -383,15 +384,15 @@ class AnalyticsService:
         # Store Overview: All-time Cumulative Turnover & Net Profit
         all_time_sales_qs = Sale.objects.filter(tenant=tenant, status__in=valid_statuses)
         all_time_sales_count = all_time_sales_qs.count()
-        all_time_sales_uzs = SaleItem.objects.filter(sale__tenant=tenant, sale__status__in=valid_statuses, sale__currency=Sale.CURRENCY_UZS).aggregate(s=Sum(effective_quantity_expression() * F("unit_price")))["s"] or Decimal("0.00")
-        all_time_sales_usd = SaleItem.objects.filter(sale__tenant=tenant, sale__status__in=valid_statuses, sale__currency=Sale.CURRENCY_USD).aggregate(s=Sum(effective_quantity_expression() * F("unit_price")))["s"] or Decimal("0.00")
+        all_time_sales_uzs = SaleItem.objects.filter(sale__tenant=tenant, sale__status__in=valid_statuses, sale__currency=Sale.CURRENCY_UZS).aggregate(s=Sum(effective_quantity_expression() * F("total_price") / F("quantity")))["s"] or Decimal("0.00")
+        all_time_sales_usd = SaleItem.objects.filter(sale__tenant=tenant, sale__status__in=valid_statuses, sale__currency=Sale.CURRENCY_USD).aggregate(s=Sum(effective_quantity_expression() * F("total_price") / F("quantity")))["s"] or Decimal("0.00")
 
         all_time_profit_uzs = SaleItem.objects.filter(
             sale__tenant=tenant,
             sale__status__in=valid_statuses,
             sale__currency=Sale.CURRENCY_UZS
         ).aggregate(
-            total=Sum(effective_quantity_expression() * (F("unit_price") - F("cost_price")))
+            total=Sum(effective_quantity_expression() * (Coalesce("net_amount", "total_price") / F("quantity") - F("cost_price")))
         )["total"] or Decimal("0.00")
 
         all_time_profit_usd = SaleItem.objects.filter(
@@ -399,7 +400,7 @@ class AnalyticsService:
             sale__status__in=valid_statuses,
             sale__currency=Sale.CURRENCY_USD
         ).aggregate(
-            total=Sum(effective_quantity_expression() * (F("unit_price") - F("cost_price")))
+            total=Sum(effective_quantity_expression() * (Coalesce("net_amount", "total_price") / F("quantity") - F("cost_price")))
         )["total"] or Decimal("0.00")
 
         store_overview = {
@@ -444,7 +445,8 @@ class AnalyticsService:
                 p_qty = effective_quantity(p_item)
                 if p_qty <= 0:
                     continue
-                p_prof = p_qty * (p_item.unit_price - p_item.cost_price)
+                p_net = p_item.net_amount if p_item.net_amount is not None else p_item.total_price
+                p_prof = p_qty * (p_net / p_item.quantity - p_item.cost_price)
                 if p_sale.currency == Sale.CURRENCY_UZS:
                     prev_daily_profit_uzs[s_date_str] += p_prof
                     prev_net_profit_uzs += p_prof

@@ -4,6 +4,25 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from apps.tenants.models import SellerProfile, Tenant
+from apps.tenants.receipt_settings import RECEIPT_SETTING_FIELDS, receipt_settings
+
+
+class ReceiptSettingsMixin:
+    def get_receipt_settings(self, obj) -> dict:
+        return receipt_settings(obj)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        def value(field):
+            return attrs.get(field, getattr(self.instance, field, Tenant._meta.get_field(field).get_default()))
+        regime = value("tax_regime")
+        if regime == "turnover" and (value("is_vat_payer") or value("profit_tax_enabled")):
+            raise serializers.ValidationError({"tax_regime": "AOS rejimida QQS va foyda solig‘ini o‘chiring."})
+        if regime == "unspecified" and (value("is_vat_payer") or value("profit_tax_enabled")):
+            raise serializers.ValidationError({"tax_regime": "Avval soliq rejimini tanlang."})
+        if regime == "other" and not value("tax_regime_name").strip():
+            raise serializers.ValidationError({"tax_regime_name": "Soliq rejimi nomini kiriting."})
+        return attrs
 
 User = get_user_model()
 
@@ -168,11 +187,12 @@ class TenantCreateForOwnerSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
 
-class TenantAdminSerializer(serializers.ModelSerializer):
+class TenantAdminSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
     """Full view for platform_admin. name/description/usd_rate/settings editable via PATCH;
     owner and is_active are changed only through their dedicated endpoints."""
 
     owner_details = serializers.SerializerMethodField()
+    receipt_settings = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
@@ -183,8 +203,8 @@ class TenantAdminSerializer(serializers.ModelSerializer):
             "low_stock_report_target", "low_stock_report_time", "low_stock_frequency",
             "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
             "last_low_stock_report_sent_at",
-            "receipt_header", "receipt_footer", "receipt_phone", "created_at"
-        ]
+            "receipt_header", "receipt_footer", "receipt_phone", "created_at", "address", "receipt_settings",
+        ] + list(RECEIPT_SETTING_FIELDS)
         read_only_fields = ["id", "owner", "is_active", "last_low_stock_report_sent_at", "created_at"]
 
     def get_owner_details(self, obj) -> dict | None:
@@ -201,10 +221,11 @@ class TenantAdminSerializer(serializers.ModelSerializer):
         return None
 
 
-class TenantOwnerSerializer(serializers.ModelSerializer):
+class TenantOwnerSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
     """View for the tenant's own owner. Sees everything, edits settings and description."""
 
     owner_details = serializers.SerializerMethodField()
+    receipt_settings = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
@@ -215,8 +236,8 @@ class TenantOwnerSerializer(serializers.ModelSerializer):
             "low_stock_report_target", "low_stock_report_time", "low_stock_frequency",
             "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
             "last_low_stock_report_sent_at",
-            "receipt_header", "receipt_footer", "receipt_phone", "created_at"
-        ]
+            "receipt_header", "receipt_footer", "receipt_phone", "created_at", "address", "receipt_settings",
+        ] + list(RECEIPT_SETTING_FIELDS)
         read_only_fields = ["id", "name", "owner", "is_active", "last_low_stock_report_sent_at", "created_at"]
 
     def get_owner_details(self, obj) -> dict | None:
@@ -233,16 +254,41 @@ class TenantOwnerSerializer(serializers.ModelSerializer):
         return None
 
 
-class TenantStaffSerializer(serializers.ModelSerializer):
+class TenantStaffSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
     """Read-only view for staff."""
+
+    receipt_settings = serializers.SerializerMethodField()
 
     class Meta:
         model = Tenant
         fields = [
             "id", "name", "owner", "description", "is_active",
-            "usd_rate", "receipt_header", "receipt_footer", "receipt_phone"
+            "usd_rate", "receipt_header", "receipt_footer", "receipt_phone", "receipt_settings",
         ]
         read_only_fields = fields
+
+
+class TenantSettingsSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
+    """Assignable settings access does not expose owner account/contact details."""
+
+    receipt_settings = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tenant
+        fields = [
+            "id", "name", "description", "address", "usd_rate", "daily_report_time", "daily_report_target",
+            "shift_report_target", "telegram_group_id", "notify_web_reports", "notify_on_sale", "notify_on_debt",
+            "low_stock_report_target", "low_stock_report_time", "low_stock_frequency", "low_stock_weekday",
+            "low_stock_day_of_month", "notify_web_low_stock", "receipt_header", "receipt_footer", "receipt_phone",
+            "receipt_settings",
+        ] + list(RECEIPT_SETTING_FIELDS)
+        read_only_fields = ["id", "name"]
+
+    def to_internal_value(self, data):
+        unexpected = set(data) - set(self.fields)
+        if unexpected:
+            raise serializers.ValidationError({key: "Bu sozlamani o‘zgartirish mumkin emas." for key in unexpected})
+        return super().to_internal_value(data)
 
 
 class TenantChangeOwnerSerializer(serializers.Serializer):

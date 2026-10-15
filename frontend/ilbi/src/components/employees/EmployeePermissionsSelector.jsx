@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 const CATEGORY_META = {
+  tenants: { name: 'Do‘kon sozlamalari', icon: Briefcase, color: 'var(--primary)', description: 'Chek, soliq, kurs va bildirishnoma sozlamalari' },
   cashbox: {
     name: 'Kassa va Smenalar',
     icon: Wallet,
@@ -54,6 +55,7 @@ const CATEGORY_META = {
 };
 
 const PERMISSION_DESCRIPTIONS = {
+  manage_settings: 'Faol do‘konning chek, soliq, kurs va bildirishnoma sozlamalarini boshqarish',
   manage_shift: 'Smenani ochish, yakunlash va kassa hisobotini topshirish',
   record_expense: 'Kassadan naqd pul chiqimi (xarajat) kiritish',
   record_income: 'Kassaga naqd pul kirimi kiritish',

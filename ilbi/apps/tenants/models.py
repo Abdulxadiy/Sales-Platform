@@ -1,6 +1,8 @@
 import datetime
 import secrets
+from decimal import Decimal
 
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.functions import Lower
 from django.contrib.auth import get_user_model
@@ -183,6 +185,27 @@ class Tenant(models.Model):
         default="",
         help_text="Chekda ko'rinadigan aloqa raqami",
     )
+
+    tax_regime = models.CharField(max_length=16, default="unspecified", choices=[
+        ("unspecified", "Belgilanmagan"),
+        ("general", "Umumbelgilangan (QQS / foyda solig‘i)"),
+        ("turnover", "Aylanmadan olinadigan soliq (AOS)"),
+        ("other", "Boshqa soliq rejimi"),
+    ])
+    tax_regime_name = models.CharField(max_length=150, blank=True)
+    is_vat_payer = models.BooleanField(default=False)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("12.00"),
+        validators=[MinValueValidator(0), MaxValueValidator(100)])
+    price_includes_vat = models.BooleanField(default=True)
+    turnover_tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        validators=[MinValueValidator(0), MaxValueValidator(100)])
+    profit_tax_enabled = models.BooleanField(default=False)
+    profit_tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"),
+        validators=[MinValueValidator(0), MaxValueValidator(100)])
+    receipt_show_item_tax = models.BooleanField(default=True)
+    receipt_show_cashier = models.BooleanField(default=True)
+    receipt_show_customer = models.BooleanField(default=True)
+    receipt_paper_width = models.CharField(max_length=4, default="58mm", choices=[("58mm", "58 mm"), ("80mm", "80 mm")])
 
     created_at = models.DateTimeField(auto_now_add=True)
 

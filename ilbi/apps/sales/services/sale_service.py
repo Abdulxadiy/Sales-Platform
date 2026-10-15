@@ -12,6 +12,8 @@ from apps.inventory.services import StockService, StockServiceError
 from apps.sales.models import Sale, SaleItem, Counterparty, Notification
 from apps.sales.services.debt_service import DebtService
 from apps.tenants.models import SellerProfile
+from apps.tenants.receipt_settings import receipt_settings
+from apps.sales.taxes import calculate_line
 
 
 class SaleServiceError(Exception):
@@ -69,6 +71,7 @@ class SaleService:
         counterparty: Counterparty = None,
         is_partner_sale: bool = False,
         idempotency_key: str = None,
+        expected_tax_settings: dict = None,
     ) -> list[Sale]:
         """
         Creates a POS sale in UZS. USD catalog values remain outside retail checkout.
@@ -76,7 +79,7 @@ class SaleService:
         from apps.tenants.models import Tenant
         # A stable row exists even on a shop's first sale. Acquire it BEFORE the
         # replay lookup so simultaneous requests cannot both miss the same key.
-        Tenant.objects.select_for_update().get(pk=tenant.pk)
+        tenant = Tenant.objects.select_for_update(of=("self",)).select_related("seller_profile").get(pk=tenant.pk)
         canonical = {
             "payment_type": payment_type, "counterparty": getattr(counterparty, "pk", None),
             "partner": is_partner_sale,
@@ -95,6 +98,14 @@ class SaleService:
                 if any(sale.request_fingerprint != fingerprint for sale in existing_sales):
                     raise SaleServiceError("Idempotency kaliti boshqa savat uchun ishlatilgan.")
                 return existing_sales
+
+        if expected_tax_settings is not None:
+            current = receipt_settings(tenant)
+            if not isinstance(expected_tax_settings, dict) or any(
+                expected_tax_settings.get(field) != current[field]
+                for field in ("is_vat_payer", "vat_rate", "price_includes_vat")
+            ):
+                raise SaleServiceError("Soliq sozlamalari o‘zgardi. To‘lov oynasini qayta oching.")
 
         if not items_data:
             raise SaleServiceError("Savatda kamida bitta tovar bo'lishi shart.")
@@ -206,16 +217,22 @@ class SaleService:
                 b2b_expires_at=b2b_expires_at,
                 idempotency_key=idempotency_key,
                 request_fingerprint=fingerprint,
+                receipt_snapshot=receipt_settings(tenant),
             )
 
             total_amount = Decimal('0.00')
+            subtotal_amount = Decimal('0.00')
+            tax_amount = Decimal('0.00')
 
             for item in sorted_items:
                 variant = item['variant']
                 qty = item['quantity']
                 price = item['unit_price']
                 st_rec = item['stock_rec']
-                line_total = (qty * price).quantize(Decimal('0.01'))
+                line_net, line_tax, line_total = calculate_line(
+                    quantity=qty, unit_price=price, is_vat_payer=tenant.is_vat_payer,
+                    vat_rate=tenant.vat_rate, price_includes_vat=tenant.price_includes_vat,
+                )
 
                 # Reduce stock & link to sale
                 try:
@@ -255,13 +272,20 @@ class SaleService:
                     cost_price=cost_price,
                     original_partner_price=variant.price_partner,
                     total_price=line_total,
+                    net_amount=line_net,
+                    tax_amount=line_tax,
+                    tax_rate=tenant.vat_rate if tenant.is_vat_payer else None,
                     status=SaleItem.STATUS_ACTIVE,
                 )
 
                 total_amount += line_total
+                subtotal_amount += line_net
+                tax_amount += line_tax
 
             sale.total_amount = total_amount
-            sale.save(update_fields=['total_amount'])
+            sale.subtotal_amount = subtotal_amount
+            sale.tax_amount = tax_amount
+            sale.save(update_fields=['total_amount', 'subtotal_amount', 'tax_amount'])
 
             # If debt payment, update counterparty balance
             if payment_type == Sale.PAYMENT_DEBT:

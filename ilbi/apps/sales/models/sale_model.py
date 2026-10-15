@@ -58,6 +58,9 @@ class Sale(BaseModel):
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_UZS)
     is_partner_sale = models.BooleanField(default=False)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))
+    subtotal_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    receipt_snapshot = models.JSONField(default=dict, blank=True)
     payment_type = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default=PAYMENT_CASH)
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_COMPLETED)
 

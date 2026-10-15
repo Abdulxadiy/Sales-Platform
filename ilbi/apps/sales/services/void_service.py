@@ -10,6 +10,7 @@ from apps.sales.models.sale_model import SaleRefund
 from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
 from apps.tenants.models import Tenant
 from apps.sales.services.debt_service import DebtService
+from apps.sales.taxes import cumulative_item_amount
 
 
 class VoidServiceError(Exception):
@@ -166,7 +167,9 @@ class VoidService:
         sale_item.save(update_fields=["voided_quantity", "status"])
 
         # Adjust counterparty debt
-        refund_amount = (sale_item.voided_quantity * sale_item.unit_price).quantize(Decimal("0.01")) - ((sale_item.voided_quantity - quantity) * sale_item.unit_price).quantize(Decimal("0.01"))
+        refund_amount = cumulative_item_amount(sale_item, sale_item.voided_quantity) - cumulative_item_amount(
+            sale_item, sale_item.voided_quantity - quantity,
+        )
         refund_amount = min(refund_amount, sale.net_amount)
         cls._record_refund(sale, user, refund_amount, reason)
         if sale.payment_type == Sale.PAYMENT_DEBT and sale.counterparty_id:

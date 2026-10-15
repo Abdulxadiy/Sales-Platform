@@ -343,33 +343,13 @@ export default function Sales() {
       <div
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: 12,
+          gap: 10,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              padding: '8px 16px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--primary)',
-              color: 'var(--primary-foreground)',
-              fontWeight: 700,
-              fontSize: 13,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <Receipt size={16} />
-            <span>Savdolar Jurnali & Cheklar</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <ExcelExportButton endpoint="/sales/export/" params={getSalesFilters()} filename="ilbi-savdolar.xlsx" disabled={loading} />
+        <ExcelExportButton endpoint="/sales/export/" params={getSalesFilters()} filename="ilbi-savdolar.xlsx" disabled={loading} />
           <Link
             to="/debts"
             style={{
@@ -414,7 +394,6 @@ export default function Sales() {
             <ArrowUpRight size={13} style={{ color: 'var(--text-muted)' }} />
           </Link>
         </div>
-      </div>
 
       {/* Filter toolbar for sales */}
       <div

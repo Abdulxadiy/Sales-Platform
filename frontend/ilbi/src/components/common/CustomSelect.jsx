@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, Check, Search, X, Loader2 } from 'lucide-react';
 
 const renderIconNode = (IconNode, size) => {
   if (!IconNode) return null;
@@ -35,9 +35,32 @@ export default function CustomSelect({
   id = '',
   fullWidth = false,
   title = '',
+  searchable = false,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder = 'Qidirish...',
+  searchLoading = false,
+  footer = null,
+  clearable = false,
+  onClear = null,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [internalSearch, setInternalSearch] = useState('');
   const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // When menu opens, autofocus the search input if searchable
+  useEffect(() => {
+    if (isOpen && searchable) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+    if (!isOpen && !onSearchChange) {
+      setInternalSearch('');
+    }
+  }, [isOpen, searchable, onSearchChange]);
 
   // Normalize options to [{ value, label, icon, badge, disabled }]
   const normalizedOptions = options.map((opt) => {
@@ -64,6 +87,19 @@ export default function CustomSelect({
   const selectedOption = normalizedOptions.find(
     (opt) => String(opt.value) === String(value)
   );
+
+  const isControlledSearch = searchValue !== undefined;
+  const currentQuery = (isControlledSearch ? searchValue : internalSearch).toLowerCase().trim();
+
+  // If controlled (remote), options are filtered by server. If uncontrolled and searchable, filter locally.
+  const displayedOptions = useMemo(() => {
+    if (!searchable || isControlledSearch || !currentQuery) {
+      return normalizedOptions;
+    }
+    return normalizedOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(currentQuery)
+    );
+  }, [normalizedOptions, searchable, isControlledSearch, currentQuery]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -216,15 +252,9 @@ export default function CustomSelect({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: sizeStyles.gap, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {Icon && (
+          {(selectedOption?.icon || Icon) && (
             <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--primary)', flexShrink: 0 }}>
-              {renderIconNode(Icon, sizeStyles.iconSize)}
-            </span>
-          )}
-
-          {selectedOption?.icon && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--primary)', flexShrink: 0 }}>
-              {renderIconNode(selectedOption.icon, sizeStyles.iconSize)}
+              {renderIconNode(selectedOption?.icon || Icon, sizeStyles.iconSize)}
             </span>
           )}
 
@@ -249,6 +279,43 @@ export default function CustomSelect({
           )}
         </div>
 
+        {clearable && Boolean(value) && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear?.();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                onClear?.();
+              }
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: 2,
+              borderRadius: '50%',
+              marginRight: 2,
+              transition: 'color 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent-rose)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+            }}
+            title="Tanlovni tozalash"
+          >
+            <X size={sizeStyles.iconSize} />
+          </span>
+        )}
+
         <ChevronDown
           size={sizeStyles.iconSize}
           style={{
@@ -270,7 +337,8 @@ export default function CustomSelect({
             top: 'calc(100% + 5px)',
             left: 0,
             minWidth: '100%',
-            maxWidth: 360,
+            maxWidth: fullWidth ? '100%' : 360,
+            width: fullWidth ? '100%' : 'auto',
             maxHeight: 280,
             overflowY: 'auto',
             background: 'var(--bg-modal, var(--bg-card))',
@@ -284,15 +352,106 @@ export default function CustomSelect({
             display: 'flex',
             flexDirection: 'column',
             gap: 2,
+            boxSizing: 'border-box',
             ...menuStyle,
           }}
         >
-          {normalizedOptions.length === 0 ? (
+          {searchable && (
+            <div
+              style={{
+                position: 'sticky',
+                top: -5,
+                zIndex: 10,
+                padding: '4px 4px 6px 4px',
+                background: 'var(--bg-modal, var(--bg-card))',
+                borderBottom: '1px solid var(--border-subtle)',
+                marginBottom: 4,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search
+                  size={13}
+                  style={{
+                    position: 'absolute',
+                    left: 9,
+                    color: 'var(--text-muted)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder={searchPlaceholder}
+                  value={isControlledSearch ? (searchValue || '') : internalSearch}
+                  onChange={(e) => {
+                    if (onSearchChange) onSearchChange(e.target.value);
+                    else setInternalSearch(e.target.value);
+                  }}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '7px 26px 7px 28px',
+                    borderRadius: 'var(--radius-xs, 6px)',
+                    border: '1px solid var(--border-card)',
+                    background: 'var(--bg-input, rgba(255, 255, 255, 0.05))',
+                    color: 'var(--text-primary)',
+                    fontSize: 12.5,
+                    outline: 'none',
+                  }}
+                />
+                {Boolean(isControlledSearch ? searchValue : internalSearch) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSearchChange) onSearchChange('');
+                      else setInternalSearch('');
+                      searchInputRef.current?.focus();
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: 6,
+                      background: 'none',
+                      border: 'none',
+                      padding: 2,
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                    title="Tozalash"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {searchLoading && (
+            <div
+              style={{
+                padding: '10px 14px',
+                fontSize: 12,
+                color: 'var(--text-muted)',
+                textAlign: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <Loader2 size={13} className="animate-spin" />
+              <span>Qidirilmoqda...</span>
+            </div>
+          )}
+
+          {displayedOptions.length === 0 ? (
             <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-              Variantlar yo‘q
+              {searchLoading ? 'Yuklanmoqda...' : 'Topilmadi'}
             </div>
           ) : (
-            normalizedOptions.map((opt) => {
+            displayedOptions.map((opt) => {
               const isSelected = String(opt.value) === String(value);
               const OptIcon = opt.icon;
 
@@ -364,6 +523,22 @@ export default function CustomSelect({
                 </div>
               );
             })
+          )}
+
+          {footer && (
+            <div
+              style={{
+                position: 'sticky',
+                bottom: -5,
+                zIndex: 10,
+                background: 'var(--bg-modal, var(--bg-card))',
+                borderTop: '1px solid var(--border-subtle)',
+                marginTop: 4,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {footer}
+            </div>
           )}
         </div>
       )}

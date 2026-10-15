@@ -24,15 +24,27 @@ export default function RemoteVariantSelect({ value, onChange, onVariant, enable
   const options = [...list.items];
   if (selected && !options.some(item => item.id === selected.id)) options.unshift(selected);
   return <div onFocusCapture={() => setFocused(true)} style={{ minWidth: 0 }}>
-    <input className="input-field" aria-label="Tovarni bazadan qidirish" placeholder="Tovar nomi, kod yoki shtrix-kod..."
-      value={search} onChange={event => setSearch(event.target.value)} disabled={!enabled} />
-    <CustomSelect {...props} value={value} disabled={!enabled} onChange={id => {
-      const item = options.find(row => String(row.id) === String(id));
-      setSelected(item || null); onVariant?.(item); onChange(id);
-    }} options={options.map(item => ({ value: item.id,
-      label: `${item.product_name} / ${item.name} — ${item.stock_quantity} ${item.unit}` }))} />
+    <CustomSelect
+      {...props}
+      value={value}
+      disabled={!enabled}
+      searchable
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Tovar nomi, kod yoki shtrix-kod..."
+      searchLoading={list.loading}
+      onChange={id => {
+        const item = options.find(row => String(row.id) === String(id));
+        setSelected(item || null);
+        onVariant?.(item);
+        onChange(id);
+      }}
+      options={options.map(item => ({
+        value: item.id,
+        label: `${item.product_name} / ${item.name} — ${item.stock_quantity} ${item.unit}`
+      }))}
+      footer={list.total > 20 ? <div style={{padding:'4px 6px'}}><Pagination compact currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} /></div> : null}
+    />
     {list.error && <small role="alert">{list.error.message}</small>}
-    {list.loading && <small>Qidirilmoqda...</small>}
-    <Pagination compact currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} />
   </div>;
 }

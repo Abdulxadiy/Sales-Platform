@@ -22,14 +22,21 @@ export default function RemoteTenantSelect({ value, onChange, autoSelect = false
   const rows = [...list.items];
   if (selected && !rows.some(row => row.id === selected.id)) rows.unshift(selected);
   return <div style={{minWidth:220}}>
-    <input className="input-field" aria-label="Do‘konni bazadan qidirish" placeholder="Do‘kon nomi yoki ID..."
-      value={search} onChange={event => setSearch(event.target.value)} />
-    <CustomSelect {...props} value={value} onChange={onChange} options={[
-      ...(allowAll ? [{value:'', label:'Barcha do‘konlar'}] : []),
-      ...rows.map(row => ({value:row.id, label:`${row.name} (#${row.id})`})),
-    ]} />
+    <CustomSelect
+      {...props}
+      value={value}
+      onChange={onChange}
+      searchable
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Do‘kon nomi yoki ID..."
+      searchLoading={list.loading}
+      options={[
+        ...(allowAll ? [{value:'', label:'Barcha do‘konlar'}] : []),
+        ...rows.map(row => ({value:row.id, label:`${row.name} (#${row.id})`})),
+      ]}
+      footer={list.total > 20 ? <div style={{padding:'4px 6px'}}><Pagination compact currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} /></div> : null}
+    />
     {list.error && <small role="alert">{list.error.message}</small>}
-    {list.loading && <small>Yuklanmoqda...</small>}
-    <Pagination compact currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} />
   </div>;
 }

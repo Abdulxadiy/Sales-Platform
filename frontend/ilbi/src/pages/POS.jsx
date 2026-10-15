@@ -21,6 +21,9 @@ import {
   DollarSign,
   AlertTriangle,
   X,
+  User,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { catalogApi, salesApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
@@ -1550,56 +1553,200 @@ export default function POS() {
           {checkoutOpen && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  {paymentMethod === 'DEBT'
-                    ? 'Kontragent (Nasiya qarzdor mijoz) *'
-                    : isPartnerSale
-                    ? 'Hamkor Do‘kon / Kontragent (1-Narx xaridori)'
-                    : 'Mijoz / Hamkor biriktirish (Ixtiyoriy)'}
+                <label
+                  style={{
+                    fontSize: 13,
+                    fontWeight: paymentMethod === 'DEBT' ? 700 : 500,
+                    color: paymentMethod === 'DEBT' && !selectedCounterparty ? 'var(--accent-amber)' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span>
+                    {paymentMethod === 'DEBT'
+                      ? 'Kontragent (Nasiya qarzdor mijoz) *'
+                      : isPartnerSale
+                      ? 'Hamkor Do‘kon / Kontragent (1-Narx xaridori)'
+                      : 'Mijoz / Hamkor biriktirish (Ixtiyoriy)'}
+                  </span>
+                  {paymentMethod === 'DEBT' && !selectedCounterparty && (
+                    <span
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: 'var(--accent-amber)',
+                      }}
+                    >
+                      Majburiy
+                    </span>
+                  )}
                 </label>
-                {selectedCounterparty && paymentMethod !== 'DEBT' && !isPartnerSale && (
+              </div>
+
+              {counterpartyList.error && (
+                <div role="alert" style={{ fontSize: 11.5, color: 'var(--accent-rose)', marginBottom: 6 }}>
+                  {counterpartyList.error.message}
+                </div>
+              )}
+
+              {selectedCounterparty && selectedCounterpartyRow ? (
+                /* Sleek Selected Customer Card */
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-sm, 10px)',
+                    background: 'var(--bg-input, rgba(255, 255, 255, 0.04))',
+                    border: isPartnerSale
+                      ? '1px solid var(--accent-emerald)'
+                      : paymentMethod === 'DEBT'
+                      ? '1px solid var(--primary)'
+                      : '1px solid var(--border-card)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: isPartnerSale
+                          ? 'rgba(16, 185, 129, 0.15)'
+                          : 'rgba(var(--primary-rgb), 0.15)',
+                        color: isPartnerSale ? 'var(--accent-emerald)' : 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <User size={18} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {selectedCounterpartyRow.name}
+                        </span>
+                        {selectedCounterpartyRow.target_tenant_name && (
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              background: 'rgba(16, 185, 129, 0.15)',
+                              color: 'var(--accent-emerald)',
+                            }}
+                          >
+                            B2B: {selectedCounterpartyRow.target_tenant_name}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
+                        <span>{selectedCounterpartyRow.phone_number || 'Telefon kiritilmagan'}</span>
+                        {(Number(selectedCounterpartyRow.debt_balance_uzs || 0) > 0 || Number(selectedCounterpartyRow.debt_balance_usd || 0) > 0) && (
+                          <span style={{ color: 'var(--accent-rose)', fontWeight: 600 }}>
+                            • Qarz: {selectedCounterpartyRow.debt_balance_uzs ? `${Number(selectedCounterpartyRow.debt_balance_uzs).toLocaleString()} UZS` : ''} {selectedCounterpartyRow.debt_balance_usd ? `${selectedCounterpartyRow.debt_balance_usd} USD` : ''}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => setSelectedCounterparty('')}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', fontSize: 11, cursor: 'pointer' }}
+                    onClick={() => {
+                      setSelectedCounterparty('');
+                      setSelectedCounterpartyRow(null);
+                      setCounterpartySearch('');
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '6px 11px',
+                      borderRadius: 6,
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-chip, rgba(255, 255, 255, 0.06))',
+                      color: 'var(--accent-rose)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                    title="Mijozni almashtirish yoki bekor qilish"
                   >
-                    Tozalash
+                    <X size={13} />
+                    <span>O‘zgartirish</span>
                   </button>
-                )}
-              </div>
-              <input className="input-field" aria-label="Mijozni bazadan qidirish" placeholder="Mijoz nomi yoki telefon..."
-                value={counterpartySearch} onChange={event => setCounterpartySearch(event.target.value)} />
-              {counterpartyList.error && <small role="alert">{counterpartyList.error.message}</small>}
-              {counterpartyList.loading && <small>Mijozlar yuklanmoqda...</small>}
-              <CustomSelect
-                value={selectedCounterparty}
-                onChange={val => { setSelectedCounterparty(val); setSelectedCounterpartyRow(counterparties.find(row => String(row.id) === String(val)) || null); }}
-                placeholder={
-                  paymentMethod === 'DEBT'
-                    ? 'Mijozni tanlang (Majburiy)...'
-                    : isPartnerSale
-                    ? 'Hamkor do‘kon / sherikni tanlang...'
-                    : 'Oddiy chakana xaridor (Biriktirilmagan)'
-                }
-                options={[
-                  {
-                    value: '',
-                    label:
-                      paymentMethod === 'DEBT'
-                        ? 'Mijozni tanlang (Majburiy)...'
-                        : isPartnerSale
-                        ? 'Hamkor do‘kon / sherikni tanlang...'
-                        : 'Oddiy chakana xaridor (Biriktirilmagan)',
-                  },
-                  ...counterparties.map((cp) => ({
-                    value: cp.id,
-                    label: `${cp.name} (${cp.phone_number || 'Tel yo‘q'})${cp.target_tenant_name ? ` [B2B: ${cp.target_tenant_name}]` : ''}`,
-                  })),
-                ]}
-                fullWidth
-                style={isPartnerSale ? { borderColor: 'var(--accent-emerald)' } : {}}
-              />
-              <Pagination compact currentPage={counterpartyList.page} totalItems={counterpartyList.total} onPageChange={counterpartyList.setPage} />
+                </div>
+              ) : (
+                /* Single, Unified Searchable Select */
+                <CustomSelect
+                  value={selectedCounterparty}
+                  onChange={(val) => {
+                    setSelectedCounterparty(val);
+                    setSelectedCounterpartyRow(counterparties.find((row) => String(row.id) === String(val)) || null);
+                  }}
+                  searchable
+                  searchValue={counterpartySearch}
+                  onSearchChange={setCounterpartySearch}
+                  searchPlaceholder="Mijoz nomi yoki telefon raqami..."
+                  searchLoading={counterpartyList.loading}
+                  icon={User}
+                  placeholder={
+                    paymentMethod === 'DEBT'
+                      ? 'Mijozni tanlang (Majburiy)...'
+                      : isPartnerSale
+                      ? 'Hamkor do‘kon / sherikni tanlang...'
+                      : 'Oddiy chakana xaridor (Biriktirilmagan)'
+                  }
+                  options={[
+                    ...(paymentMethod !== 'DEBT'
+                      ? [
+                          {
+                            value: '',
+                            label: 'Oddiy chakana xaridor (Biriktirilmagan)',
+                            icon: UserX,
+                          },
+                        ]
+                      : []),
+                    ...counterparties.map((cp) => ({
+                      value: cp.id,
+                      label: `${cp.name} (${cp.phone_number || 'Tel yo‘q'})`,
+                      badge: cp.target_tenant_name ? `B2B: ${cp.target_tenant_name}` : null,
+                      icon: UserCheck,
+                    })),
+                  ]}
+                  footer={
+                    counterpartyList.total > 20 ? (
+                      <div style={{ padding: '4px 6px', borderTop: '1px solid var(--border-subtle)' }}>
+                        <Pagination
+                          compact
+                          currentPage={counterpartyList.page}
+                          totalItems={counterpartyList.total}
+                          onPageChange={counterpartyList.setPage}
+                        />
+                      </div>
+                    ) : null
+                  }
+                  fullWidth
+                  style={{
+                    ...(paymentMethod === 'DEBT' && !selectedCounterparty
+                      ? { borderColor: 'var(--accent-amber)', background: 'rgba(245, 158, 11, 0.04)' }
+                      : isPartnerSale
+                      ? { borderColor: 'var(--accent-emerald)' }
+                      : {}),
+                  }}
+                />
+              )}
             </div>
           )}
 

@@ -1,6 +1,6 @@
 import { createVisiblePoller } from '../../utils/visiblePolling';
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Clock, Shield, Menu, Store } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,15 +14,12 @@ export default function Header({
   onOpenMobileMenu,
 }) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { isAdmin, isOwner } = useAuth();
   const { tenants, activeTenant, selectTenant } = useTenant();
   const canViewCashbox = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.view_cashbox");
   const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.manage_shift");
   const [time, setTime] = useState(new Date());
   const [shift, setShift] = useState(null);
-  const tenantIdRef = useRef(activeTenant?.id);
-  tenantIdRef.current = activeTenant?.id;
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);

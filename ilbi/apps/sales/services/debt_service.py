@@ -93,7 +93,7 @@ class DebtService:
             if remaining_usd != 0:
                 uzs_equivalent = (remaining_usd * usd_rate).quantize(Decimal('0.01'))
                 cp.debt_balance_uzs -= uzs_equivalent
-                conv_text = f"(Kurs: 1 USD = {usd_rate:,.0f} UZS -> {uzs_equivalent:,.0f} UZS so‘m qarzidan ayirildi)"
+                conv_text = f"(Kurs: 1 USD = {usd_rate:,.0f} UZS → {uzs_equivalent:,.0f} UZS so‘m qarzidan ayirildi)"
                 effective_note = f"{effective_note} {conv_text}".strip()
 
         payment = DebtPayment.objects.create(

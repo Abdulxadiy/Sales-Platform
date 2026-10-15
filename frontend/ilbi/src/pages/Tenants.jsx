@@ -1,6 +1,6 @@
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Store,
   Plus,

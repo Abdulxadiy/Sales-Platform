@@ -1,4 +1,3 @@
-from datetime import datetime, time
 from decimal import Decimal
 
 from django.db import transaction
@@ -11,7 +10,6 @@ from apps.sales.models.sale_model import SaleRefund
 from apps.sales.models import DebtPayment
 from apps.tenants.models import Tenant
 from apps.tg_bot.models import TelegramContact
-from apps.tg_bot.services import send_telegram_message
 
 
 class CashboxServiceError(Exception):
@@ -362,7 +360,7 @@ class CashboxService:
                 note_part = f" — _{inc.note}_" if inc.note else ""
                 lines.append(f"   • *{inc.source}:* `+{Decimal(str(inc.amount)):,.2f} {inc.currency}`{note_part}")
         else:
-            lines.append(f"📥 *Qo'shimcha kirim:* `0.00 UZS` | `$0.00`")
+            lines.append("📥 *Qo'shimcha kirim:* `0.00 UZS` | `$0.00`")
 
         lines.append("")
 
@@ -374,7 +372,7 @@ class CashboxService:
                 note_part = f" — _{exp.note}_" if exp.note else ""
                 lines.append(f"   • *{exp.category}:* `-{Decimal(str(exp.amount)):,.2f} {exp.currency}`{note_part}")
         else:
-            lines.append(f"📤 *Xarajatlar:* `0.00 UZS` | `$0.00`")
+            lines.append("📤 *Xarajatlar:* `0.00 UZS` | `$0.00`")
 
         if report.staff_notes:
             lines.extend([

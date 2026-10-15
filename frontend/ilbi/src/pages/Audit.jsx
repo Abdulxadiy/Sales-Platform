@@ -3,12 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Eye } from 'lucide-react';
 import { auditApi } from '../api/client';
 import Modal from '../components/common/Modal';
-import { useToast } from '../context/ToastContext';
 import { useAuth } from '../hooks/useAuth';
-import CustomSelect from '../components/common/CustomSelect';
 
 export default function Audit() {
-  const toast = useToast();
   const { isAdmin } = useAuth();
   const [logs, setLogs] = useState([]);
   const [selectedAction, setSelectedAction] = useState('');

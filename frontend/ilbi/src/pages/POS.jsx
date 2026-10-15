@@ -83,7 +83,13 @@ export default function POS() {
   const [paymentMethod, setPaymentMethod] = useState('CASH'); // CASH, CARD, DEBT
   const [paidAmountUZS, setPaidAmountUZS] = useState('');
   const [paidAmountUSD, setPaidAmountUSD] = useState('');
-  const [counterparties, setCounterparties] = useState([]);
+  const [counterpartySearch, setCounterpartySearch] = useState('');
+  const [selectedCounterpartyRow, setSelectedCounterpartyRow] = useState(null);
+  const settledCounterpartySearch = useDebouncedValue(counterpartySearch.trim());
+  const counterpartyList = usePaginatedList(salesApi.getCounterparties, { search: settledCounterpartySearch },
+    { tenantId: activeTenant?.id, enabled: checkoutOpen });
+  const counterparties = [...counterpartyList.items];
+  if (selectedCounterpartyRow && !counterparties.some(row => row.id === selectedCounterpartyRow.id)) counterparties.unshift(selectedCounterpartyRow);
   const [selectedCounterparty, setSelectedCounterparty] = useState('');
   const [submittingSale, setSubmittingSale] = useState(false);
 
@@ -389,12 +395,6 @@ export default function POS() {
         return;
       }
     }
-
-    try {
-      const res = await salesApi.getCounterparties();
-      const list = res.results || res;
-      setCounterparties(Array.isArray(list) ? list : []);
-    } catch {}
 
     setPaidAmountUZS(cartTotalUZS > 0 ? String(cartTotalUZS) : '');
     setPaidAmountUSD(cartTotalUSD > 0 ? String(cartTotalUSD) : '');
@@ -1547,7 +1547,7 @@ export default function POS() {
           </div>
 
           {/* Counterparty selection: Required for DEBT, recommended for Partner sale, optional for regular sale */}
-          {(paymentMethod === 'DEBT' || isPartnerSale || (counterparties && counterparties.length > 0)) && (
+          {checkoutOpen && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -1567,9 +1567,13 @@ export default function POS() {
                   </button>
                 )}
               </div>
+              <input className="input-field" aria-label="Mijozni bazadan qidirish" placeholder="Mijoz nomi yoki telefon..."
+                value={counterpartySearch} onChange={event => setCounterpartySearch(event.target.value)} />
+              {counterpartyList.error && <small role="alert">{counterpartyList.error.message}</small>}
+              {counterpartyList.loading && <small>Mijozlar yuklanmoqda...</small>}
               <CustomSelect
                 value={selectedCounterparty}
-                onChange={(val) => setSelectedCounterparty(val)}
+                onChange={val => { setSelectedCounterparty(val); setSelectedCounterpartyRow(counterparties.find(row => String(row.id) === String(val)) || null); }}
                 placeholder={
                   paymentMethod === 'DEBT'
                     ? 'Mijozni tanlang (Majburiy)...'
@@ -1595,6 +1599,7 @@ export default function POS() {
                 fullWidth
                 style={isPartnerSale ? { borderColor: 'var(--accent-emerald)' } : {}}
               />
+              <Pagination compact currentPage={counterpartyList.page} totalItems={counterpartyList.total} onPageChange={counterpartyList.setPage} />
             </div>
           )}
 

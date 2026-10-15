@@ -1,4 +1,3 @@
-import { localStore } from '../../utils/brandStorage.js';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   ScanBarcode,

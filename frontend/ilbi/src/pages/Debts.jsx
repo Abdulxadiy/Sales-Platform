@@ -633,15 +633,65 @@ export default function Debts() {
                       </td>
 
                       {/* Last Payment */}
-                      <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '14px 16px', minWidth: 170 }}>
                         {cp.last_payment ? (
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--accent-emerald)', fontSize: 13 }}>
-                              +{Number(cp.last_payment.amount).toLocaleString()} {cp.last_payment.currency}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 800, color: 'var(--accent-emerald)', fontSize: 13.5 }}>
+                                +{Number(cp.last_payment.amount).toLocaleString()} {cp.last_payment.currency}
+                              </span>
+                              {cp.last_payment.currency === 'USD' && (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    padding: '1px 5px',
+                                    borderRadius: 4,
+                                    background: 'rgba(59, 130, 246, 0.12)',
+                                    color: 'var(--primary)',
+                                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                                  }}
+                                >
+                                  Valyuta
+                                </span>
+                              )}
                             </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+
+                            {/* Show conversion note / note */}
+                            {cp.last_payment.note ? (
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: 'var(--text-secondary)',
+                                  marginTop: 3,
+                                  lineHeight: 1.35,
+                                  maxWidth: 260,
+                                  whiteSpace: 'normal',
+                                  background: 'var(--bg-card)',
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  border: '1px dashed var(--border-subtle)',
+                                }}
+                                title={cp.last_payment.note}
+                              >
+                                {cp.last_payment.note}
+                              </div>
+                            ) : cp.last_payment.currency === 'USD' ? (
+                              <div
+                                style={{
+                                  fontSize: 10.5,
+                                  color: 'var(--text-muted)',
+                                  marginTop: 3,
+                                  fontStyle: 'italic',
+                                }}
+                              >
+                                (Kurs: 1 USD = {Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS → {(Number(cp.last_payment.amount) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayirildi)
+                              </div>
+                            ) : null}
+
+                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                               <Clock size={10} />
-                              <span>{new Date(cp.last_payment.paid_at).toLocaleDateString('uz-UZ')}</span>
+                              <span>{new Date(cp.last_payment.paid_at).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })}</span>
                               {cp.last_payment.branch_name && (
                                 <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
                                   · {cp.last_payment.branch_name}
@@ -873,7 +923,14 @@ export default function Debts() {
                   <span>Qabul qildi: <strong>{selectedCp.last_payment.recorded_by_name}</strong></span>
                 )}
                 {selectedCp.last_payment.note && (
-                  <span>Izoh: <em>{selectedCp.last_payment.note}</em></span>
+                  <div style={{ width: '100%', fontSize: 11.5, color: 'var(--text-primary)', background: 'var(--bg-card)', padding: '5px 8px', borderRadius: 4, marginTop: 4, border: '1px dashed var(--border-subtle)' }}>
+                    💬 <strong>Hisobot / Izoh:</strong> {selectedCp.last_payment.note}
+                  </div>
+                )}
+                {selectedCp.last_payment.currency === 'USD' && !selectedCp.last_payment.note?.includes('Kurs:') && (
+                  <div style={{ width: '100%', fontSize: 11.5, color: 'var(--primary)', background: 'rgba(59, 130, 246, 0.08)', padding: '5px 8px', borderRadius: 4, marginTop: 4 }}>
+                    💱 <strong>Valyuta hisobi:</strong> (Kurs: 1 USD = {Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS → {(Number(selectedCp.last_payment.amount) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayirilgan)
+                  </div>
                 )}
               </div>
             </div>

@@ -39,7 +39,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const { activeTenant } = useTenant();
   const userPerms = activeTenant?.permissions || [];
   const canViewDashboard =

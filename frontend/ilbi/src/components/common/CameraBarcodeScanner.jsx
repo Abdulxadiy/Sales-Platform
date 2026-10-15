@@ -1,17 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useId } from 'react';
 import { Camera, X, Zap, ZapOff, RefreshCw, AlertCircle } from 'lucide-react';
-
-const SUPPORTED_FORMATS = [
-  Html5QrcodeSupportedFormats.EAN_13,
-  Html5QrcodeSupportedFormats.EAN_8,
-  Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.CODE_39,
-  Html5QrcodeSupportedFormats.UPC_A,
-  Html5QrcodeSupportedFormats.UPC_E,
-  Html5QrcodeSupportedFormats.QR_CODE,
-  Html5QrcodeSupportedFormats.ITF,
-];
+import { cameraErrorMessage, startCameraSession } from '../../utils/cameraScanner';
 
 function playBeep() {
   try {
@@ -20,689 +9,209 @@ function playBeep() {
     const ctx = new AudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
     osc.frequency.setValueAtTime(880, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
     gain.gain.setValueAtTime(0.25, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
     osc.connect(gain);
     gain.connect(ctx.destination);
+    osc.onended = () => { void ctx.close().catch(() => {}); };
     osc.start();
     osc.stop(ctx.currentTime + 0.15);
   } catch {
-    // AudioContext might be restricted until user gesture; ignore
+    // Sound is optional; browsers may require a user gesture.
   }
 }
 
 export default function CameraBarcodeScanner({
-  isOpen,
-  onClose,
-  onScan,
-  title = 'Shtrix-kodni skanerlash',
+  isOpen, onClose, onScan, title = 'Shtrix-kodni skanerlash',
 }) {
+  const titleId = useId();
   const [cameras, setCameras] = useState([]);
-  const [selectedCamIndex, setSelectedCamIndex] = useState(0);
+  const [deviceId, setDeviceId] = useState('');
+  const [activeDeviceId, setActiveDeviceId] = useState('');
+  const [attempt, setAttempt] = useState(0);
   const [isScanning, setIsScanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
-  const [scannedCode, setScannedCode] = useState(null);
-
   const dialogRef = useRef(null);
-  const scannerRef = useRef(null);
-  const isStoppingRef = useRef(false);
-  const hasDetectedRef = useRef(false);
-  const nativeDetectorRef = useRef(null);
-  const animFrameRef = useRef(null);
-  const elementId = 'camera-barcode-scanner-viewport';
+  const videoRef = useRef(null);
+  const sessionRef = useRef(null);
+  const startupRef = useRef(Promise.resolve());
+  const openRef = useRef(false);
+  const callbacksRef = useRef({ onClose, onScan });
 
-  // Initialize native BarcodeDetector if supported by the browser (iOS 17+ Safari, Android Chrome)
+  // Inline callbacks from POS/catalog/intake change on every parent render.
+  // Keep the latest callbacks without restarting the camera on those renders.
+  useLayoutEffect(() => { callbacksRef.current = { onClose, onScan }; }, [onClose, onScan]);
+
+  const closeScanner = useCallback(() => {
+    if (!openRef.current) return;
+    openRef.current = false;
+    sessionRef.current?.stop();
+    dialogRef.current?.close();
+    setDeviceId('');
+    callbacksRef.current.onClose();
+  }, []);
+
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
-      try {
-        nativeDetectorRef.current = new window.BarcodeDetector({
-          formats: [
-            'code_128',
-            'code_39',
-            'code_93',
-            'ean_13',
-            'ean_8',
-            'qr_code',
-            'upc_a',
-            'upc_e',
-            'itf',
-            'data_matrix',
-          ],
-        });
-      } catch {
-        nativeDetectorRef.current = null;
-      }
+    const dialog = dialogRef.current;
+    if (!isOpen) {
+      openRef.current = false;
+      if (dialog.open) dialog.close();
+      setDeviceId('');
+      return;
     }
-  }, []);
+    openRef.current = true;
+    if (!dialog.open) dialog.showModal();
+    setIsScanning(false);
+    setErrorMessage('');
+    setHasTorch(false);
+    setTorchOn(false);
+    setCameras([]);
 
-  const stopScanner = useCallback(async () => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-    if (isStoppingRef.current || !scannerRef.current) return;
-    isStoppingRef.current = true;
-    try {
-      if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop();
-      }
-      scannerRef.current.clear();
-    } catch {
-      // Ignore cleanup error
-    } finally {
-      scannerRef.current = null;
-      isStoppingRef.current = false;
-      setIsScanning(false);
-      setTorchOn(false);
-    }
-  }, []);
-
-  const handleDetected = useCallback(
-    (decodedText) => {
-      if (hasDetectedRef.current) return;
-      hasDetectedRef.current = true;
-      setScannedCode(decodedText);
-      playBeep();
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try {
-          navigator.vibrate([80, 40, 80]);
-        } catch {}
-      }
-
-      setTimeout(async () => {
-        await stopScanner();
-        onScan(decodedText);
-        onClose();
-      }, 350);
-    },
-    [onScan, onClose, stopScanner]
-  );
-
-  // Hardware-accelerated native scan loop running directly on video frames
-  const startNativeScanLoop = useCallback(() => {
-    if (!nativeDetectorRef.current) return;
-    const checkFrame = async () => {
-      if (hasDetectedRef.current || !isOpen) return;
-      const videoElem = document.querySelector(`#${elementId} video`);
-      if (videoElem && videoElem.readyState >= 2 && !videoElem.paused) {
-        try {
-          const detected = await nativeDetectorRef.current.detect(videoElem);
-          if (detected && detected.length > 0 && detected[0].rawValue) {
-            handleDetected(detected[0].rawValue);
-            return;
-          }
-        } catch {
-          // Frame detect skip; continue loop
-        }
-      }
-      animFrameRef.current = requestAnimationFrame(checkFrame);
+    const cleanup = () => {
+      openRef.current = false;
+      sessionRef.current?.stop();
     };
-    animFrameRef.current = requestAnimationFrame(checkFrame);
-  }, [isOpen, handleDetected]);
+    if (!window.isSecureContext) {
+      setErrorMessage('Kamera uchun saytni HTTPS orqali oching. Telefonda oddiy HTTP yoki lokal IP manzilda kamera ishlamaydi.');
+      return cleanup;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setErrorMessage('Bu brauzer kamerani qo‘llab-quvvatlamaydi. Saytni yangilangan Chrome yoki Safari brauzerida oching.');
+      return cleanup;
+    }
 
-  const startScanner = useCallback(
-    async (cameraId) => {
-      if (!isOpen) return;
-      setErrorMessage('');
-      hasDetectedRef.current = false;
-      setScannedCode(null);
-
-      try {
-        await stopScanner();
-
-        const html5QrCode = new Html5Qrcode(elementId, {
-          formatsToSupport: SUPPORTED_FORMATS,
-          verbose: false,
-          useBarCodeDetectorIfSupported: true,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true,
-          },
-        });
-        scannerRef.current = html5QrCode;
-
-        // HD video constraints with continuous autofocus
-        const videoConstraints = {
-          facingMode: 'environment',
-          width: { min: 640, ideal: 1280, max: 1920 },
-          height: { min: 480, ideal: 720, max: 1080 },
-          focusMode: 'continuous',
-        };
-
-        const config = {
-          fps: 20,
-          disableFlip: false,
-          videoConstraints,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            // Generous scanning area so 1D linear barcodes and QR codes are not prematurely cropped
-            const w = Math.floor(viewfinderWidth * 0.88);
-            const h = Math.floor(Math.min(viewfinderHeight * 0.72, 280));
-            return { width: Math.max(w, 240), height: Math.max(h, 160) };
-          },
-        };
-
-        const cameraConfig = cameraId
-          ? { deviceId: { exact: cameraId } }
-          : videoConstraints;
-
-        await html5QrCode.start(
-          cameraConfig,
-          config,
-          (decodedText) => {
-            handleDetected(decodedText);
-          },
-          () => {
-            // Frame scan failure (no code in current frame); ignore
-          }
-        );
-
+    const session = startCameraSession({
+      video: videoRef.current,
+      deviceId,
+      waitFor: startupRef.current,
+      onReady: stream => {
         setIsScanning(true);
-        startNativeScanLoop();
-
-        // Check if camera capabilities support torch
+        const track = stream.getVideoTracks()[0];
+        setActiveDeviceId(track.getSettings?.().deviceId || deviceId);
         try {
-          const stream = html5QrCode.getRunningTrackCameraCapabilities?.();
-          if (stream?.torchFeature?.()?.isSupported?.()) {
-            setHasTorch(true);
-          } else {
-            const videoElem = document.querySelector(`#${elementId} video`);
-            const track = videoElem?.srcObject?.getVideoTracks?.()[0];
-            const caps = track?.getCapabilities?.();
-            setHasTorch(Boolean(caps?.torch));
+          const capabilities = track.getCapabilities?.();
+          setHasTorch(Boolean(capabilities?.torch));
+          if (capabilities?.focusMode?.includes('continuous')) {
+            void track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
           }
-        } catch {
-          setHasTorch(false);
-        }
-      } catch (err) {
+        } catch { /* Camera enhancements are optional. */ }
+        // Enumerate after permission; this does not open a second camera stream.
+        navigator.mediaDevices.enumerateDevices?.().then(devices => {
+          if (sessionRef.current === session && openRef.current) {
+            setCameras(devices.filter(device => device.kind === 'videoinput' && device.deviceId));
+          }
+        }).catch(() => {});
+      },
+      onDetected: code => {
+        const handleScan = callbacksRef.current.onScan;
+        closeScanner(); // Close immediately, even if product lookup takes time.
+        playBeep();
+        try { navigator.vibrate?.(80); } catch { /* Optional feedback. */ }
+        handleScan(code);
+      },
+      onError: error => {
         setIsScanning(false);
-        const msg = String(err?.message || err || '');
-        if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
-          setErrorMessage('Kameraga ruxsat berilmadi. Iltimos, brauzer sozlamalarida kameraga ruxsat bering.');
-        } else if (msg.includes('NotFoundError') || msg.includes('DevicesNotFoundError')) {
-          setErrorMessage('Qurilmada kamera topilmadi.');
-        } else {
-          setErrorMessage('Kamerani ishga tushirishda xatolik yuz berdi. Qayta urinib ko‘ring.');
-        }
-      }
-    },
-    [isOpen, stopScanner, handleDetected, startNativeScanLoop]
-  );
-
-  // Initialize camera list on open
-  useEffect(() => {
-    let active = true;
-    if (!isOpen) return;
-
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (!active) return;
-        if (devices && devices.length > 0) {
-          setCameras(devices);
-          // Prefer environment/back camera if labeled
-          const backCamIndex = devices.findIndex(
-            (d) =>
-              d.label?.toLowerCase().includes('back') ||
-              d.label?.toLowerCase().includes('orqa') ||
-              d.label?.toLowerCase().includes('environment')
-          );
-          const initialIndex = backCamIndex >= 0 ? backCamIndex : 0;
-          setSelectedCamIndex(initialIndex);
-          startScanner(devices[initialIndex]?.id);
-        } else {
-          startScanner(null);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          startScanner(null);
-        }
-      });
-
+        setErrorMessage(cameraErrorMessage(error));
+      },
+    });
+    sessionRef.current = session;
+    startupRef.current = session.ready;
     return () => {
-      active = false;
-      stopScanner();
+      openRef.current = false;
+      session.stop();
+      if (sessionRef.current === session) sessionRef.current = null;
     };
-  }, [isOpen, startScanner, stopScanner]);
+  }, [isOpen, deviceId, attempt, closeScanner]);
 
   const toggleTorch = async () => {
-    if (!scannerRef.current || !hasTorch) return;
+    const track = videoRef.current?.srcObject?.getVideoTracks()[0];
+    if (!track || !hasTorch) return;
     try {
-      const nextTorch = !torchOn;
-      const videoElem = document.querySelector(`#${elementId} video`);
-      const track = videoElem?.srcObject?.getVideoTracks?.()[0];
-      if (track?.applyConstraints) {
-        await track.applyConstraints({
-          advanced: [{ torch: nextTorch }],
-        });
-        setTorchOn(nextTorch);
-      }
+      const next = !torchOn;
+      await track.applyConstraints({ advanced: [{ torch: next }] });
+      if (videoRef.current?.srcObject?.getVideoTracks()[0] === track) setTorchOn(next);
     } catch {
-      // Torch toggle failed
+      setHasTorch(false);
+      setTorchOn(false);
     }
   };
 
+  const selectedIndex = Math.max(0, cameras.findIndex(camera => camera.deviceId === activeDeviceId));
   const switchCamera = () => {
-    if (cameras.length <= 1) return;
-    const nextIndex = (selectedCamIndex + 1) % cameras.length;
-    setSelectedCamIndex(nextIndex);
-    startScanner(cameras[nextIndex]?.id);
+    if (isScanning && cameras.length > 1) {
+      setDeviceId(cameras[(selectedIndex + 1) % cameras.length].deviceId);
+    }
   };
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (isOpen) {
-      if (!dialog.open) {
-        try {
-          dialog.showModal();
-        } catch {
-          // Ignore error if already open
-        }
-      }
-    } else {
-      if (dialog.open) {
-        try {
-          dialog.close();
-        } catch {
-          // Ignore error if already closed
-        }
-      }
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleCancel = (e) => {
-      e.preventDefault();
-      onClose();
-    };
-
-    const handleBackdropClick = (event) => {
-      if (event.target !== dialog) return;
-      const rect = dialog.getBoundingClientRect();
-      const isDialogContent =
-        rect.top <= event.clientY &&
-        event.clientY <= rect.top + rect.height &&
-        rect.left <= event.clientX &&
-        event.clientX <= rect.left + rect.width;
-
-      if (!isDialogContent) {
-        onClose();
-      }
-    };
-
-    dialog.addEventListener('cancel', handleCancel);
-    if (!('closedBy' in HTMLDialogElement.prototype)) {
-      dialog.addEventListener('click', handleBackdropClick);
-    }
-
-    return () => {
-      dialog.removeEventListener('cancel', handleCancel);
-      if (!('closedBy' in HTMLDialogElement.prototype)) {
-        dialog.removeEventListener('click', handleBackdropClick);
-      }
-    };
-  }, [onClose]);
 
   return (
     <dialog
       ref={dialogRef}
       className="custom-dialog camera-scanner-dialog"
       closedby="any"
-      aria-labelledby="camera-modal-title"
-      style={{
-        border: 'none',
-        background: 'transparent',
-        padding: 0,
-        margin: 'auto',
-        outline: 'none',
-        overflow: 'visible',
-        maxWidth: '90vw',
-        width: 'min(calc(100vw - 32px), 440px)',
+      aria-labelledby={titleId}
+      onCancel={event => { event.preventDefault(); closeScanner(); }}
+      onClose={() => { if (!dialogRef.current?.open) closeScanner(); }}
+      onClick={event => {
+        if (event.target !== event.currentTarget) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+          closeScanner();
+        }
       }}
+      style={{ border: 'none', background: 'transparent', padding: 0, margin: 'auto', outline: 'none', maxWidth: '90vw', width: 'min(calc(100vw - 32px), 440px)' }}
     >
-      <div
-        className="dialog-content"
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-card)',
-          borderRadius: 16,
-          overflow: 'hidden',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(245, 158, 11, 0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
-        }}
-      >
-        {/* Modal Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '14px 18px',
-            borderBottom: '1px solid var(--border-subtle)',
-            background: 'var(--bg-card)',
-          }}
-        >
+      <div className="dialog-content" style={{ width: '100%', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-card)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,.4)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                background: 'rgba(245, 158, 11, 0.15)',
-                color: 'var(--primary, #f59e0b)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Camera size={18} />
-            </div>
+            <Camera size={20} />
             <div>
-              <h3 id="camera-modal-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {title}
-              </h3>
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                Shtrix-kodni to‘rtburchak ichiga to‘g‘rilang
-              </span>
+              <h3 id={titleId} style={{ margin: 0, fontSize: 15 }}>{title}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Kodni to‘liq ko‘rsating va kamerani bir oz uzoqlashtiring</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Yopish"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              padding: 6,
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'color 0.15s ease',
-            }}
-          >
-            <X size={20} />
-          </button>
+          <button type="button" onClick={closeScanner} aria-label="Yopish" className="btn btn-secondary" style={{ padding: 6 }}><X size={20} /></button>
         </div>
 
-        {/* Viewport Area */}
-        <div
-          style={{
-            position: 'relative',
-            background: '#000',
-            width: '100%',
-            aspectRatio: '4/3',
-            overflow: 'hidden',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {/* HTML5 QR Code Container */}
-          <div
-            id={elementId}
-            style={{
-              width: '100%',
-              height: '100%',
-              overflow: 'hidden',
-            }}
-          />
-
-          {/* Futuristic Targeting Reticle & Scan Line */}
+        <div style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: '4/3', overflow: 'hidden' }}>
+          <video ref={videoRef} autoPlay muted playsInline aria-label="Kamera tasviri" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
           {isScanning && !errorMessage && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                pointerEvents: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                style={{
-                  position: 'relative',
-                  width: '84%',
-                  height: '64%',
-                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.45)',
-                  borderRadius: 12,
-                  transition: 'border-color 0.2s ease',
-                }}
-              >
-                {/* 4 Corner Markers */}
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: -2,
-                    left: -2,
-                    width: 24,
-                    height: 24,
-                    borderTop: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderLeft: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderTopLeftRadius: 10,
-                  }}
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: -2,
-                    right: -2,
-                    width: 24,
-                    height: 24,
-                    borderTop: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderRight: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderTopRightRadius: 10,
-                  }}
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: -2,
-                    left: -2,
-                    width: 24,
-                    height: 24,
-                    borderBottom: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderLeft: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderBottomLeftRadius: 10,
-                  }}
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: -2,
-                    right: -2,
-                    width: 24,
-                    height: 24,
-                    borderBottom: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderRight: `3px solid ${scannedCode ? 'var(--accent-emerald, #10b981)' : 'var(--primary, #f59e0b)'}`,
-                    borderBottomRightRadius: 10,
-                  }}
-                />
-
-                {/* Animated Laser Line */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: '5%',
-                    right: '5%',
-                    height: 2,
-                    background: 'linear-gradient(90deg, transparent, var(--primary, #f59e0b), #fbbf24, transparent)',
-                    boxShadow: '0 0 12px var(--primary, #f59e0b)',
-                    animation: 'scannerLaser 2s infinite ease-in-out',
-                  }}
-                />
-              </div>
+            <div aria-hidden="true" style={{ position: 'absolute', inset: '18% 6%', border: '2px solid var(--primary, #f59e0b)', borderRadius: 12, pointerEvents: 'none', boxShadow: '0 0 0 9999px rgba(0,0,0,.2)' }} />
+          )}
+          {!isScanning && !errorMessage && (
+            <div role="status" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', textAlign: 'center', padding: 20 }}>
+              Kamera ochilmoqda… Kameraga ruxsat so‘ralsa, ruxsat bering.
             </div>
           )}
-
-          {/* Success Flash Notification */}
-          {scannedCode && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(16, 185, 129, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'column',
-                gap: 8,
-                zIndex: 10,
-                backdropFilter: 'blur(3px)',
-              }}
-            >
-              <span
-                style={{
-                  background: 'var(--accent-emerald, #10b981)',
-                  color: '#fff',
-                  padding: '6px 14px',
-                  borderRadius: 20,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
-                }}
-              >
-                ✓ {scannedCode}
-              </span>
-              <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>
-                O‘qildi! Yuklanmoqda...
-              </span>
-            </div>
-          )}
-
-          {/* Error Message */}
           {errorMessage && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                gap: 12,
-                background: 'rgba(20, 24, 32, 0.95)',
-                padding: 20,
-                borderRadius: 12,
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-              }}
-            >
-              <AlertCircle size={36} color="var(--accent-rose, #ef4444)" />
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary, #cbd5e1)', lineHeight: 1.5 }}>
-                {errorMessage}
-              </p>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => startScanner(cameras[selectedCamIndex]?.id || null)}
-                style={{ fontSize: 12, padding: '6px 14px', marginTop: 4 }}
-              >
-                Qayta urinish
-              </button>
+            <div role="alert" style={{ position: 'absolute', inset: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 12, background: '#141820', color: '#fff', padding: 16, borderRadius: 12 }}>
+              <AlertCircle size={30} color="#f87171" />
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>{errorMessage}</p>
+              <button type="button" className="btn btn-secondary" onClick={() => setAttempt(value => value + 1)}>Qayta urinish</button>
             </div>
           )}
         </div>
 
-        {/* Footer Actions / Camera Controls */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: (hasTorch || cameras.length > 1) ? 'space-between' : 'flex-end',
-            padding: '12px 18px',
-            background: 'var(--bg-card)',
-            borderTop: '1px solid var(--border-subtle)',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 18px' }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            {/* Flash/Torch button if supported */}
-            {hasTorch && (
-              <button
-                type="button"
-                onClick={toggleTorch}
-                title={torchOn ? 'Chiroqni o‘chirish' : 'Chiroqni yoqish'}
-                className="btn btn-secondary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 12,
-                  padding: '6px 12px',
-                  color: torchOn ? 'var(--primary, #f59e0b)' : undefined,
-                  borderColor: torchOn ? 'var(--primary, #f59e0b)' : undefined,
-                }}
-              >
-                {torchOn ? <Zap size={15} /> : <ZapOff size={15} />}
-                <span>{torchOn ? 'Chiroq: Yoqiq' : 'Chiroq'}</span>
+            {hasTorch && isScanning && (
+              <button type="button" onClick={toggleTorch} className="btn btn-secondary" aria-pressed={torchOn} title={torchOn ? 'Chiroqni o‘chirish' : 'Chiroqni yoqish'}>
+                {torchOn ? <Zap size={15} /> : <ZapOff size={15} />} Chiroq
               </button>
             )}
-
-            {/* Switch Camera Button if multiple devices */}
             {cameras.length > 1 && (
-              <button
-                type="button"
-                onClick={switchCamera}
-                title="Kamerani almashtirish"
-                className="btn btn-secondary"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 12,
-                  padding: '6px 12px',
-                }}
-              >
-                <RefreshCw size={14} />
-                <span>Kamera #{selectedCamIndex + 1}</span>
+              <button type="button" onClick={switchCamera} disabled={!isScanning} title="Kamerani almashtirish" className="btn btn-secondary">
+                <RefreshCw size={14} /> Kamera #{selectedIndex + 1}
               </button>
             )}
           </div>
-
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={onClose}
-            style={{ fontSize: 13, fontWeight: 600, padding: '8px 18px', cursor: 'pointer' }}
-          >
-            Bekor qilish
-          </button>
+          <button type="button" className="btn btn-secondary" onClick={closeScanner}>Bekor qilish</button>
         </div>
       </div>
-
-      <style>{`
-        dialog.camera-scanner-dialog::backdrop {
-          background: rgba(0, 0, 0, 0.88);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-        }
-        @keyframes scannerLaser {
-          0% { top: 6%; }
-          50% { top: 92%; }
-          100% { top: 6%; }
-        }
-        #${elementId} video {
-          width: 100% !important;
-          height: 100% !important;
-          object-fit: cover !important;
-        }
-      `}</style>
+      <style>{`dialog.camera-scanner-dialog::backdrop { background: rgba(0,0,0,.88); }`}</style>
     </dialog>
   );
 }

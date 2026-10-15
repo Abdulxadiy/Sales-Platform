@@ -6,8 +6,8 @@ import { ToastProvider } from '/src/context/ToastContext.jsx';
 import { catalogApi } from '/src/api/client.js';
 import { labelDocument } from '/src/utils/productLabels.js';
 import { createBarcodeReader } from '/src/utils/barcodeReader.js';
-const variant = {id:20002,barcode:'INV-5-20002',product_name:'MyTech 32',name:'MyTech 32 4K',price_recommended:'1600000',currency:'UZS'};
+const variant = {id:20002,barcode:new URLSearchParams(location.search).has('legacy')?'INV-5-20002':new URLSearchParams(location.search).has('blank')?'':'2083638774589',product_name:'Shtrix namuna 1',name:'Standart',price_recommended:'1000',currency:'UZS'};
 window.labelQA = {generations:0,changed:0,variant,labelDocument,createBarcodeReader};
-catalogApi.generateBarcode=async()=>{labelQA.generations++;await new Promise(r=>setTimeout(r,40));return {...variant,barcode:'2000000000022',legacy_barcode:variant.barcode};};
+catalogApi.generateBarcode=async()=>{labelQA.generations++;await new Promise(r=>setTimeout(r,40));return {...variant,barcode:'2000000000022'};};
 createRoot(document.getElementById('root')).render(React.createElement(StrictMode,null,React.createElement(ToastProvider,null,React.createElement(Labels,{variant,canGenerate:true,onClose(){},onChanged(){labelQA.changed++;}}))));
 </script></body></html>

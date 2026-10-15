@@ -21,6 +21,8 @@ npm run build
 
 `npm run test:camera` runs Chrome/Chromium against generated barcode video frames, covering the scanner lifecycle and all five camera entry points in POS, catalog and inventory intake. It uses mocked API responses and requires neither a physical camera nor a backend. Set `CHROME_PATH` if Chrome is installed outside the standard locations.
 
+`npm run test:labels` checks the enlarged label preview, mandatory barcode digits, optional product name, actual print dimensions and decoding of the printed barcode. Existing product barcodes are preserved; explicit generation for products without a code creates a numeric barcode.
+
 Camera capture requires HTTPS (or localhost for development) and browser camera permission. The shared scanner releases its stream and closes as soon as it reads a code; its decoder loads only when the camera is opened.
 
 ## Routes and access

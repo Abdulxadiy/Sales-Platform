@@ -11,13 +11,13 @@
   "paused": false,
   "validation": [
     {"cwd": ".", "argv": ["python3", "-m", "unittest", "discover", "-s", "tests/automation", "-v"]},
-    {"cwd": "inventra", "argv": ["uv", "sync", "--frozen"]},
-    {"cwd": "inventra", "argv": ["uv", "run", "ruff", "check", ".", "--select", "E9,F821,F822,F823"]},
-    {"cwd": "inventra", "argv": ["uv", "run", "python", "manage.py", "spectacular", "--settings=config.settings_test", "--validate", "--fail-on-warn", "--file", "/tmp/queue-api-schema.yml"]},
-    {"cwd": "inventra", "argv": ["uv", "run", "pytest", "-q"]},
-    {"cwd": "frontend/inventra", "argv": ["npm", "ci"]},
-    {"cwd": "frontend/inventra", "argv": ["npm", "run", "lint", "--if-present"]},
-    {"cwd": "frontend/inventra", "argv": ["npm", "test"]},
-    {"cwd": "frontend/inventra", "argv": ["npm", "run", "build"]}
+    {"cwd": "ilbi", "argv": ["uv", "sync", "--frozen"]},
+    {"cwd": "ilbi", "argv": ["uv", "run", "ruff", "check", ".", "--select", "E9,F821,F822,F823"]},
+    {"cwd": "ilbi", "argv": ["uv", "run", "python", "manage.py", "spectacular", "--settings=config.settings_test", "--validate", "--fail-on-warn", "--file", "/tmp/queue-api-schema.yml"]},
+    {"cwd": "ilbi", "argv": ["uv", "run", "pytest", "-q"]},
+    {"cwd": "frontend/ilbi", "argv": ["npm", "ci"]},
+    {"cwd": "frontend/ilbi", "argv": ["npm", "run", "lint", "--if-present"]},
+    {"cwd": "frontend/ilbi", "argv": ["npm", "test"]},
+    {"cwd": "frontend/ilbi", "argv": ["npm", "run", "build"]}
   ]
 }

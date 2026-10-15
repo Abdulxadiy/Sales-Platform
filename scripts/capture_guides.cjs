@@ -2,13 +2,13 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const fs=require('fs'); const path=require('path');
 const root=path.resolve(__dirname, '..');
-const baseUrl=process.env.INVENTRA_DOCS_BASE_URL || 'http://127.0.0.1:5177';
-const authFile=process.env.INVENTRA_DOCS_AUTH_FILE;
-if (!authFile) throw new Error('Set INVENTRA_DOCS_AUTH_FILE to synthetic demo sessions; never use real accounts.');
+const baseUrl=process.env.ILBI_DOCS_BASE_URL || 'http://127.0.0.1:5177';
+const authFile=process.env.ILBI_DOCS_AUTH_FILE;
+if (!authFile) throw new Error('Set ILBI_DOCS_AUTH_FILE to synthetic demo sessions; never use real accounts.');
 const captureDate=new Date().toISOString().slice(0,10);
 const out=path.join(root,'docs/rasmlar/focused'); const auth=JSON.parse(fs.readFileSync(authFile,'utf8'));
 const manifest=[];
-async function contextFor(browser, name){const c=await browser.newContext({viewport:{width:1440,height:1100},deviceScaleFactor:1.5});if(name) await c.addInitScript(d=>{localStorage.setItem('inventra_access_token',d.tokens.access);localStorage.setItem('inventra_refresh_token',d.tokens.refresh);localStorage.setItem('inventra_user',JSON.stringify(d.user));localStorage.setItem(`inventra_active_tenant:${d.user.id}`,'1');},auth[name]);return c;}
+async function contextFor(browser, name){const c=await browser.newContext({viewport:{width:1440,height:1100},deviceScaleFactor:1.5});if(name) await c.addInitScript(d=>{localStorage.setItem('ilbi_access_token',d.tokens.access);localStorage.setItem('ilbi_refresh_token',d.tokens.refresh);localStorage.setItem('ilbi_user',JSON.stringify(d.user));localStorage.setItem(`ilbi_active_tenant:${d.user.id}`,'1');},auth[name]);return c;}
 async function open(page,route){await page.goto(baseUrl+route);await page.waitForTimeout(650);}
 async function capture(page,name,region,targets){
  await page.waitForTimeout(300);

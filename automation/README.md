@@ -66,9 +66,9 @@ python3 scripts/install_backup_timer.py
 Kompyuter yoqilgan va foydalanuvchi seansi ishlayotgan paytda har 15 daqiqada saqlangan fayllar tekshiriladi. Kod o‘zgarmasa yangi backup commit yaratilmaydi. GitHubga kirilgan hisob va internet kerak. Kompyuter o‘chirilganda yangi mahalliy fayllar yuborilmaydi; GitHubdagi oxirgi muvaffaqiyatli zaxira qoladi. Saqlanmagan IDE buferlari zaxiraga kirmaydi.
 
 ```bash
-systemctl --user list-timers inventra-source-backup.timer
-journalctl --user -u inventra-source-backup.service -n 30
-systemctl --user disable --now inventra-source-backup.timer
+systemctl --user list-timers ilbi-source-backup.timer
+journalctl --user -u ilbi-source-backup.service -n 30
+systemctl --user disable --now ilbi-source-backup.timer
 ```
 
 ## Qo‘lda boshqarish

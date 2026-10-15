@@ -1,4 +1,4 @@
-# Inventra: boshlash va yordam olish
+# ILBI: boshlash va yordam olish
 
 Yangilangan: **2026-10-14**.
 

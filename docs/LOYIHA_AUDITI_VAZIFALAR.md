@@ -1,4 +1,4 @@
-# Inventra — loyiha auditi, vazifalar va muhokamalar
+# ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Sana:** 2026-10-12.  
 **Holat:** dastlabki tahlil tugadi; quyidagi 38 ta vazifaning implementatsiyasi boshlanmagan.  
@@ -13,7 +13,7 @@ Backendning accounts, tenants, permissions, catalog, inventory, sales, cashbox, 
 - Backendda 56 ta test moduli bor. Test manbalarida `ThreadPoolExecutor`, `threading`, `Thread(`, `transaction=True` yoki `TransactionTestCase` bilan parallel bajarish tekshiruvlari topilmadi.
 - Ushbu auditda pytest, frontend build/lint, migratsiya yoki server ishga tushirilmadi. Ma’lumotlar bazasiga, xizmatlarga va ilova kodiga o‘zgartirish kiritilmadi.
 - Mavjud hujjatlardagi `371/377 passed` kabi yozuvlar oldingi tekshiruvlarga tegishli; ular ushbu auditning natijasi emas.
-- `INVENTRA_MASTER_PLAN.md` va `docs/OZBEKISTON_QONUNI_WALKTHROUGH.md`dagi oldingi qarorlar hisobga olindi. Quyidagi qaydlar ulardagi bajarilmagan ishlarni ham, hozirgi koddagi aniq kamchiliklarni ham ko‘rsatadi; oldingi qarorlar qayta tasdiqlangan deb yozilmadi.
+- `ILBI_MASTER_PLAN.md` va `docs/OZBEKISTON_QONUNI_WALKTHROUGH.md`dagi oldingi qarorlar hisobga olindi. Quyidagi qaydlar ulardagi bajarilmagan ishlarni ham, hozirgi koddagi aniq kamchiliklarni ham ko‘rsatadi; oldingi qarorlar qayta tasdiqlangan deb yozilmadi.
 
 Mavjud yaxshi asoslar: tenant headeri faol membership bilan serverda tekshiriladi; biznes APIlarining asosiy qismi tenant bilan cheklangan; Stock manfiy qoldiqdan DB constraint bilan himoyalangan; B2B qabul javobi alohida serializer ishlatadi; public receipt tasodifiy token va rotatsiyaga ega; B2B rad/expiry darhol stockni tiklamaydi; yangi B2B qaytish va tafovut yozuvlarida idempotency hamda miqdor constraintlari bor. Ushbu mexanizmlarni tuzatishlarda saqlash kerak.
 
@@ -78,7 +78,7 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 
 **5/5 · P0 · Ochiq reja.**
 
-**Dalil:** `inventra/apps/sales/services/sale_service.py:24,94`; `inventra/apps/tenants/models.py:11`; `inventra/apps/tenants/seller_profile_service.py`; mavjud walkthrough’dagi launch talablari.
+**Dalil:** `ilbi/apps/sales/services/sale_service.py:24,94`; `ilbi/apps/tenants/models.py:11`; `ilbi/apps/tenants/seller_profile_service.py`; mavjud walkthrough’dagi launch talablari.
 
 Sotuvchi profili va muddati tekshiriladi, `DEBUG=False` bo‘lsa savdo ataylab rad etiladi. Fiskal adapter, provayder tasdiqlaydigan natija va xatolar, dalil hujjatlari, identifikatorlarni shifrlash va saqlash muddati hali yakunlanmagan. `tax_identifier` DBda oddiy `CharField`; javobda maskalash saqlashdagi shifrlash o‘rnini bosmaydi. Operator review API mavjud, lekin to‘liq tekshiruv interfeysi va dalil jarayoni yo‘q.
 
@@ -90,23 +90,23 @@ Sotuvchi profili va muddati tekshiriladi, `DEBUG=False` bo‘lsa savdo ataylab r
 
 #### AUD-01 uchun taklif etilgan yechim
 
-1. **Fiskal provayder orqali integratsiya.** Amaldagi reyestrdagi virtual kassa yechimidan boshlash. Tanlash mezonlari: hujjatlashtirilgan API va sandbox, chek yaratish va holatini aniqlash, takroriy so‘rovdan himoya, asl chek bo‘yicha qisman/to‘liq refund, tenant/do‘kon kesimidagi ro‘yxat, MXIK/markirovka talablari va uzilishdagi ruxsat etilgan oqim. Bitta provayder adapterini to‘liq ishlatish; boshqa provayder uchun adapter chegarasini saqlash. Inventra+provayder integratsiyasi reyestr/tasdiq talabini qanday qoplashi Soliq/OFD/TXKM bilan yozma aniqlashtiriladi.
+1. **Fiskal provayder orqali integratsiya.** Amaldagi reyestrdagi virtual kassa yechimidan boshlash. Tanlash mezonlari: hujjatlashtirilgan API va sandbox, chek yaratish va holatini aniqlash, takroriy so‘rovdan himoya, asl chek bo‘yicha qisman/to‘liq refund, tenant/do‘kon kesimidagi ro‘yxat, MXIK/markirovka talablari va uzilishdagi ruxsat etilgan oqim. Bitta provayder adapterini to‘liq ishlatish; boshqa provayder uchun adapter chegarasini saqlash. ILBI+provayder integratsiyasi reyestr/tasdiq talabini qanday qoplashi Soliq/OFD/TXKM bilan yozma aniqlashtiriladi.
 2. **Sotuvchi va do‘konning fiskal ulanishi alohida.** Mavjud SellerProfile rasmiy sotuvchi tekshiruvini ifodalaydi. Har tenant uchun alohida fiskal ulanish: tegishli sotuvchi, provayder, ro‘yxatdan o‘tgan kassa identifikatori, test/haqiqiy muhit, credential referensi va ishlash holati. Bir sotuvchining tasdiqlanishi uning har bir do‘kon kassasi avtomatik tayyor degani emas. Production savdo faqat faol membership + amaldagi seller tasdig‘i + tayyor fiskal ulanish + tegishli mahsulot/to‘lov shartlari bo‘lsa ochiladi. DEBUG savdoni yoqish tugmasi bo‘lmaydi.
 3. **Minimal dalil bilan seller review.** Tekshiruv uchun zarur rasmiy ma’lumot yoki dalil referensi yig‘iladi; har bir ownerdan bir xil ortiqcha hujjat talab qilinmaydi. Operator kim, qachon, qaysi dalil asosida qaror qilganini saqlaydi. Shaxsiy identifikator/zarur fayllarga cheklangan kirish, shifrlash/kalit boshqaruvi va kelishilgan saqlash muddati qo‘llanadi. Muhim rekvizit o‘zgarsa qayta review holati ochiladi.
-4. **Savdo va fiskal operatsiya yozuvlari alohida.** Checkout uchun barqaror operation ID va idempotency kaliti; mahsulot nomi, narx, soliq/MXIK va tender ma’lumotlari snapshotda saqlanadi. DB transaction ichida tekshirish, tovar rezervi va yuborish yozuvi yaratiladi; tarmoq so‘rovi pul/stock locklarini ushlab turmaydi. Fiskal javob keyingi transactionda bir marta qo‘llanadi. Olingan fiskal belgi/raqam/QR alohida saqlanadi; Inventra elektron nusxa tokeni bilan aralashtirilmaydi. Pul qabul qilingan bo‘lsa uning real holati ham saqlanadi, noaniq fiskal natija sabab o‘chirilmaydi.
+4. **Savdo va fiskal operatsiya yozuvlari alohida.** Checkout uchun barqaror operation ID va idempotency kaliti; mahsulot nomi, narx, soliq/MXIK va tender ma’lumotlari snapshotda saqlanadi. DB transaction ichida tekshirish, tovar rezervi va yuborish yozuvi yaratiladi; tarmoq so‘rovi pul/stock locklarini ushlab turmaydi. Fiskal javob keyingi transactionda bir marta qo‘llanadi. Olingan fiskal belgi/raqam/QR alohida saqlanadi; ILBI elektron nusxa tokeni bilan aralashtirilmaydi. Pul qabul qilingan bo‘lsa uning real holati ham saqlanadi, noaniq fiskal natija sabab o‘chirilmaydi.
 5. **Uzilish va noaniq natijani boshqarish.** Tavsiya etilgan holatlar: tayyorlandi, yuborilmoqda, tasdiqlandi, aniq rad etildi, natija noma’lum. Timeout aniq rad etildi deb yozilmaydi. Noma’lum holatda operation ID bo‘yicha provayderdan natija olinadi; provayder shartnomasiga mos idempotent retry qilinadi. Stock/pulni yakunlash yoki rezervni bo‘shatish shu aniqlangan natijaga bog‘lanadi. Offline savdo faqat tanlangan yechimning rasmiy qo‘llab-quvvatlangan tartibi bo‘yicha.
 6. **Mahsulotlar va qaytarishlar.** Provayder talab qiladigan MXIK, o‘lchov/soliq va markirovka ma’lumoti tayyorlanadi. Rasmiy ro‘yxat bo‘yicha naqd mumkin bo‘lmagan pozitsiyalar bloklanadi; aralash savat uchun avval kelishilgan ajratilgan chek oqimi provayder bilan moslanadi. Refund asl fiskal chek va tenderga bog‘lanadi; B2B va ichki transferlarning tegishli hujjat oqimlari alohida aniqlashtiriladi.
 
 **Taklif etilgan bajarish ketma-ketligi:**
 
-1. Provayderga beriladigan aniq talablar va Inventra integratsiya sxemasini tayyorlash; rasmiy API/sandbox va maqom aniqligi.
+1. Provayderga beriladigan aniq talablar va ILBI integratsiya sxemasini tayyorlash; rasmiy API/sandbox va maqom aniqligi.
 2. Lokal biznes asosi: AUD-05 idempotency, AUD-18 yaxlitlash, AUD-03 refund, AUD-02/04 pul/stock va transaction qoidalarini tegishli tasklar bilan muvofiqlashtirish. Seller review va tenant fiskal ulanish modeli.
 3. Bitta provayder adapteri, yuborish/reconciliation jarayoni va interfeysda aniq holatlar.
 4. Sandboxda muvaffaqiyat, rad etish, timeoutdan keyingi topilgan chek, parallel takroriy so‘rov, qisman refund, expiry va cheklangan MXIK savati uchun tekshiruvlar; so‘ng tashqi tasdiq bilan bitta do‘kon pilot.
 
 **Qayta o‘qilgan rasmiy manbalar:**
 
-- [Soliq qo‘mitasining 2024-06-21 izohi](https://gov.uz/oz/soliq/news/view/14527): reyestrdagi/integratsiyalangan yechimlar va ikkilamchi fiskal hisob haqidagi tushuntirish. Bu manbadan Inventra uchun avtomatik ruxsat olindi deb xulosa qilinmaydi.
+- [Soliq qo‘mitasining 2024-06-21 izohi](https://gov.uz/oz/soliq/news/view/14527): reyestrdagi/integratsiyalangan yechimlar va ikkilamchi fiskal hisob haqidagi tushuntirish. Bu manbadan ILBI uchun avtomatik ruxsat olindi deb xulosa qilinmaydi.
 - [2026-04-28 reyestr o‘zgarishi](https://gov.uz/oz/soliq/news/view/159141): provayder/kassa/TXKMning joriy maqomini tanlash vaqtida tekshirish zarurligi. Bog‘langan OFD virtual kassa reyestri sahifasi bu ko‘rib chiqishda timeout berdi; muayyan provayderning joriy reyestr maqomi tasdiqlanmadi va provayder tanlanmadi.
 - [2026-04-03 MXIK va to‘lov shakli izohi](https://gov.uz/oz/soliq/news/view/149988): tegishli ro‘yxat uchun naqd cheklovi, aralash savatga ikki chek tavsiyasi.
 - LexUZning umumiy 943-son sahifasida kelajakdagi 2026-10-22 tahriri ham ko‘rinadi. 2026-10-12 sanasi bilan alohida ochish muvaffaqiyatli bo‘lmadi; kelajakdagi o‘zgarish hozir amalda deb qabul qilinmadi.
@@ -117,7 +117,7 @@ Sotuvchi profili va muddati tekshiriladi, `DEBUG=False` bo‘lsa savdo ataylab r
 
 **5/5 · P0 · Kodda aniq va parallel bajarishda shartli xavf.**
 
-**Dalil:** `inventra/apps/cashbox/services/cashbox_service.py:78,186`; `inventra/apps/cashbox/models.py`; `inventra/apps/sales/models/debt_payment_model.py`.
+**Dalil:** `ilbi/apps/cashbox/services/cashbox_service.py:78,186`; `ilbi/apps/cashbox/models.py`; `ilbi/apps/sales/models/debt_payment_model.py`.
 
 Smena alohida identifikator bilan yuritilmaydi: oxirgi hisobot va `Sale.created_at`dan hisoblanadi. `close_shift()` transaction ichida, lekin smenani yopishni seriallashtiruvchi lock yo‘q. Ikki yopish so‘rovi bir xil tushum uchun ikki hisobot yaratishi mumkin. Hisoblangandan keyin qo‘shilgan kirim/chiqim keyingi umumiy `update()` bilan oldingi hisobga bog‘lanishi mumkin. Boshlang‘ich naqd, o‘tgan smenadan qolgan pul, real qarz to‘lovining tenderi va boshqa smenada bajarilgan refund alohida hisoblanmaydi.
 
@@ -131,7 +131,7 @@ Smena alohida identifikator bilan yuritilmaydi: oxirgi hisobot va `Sale.created_
 
 **5/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/sales/services/void_service.py:38,117,173`; `inventra/apps/sales/models/sale_model.py`; `inventra/api/v1/inventory/views/movement_views.py`.
+**Dalil:** `ilbi/apps/sales/services/void_service.py:38,117,173`; `ilbi/apps/sales/models/sale_model.py`; `ilbi/api/v1/inventory/views/movement_views.py`.
 
 `void_sale_item()` asl `total_amount`ni kamaytiradi; `void_sale()` to‘liq bekor qilishda uni saqlaydi. `refunded_amount` retail voidda yangilanmaydi. Bir xil chek uchun ikki xil hisob qoidasi paydo bo‘lgan. Inventar mijoz qaytarishi esa asl sotuv va tender bilan majburiy bog‘lanmagan: omborni oshirib, savdo/qarzni o‘zgartirmasligi mumkin. Voidning 7 kunlik texnik chegarasi iste’molchi qaytarish jarayoniga ham aralashgan.
 
@@ -145,7 +145,7 @@ Smena alohida identifikator bilan yuritilmaydi: oxirgi hisobot va `Sale.created_
 
 **5/5 · P1 · Shartli xavf, kodda tartib farqi aniq.**
 
-**Dalil:** `inventra/apps/sales/services/sale_service.py:183,233`; `inventra/apps/sales/services/b2b_transfer_service.py:481,657`; `inventra/apps/inventory/services/stock_service.py:141`; `inventra/apps/catalog/services/product_service.py:22`; `inventra/apps/catalog/services/category_service.py:18`; `inventra/apps/tenants/services.py:53`.
+**Dalil:** `ilbi/apps/sales/services/sale_service.py:183,233`; `ilbi/apps/sales/services/b2b_transfer_service.py:481,657`; `ilbi/apps/inventory/services/stock_service.py:141`; `ilbi/apps/catalog/services/product_service.py:22`; `ilbi/apps/catalog/services/category_service.py:18`; `ilbi/apps/tenants/services.py:53`.
 
 Savdo Stockni, keyin Counterpartyni lock qiladi; B2B qaytish Counterpartyni, keyin Stockni lock qiladi. Bir xil qoldiq va kontragentda ular o‘zaro kutishga tushishi mumkin. Batch kirim foydalanuvchi yuborgan tartibda ishlaydi. SKU/kod generatsiyasi mavjud qatorlarni lock qiladi, bo‘sh katalogda esa lock qiladigan qator yo‘q; birinchi parallel yaratishlar bir xil kod olishi mumkin. Tenant maksimumini `count()` bilan tekshirish parallel yaratishga chidamli emas.
 
@@ -159,7 +159,7 @@ Savdo Stockni, keyin Counterpartyni lock qiladi; B2B qaytish Counterpartyni, key
 
 **4/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/sales/services/sale_service.py:74`; `inventra/apps/sales/models/sale_model.py`; `frontend/inventra/src/pages/POS.jsx:457`; `inventra/apps/sales/services/debt_service.py:17`.
+**Dalil:** `ilbi/apps/sales/services/sale_service.py:74`; `ilbi/apps/sales/models/sale_model.py`; `frontend/ilbi/src/pages/POS.jsx:457`; `ilbi/apps/sales/services/debt_service.py:17`.
 
 POS so‘rovi `idempotency_key` yubormaydi. Backendda kalit oddiy index, unique constraint yoki payload hash yo‘q. Mavjud savdoni izlash receipt lockidan oldin: ikki so‘rov bir vaqtda “yo‘q” deb topib, keyin navbat bilan ikkita savdo yaratishi mumkin. Shu kalit bilan boshqa savat yuborilsa ham eski savdo qaytadi. Qarz to‘lovi takroriy so‘rovda qarzni yana kamaytiradi.
 
@@ -173,7 +173,7 @@ POS so‘rovi `idempotency_key` yubormaydi. Backendda kalit oddiy index, unique 
 
 **4/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/sales/services/counterparty_service.py:16,47`; `inventra/api/v1/sales/serializers.py:38`.
+**Dalil:** `ilbi/apps/sales/services/counterparty_service.py:16,47`; `ilbi/api/v1/sales/serializers.py:38`.
 
 Telefon raqami bilan User izlanib, uning birinchi faol do‘koni yoki xodimlik do‘koni avtomatik `target_tenant`ga aylanadi. Ko‘p do‘konli egada `.first()` qaysi do‘kon mo‘ljallanganini bilmaydi. Oddiy mijozni saqlash kutilmaganda B2B savdoga aylanishi mumkin. Manba tenantning o‘ziga bog‘lashdan ham shu servisda alohida himoya yo‘q.
 
@@ -187,7 +187,7 @@ Telefon raqami bilan User izlanib, uning birinchi faol do‘koni yoki xodimlik d
 
 **4/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/inventory/services/transfer_service.py:40,86,257`; `inventra/apps/sales/services/sale_service.py:212`.
+**Dalil:** `ilbi/apps/inventory/services/transfer_service.py:40,86,257`; `ilbi/apps/sales/services/sale_service.py:212`.
 
 Manzil varianti mahsulot/variant nomi bilan avtomatik tanlanadi; birlik va valyuta mosligi majburiy tekshirilmaydi. Masalan, nomi bir xil “kg” va “dona” qoldiqlari qo‘shilib ketishi mumkin. `_apply()` transfer qabulida `last_cost_price`ni olib o‘tmaydi: yangi manzil Stockida tannarx bo‘sh qoladi, keyingi savdoda 0 olinadi va foyda sun’iy oshadi. Qabul bosqichida dispatchdan keyin o‘zgargan seller bog‘lanishi ham qayta tekshirilmaydi.
 
@@ -201,7 +201,7 @@ Manzil varianti mahsulot/variant nomi bilan avtomatik tanlanadi; birlik va valyu
 
 **4/5 · P0 · Kodda aniq.**
 
-**Dalil:** `frontend/inventra/src/pages/Services.jsx:89,156`; `Sales.jsx:167`; `Dashboard.jsx:82`; `Audit.jsx:14`; `Employees.jsx:44`; `components/layout/Layout.jsx:94`; `src/api/client.js:115`.
+**Dalil:** `frontend/ilbi/src/pages/Services.jsx:89,156`; `Sales.jsx:167`; `Dashboard.jsx:82`; `Audit.jsx:14`; `Employees.jsx:44`; `components/layout/Layout.jsx:94`; `src/api/client.js:115`.
 
 Header almashtirilganda API client yangi tenantni yuboradi, lekin Services, Dashboard, Audit, notifications va Sales yuklashlarining ayrim dependencylarida active tenant yo‘q. Servicesda A do‘konining eski formasi ekranda qolib, saqlash B do‘koniga ketishi mumkin. Employees eski `user.tenant_id`ga tayanib, u bo‘lmasa `1`ni tanlaydi. Tez almashtirishda oldingi async javoblar yangi tenant stateini ham bosishi mumkin.
 
@@ -215,7 +215,7 @@ Header almashtirilganda API client yangi tenantni yuboradi, lekin Services, Dash
 
 **4/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/accounts/views/admin_login.py`; `inventra/apps/accounts/services/otp_services.py:49`; `login_throttle.py:75,113`.
+**Dalil:** `ilbi/api/v1/accounts/views/admin_login.py`; `ilbi/apps/accounts/services/otp_services.py:49`; `login_throttle.py:75,113`.
 
 OTP tasdiqlashda parol bosqichi o‘tilganini bildiradigan bir martalik ticket yo‘q: username va telefon uchun saqlangan kod tekshiriladi. OTPni o‘qish va o‘chirish alohida Redis buyruqlari, parallel tasdiqlar ikkalasi ham muvaffaqiyatli bo‘lishi mumkin. Throttle username/telefon/email kirish matni bilan alohida yuradi, permanent ban esa faqat `username` bo‘yicha update qiladi. Shu accountning uch identifikatori himoyada bir xil subyekt hisoblanmaydi.
 
@@ -229,7 +229,7 @@ OTP tasdiqlashda parol bosqichi o‘tilganini bildiradigan bir martalik ticket y
 
 **4/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/accounts/services/password_reset_service.py:390,544,554`; `inventra/api/v1/accounts/views/password_reset.py:41`; `inventra/api/v1/accounts/serializers.py`.
+**Dalil:** `ilbi/apps/accounts/services/password_reset_service.py:390,544,554`; `ilbi/api/v1/accounts/views/password_reset.py:41`; `ilbi/api/v1/accounts/serializers.py`.
 
 Yangi reset so‘rovi avvalgi tokenni bekor qilmaydi. Tasdiqlashda token username validatsiyasidan oldin o‘chadi: band username tanlash havolani yaroqsiz qiladi. Token berilgandan keyin xodim bo‘shatilgan yoki account bloklangan bo‘lsa confirm bosqichida vakolat qayta tekshirilmaydi. Username mavjud accountda ham almashtiriladi, serializer izohi esa faqat birinchi o‘rnatishni va’da qiladi. Request view yuborish xatosi/cooldown natijasini e’tiborsiz qoldirib “yuborildi” deydi; `email_hint/has_email` esa ma’lum va noma’lum accountni farqlaydi.
 
@@ -243,7 +243,7 @@ Yangi reset so‘rovi avvalgi tokenni bekor qilmaydi. Tasdiqlashda token usernam
 
 **4/5 · P1 · Shartli parallel xavf va kodda aniq validatsiya bo‘shlig‘i.**
 
-**Dalil:** `inventra/api/v1/accounts/views/profile_views.py:24,128`; `complete_profile.py`; `inventra/apps/accounts/services/password_reset_service.py:524,575`.
+**Dalil:** `ilbi/api/v1/accounts/views/profile_views.py:24,128`; `complete_profile.py`; `ilbi/apps/accounts/services/password_reset_service.py:524,575`.
 
 Profil tahriri `user.save()` bilan barcha ustunlarni eski instance’dan yozadi. Boshqa so‘rov parol/token_version/is_active ni o‘zgartirgach, kechroq tugagan profil so‘rovi eski qiymatlarni qayta yozishi mumkin. Parol yo‘llarida asosan uzunlik tekshiriladi, settingsdagi `AUTH_PASSWORD_VALIDATORS` qo‘llanmaydi. Emailni o‘zgartirishda qayta tasdiq yo‘q; reset email bo‘yicha `.first()` ishlatadi, email esa DBda unique emas.
 
@@ -257,7 +257,7 @@ Profil tahriri `user.save()` bilan barcha ustunlarni eski instance’dan yozadi.
 
 **4/5 · P1 · Shartli xavf.**
 
-**Dalil:** `inventra/apps/inventory/migrations/0006_remove_branches_one_stock_per_variant.py`; `inventra/apps/tenants/migrations/0008_remove_branch_model.py`; `0011_delete_branch_after_scope_removal.py`; accounts/sales/cashboxdagi branch removal migratsiyalari.
+**Dalil:** `ilbi/apps/inventory/migrations/0006_remove_branches_one_stock_per_variant.py`; `ilbi/apps/tenants/migrations/0008_remove_branch_model.py`; `0011_delete_branch_after_scope_removal.py`; accounts/sales/cashboxdagi branch removal migratsiyalari.
 
 Migratsiya branch va eski transfer jadvallarini o‘chiradi, Stockni variant uchun `OneToOneField` qiladi. Ikki filialda bir variantning qoldig‘i mavjud bo‘lsa unique o‘zgarish bajarilmaydi. Eski branch, narx va tarixni alohida tenantga ko‘chirish `RunPython` bosqichi yo‘q.
 
@@ -275,7 +275,7 @@ Mavjud master reja DBni disposable deb belgilagan. Shuning uchun eski ma’lumot
 
 **3/5 · P0 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/cashbox/views/cashbox_views.py:20,51,96`; `inventra/config/settings.py:147`; `inventra/api/v1/catalog/views/product_views.py:73,293`; `inventra/api/v1/tenants/views.py:326,347`.
+**Dalil:** `ilbi/api/v1/cashbox/views/cashbox_views.py:20,51,96`; `ilbi/config/settings.py:147`; `ilbi/api/v1/catalog/views/product_views.py:73,293`; `ilbi/api/v1/tenants/views.py:326,347`.
 
 Kassa view/base’da action permission yo‘q, REST defaults’da ham permission belgilanmagan. Membership bor xodim, alohida vakolatsiz, chiqim/kirim yozishi va smenani yopishi mumkin. Mahsulot yaratishdagi `initial_quantity` ombor kirimini faqat `catalog.add_product` bilan bajaradi. Variant archive endpointi `archive_product` o‘rniga `change_product` talab qiladi. Telegram test endpointi oddiy autentifikatsiyali staffga maxsus group ID berishga ruxsat beradi. Transfer target view platform admin uchun `self.tenant=None` holatini ishlovsiz qoldiradi.
 
@@ -289,7 +289,7 @@ Kassa view/base’da action permission yo‘q, REST defaults’da ham permission
 
 **3/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/sales/serializers.py:77`; `inventra/api/v1/inventory/serializers.py:9,30`; sale/stock viewlarining serializer chaqiruvlari.
+**Dalil:** `ilbi/api/v1/sales/serializers.py:77`; `ilbi/api/v1/inventory/serializers.py:9,30`; sale/stock viewlarining serializer chaqiruvlari.
 
 `sales.view_sale` bor xodimga `cost_price`, `inventory.view_stock` bor xodimga `last_cost_price` va movement `cost_price` qaytadi. `catalog.view_cost_price` alohida tekshirilmaydi; serializerlarda foydalanuvchi konteksti ham bu maqsadda berilmagan. Frontend ustunni yashirishi API javobidagi tannarxni himoya qilmaydi.
 
@@ -303,7 +303,7 @@ Kassa view/base’da action permission yo‘q, REST defaults’da ham permission
 
 **3/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/analytics/services/analytics_service.py:104,279`; `inventra/apps/inventory/services/deficit_service.py:39`.
+**Dalil:** `ilbi/apps/analytics/services/analytics_service.py:104,279`; `ilbi/apps/inventory/services/deficit_service.py:39`.
 
 Analitika faol miqdorni faqat `quantity - voided_quantity` bilan hisoblaydi. B2Bning jismonan qaytgan va tafovuti yopilgan miqdorlari ayirilmaydi. Qisman qabul qilingan savdoning qolgan qismi return-pending bo‘lganda sale statusi butunlay hisobotdan chiqib ketadi; qabul qilingan qism ham yo‘qoladi. Deficit filtri yangi `b2b_partially_accepted` item statusini qamramaydi. Sana chegaralari UTC bo‘yicha, frontend esa brauzer mahalliy sanasidan foydalanadi.
 
@@ -317,7 +317,7 @@ Analitika faol miqdorni faqat `quantity - voided_quantity` bilan hisoblaydi. B2B
 
 **3/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/catalog/views/product_views.py:73,105,141,179,242`.
+**Dalil:** `ilbi/api/v1/catalog/views/product_views.py:73,105,141,179,242`.
 
 Mahsulot + boshlang‘ich kirim yaratishda barcha exceptionlar transaction ichida ushlanib Response qaytariladi: mahsulot yaratilgach kirimda biznes xatosi bo‘lsa, tashqi transaction muvaffaqiyatli tugab, foydalanuvchi 400 ko‘rsa ham mahsulot qolishi mumkin. Product PATCH avval mahsulotni saqlaydi, keyin variantni; variant xatosi birinchi o‘zgarishni qaytarmaydi. Noto‘g‘ri `variant_id` bo‘lsa rad etish o‘rniga birinchi variant tahrirlanadi. Variant PATCHdagi save va narx auditi ham bitta transactionda emas.
 
@@ -331,7 +331,7 @@ Mahsulot + boshlang‘ich kirim yaratishda barcha exceptionlar transaction ichid
 
 **3/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/catalog/services/category_service.py:122`; `inventra/api/v1/catalog/views/product_views.py:147`; `inventra/api/v1/catalog/serializers.py`.
+**Dalil:** `ilbi/apps/catalog/services/category_service.py:122`; `ilbi/api/v1/catalog/views/product_views.py:147`; `ilbi/api/v1/catalog/serializers.py`.
 
 Variant valyutasi kategoriyadan olinadi. Qoldig‘i va tarixi bor kategoriya UZS→USDga o‘zgartirilishi yoki mahsulot boshqa valyutadagi kategoriyaga ko‘chirilishi mumkin: narx va qoldiq qiymati konvertatsiyasiz boshqa birlikda talqin qilinadi. Oddiy katalog narx serializerlarida `min_value` yo‘q, manfiy narxlar saqlanishi mumkin.
 
@@ -345,7 +345,7 @@ Variant valyutasi kategoriyadan olinadi. Qoldig‘i va tarixi bor kategoriya UZS
 
 **3/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/sales/services/sale_service.py:183,227`; `b2b_transfer_service.py:485,661`; reja §4.2.
+**Dalil:** `ilbi/apps/sales/services/sale_service.py:183,227`; `b2b_transfer_service.py:485,661`; reja §4.2.
 
 `qty * unit_price` ikki xonaga yaxlitlanmasdan line va sale summasiga qo‘shiladi; DB saqlashda har ustun alohida yaxlitlanadi. Ikki qatorning har biri `0.333 × 0.05 = 0.01665` bo‘lsa, qatorlar 0.02+0.02=0.04, savdo jami esa 0.03 bo‘lishi mumkin. B2B qaytishda `quantize(0.01)` ishlatiladi, lekin rejalashtirilgan `ROUND_HALF_UP` aniq berilmagan; qismlarga bo‘lib qaytarishda ham yaxlitlash qoldig‘i boshqarilmaydi.
 
@@ -359,7 +359,7 @@ Variant valyutasi kategoriyadan olinadi. Qoldig‘i va tarixi bor kategoriya UZS
 
 **3/5 · P2 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/sales/views/sale_views.py:36`; inventory movement va cashbox list viewlari; `frontend/inventra/src/pages/Sales.jsx:167,655`; `src/api/client.js`dagi list metodlari.
+**Dalil:** `ilbi/api/v1/sales/views/sale_views.py:36`; inventory movement va cashbox list viewlari; `frontend/ilbi/src/pages/Sales.jsx:167,655`; `src/api/client.js`dagi list metodlari.
 
 Ko‘p listlar `page` bo‘lmasa barcha qatorlarni qaytaradi; movement/cashbox/payment listlarining ayrimlari `page`ni umuman qo‘llamaydi. POS/katalog barcha variantni yuklab, frontendda filtrlab sahifalaydi. Sales esa serverdan 20 qator oladi, sana/to‘lov/status filtrlarini faqat shu sahifaga qo‘llaydi: boshqa sahifadagi mos sotuv “topilmadi” bo‘lishi mumkin. Raw sana va ID querylari serializer bilan validatsiya qilinmaydi; noto‘g‘ri format ayrim ORM yo‘llarida 500ga olib keladi. Bazi narx filtrlari noto‘g‘ri qiymatni jim tashlab ketadi.
 
@@ -373,9 +373,9 @@ Ko‘p listlar `page` bo‘lmasa barcha qatorlarni qaytaradi; movement/cashbox/p
 
 **3/5 · P1 · Konfiguratsiyaga bog‘liq xavf.**
 
-**Dalil:** `inventra/config/settings.py:229,242`; `docker-compose.yml:60`; `nginx/nginx.conf:43`; `frontend/inventra/src/api/client.js:72`.
+**Dalil:** `ilbi/config/settings.py:229,242`; `docker-compose.yml:60`; `nginx/nginx.conf:43`; `frontend/ilbi/src/api/client.js:72`.
 
-MinIO yoqilganda endpointning defaulti Docker ichidagi `http://minio:9000`. Shu host bilan chiqarilgan media URL tashqi brauzerda ochilmaydi; frontend faqat nginx/inventra hostlarini moslaydi. Compose’da bucket yaratish va kerakli access policy bosqichi yo‘q. Nginx `/media/`ni doim lokal katalogdan beradi. Storage credentiallari xavfsiz bo‘lmagan defaultlarga ega; media/backup uchun to‘liq ekspluatatsiya oqimi ko‘rsatilmagan.
+MinIO yoqilganda endpointning defaulti Docker ichidagi `http://minio:9000`. Shu host bilan chiqarilgan media URL tashqi brauzerda ochilmaydi; frontend faqat nginx/ilbi hostlarini moslaydi. Compose’da bucket yaratish va kerakli access policy bosqichi yo‘q. Nginx `/media/`ni doim lokal katalogdan beradi. Storage credentiallari xavfsiz bo‘lmagan defaultlarga ega; media/backup uchun to‘liq ekspluatatsiya oqimi ko‘rsatilmagan.
 
 **Taklif:** tashqi URL, ichki endpoint, bucket yaratish, cheklangan credential va fayl hayot siklini bitta konfiguratsiyaga keltirish. Haqiqiy sirlarni hisobotga yozmaslik.
 
@@ -387,7 +387,7 @@ MinIO yoqilganda endpointning defaulti Docker ichidagi `http://minio:9000`. Shu 
 
 **3/5 · P1 · Ochiq reja va konfiguratsiyada aniq.**
 
-**Dalil:** `docker-compose.yml`; `frontend/inventra/Dockerfile`; `nginx/nginx.conf`; `inventra/gunicorn.conf.py`; `inventra/config/settings.py:39`; backend Dockerfile/entrypoint.
+**Dalil:** `docker-compose.yml`; `frontend/ilbi/Dockerfile`; `nginx/nginx.conf`; `ilbi/gunicorn.conf.py`; `ilbi/config/settings.py:39`; backend Dockerfile/entrypoint.
 
 README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vite dev server, 5173 port ochiq, Nginxda TLS/SPA build yo‘li yo‘q; host whitelistda `*` bor. Gunicorn reload default yoqilgan. Gevent bilan oddiy psycopg2 ishlatiladi, rejalashtirilgan psycogreen patch yo‘q. Buildlar `latest` va backendda frozen syncdan fallback syncga tayanadi. Worker/beat app startga tayanadi, migration tayyorligiga aniq signal yo‘q. Backup/restore, monitoring va readiness oqimi ham yakunlanmagan.
 
@@ -401,7 +401,7 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 
 **3/5 · P2 · Kodda aniq va ochiq reja.**
 
-**Dalil:** `inventra/api/v1/accounts/views/docs_views.py:164,193`; `terms_views.py:24`; `inventra/apps/accounts/models/user_model.py`.
+**Dalil:** `ilbi/api/v1/accounts/views/docs_views.py:164,193`; `terms_views.py:24`; `ilbi/apps/accounts/models/user_model.py`.
 
 Admin PUT amaldagi Markdownni ustidan yozadi; eski versiya saqlanmaydi. Userda bitta `terms_accepted` flag va vaqt/IP bor: qaysi hujjat, matn hash/versiya, til yoki rozilik turi qabul qilingani qayd etilmaydi. Matn o‘zgarganda qayta qabul mexanizmi yo‘q. Frontend acceptance gate bor, biznes APIlarda shu rozilik siyosati markaziy tekshirilmaydi.
 
@@ -415,7 +415,7 @@ Admin PUT amaldagi Markdownni ustidan yozadi; eski versiya saqlanmaydi. Userda b
 
 **3/5 · P2 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/core/services/audit_service.py:12,50,58`; `inventra/api/v1/accounts/views/terms_views.py:12`; `inventra/api/v1/catalog/views/product_views.py:141,242`; `inventra/apps/sales/services/debt_service.py`.
+**Dalil:** `ilbi/apps/core/services/audit_service.py:12,50,58`; `ilbi/api/v1/accounts/views/terms_views.py:12`; `ilbi/api/v1/catalog/views/product_views.py:141,242`; `ilbi/apps/sales/services/debt_service.py`.
 
 Auditda kontekst bo‘lmasa egasining birinchi membershipi tanlanadi: ko‘p do‘konli egada hodisa noto‘g‘ri tenantga yozilishi mumkin. `X-Forwarded-For`ning chapdagi birinchi qiymati ishonchli proxy/format tekshiruvisiz olinadi; Nginx mavjud headerni qo‘shib yuboradi. Ayrim profil xatolari auditda jim yutiladi. Product PATCH orqali narx o‘zgartirish variant PATCHdagi price auditini chetlab o‘tadi; qarz to‘lovi uchun alohida action audit yo‘q.
 
@@ -429,7 +429,7 @@ Auditda kontekst bo‘lmasa egasining birinchi membershipi tanlanadi: ko‘p do�
 
 **3/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/accounts/views/employee_views.py:27,40`; `inventra/api/v1/accounts/serializers.py:118`; `frontend/inventra/src/pages/Employees.jsx:24,70`.
+**Dalil:** `ilbi/api/v1/accounts/views/employee_views.py:27,40`; `ilbi/api/v1/accounts/serializers.py:118`; `frontend/ilbi/src/pages/Employees.jsx:24,70`.
 
 Hire serializer emailni qabul qiladi, view uni `EmployeeService.hire()`ga uzatmaydi. Frontend email/permission tanlashni yubormaydi, yuborilgan first_name/last_name backend hire serializerida yo‘q. Yangi xodim uchun parol o‘rnatish xati va ishlash vakolatlari oqimi to‘liq emas. UI xodimlar ro‘yxatini ham maxsus endpointdan yuklamaydi; tenant list/current state bilan cheklangan. AUD-08dagi `tenant_id || 1` bunga qo‘shimcha xato.
 
@@ -443,7 +443,7 @@ Hire serializer emailni qabul qiladi, view uni `EmployeeService.hire()`ga uzatma
 
 **3/5 · P3 · Yaxshilash.**
 
-**Dalil:** `frontend/inventra/src/pages/Sales.jsx` — 3406 qator; Catalog — 2188; POS — 1770; Inventory — 1762; Services — 1584; Dashboard — 1505; `src/App.jsx:10`.
+**Dalil:** `frontend/ilbi/src/pages/Sales.jsx` — 3406 qator; Catalog — 2188; POS — 1770; Inventory — 1762; Services — 1584; Dashboard — 1505; `src/App.jsx:10`.
 
 Sahifalar ma’lumot yuklash, biznes hisoblari, modal, hujjat chop etish va katta inline stillarni bir faylda ushlab turadi. App barcha sahifalarni boshlanishida import qiladi. Bu tenant/ruxsat o‘zgarishlarini izchil qo‘llash va xatoni ajratishni qiyinlashtiradi; barcha sahifa kodi birinchi yuklashga kiradi.
 
@@ -457,7 +457,7 @@ Sahifalar ma’lumot yuklash, biznes hisoblari, modal, hujjat chop etish va katt
 
 **2/5 · P1 · Kodda aniq.**
 
-**Dalil:** `.github/workflows/ci.yml:24,25`; `inventra/config/settings_test.py:37,39`; `inventra/config/settings.py:33`; `inventra/.gitignore`; test modullari va frontend package.json.
+**Dalil:** `.github/workflows/ci.yml:24,25`; `ilbi/config/settings_test.py:37,39`; `ilbi/config/settings.py:33`; `ilbi/.gitignore`; test modullari va frontend package.json.
 
 CI pytest envda `DJANGO_SECRET_KEY` yo‘q. Test settings asosiy settingsni import qilgandan keyin test secretni belgilaydi; asosiy settings esa avval secret yo‘qligidan exception ko‘taradi. `.env.test` repoda yo‘q/ignore qilingan; toza CI clone shu tartibda boshlanmaydi. Ruff `--exit-zero` bilan haqiqiy lint gate emas. Parallel stock/sale/shift/OTP tekshiruvlari manbalarda topilmadi, frontendda test scripti yo‘q. Oldingi testlar ayrim eski void xatti-harakatlarini hali tasdiqlaydi.
 
@@ -471,7 +471,7 @@ CI pytest envda `DJANGO_SECRET_KEY` yo‘q. Test settings asosiy settingsni impo
 
 **2/5 · P0 · Validatsiya bo‘shlig‘i kodda aniq; brauzer ta’siri deployga bog‘liq.**
 
-**Dalil:** `inventra/api/v1/accounts/views/profile_views.py:68`; `inventra/config/urls.py`dagi media serve; `nginx/nginx.conf`dagi `/media/`.
+**Dalil:** `ilbi/api/v1/accounts/views/profile_views.py:68`; `ilbi/config/urls.py`dagi media serve; `nginx/nginx.conf`dagi `/media/`.
 
 Upload to‘g‘ridan-to‘g‘ri `request.FILES['avatar']`ni modelga yozadi; serializer ImageField, fayl formati yoki hajm tekshiruvi yo‘q. Modelning ImageField nomi `save()` vaqtida fayl haqiqiy rasm ekanini tekshirmaydi. HTML/SVG kabi faol kontent media yo‘lida saqlanishi mumkin; u ilova originida ochilsa brauzerda script ishlash va storagega kirish xavfi bor. Eski avatar yangi fayl muvaffaqiyatli saqlanishidan oldin o‘chiriladi.
 
@@ -485,7 +485,7 @@ Upload to‘g‘ridan-to‘g‘ri `request.FILES['avatar']`ni modelga yozadi; se
 
 **2/5 · P0 · Koddan kelib chiqadigan xato.**
 
-**Dalil:** `frontend/inventra/src/hooks/usePersistedState.js:10,27,47`; `frontend/inventra/src/pages/POS.jsx:54`.
+**Dalil:** `frontend/ilbi/src/hooks/usePersistedState.js:10,27,47`; `frontend/ilbi/src/pages/POS.jsx:54`.
 
 Hook o‘qish effectida `defaultValue`ga bog‘langan; POS unga har renderda yangi `[]` beradi. Effect har safar yana ishlaydi va yangi array/JSON natijasini statega yozadi, keyingi renderni chaqiradi. Bu takroriy render va storage o‘qish/yozish sikliga olib keladi, savat tahririni ham qayta o‘qilgan qiymat bosishi mumkin. Tenant almashishida yangi kalitga eski state yozilishi uchun effect tartibi ham tekshirilishi kerak.
 
@@ -499,7 +499,7 @@ Hook o‘qish effectida `defaultValue`ga bog‘langan; POS unga har renderda yan
 
 **2/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/cashbox/services/cashbox_service.py:291`; `inventra/apps/sales/services/debt_service.py:108`; `inventra/apps/tenants/services.py:172`.
+**Dalil:** `ilbi/apps/cashbox/services/cashbox_service.py:291`; `ilbi/apps/sales/services/debt_service.py:108`; `ilbi/apps/tenants/services.py:172`.
 
 Telegram, Celery `.delay()` va SMTP dispatch DB transactioni tugamasdan chaqiriladi. Keyingi xatoda DB rollback bo‘lsa ham xabar/xat allaqachon ketgan bo‘lishi mumkin. Telegram kutish payti pul/stock locklari ushlab turiladi. Celeryga berilgan vazifa commitdan oldingi ma’lumotni o‘qishi mumkin.
 
@@ -513,7 +513,7 @@ Telegram, Celery `.delay()` va SMTP dispatch DB transactioni tugamasdan chaqiril
 
 **2/5 · P2 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/cashbox/tasks.py:129`; `inventra/apps/inventory/tasks.py`; `inventra/apps/sales/tasks.py:22,30`; `inventra/config/settings.py:140`.
+**Dalil:** `ilbi/apps/cashbox/tasks.py:129`; `ilbi/apps/inventory/tasks.py`; `ilbi/apps/sales/tasks.py:22,30`; `ilbi/config/settings.py:140`.
 
 Daily report 5 daqiqada tekshiriladi, `abs(minute-report_minute)<=5` bir hisobotni bir necha marta yuboradi; daily uchun yuborilgan-sana himoyasi yo‘q. Soat chegarasi va downtime uchun catch-up yo‘q. TIME_ZONE UTC bo‘lgani uchun interfeysdagi mahalliy vaqt bilan farq qiladi. Telegram sender xatoni `False`ga aylantiradi; taskdagi `autoretry_for=(Exception,)` ishga tushmaydi. Low-stockdagi sana checki taskni enqueue qilish bilan atomar emas.
 
@@ -527,7 +527,7 @@ Daily report 5 daqiqada tekshiriladi, `abs(minute-report_minute)<=5` bir hisobot
 
 **2/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/accounts/authentication.py:17`; `inventra/config/settings.py`dagi SIMPLE_JWT; `inventra/api/v1/accounts/urls.py:20`; `frontend/inventra/src/context/AuthContext.jsx:8,35`; `src/api/client.js`dagi refresh.
+**Dalil:** `ilbi/apps/accounts/authentication.py:17`; `ilbi/config/settings.py`dagi SIMPLE_JWT; `ilbi/api/v1/accounts/urls.py:20`; `frontend/ilbi/src/context/AuthContext.jsx:8,35`; `src/api/client.js`dagi refresh.
 
 `token_version` claimi yo‘q token revocation tekshiruvidan o‘tib ketadi; mos kelmasligi faqat claim mavjud bo‘lsa tekshiriladi. Refresh standart view orqali, rotation/blacklist sozlamalari yo‘q. Frontend sahifa qayta ochilganda access muddati tugagan bo‘lsa, hali valid refresh token borligiga qaramay barcha tokenni o‘chiradi. Revoked access uchun refresh yangi, lekin eski versionli access chiqarsa, qayta so‘rov 401 bo‘lishi va auth state to‘liq yangilanmasligi mumkin.
 
@@ -541,7 +541,7 @@ Daily report 5 daqiqada tekshiriladi, `abs(minute-report_minute)<=5` bir hisobot
 
 **2/5 · P1 · Kodda aniq va shartli xavf.**
 
-**Dalil:** `telegram_bot_sms/main.py`dagi contact handler; `inventra/api/v1/tg_bot/serializers.py:9`; `inventra/apps/tg_bot/models.py`.
+**Dalil:** `telegram_bot_sms/main.py`dagi contact handler; `ilbi/api/v1/tg_bot/serializers.py:9`; `ilbi/apps/tg_bot/models.py`.
 
 Kontakt egasi senderga mosligi tekshiriladi — bu foydali himoya. Biroq handler faqat private chat bilan cheklanmagan: o‘z kontaktini guruhda yuborish group chat IDni bog‘lashi va keyingi OTPni guruhga chiqarishi mumkin. Telefon update_or_create bilan almashtiriladi, chat_id esa unique; o‘sha Telegram account yangi telefon bilan qayta ulanganda IntegrityError ehtimoli bor. Qayta bog‘lash uchun eski chatga bildirish va audit yo‘q. Async handler ichida `requests.post()` ishlatilib bot event loopi bloklanadi.
 
@@ -555,9 +555,9 @@ Kontakt egasi senderga mosligi tekshiriladi — bu foydali himoya. Biroq handler
 
 **1/5 · P0 · Kodda aniq.**
 
-**Dalil:** `frontend/inventra/src/pages/Login.jsx:37,86,114`; `src/api/client.js:38`.
+**Dalil:** `frontend/ilbi/src/pages/Login.jsx:37,86,114`; `src/api/client.js:38`.
 
-Remember me parolni Base64ga aylantirib `localStorage`ga yozadi. Base64 qayta ochiladigan kodlash; shifrlash emas. Logout `inventra_remember_password`ni tozalamaydi. Brauzer storageiga kira oladigan script yoki shu qurilmadan foydalanuvchi parolni qayta o‘qiy oladi.
+Remember me parolni Base64ga aylantirib `localStorage`ga yozadi. Base64 qayta ochiladigan kodlash; shifrlash emas. Logout `ilbi_remember_password`ni tozalamaydi. Brauzer storageiga kira oladigan script yoki shu qurilmadan foydalanuvchi parolni qayta o‘qiy oladi.
 
 **Taklif:** parolni storagega yozmaslik; mavjud saqlangan parol kalitini tozalash; login nomi va remember/session siyosatini alohida yuritish.
 
@@ -569,7 +569,7 @@ Remember me parolni Base64ga aylantirib `localStorage`ga yozadi. Base64 qayta oc
 
 **1/5 · P1 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/cashbox/services/cashbox_service.py:268,283`.
+**Dalil:** `ilbi/apps/cashbox/services/cashbox_service.py:268,283`.
 
 `owner` faqat `notify_web_reports=True` blokida aniqlanadi. Web notification o‘chirilgan, Telegram `personal/both` yoqilgan bo‘lsa, `owner.phone_number`ga kirishda `UnboundLocalError` yuz beradi va smena transactioni qaytadi.
 
@@ -583,7 +583,7 @@ Remember me parolni Base64ga aylantirib `localStorage`ga yozadi. Base64 qayta oc
 
 **1/5 · P2 · Kodda aniq.**
 
-**Dalil:** `inventra/apps/accounts/services/tenant_context_service.py`; `inventra/api/permissions.py:100`; `inventra/api/v1/tenants/views.py:275`.
+**Dalil:** `ilbi/apps/accounts/services/tenant_context_service.py`; `ilbi/api/permissions.py:100`; `ilbi/api/v1/tenants/views.py:275`.
 
 Activate view own ownerga ruxsat berishini aytadi, lekin kontekst faqat `tenant__is_active=True` membershipdan olinadi. O‘chirilgan do‘kon headeri rad etiladi yoki tenant None bo‘ladi; object permission ham shu faol kontekstga tayanadi. Egasi o‘zi deaktivatsiya qilgan do‘konini qayta yoqa olmaydi, admin kerak bo‘ladi.
 
@@ -597,7 +597,7 @@ Activate view own ownerga ruxsat berishini aytadi, lekin kontekst faqat `tenant_
 
 **1/5 · P2 · Koddan kelib chiqadigan xato.**
 
-**Dalil:** `inventra/api/permissions.py:160,163`; GET/POST/PATCH map ishlatadigan catalog/sales viewlari.
+**Dalil:** `ilbi/api/permissions.py:160,163`; GET/POST/PATCH map ishlatadigan catalog/sales viewlari.
 
 `permission_map`da request method yo‘q bo‘lsa `ImproperlyConfigured` ko‘tariladi. Maplarda odatda HEAD/OPTIONS yo‘q. DRF permission tekshiruvi handlerdan oldin bo‘lgani uchun oddiy metadata/HEAD yoki qo‘llanmaydigan method kutilgan javob o‘rniga 500ga aylanishi mumkin.
 
@@ -611,7 +611,7 @@ Activate view own ownerga ruxsat berishini aytadi, lekin kontekst faqat `tenant_
 
 **1/5 · P2 · Kodda aniq.**
 
-**Dalil:** `inventra/api/v1/sales/serializers.py:265,284`; `frontend/inventra/src/pages/PublicReceiptView.jsx:333`; `components/common/ReceiptSlip.jsx:440`.
+**Dalil:** `ilbi/api/v1/sales/serializers.py:265,284`; `frontend/ilbi/src/pages/PublicReceiptView.jsx:333`; `components/common/ReceiptSlip.jsx:440`.
 
 Public serializer `refunded_amount/net_amount`ni va item qaytarish holatini chiqarmaydi; frontend faqat total ko‘rsatadi. B2B qaytishlarda asl jami saqlanib refund alohida yozilgani uchun public nusxa amaldagi sof qiymatni bermaydi. Public item javobida ichki item ID ham bor, avval kelishilgan whitelistda bunga ehtiyoj yo‘q.
 
@@ -625,7 +625,7 @@ Public serializer `refunded_amount/net_amount`ni va item qaytarish holatini chiq
 
 **1/5 · P3 · Kod/hujjatda aniq.**
 
-**Dalil:** `README.md:49,50,51`; `inventra/config/urls.py`; `docker-compose.yml`; `frontend/inventra/src/api/client.js`dagi branchId argumentlar; `components/layout/Layout.jsx`; master plan checkpoint va walkthrough logi.
+**Dalil:** `README.md:49,50,51`; `ilbi/config/urls.py`; `docker-compose.yml`; `frontend/ilbi/src/api/client.js`dagi branchId argumentlar; `components/layout/Layout.jsx`; master plan checkpoint va walkthrough logi.
 
 README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swagger/Redoc yo‘llari haqiqiy `/api/docs/` va `/api/redoc/`ga mos emas. Audit davomida ikkala `.env.example`dagi eski insecure secret placeholderi tashqi o‘zgarishda bo‘sh qiymatga almashtirildi; startup baribir haqiqiy secretni talab qiladi, README quick startda uni yaratish/to‘ldirishning aniq qadami kerak. Qolgan branchId argumentlari ishlatilmaydi; ayrim matnlar eski filial/Z-hisobot nomlarini saqlagan. Reja checkpointidagi ochiq/yopiq ishlar keyingi walkthrough yozuvlari bilan bir xil emas, bir nechta qayd takrorlangan.
 

@@ -1,4 +1,4 @@
-# Inventra: getting started and support
+# ILBI: getting started and support
 
 Updated: **2026-10-14**.
 

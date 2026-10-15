@@ -1,12 +1,12 @@
-# INVENTRA Sales Platform
+# ILBI ILBI Platform
 
-INVENTRA is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
+ILBI is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, Django (version constrained in `inventra/pyproject.toml`), Django REST Framework, Celery, Gunicorn + Gevent
+- **Backend**: Python 3.12, Django (version constrained in `ilbi/pyproject.toml`), Django REST Framework, Celery, Gunicorn + Gevent
 - **Database & Cache**: PostgreSQL 16, Redis 7
 - **Frontend**: React 19, Vite, Tailwind CSS, Lucide Icons
 - **Proxy & Server**: Nginx, Docker, Docker Compose
@@ -28,7 +28,7 @@ Copy example environment files to configure your local environment:
 
 ```bash
 cp .env.example .env
-cp inventra/.env.example inventra/.env
+cp ilbi/.env.example ilbi/.env
 cp telegram_bot_sms/.env.example telegram_bot_sms/.env
 ```
 
@@ -55,7 +55,7 @@ docker compose up --build
 
 #### Backend:
 ```bash
-cd inventra
+cd ilbi
 uv sync
 uv run python manage.py migrate
 uv run python manage.py runserver 0.0.0.0:8000
@@ -63,7 +63,7 @@ uv run python manage.py runserver 0.0.0.0:8000
 
 #### Frontend:
 ```bash
-cd frontend/inventra
+cd frontend/ilbi
 npm install
 npm run dev
 ```
@@ -76,17 +76,17 @@ Run the backend test suite using the isolated test database stack:
 
 ```bash
 # 1. Start test Postgres and Redis
-docker compose -f inventra/docker-compose.test.yml up -d
+docker compose -f ilbi/docker-compose.test.yml up -d
 
 # 2. Run pytest with coverage
-cd inventra
+cd ilbi
 uv run pytest
 ```
 
 Run frontend linting:
 
 ```bash
-cd frontend/inventra
+cd frontend/ilbi
 npm run lint
 ```
 
@@ -96,7 +96,7 @@ npm run lint
 
 Production uses a separate Compose file with a built React bundle served by Nginx. The development Vite server is used only by `docker-compose.yml`.
 
-1. Configure `.env`, `inventra/.env` and `telegram_bot_sms/.env`, replacing example credentials. Set explicit `ALLOWED_HOSTS` and the actual `FRONTEND_URL`; wildcard hosts are rejected with `DEBUG=False`.
+1. Configure `.env`, `ilbi/.env` and `telegram_bot_sms/.env`, replacing example credentials. Set explicit `ALLOWED_HOSTS` and the actual `FRONTEND_URL`; wildcard hosts are rejected with `DEBUG=False`.
 2. Launch the production layout when deploying:
 
 ```bash
@@ -128,7 +128,7 @@ Full architectural documentation, guides, and policies are available in the [`do
 
 ## License
 
-Copyright (c) 2026 INVENTRA. All rights reserved. See [LICENSE](LICENSE) for details.
+Copyright (c) 2026 ILBI. All rights reserved. See [LICENSE](LICENSE) for details.
 
 ## Support and current guides
 

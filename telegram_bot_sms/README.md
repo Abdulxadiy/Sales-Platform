@@ -159,7 +159,7 @@ The application requires three environment variables:
 
 ```env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-INVENTRA_INTERNAL_URL=https://your-internal-service.example/api/...
+ILBI_INTERNAL_URL=https://your-internal-service.example/api/...
 INTERNAL_SERVICE_TOKEN=your_internal_service_token
 ```
 
@@ -168,7 +168,7 @@ INTERNAL_SERVICE_TOKEN=your_internal_service_token
 | Variable | Description | Required |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot API token | ✅ |
-| `INVENTRA_INTERNAL_URL` | Internal authentication service endpoint | ✅ |
+| `ILBI_INTERNAL_URL` | Internal authentication service endpoint | ✅ |
 | `INTERNAL_SERVICE_TOKEN` | Token used to authenticate internal API requests | ✅ |
 
 > ⚠️ **Never commit real tokens, passwords, or secrets to Git.**
@@ -250,7 +250,7 @@ The bot communicates with the internal authentication service using an HTTP `POS
 ### Request
 
 ```http
-POST <INVENTRA_INTERNAL_URL>
+POST <ILBI_INTERNAL_URL>
 Authorization: Internal <INTERNAL_SERVICE_TOKEN>
 Content-Type: application/json
 ```

@@ -1,5 +1,6 @@
 # Standalone production layout. Configure real .env files before starting.
 # Domain and TLS termination are intentionally configured at deployment time.
+name: ${COMPOSE_PROJECT_NAME:-ilbi-platform}
 services:
   postgres:
     image: postgres:16-alpine
@@ -21,10 +22,10 @@ services:
       test: [CMD, redis-cli, ping]
       interval: 5s
       retries: 10
-  inventra:
-    build: ./inventra
+  ilbi:
+    build: ./ilbi
     restart: unless-stopped
-    env_file: ./inventra/.env
+    env_file: ./ilbi/.env
     environment: &backend_environment
       DJANGO_DEBUG: 'False'
       LOCAL_DEMO_LOGIN_ENABLED: 'False'
@@ -43,32 +44,32 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
   celery_worker:
-    build: ./inventra
+    build: ./ilbi
     restart: unless-stopped
     command: celery -A config worker -l info
-    env_file: ./inventra/.env
+    env_file: ./ilbi/.env
     environment: *backend_environment
-    depends_on: [inventra]
+    depends_on: [ilbi]
   celery_beat:
-    build: ./inventra
+    build: ./ilbi
     restart: unless-stopped
     command: celery -A config beat -l info
-    env_file: ./inventra/.env
+    env_file: ./ilbi/.env
     environment: *backend_environment
-    depends_on: [inventra]
+    depends_on: [ilbi]
   bot:
     build: ./telegram_bot_sms
     restart: unless-stopped
     env_file: ./telegram_bot_sms/.env
-    depends_on: [inventra]
+    depends_on: [ilbi]
   frontend:
     build:
-      context: ./frontend/inventra
+      context: ./frontend/ilbi
       target: production
     restart: unless-stopped
     ports: ['80:80']
     volumes: [static_data:/var/www/static:ro]
-    depends_on: [inventra]
+    depends_on: [ilbi]
   minio:
     image: cgr.dev/chainguard/minio:latest
     profiles: [minio]

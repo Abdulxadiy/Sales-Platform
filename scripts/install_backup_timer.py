@@ -15,7 +15,7 @@ def quoted(value):
 
 def service_contents(root):
     return f"""[Unit]
-Description=Back up Sales Platform source to GitHub
+Description=Back up ILBI Platform source to GitHub
 
 [Service]
 Type=oneshot
@@ -32,22 +32,22 @@ def main():
     directory.mkdir(parents=True, exist_ok=True)
     service = service_contents(root)
     timer = """[Unit]
-Description=Back up saved Sales Platform code every 15 minutes
+Description=Back up saved ILBI Platform code every 15 minutes
 
 [Timer]
 OnCalendar=*:0/15
 Persistent=true
 RandomizedDelaySec=30s
-Unit=inventra-source-backup.service
+Unit=ilbi-source-backup.service
 
 [Install]
 WantedBy=timers.target
 """
-    (directory / "inventra-source-backup.service").write_text(service)
-    (directory / "inventra-source-backup.timer").write_text(timer)
+    (directory / "ilbi-source-backup.service").write_text(service)
+    (directory / "ilbi-source-backup.timer").write_text(timer)
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     subprocess.run(
-        ["systemctl", "--user", "enable", "--now", "inventra-source-backup.timer"],
+        ["systemctl", "--user", "enable", "--now", "ilbi-source-backup.timer"],
         check=True,
     )
     subprocess.run(
@@ -55,7 +55,7 @@ WantedBy=timers.target
             "systemctl",
             "--user",
             "list-timers",
-            "inventra-source-backup.timer",
+            "ilbi-source-backup.timer",
             "--no-pager",
         ],
         check=True,

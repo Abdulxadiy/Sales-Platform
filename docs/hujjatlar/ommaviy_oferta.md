@@ -1,4 +1,4 @@
-# Inventra — platformadan foydalanish bo‘yicha oferta
+# ILBI — platformadan foydalanish bo‘yicha oferta
 
 Tahrir: **2026-10-14**.
 
@@ -6,7 +6,7 @@ Tahrir: **2026-10-14**.
 
 ## 1. Xizmat mazmuni
 
-Inventra do‘konlar katalogi, ombor va partiyalar, xodimlar ruxsatlari, ichki savdo hisobi, qarzlar, kassa va hisobotlar uchun dasturiy platformadir. Har bir foydalanuvchi unga berilgan rol, do‘kon a’zoligi va ruxsatlari doirasida ishlaydi.
+ILBI do‘konlar katalogi, ombor va partiyalar, xodimlar ruxsatlari, ichki savdo hisobi, qarzlar, kassa va hisobotlar uchun dasturiy platformadir. Har bir foydalanuvchi unga berilgan rol, do‘kon a’zoligi va ruxsatlari doirasida ishlaydi.
 
 Bir egada bir nechta do‘kon bo‘lishi mumkin. Sotuvchi profili va uni tekshirish jarayoni mavjud. Bir sotuvchining do‘konlari orasidagi ichki transfer bilan boshqa sotuvchiga B2B operatsiya farqlanadi.
 

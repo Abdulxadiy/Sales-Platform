@@ -1,4 +1,4 @@
-# Inventra — maxfiylik siyosati
+# ILBI — maxfiylik siyosati
 
 Tahrir: **2026-10-14**. Ushbu matn platformaning hozirgi ma’lumot oqimlarini tushuntiradi. Ma’lumot operatorining rasmiy nomi, manzili, saqlash muddatlari va joylashtirish rekvizitlari yakuniy nashrda tasdiqlanishi kerak; bu hujjat ularning o‘rniga taxminiy ma’lumot bermaydi.
 

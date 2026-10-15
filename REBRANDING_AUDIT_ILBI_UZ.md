@@ -1,10 +1,12 @@
 # ILBI.UZ rebrending auditi va o‘tish rejasi
 
 > **Yangilangan:** 2026-10-15, Asia/Tashkent (UTC+05:00).
-> **Holat:** repozitoriyning joriy ishchi nusxasi asosida audit qayta tekshirildi; rebrendingning o‘zi hali yakunlanmagan.
-> **Ushbu tahrir doirasi:** audit hujjati yangilandi. Ilova kodi, `.env`, baza, domen, bot va server sozlamalari bu ish doirasida o‘zgartirilmadi.
+> **Holat:** ILBI rebrendingi bosqichma-bosqich bajarilmoqda. Tugallangan bandlar yonida **Bajarildi** belgisi bor; tashqi muhitga bog‘liq bandlar alohida ochiq qoladi.
+> **Foydalanuvchi qarori:** mavjud ILBI logo va `ilbi.uz` nomi qo‘llanadi; mahsulot brendingida **PRO belgisi ishlatilmaydi**. Kod, xabarlar, aktivlar va hujjatlar quyidagi holat yozuvlari bilan yangilanadi.
 
 **Asosiy xulosa:** kirish intro animatsiyasi va botga yo‘naltiruvchi havolalar ILBI tomoniga o‘tgan, ammo asosiy logotip, ko‘plab UI matnlari, email/Telegram xabarlari va texnik nomlar Inventra holatida qolgan. Ko‘rinadigan brendingni yangilash bilan ma’lumot saqlaydigan texnik identifikatorlarni ko‘chirish alohida bosqichlarda bajarilishi kerak.
+
+**Boshlang‘ich inventar (o‘zgartirishlardan oldingi audit holati):**
 
 | O‘lchov | Natija | Nimani anglatadi? |
 | --- | ---: | --- |
@@ -117,7 +119,7 @@ Public brendingni chiqarish uchun DB, bucket, repo yoki barcha lokal kataloglarn
 | R-03 | P1 | `index.html:7,11`, layout/sidebar, AcceptTerms, Documentation, SetupAccount va savdo ekranlaridagi ko‘rinadigan nomlarni yangilash | Ochiq |
 | R-04 | P1 | `password_reset_service.py`dagi 4 turdagi xat: subject, HTML/text, header/footer va yuboruvchi nomini yangilash | Ochiq |
 | R-05 | P1 | Bot `/start`, `/help`, `/status`, fallback, OTP va support/test bildirishnomalarini ILBIga moslash | Ochiq |
-| R-06 | P0 | Token, tenant, qoralama, checkout va mehmon chat kalitlari uchun bir xil, oldindan ishlaydigan moslik migratsiyasi kerak | Ochiq |
+| R-06 | P0 | Token, tenant, qoralama, checkout va mehmon chat kalitlari uchun bir xil, oldindan ishlaydigan moslik migratsiyasi kerak | **Bajarildi** — `brandStorage.js`; eski/yangi storage mosligi, parolni o‘chirish, logout, checkout va guest kalitlari uchun testlar o‘tdi |
 | R-07 | P0 | Origin o‘zgarsa eski brauzer xotirasiga yangi domen kira olmaydi; qayta login va qoralama/chat uzluksizligi bo‘yicha alohida reja kerak | Deployga bog‘liq |
 | R-08 | P1 | Import shabloni, inventory/debt/sales XLSX yuklamalari va workbookning standart sarlavhasida Inventra qolgan | Ochiq |
 | R-09 | P0 | Compose loyiha nomi, volume, PostgreSQL va MinIO nomlarini ko‘r-ko‘rona almashtirish mavjud ma’lumotni uzib qo‘yishi mumkin | Migratsiya oldidan hal qilinadi |

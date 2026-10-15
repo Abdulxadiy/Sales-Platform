@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="uz" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=ilbi-1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta property="og:site_name" content="ilbi.uz" />
+    <meta property="og:title" content="ILBI — Savdo va boshqaruv tizimi" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://ilbi.uz/brand/ilbi-logo-email.png" />
+    <link rel="apple-touch-icon" href="/brand/ilbi-icon-180.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="ILBI — Zamonaviy do'kon boshqaruvi, savdo tahlili va yuqori tezlikdagi POS tizimi" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <title>ILBI — Boshqaruv & POS Tizimi</title>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('ilbi_theme');
+          if (saved === null) {
+            saved = localStorage.getItem('inventra_theme');
+            if (saved !== null) localStorage.setItem('ilbi_theme', saved);
+          }
+          var theme = saved || 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -7,22 +7,22 @@ Updated: 2026-10-14. The module provides guest and authenticated operator conver
 Apply migrations with the normal backend deployment. `apps.support` and `/api/v1/support/` are registered in settings and the API router. No extra Python or runtime frontend dependencies are required.
 
 ```bash
-cd inventra
+cd ilbi
 uv run python manage.py migrate
 ```
 
 When source files are bind-mounted into a running development container, Gunicorn reloads Python code but does not rerun the startup migration command. After adding the support app to an already running stack, apply its migration explicitly:
 
 ```bash
-docker compose exec -T inventra python manage.py migrate support --plan
-docker compose exec -T inventra python manage.py migrate support --noinput
+docker compose exec -T ilbi python manage.py migrate support --plan
+docker compose exec -T ilbi python manage.py migrate support --noinput
 ```
 
 A missing support table returns `503` with `error.code = support_not_ready` and `Retry-After: 30`, rather than an uncontrolled 500. Other database programming errors retain their normal error behavior. Schema changes are never applied from an HTTP request.
 
 The existing Redis service is used for shared support rate limits. Celery worker delivers Telegram notifications; chat persistence does not depend on successful notification delivery.
 
-Environment variables in `inventra/.env`:
+Environment variables in `ilbi/.env`:
 
 ```dotenv
 SUPPORT_PHONE=+998770212149
@@ -74,10 +74,10 @@ Focused synthetic screenshots are in `docs/rasmlar/focused`. `/api/v1/docs/image
 ## Validation
 
 ```bash
-docker compose -f inventra/docker-compose.test.yml up -d
-cd inventra
+docker compose -f ilbi/docker-compose.test.yml up -d
+cd ilbi
 uv run pytest apps/support/tests apps/accounts/tests/test_terms_and_docs_views.py
-cd ../frontend/inventra
+cd ../frontend/ilbi
 npm run build
 npm run lint
 npm test
@@ -105,8 +105,8 @@ Use a disposable backend with `config.settings_test`-based settings, synthetic d
 Obtain `tokens` with `issue_tokens()` and `user` with `UserProfileSerializer()` only from that synthetic database. Do not commit the sessions file. Install Playwright in a separate tooling directory or make it available through `PLAYWRIGHT_MODULE`.
 
 ```bash
-INVENTRA_DOCS_AUTH_FILE=/tmp/inventra-docs-sessions.json \
-INVENTRA_DOCS_BASE_URL=http://127.0.0.1:5177 \
+ILBI_DOCS_AUTH_FILE=/tmp/ilbi-docs-sessions.json \
+ILBI_DOCS_BASE_URL=http://127.0.0.1:5177 \
 PLAYWRIGHT_MODULE=/path/to/tooling/node_modules/playwright \
 CHROME_PATH=/path/to/chrome \
 node scripts/capture_guides.cjs

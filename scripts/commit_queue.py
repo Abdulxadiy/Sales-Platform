@@ -217,7 +217,7 @@ def tree_commit(repo, tree, parents, message, settings, bot=False):
 def backup(root, settings):
     paths = source_files(root)
     before = fingerprint(root, paths)
-    with tempfile.TemporaryDirectory(prefix="inventra-backup-") as folder:
+    with tempfile.TemporaryDirectory(prefix="ilbi-backup-") as folder:
         repo = Path(folder) / "repository"
         run(["git", "clone", "--quiet", "--no-hardlinks", str(root), str(repo)])
         configure(repo, settings)
@@ -297,7 +297,7 @@ def validate_groups(groups, changed):
 
 @contextlib.contextmanager
 def remote_clone(settings):
-    with tempfile.TemporaryDirectory(prefix="inventra-publish-") as folder:
+    with tempfile.TemporaryDirectory(prefix="ilbi-publish-") as folder:
         repo = Path(folder) / "repository"
         run(
             [

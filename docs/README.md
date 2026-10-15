@@ -1,4 +1,4 @@
-# Inventra hujjatlari
+# ILBI hujjatlari
 
 Yangilangan: **2026-10-14**. Qo‘llanmalar hozirgi kod va interfeysga moslashtirilgan. Rasmli yo‘riqnomalar faqat sun’iy demo ma’lumotlarni ko‘rsatadi.
 
@@ -30,6 +30,6 @@ Yangilangan: **2026-10-14**. Qo‘llanmalar hozirgi kod va interfeysga moslashti
 
 ## Muhandislik hujjatlari
 
-[README](../README.md) — ishga tushirish; [testlar](../inventra/README_TESTS.md) — tekshirish; [yordam moduli](SUPPORT.md) — chat API va operator sozlamalari.
+[README](../README.md) — ishga tushirish; [testlar](../ilbi/README_TESTS.md) — tekshirish; [yordam moduli](SUPPORT.md) — chat API va operator sozlamalari.
 
 Master Plan, arxitektura rejasi, audit va qonunchilik muhokamasi ish yuritish materiallaridir. Ulardagi reja yoki qarorni tayyor funksiya deb foydalanuvchi qo‘llanmasiga ko‘chirmang. Huquqiy masalalar bo‘yicha mavjud qarorlar [walkthrough](OZBEKISTON_QONUNI_WALKTHROUGH.md)da saqlanadi.

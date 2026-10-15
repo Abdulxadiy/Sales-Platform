@@ -1,4 +1,4 @@
-# Inventra — foydalanish qoidalari
+# ILBI — foydalanish qoidalari
 
 Yangilangan: **2026-10-14**. Bu qoidalar hisob egalari, xodimlar, administratorlar va yordam markazidagi mehmonlarga taalluqli.
 

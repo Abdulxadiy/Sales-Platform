@@ -110,6 +110,28 @@ test('new writes support old tabs and logout cannot resurrect legacy authenticat
   }
   localStorage.setItem('inventra_access_token', 'stale-tab-write');
   assert.equal(getAccessToken(), null);
+  migrateBrandStorage(localStorage, sessionStorage);
+  assert.equal(localStorage.getItem('ilbi_access_token'), null, 'Reload must not resurrect an old tab session');
+});
+
+test('a partially copied authentication bundle is rolled back and can be retried intact', () => {
+  localStorage.setItem('inventra_access_token', 'access');
+  localStorage.setItem('inventra_refresh_token', 'refresh');
+  localStorage.setItem('inventra_user', '{"id":7}');
+  const write = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = (key, value) => {
+    if (key === 'ilbi_refresh_token') throw new Error('quota');
+    write(key, value);
+  };
+  assert.equal(migrateBrandStorage(localStorage, sessionStorage), false);
+  assert.equal(localStorage.getItem('ilbi_access_token'), null);
+  assert.equal(localStorage.getItem('ilbi_user'), null);
+  assert.equal(localStorage.getItem('inventra_refresh_token'), 'refresh');
+  localStorage.setItem = write;
+  assert.equal(migrateBrandStorage(localStorage, sessionStorage), true);
+  assert.equal(localStorage.getItem('ilbi_access_token'), 'access');
+  assert.equal(localStorage.getItem('ilbi_refresh_token'), 'refresh');
+  assert.equal(localStorage.getItem('ilbi_user'), '{"id":7}');
 });
 
 test('quota failures preserve old data, allow retry and do not throw on reads', () => {

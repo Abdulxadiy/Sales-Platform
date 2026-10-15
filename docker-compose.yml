@@ -4,7 +4,7 @@ name: ${COMPOSE_PROJECT_NAME:-ilbi-platform}
 networks:
   ilbi_net:
     name: ${ILBI_NETWORK_NAME:-${COMPOSE_PROJECT_NAME:-ilbi-platform}_ilbi_net}
-    driver: bridge
+    external: ${ILBI_NETWORK_EXTERNAL:-false}
 
 volumes:
   redis_data:
@@ -13,6 +13,7 @@ volumes:
   static_data:
   ilbi_venv:
     name: ${ILBI_VENV_VOLUME:-${COMPOSE_PROJECT_NAME:-ilbi-platform}_ilbi_venv}
+    external: ${ILBI_VENV_EXTERNAL:-false}
   bot_venv:
   frontend_node_modules:
 
@@ -226,7 +227,7 @@ services:
       target: development
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT:-5173}:5173"
     environment:
       - VITE_API_TARGET=http://nginx:80
     volumes:

@@ -1,4 +1,4 @@
-import { localStore, sessionStore } from '../utils/brandStorage.js';
+import { localStore, sessionStore, markAuthenticationCurrent } from '../utils/brandStorage.js';
 /**
  * ILBI API Client with JWT Interceptor & Automatic Refresh
  */
@@ -43,6 +43,7 @@ export const clearTokens = () => {
   sessionStore.removeItem('ilbi_access_token');
   sessionStore.removeItem('ilbi_refresh_token');
   sessionStore.removeItem('ilbi_user');
+  markAuthenticationCurrent();
 };
 
 export const parseJwt = (token) => {

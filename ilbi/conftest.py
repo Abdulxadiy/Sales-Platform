@@ -101,5 +101,6 @@ def django_db_setup(django_db_setup, django_db_blocker):
             ("apps.inventory.migrations.0007_seed_transfer_permission", "add_permission"),
             ("apps.sales.migrations.0002_seed_permissions", "seed_permissions"),
             ("apps.permissions.migrations.0002_cashbox_and_cost_permissions", "seed"),
+            ("apps.permissions.migrations.0003_seed_analytics_permissions", "seed"),
         ):
             getattr(import_module(module), function)(apps, None)

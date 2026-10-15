@@ -1,4 +1,4 @@
-# ILBI ILBI Platform
+# ILBI Platform
 
 ILBI is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
 
@@ -137,3 +137,11 @@ Copyright (c) 2026 ILBI. All rights reserved. See [LICENSE](LICENSE) for details
 See [support setup and API](docs/SUPPORT.md) for Telegram recipient configuration and [documentation index](docs/README.md) for concise role guides and focused, annotated screenshots. After updating, apply backend migrations and rebuild the frontend.
 
 Retail POS currently accepts UZS only. Production retail sales are blocked pending fiscal provider integration; the guide screenshots use synthetic demo data. USD catalog values and the currency calculator do not enable USD retail checkout.
+
+## ILBI rebranding and existing deployments
+
+Backend source is in `ilbi/`; frontend source is in `frontend/ilbi/`. The master plan is `ILBI_MASTER_PLAN.md`; the implementation checklist is [REBRANDING_AUDIT_ILBI_UZ.md](REBRANDING_AUDIT_ILBI_UZ.md). UI, loading, print, email and Telegram branding use ILBI / ilbi.uz without a PRO product badge.
+
+For existing Docker installations, pin `COMPOSE_PROJECT_NAME` and the resource mapping in the ignored root `.env`. `ILBI_NETWORK_NAME` / `ILBI_NETWORK_EXTERNAL` and `ILBI_VENV_VOLUME` / `ILBI_VENV_EXTERNAL` allow reusing the original network and dependency volume. Existing PostgreSQL roles/databases and media buckets can retain their configured names; changing env text does not rename stored data. The backend service is now `ilbi`, with a temporary legacy DNS alias for internal clients. `FRONTEND_PORT` selects the Docker frontend port if a native Vite server already uses 5173.
+
+Domain TLS/DNS and sender-domain verification are deployment tasks. Existing local SMTP credentials and its verified sender address are retained with the ILBI display name; the default/example sender for a new installation is `ILBI <noreply@ilbi.uz>`.

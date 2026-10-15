@@ -2,6 +2,7 @@
 const LEGACY = 'inventra_';
 const CURRENT = 'ilbi_';
 const AUTH = new Set(['access_token', 'refresh_token', 'user']);
+const AUTH_MARKER = 'ilbi_auth_namespace_v1';
 const SIMPLE = new Set([
   ...AUTH, 'remember_me', 'remember_login', 'theme', 'sidebar_collapsed',
   'receipt_paper_width', 'support_guest',
@@ -38,9 +39,39 @@ export function migrateBrandStorage(local, session) {
   const attempt = (callback) => {
     try { return callback(); } catch { complete = false; return null; }
   };
-  const hasCurrentAuth = stores.some(store => [...AUTH].some(
-    name => attempt(() => store.getItem(CURRENT + name)) !== null,
+  const currentAuth = stores.map(store => Object.fromEntries(
+    [...AUTH].map(name => [name, attempt(() => store.getItem(CURRENT + name))]),
   ));
+  const oldAuth = stores.map(store => Object.fromEntries(
+    [...AUTH].map(name => [name, attempt(() => store.getItem(LEGACY + name))]),
+  ));
+  const hasCurrentAuth = currentAuth.some(values => Object.values(values).some(value => value !== null))
+    || stores.some(store => attempt(() => store.getItem(AUTH_MARKER)) === '1');
+  if (complete && !hasCurrentAuth) {
+    // Copy a legacy authentication bundle atomically, even if a later write hits quota.
+    let copied = true;
+    for (const [index, store] of stores.entries()) {
+      for (const name of AUTH) {
+        const value = oldAuth[index][name];
+        if (value !== null) {
+          try { store.setItem(CURRENT + name, value); } catch { copied = false; complete = false; }
+        }
+      }
+    }
+    if (!copied) {
+      for (const store of stores) {
+        for (const name of AUTH) attempt(() => store.removeItem(CURRENT + name));
+      }
+    }
+  } else if (complete) {
+    for (const [index, store] of stores.entries()) {
+      for (const name of AUTH) {
+        const value = currentAuth[index][name];
+        if (value === null) attempt(() => store.removeItem(LEGACY + name));
+        else attempt(() => store.setItem(LEGACY + name, value));
+      }
+    }
+  }
 
   for (const store of stores) {
     // A saved password is obsolete and must never be migrated under a new name.
@@ -59,14 +90,10 @@ export function migrateBrandStorage(local, session) {
     });
     for (const oldKey of keys) {
       const name = oldKey.slice(LEGACY.length);
+      if (AUTH.has(name)) continue;
       const newKey = CURRENT + name;
       const current = attempt(() => store.getItem(newKey));
       const old = attempt(() => store.getItem(oldKey));
-      // Never assemble an authenticated user from two different namespaces.
-      if (AUTH.has(name) && hasCurrentAuth && current === null) {
-        attempt(() => store.removeItem(oldKey));
-        continue;
-      }
       const value = current ?? old;
       if (value !== null) {
         // Keep the old namespace synchronized for already-open tabs and rollback.
@@ -75,7 +102,16 @@ export function migrateBrandStorage(local, session) {
       }
     }
   }
+  if (complete) {
+    for (const store of stores) attempt(() => store.setItem(AUTH_MARKER, '1'));
+  }
   return complete;
+}
+
+export function markAuthenticationCurrent() {
+  for (const kind of ['localStorage', 'sessionStorage']) {
+    try { nativeStorage(kind)?.setItem(AUTH_MARKER, '1'); } catch { /* Authentication remains cleared. */ }
+  }
 }
 
 export function migrateBrowserStorage() {

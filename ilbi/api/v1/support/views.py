@@ -10,6 +10,8 @@ from django.db.models import Count, F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -24,12 +26,15 @@ from apps.support.models import Conversation, Message
 from apps.support.tasks import enqueue_notification
 
 from .serializers import (
+    ConversationPageSerializer,
     ConversationSerializer,
     CustomerProfileSerializer,
     CustomerProfileUpdateSerializer,
     MessageSerializer,
+    MessagePageSerializer,
     SendSerializer,
     StartSerializer,
+    SupportMetadataSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -135,6 +140,7 @@ class SupportView(APIView):
         return response
 
 
+@extend_schema_view(get=extend_schema(responses=SupportMetadataSerializer))
 class MetadataView(SupportView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -151,6 +157,10 @@ class MetadataView(SupportView):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(responses=ConversationPageSerializer),
+    post=extend_schema(request=StartSerializer, responses={200: ConversationSerializer, 201: ConversationSerializer}),
+)
 class ConversationsView(SupportView):
     def get(self, request):
         queryset = with_unread(accessible(request), False)
@@ -203,6 +213,7 @@ class GuestConversationsView(ConversationsView):
     permission_classes = [AllowAny]
 
 
+@extend_schema_view(get=extend_schema(responses=ConversationPageSerializer))
 class InboxView(SupportView):
     permission_classes = [IsPlatformAdmin]
 
@@ -222,6 +233,10 @@ class InboxView(SupportView):
         return response
 
 
+@extend_schema_view(
+    get=extend_schema(responses=ConversationSerializer),
+    post=extend_schema(request=OpenApiTypes.OBJECT, responses=ConversationSerializer),
+)
 class ConversationView(SupportView):
     inbox = False
 
@@ -295,6 +310,10 @@ class OperatorConversationView(ConversationView):
     inbox = True
 
 
+@extend_schema_view(
+    get=extend_schema(responses=MessagePageSerializer),
+    post=extend_schema(request=SendSerializer, responses={200: MessageSerializer, 201: MessageSerializer}),
+)
 class MessagesView(ConversationView):
     def get(self, request, pk):
         conversation = self.get_conversation(request, pk)
@@ -383,6 +402,10 @@ class OperatorMessagesView(MessagesView):
     inbox = True
 
 
+@extend_schema_view(
+    get=extend_schema(responses={(200, 'image/jpeg'): OpenApiTypes.BINARY}),
+    post=extend_schema(exclude=True),
+)
 class ImageView(ConversationView):
     def get(self, request, pk, message_id):
         conversation = self.get_conversation(request, pk)
@@ -403,6 +426,10 @@ class OperatorImageView(ImageView):
     inbox = True
 
 
+@extend_schema_view(
+    get=extend_schema(responses={(200, 'audio/webm'): OpenApiTypes.BINARY}),
+    post=extend_schema(exclude=True),
+)
 class VoiceView(ConversationView):
     def get(self, request, pk, message_id):
         conversation = self.get_conversation(request, pk)
@@ -426,6 +453,10 @@ class OperatorVoiceView(VoiceView):
     inbox = True
 
 
+@extend_schema_view(
+    get=extend_schema(responses=CustomerProfileSerializer),
+    patch=extend_schema(request=CustomerProfileUpdateSerializer, responses=CustomerProfileSerializer),
+)
 class CustomerProfileView(SupportView):
     permission_classes = [IsPlatformAdmin]
 

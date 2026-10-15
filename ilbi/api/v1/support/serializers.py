@@ -111,7 +111,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_operator_name(self, obj):
+    def get_operator_name(self, obj) -> str:
         return obj.operator.get_full_name() if obj.operator else ""
 
 
@@ -131,7 +131,7 @@ class ReplyPreviewSerializer(serializers.ModelSerializer):
             "sticker",
         ]
 
-    def get_author_name(self, obj):
+    def get_author_name(self, obj) -> str:
         if obj.sender == "operator":
             return obj.author.get_full_name() if obj.author else "Operator"
         elif obj.sender == "visitor":
@@ -164,7 +164,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-    def get_author_name(self, obj):
+    def get_author_name(self, obj) -> str:
         return obj.author.get_full_name() if obj.author and obj.sender == "operator" else ""
 
 
@@ -187,4 +187,25 @@ class CustomerProfileUpdateSerializer(serializers.Serializer):
     tenant_name = serializers.CharField(max_length=100, required=False)
     tenant_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
     tenant_is_active = serializers.BooleanField(required=False)
+
+
+class SupportMetadataSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    telegram_username = serializers.CharField()
+    languages = serializers.ListField(child=serializers.CharField())
+    ai_enabled = serializers.BooleanField()
+    max_image_bytes = serializers.IntegerField()
+
+
+class ConversationPageSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.URLField(allow_null=True)
+    previous = serializers.URLField(allow_null=True)
+    results = ConversationSerializer(many=True)
+    unread_total = serializers.IntegerField()
+
+
+class MessagePageSerializer(serializers.Serializer):
+    results = MessageSerializer(many=True)
+    has_more = serializers.BooleanField()
 

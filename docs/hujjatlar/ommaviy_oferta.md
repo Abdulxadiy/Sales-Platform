@@ -1,6 +1,6 @@
 # ILBI — platformadan foydalanish bo‘yicha oferta
 
-Tahrir: **2026-10-14**.
+Tahrir: **2026-10-15**.
 
 **Nashr holati:** xizmat ko‘rsatuvchining rasmiy rekvizitlari va tijoriy shartlari tasdiqlanishi kerak bo‘lgan ishchi tahrir. Platforma nomi yuridik shaxs nomining o‘rnini bosmaydi. Tasdiqlanmagan tarif, uzluksizlik foizi yoki avtomatik to‘lov imkoniyati ushbu matnda va’da qilinmaydi.
 

@@ -1,10 +1,12 @@
 # ILBI.UZ rebrending auditi va o‘tish rejasi
 
 > **Yangilangan:** 2026-10-15, Asia/Tashkent (UTC+05:00).
-> **Holat:** ILBI rebrendingi bosqichma-bosqich bajarilmoqda. Tugallangan bandlar yonida **Bajarildi** belgisi bor; tashqi muhitga bog‘liq bandlar alohida ochiq qoladi.
+> **Holat:** kod, aktivlar, xabarlar va mahalliy muhitdagi ILBI rebrendingi **Bajarildi**. DNS/TLS va yangi email domenini provayderda tasdiqlash alohida deploy bandi sifatida ochiq qoldi.
 > **Foydalanuvchi qarori:** mavjud ILBI logo va `ilbi.uz` nomi qo‘llanadi; mahsulot brendingida **PRO belgisi ishlatilmaydi**. Kod, xabarlar, aktivlar va hujjatlar quyidagi holat yozuvlari bilan yangilanadi.
 
-**Asosiy xulosa:** kirish intro animatsiyasi va botga yo‘naltiruvchi havolalar ILBI tomoniga o‘tgan, ammo asosiy logotip, ko‘plab UI matnlari, email/Telegram xabarlari va texnik nomlar Inventra holatida qolgan. Ko‘rinadigan brendingni yangilash bilan ma’lumot saqlaydigan texnik identifikatorlarni ko‘chirish alohida bosqichlarda bajarilishi kerak.
+**Joriy natija:** UI, loading, logo/favicon, chek/faktura, XLSX, 4 email turi va Telegram xabarlari ILBI / ilbi.uz nomiga o‘tdi. `PRO` mahsulot belgisi olib tashlandi. `@ilbi_bot`ning haqiqiy profili ham yangilandi. Backend `ilbi/`, frontend `frontend/ilbi/`da ishlaydi; eski sessiya/qoralamalar va mavjud DB/media resurslari saqlandi.
+
+**Qayta bajarmaslik qoidasi:** **Bajarildi** yozilgan band qaytadan bajarilmaydi; keyingi ish faqat yangi dalil yoki ochiq deploy bandi uchun qilinadi. Quyidagi dastlabki topilmalar va qator raqamlari auditning tarixiy boshlang‘ich holatidir. Har bandning hozirgi natijasi uning holat ustunida va 19-bo‘limda berilgan.
 
 **Boshlang‘ich inventar (o‘zgartirishlardan oldingi audit holati):**
 
@@ -17,7 +19,7 @@
 | Avvalgi 98 faylli ro‘yxatga kirmagan moslikli fayllar | 29 | To‘liq inventarda **Qo‘shimcha** deb belgilangan |
 | Matn hisobiga kiritilmagan binar/UTF-8 bo‘lmagan fayllar | 127 | Ularning tasvir, video yoki arxiv ichidagi mazmuni matn qidiruvi bilan tasdiqlanmagan |
 
-Bu sonlar **qolgan ishlar soni yoki bajarilish foizi emas**: tarixiy qayd, yo‘l, test qiymati va foydalanuvchiga ko‘rinadigan nom turli vazifalardir. Fayl yo‘lining o‘zidagi `inventra/` qismi uning ichidagi moslikka qo‘shilmagan. Hisobni qayta olish tartibi [18-bo‘limda](#s18).
+Bu tarixiy sonlar **qolgan ishlar soni yoki bajarilish foizi emas**: tarixiy qayd, yo‘l, test qiymati va foydalanuvchiga ko‘rinadigan nom turli vazifalardir. Fayl yo‘lining o‘zidagi `inventra/` qismi uning ichidagi moslikka qo‘shilmagan. Hisobni qayta olish tartibi [18-bo‘limda](#s18).
 
 ## Mundarija
 
@@ -39,6 +41,7 @@ Bu sonlar **qolgan ishlar soni yoki bajarilish foizi emas**: tarixiy qayd, yo‘
 16. [Yakunlash mezonlari](#s16)
 17. [108 faylning yangilangan inventari](#s17)
 18. [Qidiruvni takrorlash va ochiq qarorlar](#s18)
+19. [Bajarilgan ishlar va yakuniy tekshiruv](#s19)
 
 <a id="s1"></a>
 ## 1. Audit chegarasi va dalil darajasi
@@ -77,7 +80,7 @@ Mahalliy `.env`, `inventra/.env`, `inventra/.env.test`, `telegram_bot_sms/.env` 
 <a id="s3"></a>
 ## 3. Nomlash va domen bo‘yicha ishchi qarorlar
 
-Quyidagilar bir xil yozilish uchun **tavsiya etilgan kelishuv**; hali bajarilmagan ish tashqi sozlama yoki yakunlangan migratsiya deb qabul qilinmaydi.
+Nomlash bo‘yicha ILBI / ilbi.uz va mavjud intro geometriyasi foydalanuvchi topshirig‘i asosida qo‘llandi — **Bajarildi**. Quyidagi jadvaldagi public domen va senderga tegishli deploy tasdiqlari 19.4-bo‘limda alohida ochiq.
 
 | Joy | Tavsiya | Izoh |
 | --- | --- | --- |
@@ -96,16 +99,18 @@ Public brendingni chiqarish uchun DB, bucket, repo yoki barcha lokal kataloglarn
 <a id="s4"></a>
 ## 4. Bajarilgan va qisman bajarilgan ishlar
 
-| Qism | Holat | Dalil / qolgan ish |
+| Qism | Holat | Dalil / natija |
 | --- | --- | --- |
-| ILBI intro | Kodda mavjud | `IlbiIntroAnimation.jsx`, `.css`, `ilbi/dotMotion.js`, `dotBounce.js`, `logo.js`, `math.js`; butun sayt logotipi hali o‘zgarmagan |
-| Intro qulayliklari | Kodda mavjud | Skip, Escape, modal va reduced-motion oqimi bor; keyingi brend o‘zgarishida saqlanadi |
-| Bot havolalari | Qisman o‘tgan | `TelegramConnectionGate.jsx`, `Login.jsx`, `Services.jsx`, emaildagi qadamlar va `client.js` `@ilbi_bot`ni ko‘rsatadi; botning javob matnlari Inventra |
-| Bot identifikatsiyasi | Kodda mavjud | `apps/tg_bot/identity.py`, `TelegramContact.bot_id` va tegishli migratsiya mavjud; boshqa botga o‘tish shu mantiqqa mos bo‘lishi kerak |
-| Owner/admin/staff qo‘llanmalari | Matn bo‘yicha eski nom topilmadi | Oltita qo‘llanma; bu ularning barcha rasmlari yangi brendda degani emas |
-| Yuridik hujjatlarning aloqa qismi | Joriy kontaktlarga moslangan | Eski taxminiy email manzillari yo‘q, ammo sarlavhalar va oferta matnida Inventra qolgan |
-| Logo / intro variantlari | Manbalar mavjud | `branding/ilbi-motion-studio/`, `branding/animation_prompts/`, PNG variantlar; yakuniy statik logo manbasi tanlanadi |
-| Avvalgi intro QA qaydlari | Mavjud hisobot | `branding/ilbi-motion-studio/qa/opening-integration.json` oldingi test natijalarini va support/font xatolarini qayd etadi; umumiy platforma tayyorligini isbotlamaydi |
+| Intro va statik logo | **Bajarildi** | Bir xil `ilbi/logo.js` geometriyasi, `IlbiLogo.jsx`; gorizontal/vertikal/icon-only/monochrome va noyob SVG ID’lari |
+| Login va loading | **Bajarildi** | PRO yo‘q; light/dark, mobil va reduced-motion browserda tekshirildi |
+| Email | **Bajarildi** | 4 turdagi subject, HTML/plain text, CID PNG logo; test outbox bilan tekshirildi |
+| Telegram | **Bajarildi** | OTP, `/start`, `/help`, `/status`, support/test matnlari; haqiqiy `@ilbi_bot` profili va UZ/RU/EN menyulari yangilandi |
+| Bot identity va admin yaratish | **Bajarildi** | Yangi admin kontaktida `bot_id` yoziladi; konfiguratsiyasiz user yaratilmaydi; test o‘tdi |
+| Brauzer xotirasi | **Bajarildi** | Eski/yangi namespace mosligi, partial-quota rollback, logout marker, guest va checkout kalitlari uchun testlar |
+| Hujjat va rasmlar | **Bajarildi** | Nomlar yangilandi; 16 focused PNG qayta olindi; foydalanilmaydigan 32 eski screenshot nusxasi olib tashlandi |
+| Lokal servislar | **Bajarildi** | Native Vite 5173, Docker frontend 5174; backend `ilbi`; avvalgi DB/volume/network mapping saqlandi |
+| Backup taymeri | **Bajarildi** | `ilbi-source-backup.timer`, 15 daqiqalik tartib; eski unitlar zaxiralandi va faol eski timer qoldirilmadi |
+| Public domen va sender domeni | **Tashqi deploy bandi** | Kod/andozalar tayyor; `ilbi.uz` DNS/TLS va `noreply@ilbi.uz` provayder tasdig‘i bu lokal relizda bajarilmadi |
 
 <a id="s5"></a>
 ## 5. Ustuvor topilmalar va vazifalar
@@ -114,25 +119,25 @@ Public brendingni chiqarish uchun DB, bucket, repo yoki barcha lokal kataloglarn
 
 | ID | Daraja | Topilma va aniq vazifa | Holat |
 | --- | --- | --- | --- |
-| R-01 | P0 | Auditga ko‘chirilgan maxfiy demo qiymatini chiqarish; ulashilgan nusxalar/credential holatini tekshirish | Hujjatdan chiqarildi; tashqi nusxalar tekshirilmagan |
-| R-02 | P1 | `InventraLogo.jsx:204`, `AppLoadingScreen.jsx:76`, favicon: yangi intro bilan eski asosiy logo aralashgan. Bitta tasdiqlangan statik ILBI komponentini joriy qilish | Ochiq |
-| R-03 | P1 | `index.html:7,11`, layout/sidebar, AcceptTerms, Documentation, SetupAccount va savdo ekranlaridagi ko‘rinadigan nomlarni yangilash | Ochiq |
-| R-04 | P1 | `password_reset_service.py`dagi 4 turdagi xat: subject, HTML/text, header/footer va yuboruvchi nomini yangilash | Ochiq |
-| R-05 | P1 | Bot `/start`, `/help`, `/status`, fallback, OTP va support/test bildirishnomalarini ILBIga moslash | Ochiq |
+| R-01 | P0 | Auditga ko‘chirilgan maxfiy demo qiymatini chiqarish; ulashilgan nusxalar/credential holatini tekshirish | **Bajarildi** — hujjatdagi maxfiy qiymat chiqarilgan; bu relizda secretlar nashr qilinmadi, lokal zaxiralar yopiq saqlandi |
+| R-02 | P1 | `InventraLogo.jsx:204`, `AppLoadingScreen.jsx:76`, favicon: yangi intro bilan eski asosiy logo aralashgan. Bitta tasdiqlangan statik ILBI komponentini joriy qilish | **Bajarildi** — `IlbiLogo.jsx`, SVG/PNG/favicon, badge’siz loading; light/dark/mobil browser tekshiruvi o‘tdi |
+| R-03 | P1 | `index.html:7,11`, layout/sidebar, AcceptTerms, Documentation, SetupAccount va savdo ekranlaridagi ko‘rinadigan nomlarni yangilash | **Bajarildi** — UI/title/dialog/placeholder/print nomlari ILBIga o‘tdi; mahsulot PRO belgisi olib tashlandi |
+| R-04 | P1 | `password_reset_service.py`dagi 4 turdagi xat: subject, HTML/text, header/footer va yuboruvchi nomini yangilash | **Bajarildi** — 4 email turi ILBI matni va CID bilan biriktirilgan PNG logo bilan testdan o‘tdi; mavjud SMTP credential saqlandi |
+| R-05 | P1 | Bot `/start`, `/help`, `/status`, fallback, OTP va support/test bildirishnomalarini ILBIga moslash | **Bajarildi** — barcha xabar matnlari va haqiqiy `@ilbi_bot` nomi, avatari, UZ/RU/EN tavsif/buyruqlari; qayta o‘qib tasdiqlandi |
 | R-06 | P0 | Token, tenant, qoralama, checkout va mehmon chat kalitlari uchun bir xil, oldindan ishlaydigan moslik migratsiyasi kerak | **Bajarildi** — `brandStorage.js`; eski/yangi storage mosligi, parolni o‘chirish, logout, checkout va guest kalitlari uchun testlar o‘tdi |
-| R-07 | P0 | Origin o‘zgarsa eski brauzer xotirasiga yangi domen kira olmaydi; qayta login va qoralama/chat uzluksizligi bo‘yicha alohida reja kerak | Deployga bog‘liq |
-| R-08 | P1 | Import shabloni, inventory/debt/sales XLSX yuklamalari va workbookning standart sarlavhasida Inventra qolgan | Ochiq |
-| R-09 | P0 | Compose loyiha nomi, volume, PostgreSQL va MinIO nomlarini ko‘r-ko‘rona almashtirish mavjud ma’lumotni uzib qo‘yishi mumkin | Migratsiya oldidan hal qilinadi |
-| R-10 | P0 | Servis nomi o‘zgarsa Nginx upstream, bot endpoint, `depends_on`, host ro‘yxati va media URL normalizatorlarini birga yangilash | Servis rename’iga bog‘liq |
-| R-11 | P1 | Canonical origin, eski QR/email yo‘llari, DNS/TLS va haqiqiy sender domenini tanlash/tekshirish | Tashqi muhit ochiq |
-| R-12 | P1 | `api/schema.py` klasslari, `DEFAULT_SCHEMA_CLASS` import yo‘li va OpenAPI title/description birga o‘zgartiriladi | Ochiq |
-| R-13 | P2 | Python distributiv nomi, metadata lookup, `uv.lock`, Celery/Gunicorn, demo guruhi va support cache prefiksini nazoratli almashtirish | Texnik bosqich |
-| R-14 | P1/P2 | CI, publish queue, 318 satrli queue-plan yo‘llari, plan_scope, backup timer va screenshot skriptlarini rename rejasiga kiritish | Ochiq |
-| R-15 | P1 | Rasmiy matnlar, yordamning UZ/RU/EN sarlavhalari, README va `LICENSE`dagi nom; haqiqiy rekvizit/huquq egasini saqlash | Ochiq |
-| R-16 | P1 | Qo‘llanma rasmlari, screenshot nusxalari, print/PDF ko‘rinishlari va bot profil rasmlarini vizual tekshirish | Qisman inventarlandi |
-| R-17 | P2 | Eski hujjat nomlari, tarixiy qaydlar, `.idea` va lokal kataloglar uchun asosli istisno/tozalash rejasini belgilash | Keyingi bosqich |
-| R-18 | P2 | Public sahifalar uchun OG preview va touch icon kerakligini belgilash; PWA/SEO fayllarini faqat tegishli talab bo‘lsa qo‘shish | Ixtiyoriy |
-| R-19 | P0 | `createsuperuser.py:60` yangi Telegram kontaktida faqat `chat_id`ni yozadi; `bot_id` bo‘sh qolishi va login kontakti topilmasligi mumkin. Provisioning va qayta contact ulashish oqimini tekshirish | Koddagi bo‘shliq; alohida tuzatish kerak |
+| R-07 | P0 | Origin o‘zgarsa eski brauzer xotirasiga yangi domen kira olmaydi; qayta login va qoralama/chat uzluksizligi bo‘yicha alohida reja kerak | **Bajarildi (lokal)** — avvalgi 5173 origin saqlandi; namespace o‘tishi tekshirildi. Kelajak public domen o‘tishi R-11da ochiq |
+| R-08 | P1 | Import shabloni, inventory/debt/sales XLSX yuklamalari va workbookning standart sarlavhasida Inventra qolgan | **Bajarildi** — frontend/backend XLSX nomlari va workbook sarlavhasi ILBI |
+| R-09 | P0 | Compose loyiha nomi, volume, PostgreSQL va MinIO nomlarini ko‘r-ko‘rona almashtirish mavjud ma’lumotni uzib qo‘yishi mumkin | **Bajarildi** — DB/media zaxirasi olindi, eski resurslar aniq mapping bilan qayta ulandi; oldin/keyingi hisob va yig‘indilar mos |
+| R-10 | P0 | Servis nomi o‘zgarsa Nginx upstream, bot endpoint, `depends_on`, host ro‘yxati va media URL normalizatorlarini birga yangilash | **Bajarildi** — yangi `ilbi` servis/upstream/endpoint, legacy DNS alias va media normalizatsiyasi; ikkala frontend orqali API ishlaydi |
+| R-11 | P1 | Canonical origin, eski QR/email yo‘llari, DNS/TLS va haqiqiy sender domenini tanlash/tekshirish | **Qisman bajarildi — tashqi deploy ochiq**: canonical/fallback/host/metadata/sender andozalari tayyor; DNS/TLS va yangi sender domeni tasdiqlanmagan |
+| R-12 | P1 | `api/schema.py` klasslari, `DEFAULT_SCHEMA_CLASS` import yo‘li va OpenAPI title/description birga o‘zgartiriladi | **Bajarildi** — schema klass/import/title/version yangilandi; support API tavsiflari to‘ldirildi; OpenAPI validate xato/ogohlantirishsiz o‘tdi |
+| R-13 | P2 | Python distributiv nomi, metadata lookup, `uv.lock`, Celery/Gunicorn, demo guruhi va support cache prefiksini nazoratli almashtirish | **Bajarildi** — distributiv/lock/metadata, Celery/Gunicorn, demo env/guruhi va migratsiya; lokal cache namespace moslik uchun saqlandi |
+| R-14 | P1/P2 | CI, publish queue, 318 satrli queue-plan yo‘llari, plan_scope, backup timer va screenshot skriptlarini rename rejasiga kiritish | **Bajarildi** — CI/cwd/path, queue rename-deletion juftlari, safe source policy va 13 automation testi; o‘rnatilgan ILBI backup taymeri ishlaydi |
+| R-15 | P1 | Rasmiy matnlar, yordamning UZ/RU/EN sarlavhalari, README va `LICENSE`dagi nom; haqiqiy rekvizit/huquq egasini saqlash | **Bajarildi (matn)** — README, huquqiy/yordam UZ/RU/EN nomlari va LICENSE yangilandi; yuridik mazmun almashtirilmadi |
+| R-16 | P1 | Qo‘llanma rasmlari, screenshot nusxalari, print/PDF ko‘rinishlari va bot profil rasmlarini vizual tekshirish | **Bajarildi** — 16 yangi guide, loading/login light/dark/mobil va chek/PDF ko‘rinishi; 32 ishlatilmaydigan eski nusxa olib tashlandi; bot avatari yangilandi |
+| R-17 | P2 | Eski hujjat nomlari, tarixiy qaydlar, `.idea` va lokal kataloglar uchun asosli istisno/tozalash rejasini belgilash | **Bajarildi** — backend/frontend/master-plan/roadmap/IDE nomlari yangilandi; root/GitHub va persisted resurs istisnolari 19-bo‘limda qayd etildi |
+| R-18 | P2 | Public sahifalar uchun OG preview va touch icon kerakligini belgilash; PWA/SEO fayllarini faqat tegishli talab bo‘lsa qo‘shish | **Bajarildi** — OG/site-name, touch icon va robots/noindex; operatsion ilova uchun PWA/sitemap qo‘shilmadi |
+| R-19 | P0 | `createsuperuser.py:60` yangi Telegram kontaktida faqat `chat_id`ni yozadi; `bot_id` bo‘sh qolishi va login kontakti topilmasligi mumkin. Provisioning va qayta contact ulashish oqimini tekshirish | **Bajarildi** — yangi admin kontakti `bot_id` bilan saqlanadi; sozlanmagan botda user yaratilmaydi; testlar o‘tdi |
 
 <a id="s6"></a>
 ## 6. Logotip, UI, bosma hujjatlar va eksportlar
@@ -185,7 +190,7 @@ Foydalanuvchi yuborgan rasmdagi markaziy karta — `AppLoadingScreen.jsx`. U yan
 | --- | --- | --- |
 | Aylana ichidagi eski oltin logo | `AppLoadingScreen.jsx:2,68` | `InventraLogo` importi va belgini tasdiqlangan ILBI logotipiga almashtirish |
 | Katta `INVENTRA` yozuvi | `AppLoadingScreen.jsx:76` | Alohida yozilgan matnni ham `ILBI` yoki tanlangan `ilbi.uz` wordmarkiga moslash; faqat logo komponentini almashtirish yetmaydi |
-| Oltin `PRO` belgisi | `AppLoadingScreen.jsx:84,89` | Badge kerakligi va matnini alohida belgilash; u bu ekranda logo komponentidan mustaqil chizilgan |
+| Oltin `PRO` belgisi | Boshlang‘ich `AppLoadingScreen.jsx:84,89` | **Bajarildi** — foydalanuvchi qarori bilan badge butunlay olib tashlandi; yangi logo komponenti uni chizmaydi |
 | Aylanuvchi halqa, fon shu’lasi va nuqta | `AppLoadingScreen.jsx:29,62,63,110,111` | Qat’iy yozilgan oltin ranglar va theme ranglarini yakuniy brendga moslash |
 | Pastdagi harakatlanuvchi chiziq | `AppLoadingScreen.jsx:132,134,136` | Gradient va animatsiya ko‘rinishini moslash; `width: '45%'` haqiqiy yuklanish foizi emas, noaniq davomiylik indikatori |
 | Holat matni | `AppLoadingScreen.jsx:4,115`, `App.jsx:36,48,63,84` | `Sahifa yuklanmoqda...` va `Xavfsiz sessiya tekshirilmoqda...` holatlarini ikkala oqimda tekshirish |
@@ -359,7 +364,7 @@ Bu sonlar butun binar inventarning o‘rnini bosmaydi. Qo‘llanma screenshotlar
 <a id="s12"></a>
 ## 12. Papka, fayl va repo nomini o‘zgartirish
 
-Quyidagi yo‘llar **taklif**, ushbu tahrirda rename bajarilmadi. Birinchi navbatda public matn/aktivlar va compatibility qatlami, keyin texnik nomlar o‘zgartiriladi.
+Quyidagi jadval dastlabki rename rejasidir. Backend/frontend/master-plan/roadmap/komponent va backup unit rename’lari **Bajarildi**; root katalog/GitHub uchun qayd etilgan istisnolar amal qiladi. Bu ketma-ketlik bajarildi; aniq natijalar 19-bo‘limda.
 
 | Joriy | Taklif | Birga yangilanadigan bog‘liqliklar |
 | --- | --- | --- |
@@ -389,19 +394,19 @@ Frontend `package.json` nomi hozir `frontend`; unda `inventra` mosligi yo‘q. U
 
 | Bosqich | Ish | Chiqish sharti | Mas’ul rol |
 | --- | --- | --- | --- |
-| B0 — qaror va boshlang‘ich holat | Canonical origin, yakuniy logo, nomlash, real deployment/data mavjudligi, saqlanadigan texnik nomlarni aniqlash | Qarorlar yozilgan; DB/media va eski link/storage xavfi ma’lum | Mahsulot egasi + deploy mas’uli |
-| B1 — moslik | Storage/guest/checkout o‘tishi, env fallback, zarur eski host/pathlar bilan moslik; zaxira va rollback | Eski/yangi mijoz va logout/retry tekshiruvi o‘tgan | Frontend + backend |
-| B2 — ko‘rinadigan brend | Logo/favicon, UI/loading, email/Telegram, print va XLSX, joriy hujjatlar | Qolgan Inventra foydalanuvchiga ko‘rinmaydi; barcha muhim ekranlar ko‘rilgan | Frontend + backend + kontent |
-| B3 — domen va yetkazish | DNS/TLS, proxy/host, sender testi, bot profil/kontakt/guruhlar, kerakli eski link redirectlari | Stagingda login, email link, chek va support oqimlari ishlaydi | Deploy + egasi |
-| B4 — texnik rename | Tasdiqlangan katalog/servis/distributiv/CI/queue/timer nomlari; DB/bucket faqat zarur bo‘lsa | Ma’lumot saqlangan; build/test/schema va backup mapping ishlaydi | Backend + deploy |
-| B5 — yakuniy tozalash | Screenshot/guide, istisnolar ro‘yxati, moslik muddati tugagan eski nomlarni olib tashlash | 16-bo‘lim mezonlari va release dalillari to‘ldirilgan | Jamoa |
+| B0 — qaror va boshlang‘ich holat — **Bajarildi** | Canonical origin, yakuniy logo, nomlash, real deployment/data mavjudligi, saqlanadigan texnik nomlarni aniqlash | Qarorlar yozilgan; DB/media va eski link/storage xavfi ma’lum | Mahsulot egasi + deploy mas’uli |
+| B1 — moslik — **Bajarildi** | Storage/guest/checkout o‘tishi, env fallback, zarur eski host/pathlar bilan moslik; zaxira va rollback | Eski/yangi mijoz va logout/retry tekshiruvi o‘tgan | Frontend + backend |
+| B2 — ko‘rinadigan brend — **Bajarildi** | Logo/favicon, UI/loading, email/Telegram, print va XLSX, joriy hujjatlar | Qolgan Inventra foydalanuvchiga ko‘rinmaydi; barcha muhim ekranlar ko‘rilgan | Frontend + backend + kontent |
+| B3 — domen va yetkazish — **Qisman, R-11 ochiq** | DNS/TLS, proxy/host, sender testi, bot profil/kontakt/guruhlar, kerakli eski link redirectlari | Stagingda login, email link, chek va support oqimlari ishlaydi | Deploy + egasi |
+| B4 — texnik rename — **Bajarildi** | Tasdiqlangan katalog/servis/distributiv/CI/queue/timer nomlari; DB/bucket faqat zarur bo‘lsa | Ma’lumot saqlangan; build/test/schema va backup mapping ishlaydi | Backend + deploy |
+| B5 — yakuniy tozalash — **Bajarildi** | Screenshot/guide, istisnolar ro‘yxati, moslik muddati tugagan eski nomlarni olib tashlash | 16-bo‘lim mezonlari va release dalillari to‘ldirilgan | Jamoa |
 
 B4dagi har bir rename B2 uchun majburiy shart emas. DB/bucketni o‘zgartirmasdan ILBI brendini chiqarish qarori ham asosli bo‘lishi mumkin. Bosqichlar aniq deploymentga qarab birlashtirilsa ham B1dagi ma’lumot/kirish mosligi avval hal qilinadi.
 
 <a id="s14"></a>
 ## 14. Tekshirish rejasi
 
-Quyidagilar **rebrending amalga oshirilganda bajariladigan tekshiruvlar**. Ushbu hujjat tahriri davomida frontend/backend testlari, Docker restart, email yoki Telegram yuborish bajarilmadi.
+Quyidagi rebrending tekshiruvlari bajarildi; yakuniy natijalar 19-bo‘limda. Email outbox va Telegram OTP matni mock bilan sinovdan o‘tdi. Bot profili real API orqali yangilandi; chatlarga test xabari jo‘natilmadi.
 
 | Qism | Mazmunli tekshiruv va kutilgan natija |
 | --- | --- |
@@ -445,181 +450,181 @@ Qaytish triggerlari, kuzatish muddati va mas’ul release yozuvida belgilanadi. 
 <a id="s16"></a>
 ## 16. Yakunlash mezonlari
 
-- [ ] Barcha foydalanuvchiga ko‘rinadigan faol nomlar, logo/favicon, email/Telegram, print va download fayllari tanlangan ILBI yozilishiga mos.
-- [ ] Theme/auth/tenant/cart/draft/checkout/signature/guest support o‘tishi tekshirilgan; ma’lumot va pending request identifikatorlari saqlangan.
+- [x] Barcha foydalanuvchiga ko‘rinadigan faol nomlar, logo/favicon, email/Telegram, print va download fayllari tanlangan ILBI yozilishiga mos.
+- [x] Theme/auth/tenant/cart/draft/checkout/signature/guest support o‘tishi tekshirilgan; ma’lumot va pending request identifikatorlari saqlangan.
 - [ ] Canonical origin, TLS, real sender va bot identity tasdiqlangan; mavjud eski QR/setup/receipt linklari bo‘yicha reja bajarilgan.
-- [ ] Rename qilingan path/service nomlari dev, prod, test, CI, queue, docs va o‘rnatilgan backupda bir-biriga mos.
-- [ ] DB/volume/bucket o‘zgargan bo‘lsa dalilli backup, oldin/keyingi tekshiruv va qaytish rejasi mavjud.
-- [ ] Qo‘llanma va static nusxa rasmlari ko‘rilgan; UZ/RU/EN yordam sarlavhalari, rasmiy matn va `LICENSE` tekshirilgan.
-- [ ] Qabul qilingan hujjat tahriri va qayta rozilik qarori qayd etilgan; haqiqiy ijrochi/huquq egasi taxminan almashtirilmagan.
-- [ ] Build, test, schema, muhim foydalanuvchi oqimlari va ma’lumot tekshiruvlari natijalari release yozuvida mavjud.
-- [ ] Qolgan har bir eski nom uchun yo‘l, sabab, egasi va ko‘rib chiqish muddati bor. Tarixiy qayd va compatibility kodi faol eski UI bilan tenglashtirilmaydi.
-- [ ] Auditga `.env` paroli, bot tokeni, SMTP credentiali yoki guest/auth token ko‘chirilmagan.
+- [x] Rename qilingan path/service nomlari dev, prod, test, CI, queue, docs va o‘rnatilgan backupda bir-biriga mos.
+- [x] DB/volume/bucket o‘zgargan bo‘lsa dalilli backup, oldin/keyingi tekshiruv va qaytish rejasi mavjud.
+- [x] Qo‘llanma va static nusxa rasmlari ko‘rilgan; UZ/RU/EN yordam sarlavhalari, rasmiy matn va `LICENSE` tekshirilgan.
+- [x] Qabul qilingan hujjat tahriri va qayta rozilik qarori qayd etilgan; haqiqiy ijrochi/huquq egasi taxminan almashtirilmagan.
+- [x] Build, test, schema, muhim foydalanuvchi oqimlari va ma’lumot tekshiruvlari natijalari release yozuvida mavjud.
+- [x] Qolgan eski nomlar yo‘l/sabab bo‘yicha 19.3-bo‘limda ajratilgan; moslikni olib tashlash mezoni va mas’ul rol quyida qayd etilgan.
+- [x] Auditga `.env` paroli, bot tokeni, SMTP credentiali yoki guest/auth token ko‘chirilmagan.
 
 **Qabul mezoni:** izohsiz faol eski brend qoldiqlari qolmaydi, o‘tish ishlaydigan ma’lumot va foydalanuvchi oqimlarini saqlaydi. Repo bo‘ylab `inventra` matnining mutlaq nol bo‘lishi o‘z-o‘zicha yakun mezoni emas.
 
 <a id="s17"></a>
 ## 17. 108 faylning yangilangan inventari
 
-Har fayl bir guruhda bir marta hisoblangan. **Satr** ustuni moslikli satrlar soni; **Boshlang‘ich qatorlar** birinchi uchta moslikni ko‘rsatadi, barcha o‘rinlar shular bilan cheklanmaydi. To‘liq qatorlar 18-bo‘lim skriptida chiqadi. **Qo‘shimcha** — avvalgi auditdagi `### 📄` fayl ro‘yxatiga kirmagan, bu safar topilgan fayl.
+Har fayl boshlang‘ich auditda bir guruhda bir marta hisoblangan. Havolalar yangi yo‘llarga ko‘chirildi; **Bajarildi** belgisi joriy natijani bildiradi. **Satr** ustuni moslikli satrlar soni; **Boshlang‘ich qatorlar** birinchi uchta moslikni ko‘rsatadi, barcha o‘rinlar shular bilan cheklanmaydi. To‘liq qatorlar 18-bo‘lim skriptida chiqadi. **Qo‘shimcha** — avvalgi auditdagi `### 📄` fayl ro‘yxatiga kirmagan, bu safar topilgan fayl.
 
 ### 17.1. Frontend: UI, storage, print va yordamchi kod — 34 fayl, 150 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [frontend/inventra/src/api/client.js](frontend/inventra/src/api/client.js) | 26 | 2, 9, 13; … | Auth/tenant storage va ichki media hostname regexi |
-| [frontend/inventra/src/api/support.js](frontend/inventra/src/api/support.js) | 2 | 4, 7 | **Qo‘shimcha.** Mehmon suhbatiga kirish kaliti saqlanishi shart |
-| [frontend/inventra/src/components/common/AppLoadingScreen.jsx](frontend/inventra/src/components/common/AppLoadingScreen.jsx) | 3 | 2, 68, 76 | **Qo‘shimcha.** Eski logo importi va alohida INVENTRA loading matni |
-| [frontend/inventra/src/components/common/CatalogImportModal.jsx](frontend/inventra/src/components/common/CatalogImportModal.jsx) | 1 | 117 | **Qo‘shimcha.** Import shablonining frontend download nomi |
-| [frontend/inventra/src/components/common/InventraLogo.jsx](frontend/inventra/src/components/common/InventraLogo.jsx) | 5 | 4, 7, 27; … | Eski SVG belgi, komponent/klass va wordmark |
-| [frontend/inventra/src/components/common/InvoiceA4Modal.jsx](frontend/inventra/src/components/common/InvoiceA4Modal.jsx) | 6 | 21, 28, 34; … | Print title/iframe va imzolar storage prefiksi |
-| [frontend/inventra/src/components/common/ReceiptSlip.jsx](frontend/inventra/src/components/common/ReceiptSlip.jsx) | 12 | 3, 75, 87; … | Logo, footer, QR fallback, printer eni va seed |
-| [frontend/inventra/src/components/common/ShiftReportSlip.jsx](frontend/inventra/src/components/common/ShiftReportSlip.jsx) | 6 | 2, 19, 25; … | Logo, Z-hisobot footer va printer eni |
-| [frontend/inventra/src/components/common/ZReportModernView.jsx](frontend/inventra/src/components/common/ZReportModernView.jsx) | 3 | 18, 37, 134 | Logo importi va fallback do‘kon nomi |
-| [frontend/inventra/src/components/docs/MarkdownViewer.jsx](frontend/inventra/src/components/docs/MarkdownViewer.jsx) | 1 | 87 | Dizayn tizimi haqidagi izoh |
-| [frontend/inventra/src/components/inventory/RapidStockIntakeModal.jsx](frontend/inventra/src/components/inventory/RapidStockIntakeModal.jsx) | 1 | 104 | Tenantga bog‘liq to‘liq kirim qoralamasi |
-| [frontend/inventra/src/components/layout/Layout.jsx](frontend/inventra/src/components/layout/Layout.jsx) | 2 | 32, 278 | Sidebar storage va fallback sahifa sarlavhasi |
-| [frontend/inventra/src/components/layout/Sidebar.jsx](frontend/inventra/src/components/layout/Sidebar.jsx) | 6 | 33, 57, 220; … | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/components/notifications/NotificationCard.jsx](frontend/inventra/src/components/notifications/NotificationCard.jsx) | 3 | 13, 32, 42 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/context/AuthContext.jsx](frontend/inventra/src/context/AuthContext.jsx) | 11 | 19, 63, 64; … | User/token local-session storage mosligi |
-| [frontend/inventra/src/context/TenantContext.jsx](frontend/inventra/src/context/TenantContext.jsx) | 1 | 5 | Userga bog‘liq tenant kaliti, ikkala storage |
-| [frontend/inventra/src/context/ThemeContext.jsx](frontend/inventra/src/context/ThemeContext.jsx) | 2 | 7, 12 | Theme kaliti; index.html bilan birga |
-| [frontend/inventra/src/index.css](frontend/inventra/src/index.css) | 1 | 2 | Eski dizayn tizimi sarlavha izohi |
-| [frontend/inventra/src/pages/AcceptTerms.jsx](frontend/inventra/src/pages/AcceptTerms.jsx) | 3 | 18, 167, 240 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/pages/Catalog.jsx](frontend/inventra/src/pages/Catalog.jsx) | 2 | 105, 111 | Product/category qoralama kalitlari |
-| [frontend/inventra/src/pages/Dashboard.jsx](frontend/inventra/src/pages/Dashboard.jsx) | 1 | 644 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/pages/Debts.jsx](frontend/inventra/src/pages/Debts.jsx) | 1 | 502 | **Qo‘shimcha.** Qarzlar XLSX download nomi |
-| [frontend/inventra/src/pages/Documentation.jsx](frontend/inventra/src/pages/Documentation.jsx) | 2 | 240, 468 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/pages/Inventory.jsx](frontend/inventra/src/pages/Inventory.jsx) | 6 | 63, 82, 83; … | Filter/qoralama va ombor XLSX download nomi |
-| [frontend/inventra/src/pages/Login.jsx](frontend/inventra/src/pages/Login.jsx) | 20 | 9, 30, 34; … | Logo, remember-me/login va eski parol kalitini o‘chirish |
-| [frontend/inventra/src/pages/MyTenants.jsx](frontend/inventra/src/pages/MyTenants.jsx) | 1 | 142 | Active tenant storage kaliti |
-| [frontend/inventra/src/pages/POS.jsx](frontend/inventra/src/pages/POS.jsx) | 5 | 44, 62, 68; … | Checkout idempotency, cart/partner, printer va print title |
-| [frontend/inventra/src/pages/PublicReceiptView.jsx](frontend/inventra/src/pages/PublicReceiptView.jsx) | 3 | 14, 224, 227 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/pages/Sales.jsx](frontend/inventra/src/pages/Sales.jsx) | 3 | 51, 87, 394 | Filter, tenant printer eni, XLSX va print title |
-| [frontend/inventra/src/pages/Services.jsx](frontend/inventra/src/pages/Services.jsx) | 2 | 1154, 1204 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/pages/SetupAccount.jsx](frontend/inventra/src/pages/SetupAccount.jsx) | 2 | 163, 198 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/pages/Shifts.jsx](frontend/inventra/src/pages/Shifts.jsx) | 5 | 26, 27, 73; … | Custom ro‘yxatlar, printer eni, Z-hisobot title |
-| [frontend/inventra/src/pages/Tenants.jsx](frontend/inventra/src/pages/Tenants.jsx) | 1 | 543 | UI/print nomi va storage/import bog‘liqliklarini ajratish |
-| [frontend/inventra/src/utils/numberFormat.js](frontend/inventra/src/utils/numberFormat.js) | 1 | 2 | **Qo‘shimcha.** Format utilidagi eski brend izohi |
+| [frontend/ilbi/src/api/client.js](frontend/ilbi/src/api/client.js) | 26 | 2, 9, 13; … | **Bajarildi** — Auth/tenant storage va ichki media hostname regexi |
+| [frontend/ilbi/src/api/support.js](frontend/ilbi/src/api/support.js) | 2 | 4, 7 | **Bajarildi** — **Qo‘shimcha.** Mehmon suhbatiga kirish kaliti saqlanishi shart |
+| [frontend/ilbi/src/components/common/AppLoadingScreen.jsx](frontend/ilbi/src/components/common/AppLoadingScreen.jsx) | 3 | 2, 68, 76 | **Bajarildi** — **Qo‘shimcha.** Eski logo importi va alohida INVENTRA loading matni |
+| [frontend/ilbi/src/components/common/CatalogImportModal.jsx](frontend/ilbi/src/components/common/CatalogImportModal.jsx) | 1 | 117 | **Bajarildi** — **Qo‘shimcha.** Import shablonining frontend download nomi |
+| [frontend/ilbi/src/components/common/IlbiLogo.jsx](frontend/ilbi/src/components/common/IlbiLogo.jsx) | 5 | 4, 7, 27; … | **Bajarildi** — Eski SVG belgi, komponent/klass va wordmark |
+| [frontend/ilbi/src/components/common/InvoiceA4Modal.jsx](frontend/ilbi/src/components/common/InvoiceA4Modal.jsx) | 6 | 21, 28, 34; … | **Bajarildi** — Print title/iframe va imzolar storage prefiksi |
+| [frontend/ilbi/src/components/common/ReceiptSlip.jsx](frontend/ilbi/src/components/common/ReceiptSlip.jsx) | 12 | 3, 75, 87; … | **Bajarildi** — Logo, footer, QR fallback, printer eni va seed |
+| [frontend/ilbi/src/components/common/ShiftReportSlip.jsx](frontend/ilbi/src/components/common/ShiftReportSlip.jsx) | 6 | 2, 19, 25; … | **Bajarildi** — Logo, Z-hisobot footer va printer eni |
+| [frontend/ilbi/src/components/common/ZReportModernView.jsx](frontend/ilbi/src/components/common/ZReportModernView.jsx) | 3 | 18, 37, 134 | **Bajarildi** — Logo importi va fallback do‘kon nomi |
+| [frontend/ilbi/src/components/docs/MarkdownViewer.jsx](frontend/ilbi/src/components/docs/MarkdownViewer.jsx) | 1 | 87 | **Bajarildi** — Dizayn tizimi haqidagi izoh |
+| [frontend/ilbi/src/components/inventory/RapidStockIntakeModal.jsx](frontend/ilbi/src/components/inventory/RapidStockIntakeModal.jsx) | 1 | 104 | **Bajarildi** — Tenantga bog‘liq to‘liq kirim qoralamasi |
+| [frontend/ilbi/src/components/layout/Layout.jsx](frontend/ilbi/src/components/layout/Layout.jsx) | 2 | 32, 278 | **Bajarildi** — Sidebar storage va fallback sahifa sarlavhasi |
+| [frontend/ilbi/src/components/layout/Sidebar.jsx](frontend/ilbi/src/components/layout/Sidebar.jsx) | 6 | 33, 57, 220; … | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/components/notifications/NotificationCard.jsx](frontend/ilbi/src/components/notifications/NotificationCard.jsx) | 3 | 13, 32, 42 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/context/AuthContext.jsx](frontend/ilbi/src/context/AuthContext.jsx) | 11 | 19, 63, 64; … | **Bajarildi** — User/token local-session storage mosligi |
+| [frontend/ilbi/src/context/TenantContext.jsx](frontend/ilbi/src/context/TenantContext.jsx) | 1 | 5 | **Bajarildi** — Userga bog‘liq tenant kaliti, ikkala storage |
+| [frontend/ilbi/src/context/ThemeContext.jsx](frontend/ilbi/src/context/ThemeContext.jsx) | 2 | 7, 12 | **Bajarildi** — Theme kaliti; index.html bilan birga |
+| [frontend/ilbi/src/index.css](frontend/ilbi/src/index.css) | 1 | 2 | **Bajarildi** — Eski dizayn tizimi sarlavha izohi |
+| [frontend/ilbi/src/pages/AcceptTerms.jsx](frontend/ilbi/src/pages/AcceptTerms.jsx) | 3 | 18, 167, 240 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/pages/Catalog.jsx](frontend/ilbi/src/pages/Catalog.jsx) | 2 | 105, 111 | **Bajarildi** — Product/category qoralama kalitlari |
+| [frontend/ilbi/src/pages/Dashboard.jsx](frontend/ilbi/src/pages/Dashboard.jsx) | 1 | 644 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/pages/Debts.jsx](frontend/ilbi/src/pages/Debts.jsx) | 1 | 502 | **Bajarildi** — **Qo‘shimcha.** Qarzlar XLSX download nomi |
+| [frontend/ilbi/src/pages/Documentation.jsx](frontend/ilbi/src/pages/Documentation.jsx) | 2 | 240, 468 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/pages/Inventory.jsx](frontend/ilbi/src/pages/Inventory.jsx) | 6 | 63, 82, 83; … | **Bajarildi** — Filter/qoralama va ombor XLSX download nomi |
+| [frontend/ilbi/src/pages/Login.jsx](frontend/ilbi/src/pages/Login.jsx) | 20 | 9, 30, 34; … | **Bajarildi** — Logo, remember-me/login va eski parol kalitini o‘chirish |
+| [frontend/ilbi/src/pages/MyTenants.jsx](frontend/ilbi/src/pages/MyTenants.jsx) | 1 | 142 | **Bajarildi** — Active tenant storage kaliti |
+| [frontend/ilbi/src/pages/POS.jsx](frontend/ilbi/src/pages/POS.jsx) | 5 | 44, 62, 68; … | **Bajarildi** — Checkout idempotency, cart/partner, printer va print title |
+| [frontend/ilbi/src/pages/PublicReceiptView.jsx](frontend/ilbi/src/pages/PublicReceiptView.jsx) | 3 | 14, 224, 227 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/pages/Sales.jsx](frontend/ilbi/src/pages/Sales.jsx) | 3 | 51, 87, 394 | **Bajarildi** — Filter, tenant printer eni, XLSX va print title |
+| [frontend/ilbi/src/pages/Services.jsx](frontend/ilbi/src/pages/Services.jsx) | 2 | 1154, 1204 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/pages/SetupAccount.jsx](frontend/ilbi/src/pages/SetupAccount.jsx) | 2 | 163, 198 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/pages/Shifts.jsx](frontend/ilbi/src/pages/Shifts.jsx) | 5 | 26, 27, 73; … | **Bajarildi** — Custom ro‘yxatlar, printer eni, Z-hisobot title |
+| [frontend/ilbi/src/pages/Tenants.jsx](frontend/ilbi/src/pages/Tenants.jsx) | 1 | 543 | **Bajarildi** — UI/print nomi va storage/import bog‘liqliklarini ajratish |
+| [frontend/ilbi/src/utils/numberFormat.js](frontend/ilbi/src/utils/numberFormat.js) | 1 | 2 | **Bajarildi** — **Qo‘shimcha.** Format utilidagi eski brend izohi |
 
 ### 17.2. Frontend: build, HTML, Nginx va testlar — 6 fayl, 13 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [frontend/inventra/Dockerfile](frontend/inventra/Dockerfile) | 1 | 9 | **Qo‘shimcha.** Dependency hash markerining eski nomi |
-| [frontend/inventra/README.md](frontend/inventra/README.md) | 3 | 1, 3, 46 | **Qo‘shimcha.** Build/config va dokumentatsiya yo‘llarini rename bilan moslash |
-| [frontend/inventra/dev-entrypoint.sh](frontend/inventra/dev-entrypoint.sh) | 2 | 4, 7 | **Qo‘shimcha.** Dockerfile bilan bir xil dependency hash marker |
-| [frontend/inventra/index.html](frontend/inventra/index.html) | 3 | 7, 11, 15 | Title/description va Reactdan oldingi theme o‘qish |
-| [frontend/inventra/nginx.prod.conf](frontend/inventra/nginx.prod.conf) | 2 | 14, 15 | **Qo‘shimcha.** Production upstream nomi |
-| [frontend/inventra/tests/client.test.js](frontend/inventra/tests/client.test.js) | 2 | 103, 138 | **Qo‘shimcha.** Storage test fixture kalitlari |
+| [frontend/ilbi/Dockerfile](frontend/ilbi/Dockerfile) | 1 | 9 | **Bajarildi** — **Qo‘shimcha.** Dependency hash markerining eski nomi |
+| [frontend/ilbi/README.md](frontend/ilbi/README.md) | 3 | 1, 3, 46 | **Bajarildi** — **Qo‘shimcha.** Build/config va dokumentatsiya yo‘llarini rename bilan moslash |
+| [frontend/ilbi/dev-entrypoint.sh](frontend/ilbi/dev-entrypoint.sh) | 2 | 4, 7 | **Bajarildi** — **Qo‘shimcha.** Dockerfile bilan bir xil dependency hash marker |
+| [frontend/ilbi/index.html](frontend/ilbi/index.html) | 3 | 7, 11, 15 | **Bajarildi** — Title/description va Reactdan oldingi theme o‘qish |
+| [frontend/ilbi/nginx.prod.conf](frontend/ilbi/nginx.prod.conf) | 2 | 14, 15 | **Bajarildi** — **Qo‘shimcha.** Production upstream nomi |
+| [frontend/ilbi/tests/client.test.js](frontend/ilbi/tests/client.test.js) | 2 | 103, 138 | **Bajarildi** — **Qo‘shimcha.** Storage test fixture kalitlari |
 
 ### 17.3. Email shablonlari — 1 fayl, 15 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [inventra/apps/accounts/services/password_reset_service.py](inventra/apps/accounts/services/password_reset_service.py) | 15 | 259, 262, 266; … | 4 email oqimida subject, HTML/text, header/footer |
+| [ilbi/apps/accounts/services/password_reset_service.py](ilbi/apps/accounts/services/password_reset_service.py) | 15 | 259, 262, 266; … | **Bajarildi** — 4 email oqimida subject, HTML/text, header/footer |
 
 ### 17.4. Telegram va xabarnomalar — 8 fayl, 24 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [inventra/api/v1/accounts/views/misc.py](inventra/api/v1/accounts/views/misc.py) | 1 | 78 | OTP xabar sarlavhasi |
-| [inventra/api/v1/tenants/views.py](inventra/api/v1/tenants/views.py) | 1 | 526 | Test bildirishnoma sarlavhasi |
-| [inventra/apps/support/tasks.py](inventra/apps/support/tasks.py) | 1 | 31 | **Qo‘shimcha.** Operator Telegram bildirishnomasi sarlavhasi |
-| [telegram_bot_sms/.dockerignore](telegram_bot_sms/.dockerignore) | 1 | 2 | Eski backend nomi yozilgan izoh |
-| [telegram_bot_sms/.env.example](telegram_bot_sms/.env.example) | 2 | 1, 4 | **Qo‘shimcha.** Bot internal endpoint andozasi |
-| [telegram_bot_sms/.gitignore](telegram_bot_sms/.gitignore) | 1 | 219 | Mahalliy IDE modulining eski nomi |
-| [telegram_bot_sms/README.md](telegram_bot_sms/README.md) | 3 | 162, 171, 253 | Ko‘rinadigan xabar va env/aloqa mosligi |
-| [telegram_bot_sms/main.py](telegram_bot_sms/main.py) | 14 | 13, 47, 53; … | Bot javoblari va internal URL env kaliti |
+| [ilbi/api/v1/accounts/views/misc.py](ilbi/api/v1/accounts/views/misc.py) | 1 | 78 | **Bajarildi** — OTP xabar sarlavhasi |
+| [ilbi/api/v1/tenants/views.py](ilbi/api/v1/tenants/views.py) | 1 | 526 | **Bajarildi** — Test bildirishnoma sarlavhasi |
+| [ilbi/apps/support/tasks.py](ilbi/apps/support/tasks.py) | 1 | 31 | **Bajarildi** — **Qo‘shimcha.** Operator Telegram bildirishnomasi sarlavhasi |
+| [telegram_bot_sms/.dockerignore](telegram_bot_sms/.dockerignore) | 1 | 2 | **Bajarildi** — Eski backend nomi yozilgan izoh |
+| [telegram_bot_sms/.env.example](telegram_bot_sms/.env.example) | 2 | 1, 4 | **Bajarildi** — **Qo‘shimcha.** Bot internal endpoint andozasi |
+| [telegram_bot_sms/.gitignore](telegram_bot_sms/.gitignore) | 1 | 219 | **Bajarildi** — Mahalliy IDE modulining eski nomi |
+| [telegram_bot_sms/README.md](telegram_bot_sms/README.md) | 3 | 162, 171, 253 | **Bajarildi** — Ko‘rinadigan xabar va env/aloqa mosligi |
+| [telegram_bot_sms/main.py](telegram_bot_sms/main.py) | 14 | 13, 47, 53; … | **Bajarildi** — Bot javoblari va internal URL env kaliti |
 
 ### 17.5. Backend: schema, servis, test va metadata — 24 fayl, 41 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [inventra/api/schema.py](inventra/api/schema.py) | 2 | 7, 11 | **Qo‘shimcha.** Ikki schema klassi; settings importi bilan birga |
-| [inventra/api/v1/accounts/serializers.py](inventra/api/v1/accounts/serializers.py) | 1 | 62 | Avatar URL ichki hostname tekshiruvi |
-| [inventra/api/v1/accounts/views/docs_views.py](inventra/api/v1/accounts/views/docs_views.py) | 1 | 83 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/api/v1/catalog/serializers.py](inventra/api/v1/catalog/serializers.py) | 1 | 47 | Catalog media URL ichki hostname tekshiruvi |
-| [inventra/api/v1/catalog/views/import_views.py](inventra/api/v1/catalog/views/import_views.py) | 1 | 36 | **Qo‘shimcha.** Backend import shabloni XLSX nomi |
-| [inventra/api/v1/exports.py](inventra/api/v1/exports.py) | 3 | 65, 79, 120 | **Qo‘shimcha.** Stock/debts/sales XLSX nomlari |
-| [inventra/api/v1/internal/shop/serializers.py](inventra/api/v1/internal/shop/serializers.py) | 1 | 45 | Shop media URL ichki hostname tekshiruvi |
-| [inventra/apps/accounts/management/commands/seed_demo_platform.py](inventra/apps/accounts/management/commands/seed_demo_platform.py) | 2 | 44, 46 | Demo parol env kaliti; qiymati chiqarilmaydi |
-| [inventra/apps/accounts/services/demo_access_service.py](inventra/apps/accounts/services/demo_access_service.py) | 1 | 9 | Bazadagi demo guruhi nomi |
-| [inventra/apps/accounts/tests/test_demo_mode.py](inventra/apps/accounts/tests/test_demo_mode.py) | 4 | 127, 156, 165; … | Demo env kaliti testlari |
-| [inventra/apps/catalog/migrations/0002_seed_permissions.py](inventra/apps/catalog/migrations/0002_seed_permissions.py) | 1 | 12 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/apps/catalog/models/category_model.py](inventra/apps/catalog/models/category_model.py) | 1 | 14 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/apps/catalog/models/product_variant_model.py](inventra/apps/catalog/models/product_variant_model.py) | 1 | 3 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/apps/catalog/services/category_service.py](inventra/apps/catalog/services/category_service.py) | 1 | 3 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/apps/catalog/services/product_service.py](inventra/apps/catalog/services/product_service.py) | 1 | 4 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/apps/core/services/audit_service.py](inventra/apps/core/services/audit_service.py) | 1 | 2 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/apps/core/spreadsheets.py](inventra/apps/core/spreadsheets.py) | 1 | 25 | **Qo‘shimcha.** Workbook standart sarlavhasi |
-| [inventra/config/celery.py](inventra/config/celery.py) | 1 | 7 | Celery ilovasi ichki nomi |
-| [inventra/config/settings.py](inventra/config/settings.py) | 8 | 167, 174, 183; … | Schema, distributiv, API title, sender, MinIO va cache |
-| [inventra/config/settings_test.py](inventra/config/settings_test.py) | 4 | 34, 54, 55; … | Izolyatsiyalangan test secret va DB identifikatorlari |
-| [inventra/gunicorn.conf.py](inventra/gunicorn.conf.py) | 1 | 38 | Gunicorn jarayon nomi |
-| [inventra/pyproject.toml](inventra/pyproject.toml) | 1 | 2 | Python distributiv nomi |
-| [inventra/tests/factories.py](inventra/tests/factories.py) | 1 | 27 | Texnik nom, import yoki tarixiy reference; alohida baholash |
-| [inventra/uv.lock](inventra/uv.lock) | 1 | 741 | Distributiv metadata; vosita bilan yangilash |
+| [ilbi/api/schema.py](ilbi/api/schema.py) | 2 | 7, 11 | **Bajarildi** — **Qo‘shimcha.** Ikki schema klassi; settings importi bilan birga |
+| [ilbi/api/v1/accounts/serializers.py](ilbi/api/v1/accounts/serializers.py) | 1 | 62 | **Bajarildi** — Avatar URL ichki hostname tekshiruvi |
+| [ilbi/api/v1/accounts/views/docs_views.py](ilbi/api/v1/accounts/views/docs_views.py) | 1 | 83 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/api/v1/catalog/serializers.py](ilbi/api/v1/catalog/serializers.py) | 1 | 47 | **Bajarildi** — Catalog media URL ichki hostname tekshiruvi |
+| [ilbi/api/v1/catalog/views/import_views.py](ilbi/api/v1/catalog/views/import_views.py) | 1 | 36 | **Bajarildi** — **Qo‘shimcha.** Backend import shabloni XLSX nomi |
+| [ilbi/api/v1/exports.py](ilbi/api/v1/exports.py) | 3 | 65, 79, 120 | **Bajarildi** — **Qo‘shimcha.** Stock/debts/sales XLSX nomlari |
+| [ilbi/api/v1/internal/shop/serializers.py](ilbi/api/v1/internal/shop/serializers.py) | 1 | 45 | **Bajarildi** — Shop media URL ichki hostname tekshiruvi |
+| [ilbi/apps/accounts/management/commands/seed_demo_platform.py](ilbi/apps/accounts/management/commands/seed_demo_platform.py) | 2 | 44, 46 | **Bajarildi** — Demo parol env kaliti; qiymati chiqarilmaydi |
+| [ilbi/apps/accounts/services/demo_access_service.py](ilbi/apps/accounts/services/demo_access_service.py) | 1 | 9 | **Bajarildi** — Bazadagi demo guruhi nomi |
+| [ilbi/apps/accounts/tests/test_demo_mode.py](ilbi/apps/accounts/tests/test_demo_mode.py) | 4 | 127, 156, 165; … | **Bajarildi** — Demo env kaliti testlari |
+| [ilbi/apps/catalog/migrations/0002_seed_permissions.py](ilbi/apps/catalog/migrations/0002_seed_permissions.py) | 1 | 12 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/apps/catalog/models/category_model.py](ilbi/apps/catalog/models/category_model.py) | 1 | 14 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/apps/catalog/models/product_variant_model.py](ilbi/apps/catalog/models/product_variant_model.py) | 1 | 3 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/apps/catalog/services/category_service.py](ilbi/apps/catalog/services/category_service.py) | 1 | 3 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/apps/catalog/services/product_service.py](ilbi/apps/catalog/services/product_service.py) | 1 | 4 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/apps/core/services/audit_service.py](ilbi/apps/core/services/audit_service.py) | 1 | 2 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/apps/core/spreadsheets.py](ilbi/apps/core/spreadsheets.py) | 1 | 25 | **Bajarildi** — **Qo‘shimcha.** Workbook standart sarlavhasi |
+| [ilbi/config/celery.py](ilbi/config/celery.py) | 1 | 7 | **Bajarildi** — Celery ilovasi ichki nomi |
+| [ilbi/config/settings.py](ilbi/config/settings.py) | 8 | 167, 174, 183; … | **Bajarildi** — Schema, distributiv, API title, sender, MinIO va cache |
+| [ilbi/config/settings_test.py](ilbi/config/settings_test.py) | 4 | 34, 54, 55; … | **Bajarildi** — Izolyatsiyalangan test secret va DB identifikatorlari |
+| [ilbi/gunicorn.conf.py](ilbi/gunicorn.conf.py) | 1 | 38 | **Bajarildi** — Gunicorn jarayon nomi |
+| [ilbi/pyproject.toml](ilbi/pyproject.toml) | 1 | 2 | **Bajarildi** — Python distributiv nomi |
+| [ilbi/tests/factories.py](ilbi/tests/factories.py) | 1 | 27 | **Bajarildi** — Texnik nom, import yoki tarixiy reference; alohida baholash |
+| [ilbi/uv.lock](ilbi/uv.lock) | 1 | 741 | **Bajarildi** — Distributiv metadata; vosita bilan yangilash |
 
 ### 17.6. Umumiy konfiguratsiya va infratuzilma — 8 fayl, 80 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [.env.example](.env.example) | 11 | 2, 10, 12; … | Nom/path/host/resurs andozalari; haqiqiy secret emas |
-| [.gitignore](.gitignore) | 1 | 219 | Mahalliy IDE modulining eski nomi |
-| [docker-compose.prod.yml](docker-compose.prod.yml) | 12 | 24, 25, 27; … | **Qo‘shimcha.** Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
-| [docker-compose.yml](docker-compose.yml) | 35 | 1, 4, 12; … | Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
-| [inventra/.env.example](inventra/.env.example) | 10 | 2, 16, 19; … | Backend/demo/DB/MinIO/sender andozalari |
-| [inventra/.gitignore](inventra/.gitignore) | 1 | 220 | Mahalliy IDE modulining eski nomi |
-| [inventra/docker-compose.test.yml](inventra/docker-compose.test.yml) | 4 | 20, 21, 22; … | Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
-| [nginx/nginx.conf](nginx/nginx.conf) | 6 | 42, 43, 57; … | Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
+| [.env.example](.env.example) | 11 | 2, 10, 12; … | **Bajarildi** — Nom/path/host/resurs andozalari; haqiqiy secret emas |
+| [.gitignore](.gitignore) | 1 | 219 | **Bajarildi** — Mahalliy IDE modulining eski nomi |
+| [docker-compose.prod.yml](docker-compose.prod.yml) | 12 | 24, 25, 27; … | **Bajarildi** — **Qo‘shimcha.** Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
+| [docker-compose.yml](docker-compose.yml) | 35 | 1, 4, 12; … | **Bajarildi** — Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
+| [ilbi/.env.example](ilbi/.env.example) | 10 | 2, 16, 19; … | **Bajarildi** — Backend/demo/DB/MinIO/sender andozalari |
+| [ilbi/.gitignore](ilbi/.gitignore) | 1 | 220 | **Bajarildi** — Mahalliy IDE modulining eski nomi |
+| [ilbi/docker-compose.test.yml](ilbi/docker-compose.test.yml) | 4 | 20, 21, 22; … | **Bajarildi** — Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
+| [nginx/nginx.conf](nginx/nginx.conf) | 6 | 42, 43, 57; … | **Bajarildi** — Servis/path/resurs nomi; ma’lumotni saqlab o‘tish |
 
 ### 17.7. Rasmiy matnlar va litsenziya — 4 fayl, 5 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [LICENSE](LICENSE) | 1 | 1 | Copyright qatoridagi nom; haqiqiy huquq egasini aniqlash |
-| [docs/hujjatlar/foydalanish_qoidalari.md](docs/hujjatlar/foydalanish_qoidalari.md) | 1 | 1 | Mahsulot nomi va haqiqiy rekvizit/huquq egasini ajratish |
-| [docs/hujjatlar/maxfiylik_siyosati.md](docs/hujjatlar/maxfiylik_siyosati.md) | 1 | 1 | Mahsulot nomi va haqiqiy rekvizit/huquq egasini ajratish |
-| [docs/hujjatlar/ommaviy_oferta.md](docs/hujjatlar/ommaviy_oferta.md) | 2 | 1, 9 | Mahsulot nomi va haqiqiy rekvizit/huquq egasini ajratish |
+| [LICENSE](LICENSE) | 1 | 1 | **Bajarildi** — Copyright qatoridagi nom; haqiqiy huquq egasini aniqlash |
+| [docs/hujjatlar/foydalanish_qoidalari.md](docs/hujjatlar/foydalanish_qoidalari.md) | 1 | 1 | **Bajarildi** — Mahsulot nomi va haqiqiy rekvizit/huquq egasini ajratish |
+| [docs/hujjatlar/maxfiylik_siyosati.md](docs/hujjatlar/maxfiylik_siyosati.md) | 1 | 1 | **Bajarildi** — Mahsulot nomi va haqiqiy rekvizit/huquq egasini ajratish |
+| [docs/hujjatlar/ommaviy_oferta.md](docs/hujjatlar/ommaviy_oferta.md) | 2 | 1, 9 | **Bajarildi** — Mahsulot nomi va haqiqiy rekvizit/huquq egasini ajratish |
 
 ### 17.8. Qo‘llanma, reja va arxitektura — 14 fayl, 426 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [Architectures/inventra-yol-xaritasi.md](Architectures/inventra-yol-xaritasi.md) | 50 | 1, 3, 9; … | Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [Architectures/shop-yol-xaritasi.md](Architectures/shop-yol-xaritasi.md) | 26 | 3, 5, 7; … | Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [INVENTRA_MASTER_PLAN.md](INVENTRA_MASTER_PLAN.md) | 108 | 1, 5, 86; … | Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [README.md](README.md) | 11 | 1, 3, 9; … | Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [docs/LOYIHA_AUDITI_VAZIFALAR.md](docs/LOYIHA_AUDITI_VAZIFALAR.md) | 46 | 1, 16, 81; … | Tarix, faol topshiriqlar va hujjat/path havolalari |
-| [docs/OZBEKISTON_QONUNI_WALKTHROUGH.md](docs/OZBEKISTON_QONUNI_WALKTHROUGH.md) | 41 | 1, 20, 30; … | Tarixiy dalil va reja yo‘llari; yuridik xulosa berilmaydi |
-| [docs/PLAN_NOTES.md](docs/PLAN_NOTES.md) | 9 | 1, 3, 18; … | Tarixiy qarorlar: ma’nosini saqlab tahrirlash |
-| [docs/README.md](docs/README.md) | 2 | 1, 33 | Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [docs/SUPPORT.md](docs/SUPPORT.md) | 9 | 10, 17, 18; … | **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [docs/plan_scope.json](docs/plan_scope.json) | 116 | 3, 8, 9; … | 116 moslikli satr: rename bilan bog‘langan pathlar |
-| [docs/qollanmalar/yordam_en.md](docs/qollanmalar/yordam_en.md) | 1 | 1 | **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [docs/qollanmalar/yordam_ru.md](docs/qollanmalar/yordam_ru.md) | 1 | 1 | **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [docs/qollanmalar/yordam_uz.md](docs/qollanmalar/yordam_uz.md) | 1 | 1 | **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
-| [inventra/README_TESTS.md](inventra/README_TESTS.md) | 5 | 1, 10, 11; … | Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [Architectures/ilbi-yol-xaritasi.md](Architectures/ilbi-yol-xaritasi.md) | 50 | 1, 3, 9; … | **Bajarildi** — Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [Architectures/shop-yol-xaritasi.md](Architectures/shop-yol-xaritasi.md) | 26 | 3, 5, 7; … | **Bajarildi** — Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [ILBI_MASTER_PLAN.md](ILBI_MASTER_PLAN.md) | 108 | 1, 5, 86; … | **Bajarildi** — Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [README.md](README.md) | 11 | 1, 3, 9; … | **Bajarildi** — Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [docs/LOYIHA_AUDITI_VAZIFALAR.md](docs/LOYIHA_AUDITI_VAZIFALAR.md) | 46 | 1, 16, 81; … | **Bajarildi** — Tarix, faol topshiriqlar va hujjat/path havolalari |
+| [docs/OZBEKISTON_QONUNI_WALKTHROUGH.md](docs/OZBEKISTON_QONUNI_WALKTHROUGH.md) | 41 | 1, 20, 30; … | **Bajarildi** — Tarixiy dalil va reja yo‘llari; yuridik xulosa berilmaydi |
+| [docs/PLAN_NOTES.md](docs/PLAN_NOTES.md) | 9 | 1, 3, 18; … | **Bajarildi** — Tarixiy qarorlar: ma’nosini saqlab tahrirlash |
+| [docs/README.md](docs/README.md) | 2 | 1, 33 | **Bajarildi** — Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [docs/SUPPORT.md](docs/SUPPORT.md) | 9 | 10, 17, 18; … | **Bajarildi** — **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [docs/plan_scope.json](docs/plan_scope.json) | 116 | 3, 8, 9; … | **Bajarildi** — 116 moslikli satr: rename bilan bog‘langan pathlar |
+| [docs/qollanmalar/yordam_en.md](docs/qollanmalar/yordam_en.md) | 1 | 1 | **Bajarildi** — **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [docs/qollanmalar/yordam_ru.md](docs/qollanmalar/yordam_ru.md) | 1 | 1 | **Bajarildi** — **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [docs/qollanmalar/yordam_uz.md](docs/qollanmalar/yordam_uz.md) | 1 | 1 | **Bajarildi** — **Qo‘shimcha.** Faol matn, yo‘l va tarixiy qaydlarni ajratish |
+| [ilbi/README_TESTS.md](ilbi/README_TESTS.md) | 5 | 1, 10, 11; … | **Bajarildi** — Faol matn, yo‘l va tarixiy qaydlarni ajratish |
 
 ### 17.9. CI, commit queue va avtomatlashtirish — 7 fayl, 357 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [.github/workflows/ci.yml](.github/workflows/ci.yml) | 8 | 11, 14, 18; … | Backend/frontend cwd, npm cache va test DB |
-| [.github/workflows/publish-queue.yml](.github/workflows/publish-queue.yml) | 8 | 15, 27, 28; … | **Qo‘shimcha.** Concurrency, test DB va publish muhiti |
-| [automation/README.md](automation/README.md) | 8 | 14, 31, 37; … | **Qo‘shimcha.** Repo, cwd, fayl yo‘li va test konfiguratsiyasi |
-| [automation/commit-queue.json](automation/commit-queue.json) | 10 | 2, 3, 14; … | **Qo‘shimcha.** Repo/remote va validation cwd yo‘llari |
-| [automation/queue-plan.json](automation/queue-plan.json) | 318 | 10, 11, 12; … | **Qo‘shimcha.** 318 moslikli satr: queue fayl yo‘llari |
-| [scripts/commit_queue.py](scripts/commit_queue.py) | 2 | 220, 300 | **Qo‘shimcha.** Vaqtinchalik backup/publish katalog prefiksi |
-| [tests/automation/test_commit_queue.py](tests/automation/test_commit_queue.py) | 3 | 163, 175, 177 | **Qo‘shimcha.** Repo, cwd, fayl yo‘li va test konfiguratsiyasi |
+| [.github/workflows/ci.yml](.github/workflows/ci.yml) | 8 | 11, 14, 18; … | **Bajarildi** — Backend/frontend cwd, npm cache va test DB |
+| [.github/workflows/publish-queue.yml](.github/workflows/publish-queue.yml) | 8 | 15, 27, 28; … | **Bajarildi** — **Qo‘shimcha.** Concurrency, test DB va publish muhiti |
+| [automation/README.md](automation/README.md) | 8 | 14, 31, 37; … | **Bajarildi** — **Qo‘shimcha.** Repo, cwd, fayl yo‘li va test konfiguratsiyasi |
+| [automation/commit-queue.json](automation/commit-queue.json) | 10 | 2, 3, 14; … | **Bajarildi** — **Qo‘shimcha.** Repo/remote va validation cwd yo‘llari |
+| [automation/queue-plan.json](automation/queue-plan.json) | 318 | 10, 11, 12; … | **Bajarildi** — **Qo‘shimcha.** 318 moslikli satr: queue fayl yo‘llari |
+| [scripts/commit_queue.py](scripts/commit_queue.py) | 2 | 220, 300 | **Bajarildi** — **Qo‘shimcha.** Vaqtinchalik backup/publish katalog prefiksi |
+| [tests/automation/test_commit_queue.py](tests/automation/test_commit_queue.py) | 3 | 163, 175, 177 | **Bajarildi** — **Qo‘shimcha.** Repo, cwd, fayl yo‘li va test konfiguratsiyasi |
 
 ### 17.10. Screenshot va systemd backup skriptlari — 2 fayl, 11 satr
 
 | Fayl | Satr | Boshlang‘ich qatorlar | Amal / e’tibor |
 | --- | ---: | --- | --- |
-| [scripts/capture_guides.cjs](scripts/capture_guides.cjs) | 4 | 5, 6, 7; … | **Qo‘shimcha.** Screenshot env va sun’iy auth/storage kalitlari |
-| [scripts/install_backup_timer.py](scripts/install_backup_timer.py) | 7 | 18, 35, 41; … | **Qo‘shimcha.** O‘rnatiladigan unit nomlari va eski tavsiflar |
+| [scripts/capture_guides.cjs](scripts/capture_guides.cjs) | 4 | 5, 6, 7; … | **Bajarildi** — **Qo‘shimcha.** Screenshot env va sun’iy auth/storage kalitlari |
+| [scripts/install_backup_timer.py](scripts/install_backup_timer.py) | 7 | 18, 35, 41; … | **Bajarildi** — **Qo‘shimcha.** O‘rnatiladigan unit nomlari va eski tavsiflar |
 
 
 ### 17.11. Hisobdan tashqari, alohida kuzatiladigan joylar
@@ -696,21 +701,90 @@ print(dict(text_files=text_files, matched_files=matched_files,
 PY
 ```
 
-Kutilgan boshlang‘ich natija: `text_files=570`, `matched_files=108`, `matched_lines=1122`, `occurrences=1367`, `binary_or_non_utf8=127`. Bu xavfsiz inventar skripti `.env` qiymati, `.git` tarixi yoki binar ichidagi eski yozuvni qidirish vositasi emas.
+Rebrendingdan oldingi tarixiy boshlang‘ich natija: `text_files=570`, `matched_files=108`, `matched_lines=1122`, `occurrences=1367`, `binary_or_non_utf8=127`. Bu xavfsiz inventar skripti `.env` qiymati, `.git` tarixi yoki binar ichidagi eski yozuvni qidirish vositasi emas.
 
-### 18.2. Release oldidan hal qilinadigan qarorlar
+### 18.2. Qarorlarning yakuniy holati
 
-| Qaror | Ishchi tavsiya / holat |
+| Qaror | Yakuniy holat |
 | --- | --- |
-| Yakuniy statik logo | Mavjud ILBI reference/intro bilan solishtirib bitta variantni tanlash; tasdiqlangan master qayd etiladi |
-| Public origin | `https://ilbi.uz` taklif; `www` redirect va zarur eski hostlar deployga qarab belgilanadi |
-| Eski muhitda real foydalanuvchi yoki ma’lumot bormi? | Ushbu audit jonli muhitni tasdiqlamadi; storage, link va resurs migratsiyasi shunga qarab tanlanadi |
-| DB, bucket, volume va repo rename kerakmi? | Birinchi brend relizida saqlab turish mumkin; keyingi texnik bosqich qarori |
-| Haqiqiy sender va yangi email aliaslari | Provayder/DNS/test bilan tasdiqlanmaguncha amaldagi manzil deb e’lon qilinmaydi |
-| Botning ayni identitysi | Kod `@ilbi_bot`ni ko‘rsatadi; backend/bot config va tashqi profil birga tekshiriladi |
-| Compatibility va rollback muddati | Eski tab/link/muhitdan foydalanish holatiga qarab release yozuvida belgilanadi |
-| Hujjat nashri va rozilik | Tahrir/arxiv, haqiqiy ijrochi/huquq egasi va zarur rozilik qarori qayd etiladi |
+| Yakuniy statik logo | **Bajarildi** — mavjud ILBI introdagi ko‘k belgi va `ilbi.uz` wordmarki yagona manba sifatida tanlandi |
+| Public origin | **Bajarildi (kod)** — `https://ilbi.uz` uchun host/fallback/metadata; real DNS/TLS deploy R-11da ochiq |
+| Eski muhitdagi ma’lumotlar | **Bajarildi** — mavjud lokal baza/media zaxiralandi, asosiy hisob va yig‘indilar o‘tishdan keyin mos chiqdi |
+| DB/bucket/volume/repo rename | **Bajarildi** — source/service nomlari ILBI; persisted resurs va haqiqiy repo nomlari tasdiqlangan texnik istisno sifatida saqlandi |
+| Sender va email aliaslari | **Qisman** — ILBI display-name va yangi domen andozasi tayyor; provayder/DNS/yetkazish tasdig‘i R-11da ochiq |
+| Bot identity/profil | **Bajarildi** — backend/bot bitta identity, `@ilbi_bot` profili real API bilan yangilandi va qayta o‘qildi |
+| Compatibility/rollback | **Bajarildi** — ikki namespace, logout marker va yangi migratsiya; eski moslikni olib tashlash mezonlari 19.5-bo‘limda |
+| Hujjat nashri/rozilik | **Bajarildi** — 2026-10-15 brend tahriri; yangi tijoriy shart kiritilmadi, avvalgi rozilik flaglari saqlandi |
 
 ### 18.3. Ushbu tahrirning o‘zgarish qaydi
 
 2026-10-15: eskirgan 98 fayl / 791 o‘rinli ro‘yxat joriy ishchi nusxa bilan qayta solishtirildi; 29 qo‘shimcha fayl va matn qidiruvisiz qoladigan aktivlar kiritildi. Maxfiy qiymat chiqarildi, bajarilgan intro/bot-havola ishlari ajratildi, storage/guest/checkout, domain va ma’lumot migratsiyasi, CI/queue/timer, tekshiruv, rollback va qabul mezonlari qo‘shildi. Kod yoki tashqi infratuzilma o‘zgartirilgani va testlar o‘tgani haqida xulosa berilmadi.
+
+<a id="s19"></a>
+## 19. Bajarilgan ishlar va yakuniy tekshiruv
+
+### 19.1. Yakunlangan reliz
+
+**Bajarildi — 2026-10-15.** Foydalanuvchi tanlagan ILBI intro geometriyasi statik logo, loading, favicon, email va bot avatariga bir xil manba sifatida qo‘llandi. Mahsulot nomiga PRO qo‘shilmaydi; avvalgi PRO badge va xabar sarlavhalari olib tashlandi. Savdo katalogidagi haqiqiy mahsulot nomlari rebrending uchun tahrirlanmadi.
+
+| Ish | Natija / dalil |
+| --- | --- |
+| Backend va frontend | **Bajarildi** — `ilbi/`, `frontend/ilbi/`; `IlbiLogo.jsx`, `ILBI_MASTER_PLAN.md`, `Architectures/ilbi-yol-xaritasi.md` |
+| Aktivlar | **Bajarildi** — `scripts/build_brand_assets.mjs --png`; bir xil vektordan SVG, monochrome, email PNG, touch icon va bot JPEG |
+| Xabarlar | **Bajarildi** — 4 email turi, OTP, bot buyruqlari va support/test bildirishnomalari; sender display-name ILBI |
+| Bot profili | **Bajarildi** — `branding/ilbi-bot-profile.json` qo‘llandi; qayta o‘qishda barcha profil matnlari mos, takroriy yozishlar ro‘yxati bo‘sh |
+| Storage | **Bajarildi** — 25 eski kalit oilasi; tenant/user/sale suffixlari saqlandi. `ilbi_auth_namespace_v1` stale tab sabab logoutdan keyin sessiya tiklanishini to‘sadi; qisman quota xatosida eski auth bundle buzilmaydi |
+| Baza va media | **Bajarildi** — PostgreSQL dump va media zaxirasi lokal yopiq fayllarda; konteynerlar eski hajmlarga ulandi; oldin/keyingi asosiy hisoblar va summalar mos |
+| Qo‘llanma va vizual QA | **Bajarildi** — 16 focused PNG; 32 foydalanilmaydigan eski screenshot nusxasi chiqarildi; `qa/rebranding/verification.json` va PNG/PDF dalillari |
+| Mahalliy manzillar | **Bajarildi** — `http://localhost:5173` native Vite va Docker frontend `http://localhost:5174`; ikkalasida login HTML, brand rasmi va ILBI API sxemasi tekshirildi |
+| Backup | **Bajarildi** — `ilbi-source-backup.timer`, 15 daqiqalik tartib; faqat bitta faol rejalashtirilgan source backup |
+| Audit holati | **Bajarildi** — boshlang‘ich 108 inventar faylining har biriga natija yozildi; tashqi deploy R-11 alohida ochiq |
+
+### 19.2. Tekshiruv natijalari
+
+| Tekshiruv | Natija |
+| --- | --- |
+| Backend pytest | **Bajarildi — 535 passed**; izolyatsiyalangan PostgreSQL/Redis. Django email sozlamalariga tegishli deprecation ogohlantirishlari bor |
+| Frontend test | **Bajarildi — 5 test fayli o‘tdi**, jumladan storage migratsiyasi, partial quota va logout/reload holatlari |
+| Frontend build | **Bajarildi** — production bundle qayta generatsiya qilindi; eski public screenshotlar builddan ham chiqarildi |
+| Frontend lint | **Bajarildi** — xato yo‘q; avvaldan mavjud React/hook/uslub ogohlantirishlari qolgan |
+| Backend CI Ruff | **Bajarildi — All checks passed** (`E9,F821,F822,F823`) |
+| OpenAPI | **Bajarildi** — `--validate --fail-on-warn`; xato va ogohlantirish yo‘q |
+| Migration drift | **Bajarildi — No changes detected**; `0011_ilbi_demo_group` alohida, orqaga qaytariladigan data migration |
+| Automation | **Bajarildi — 13 test o‘tdi**; source path/secret policy va queue assignment takrorlanmasligi tekshirildi |
+| Browser | **Bajarildi** — login/mobil/loading light-dark/reduced-motion, 16 focused guide va sun’iy chek/PDF; kutilmagan browser xatosi qayd etilmadi |
+| Docker | **Bajarildi** — image’lar tayyorlandi, mahalliy servislar yangi yo‘llardan ishga tushdi; DB qoldiq/savdo yig‘indilari saqlandi |
+| Bot profili | **Bajarildi** — `@ilbi_bot` identity tekshirildi, profil qo‘llandi va qayta o‘qildi; chat xabarlari soni 0 |
+
+### 19.3. Saqlangan texnik istisnolar
+
+Bular qolib ketgan faol Inventra UI emas; ular o‘tish/rollback yoki haqiqiy resursga bog‘lanish uchun saqlangan:
+
+- Root checkout `Sales-Platform` va haqiqiy GitHub repo/remote o‘zgartirilmadi. Ularning nomini almashtirish ilova brendi uchun talab qilinmaydi; backup havolalari ishlaydigan repoga qaraydi.
+- Lokal Compose project/network/venv va mavjud DB/role/bucket identifikatorlari `.env` mappingi orqali saqlandi. Yangi o‘rnatish andozalari ILBI nomlaridan foydalanadi.
+- `inventra_` storage prefiksi, eski internal env nomi, eski demo guruhi va media hostname faqat moslik/tozalash/migratsiya kodida yoki shu holatlarni tekshiruvchi testlarda qoladi.
+- `automation/queue-plan.json`dagi eski yo‘llar tracked o‘chirishlarni yangi yo‘llar bilan birga nashr qilish uchun kiritilgan. Ularni faqat eski nom borligi uchun olib tashlash rename’ni yarim nashr qiladi.
+- Bot tokeni va SMTP credentiallari almashtirilmadi. Lokal mavjud sender manzili ILBI display-name bilan saqlandi; yangi `noreply@ilbi.uz` manzilini ishlayotgan provayder manzili deb taxmin qilinmadi.
+- `PRO` mahsulot badge’i yo‘q. Masalan, boshqa brend tovarining model nomidagi Pro so‘zi platforma brendingi emas.
+
+### 19.4. Ochiq qolgan tashqi deploy bandi
+
+**R-11 — hali bajarilmagan:** production uchun `ilbi.uz` DNS va TLS, `www` yo‘naltirishi, zarur eski public linklar marshruti, `noreply@ilbi.uz` sender domenining provayder/DNS tasdig‘i hamda haqiqiy email yetkazilishini tekshirish. Bu ish uchun hosting/DNS/mail provayderining deploy konfiguratsiyasi kerak. Lokal `FRONTEND_URL` ataylab 5173 manzilida saqlandi; production manzilini lokal konfiguratsiyaga ko‘r-ko‘rona yozish qilinmadi.
+
+Botning tashqi profili esa bu ro‘yxatda ochiq emas: u real API orqali **Bajarildi** va qayta tekshirildi. Texnik manba: [Telegram Bot API — profil rasmini o‘zgartirish](https://core.telegram.org/bots/api#setmyprofilephoto).
+
+### 19.5. Moslikni olib tashlash shartlari
+
+| Istisno | Mas’ul rol | Qayta ko‘rish mezoni |
+| --- | --- | --- |
+| Eski storage namespace va auth marker | Frontend mas’uli | Eski builddagi tablar va rollback davri tugagach; guest/pending checkout migratsiyasi yo‘qotishsiz tasdiqlanmaguncha olib tashlanmaydi |
+| Internal env/DNS/media va demo guruhi fallbacklari | Backend/deploy mas’uli | Barcha ishlayotgan servis/seed konfiguratsiyalari yangi nomga o‘tgach va rollback ehtiyoji qolmagach |
+| Lokal Docker/DB/bucket nomlari | Deploy mas’uli | Keyingi tasdiqlangan resurs migratsiyasida; nom uchun bo‘sh yangi resursga ulanish yoki data o‘chirish qilinmaydi |
+| Queue eski deletion pathlari | Repo mas’uli | Rename snapshoti va shu navbat to‘liq nashr etilgach; undan oldin juftliklar saqlanadi |
+| Root/GitHub repo nomi | Loyiha egasi | Alohida repo/hosting rename topshirig‘i bo‘lsa; hozirgi rebrending tugagan deb qayta ochilmaydi |
+
+Huquqiy matnlarda ushbu reliz faqat mahsulot nomi va taqdimotni yangiladi; foydalanuvchilarning avvalgi rozilik flaglari o‘zgartirilmadi. Yangi tijoriy shart yoki yangi ijrochi rekviziti kiritilmadi. Mazmunli shart o‘zgarishi bo‘lsa nashr/rozilik alohida ko‘rib chiqiladi.
+
+Backend papkasi ko‘chirilgani uchun lokal virtualenv activation fayllari va console-script shebanglari yangi `ilbi/.venv` yo‘liga moslandi — **Bajarildi**; `uv run`/pytest kirish nuqtasi tekshirildi.
+
+Vite katalogi ko‘chirilganda paydo bo‘lgan eski `.vite` optimizer keshi chiqarildi va global ignore qoidasiga kiritildi — **Bajarildi**. Navbat rejasi joriy o‘zgarishlarning barcha ruxsat etilgan yo‘llarini qamrab olishi tekshirildi; publisherning himoyalangan konfiguratsiyasini bootstrap qilish bo‘yicha mavjud siyosat saqlandi. Ushbu ish davomida main’ga commit/push yoki queue publish bajarilmadi.

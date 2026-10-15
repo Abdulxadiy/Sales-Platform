@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Install a user-owned systemd timer for source-code backups."""
 
+import argparse
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -27,8 +29,12 @@ TimeoutStartSec=10min
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output-dir', type=Path, help='Prepare units in another directory.')
+    parser.add_argument('--no-activate', action='store_true', help='Only prepare unit files.')
+    args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    directory = Path.home() / ".config/systemd/user"
+    directory = args.output_dir or Path.home() / ".config/systemd/user"
     directory.mkdir(parents=True, exist_ok=True)
     service = service_contents(root)
     timer = """[Unit]
@@ -45,11 +51,33 @@ WantedBy=timers.target
 """
     (directory / "ilbi-source-backup.service").write_text(service)
     (directory / "ilbi-source-backup.timer").write_text(timer)
+    if args.no_activate:
+        print(f'Prepared ILBI units in {directory}')
+        return
+
+    legacy_timer = directory / 'inventra-source-backup.timer'
+    legacy_files = [directory / ('inventra-source-backup.' + kind) for kind in ('service', 'timer')]
+    if legacy_timer.exists():
+        backup = directory / 'ilbi-rebranding-backup'
+        backup.mkdir(mode=0o700, exist_ok=True)
+        for old in legacy_files:
+            if old.exists():
+                shutil.copy2(old, backup / old.name)
+        subprocess.run(['systemctl', '--user', 'disable', '--now', legacy_timer.name], check=True)
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
-    subprocess.run(
-        ["systemctl", "--user", "enable", "--now", "ilbi-source-backup.timer"],
-        check=True,
-    )
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "enable", "--now", "ilbi-source-backup.timer"],
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        if legacy_timer.exists():
+            subprocess.run(['systemctl', '--user', 'enable', '--now', legacy_timer.name], check=False)
+        raise
+    for old in legacy_files:
+        if old.exists():
+            old.unlink()
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     subprocess.run(
         [
             "systemctl",

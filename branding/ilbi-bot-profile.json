@@ -1,0 +1,27 @@
+{
+  "username": "ilbi_bot",
+  "name": "ilbi.uz",
+  "avatar": "frontend/ilbi/public/brand/ilbi-bot-avatar.jpg",
+  "languages": {
+    "": {
+      "description": "ILBI savdo va boshqaruv platformasining rasmiy xavfsizlik boti. Hisobingizga kirish kodlarini olish uchun /start bosing va o‘zingizning telefon kontaktingizni ulang. Tasdiqlash kodlarini hech kimga bermang.",
+      "short_description": "ILBI hisobiga xavfsiz kirish va Telegram orqali bir martalik tasdiqlash kodlarini olish.",
+      "commands": [{"command": "start", "description": "Telefon raqamini ulash"}, {"command": "help", "description": "ILBI botidan foydalanish"}, {"command": "status", "description": "Bot holatini ko‘rish"}]
+    },
+    "uz": {
+      "description": "ILBI savdo va boshqaruv platformasining rasmiy xavfsizlik boti. Hisobingizga kirish kodlarini olish uchun /start bosing va o‘zingizning telefon kontaktingizni ulang. Tasdiqlash kodlarini hech kimga bermang.",
+      "short_description": "ILBI hisobiga xavfsiz kirish va Telegram orqali bir martalik tasdiqlash kodlarini olish.",
+      "commands": [{"command": "start", "description": "Telefon raqamini ulash"}, {"command": "help", "description": "ILBI botidan foydalanish"}, {"command": "status", "description": "Bot holatini ko‘rish"}]
+    },
+    "ru": {
+      "description": "Официальный бот безопасности платформы ILBI. Нажмите /start и отправьте собственный контакт, чтобы получать одноразовые коды входа. Никому не сообщайте коды подтверждения.",
+      "short_description": "Безопасный вход в ILBI и одноразовые коды подтверждения через Telegram.",
+      "commands": [{"command": "start", "description": "Подключить номер телефона"}, {"command": "help", "description": "Помощь по боту ILBI"}, {"command": "status", "description": "Проверить состояние бота"}]
+    },
+    "en": {
+      "description": "The official security bot for ILBI. Press /start and share your own phone contact to receive one-time sign-in codes. Never share verification codes with anyone.",
+      "short_description": "Secure ILBI sign-in and one-time verification codes through Telegram.",
+      "commands": [{"command": "start", "description": "Connect your phone number"}, {"command": "help", "description": "Help with the ILBI bot"}, {"command": "status", "description": "Check bot status"}]
+    }
+  }
+}

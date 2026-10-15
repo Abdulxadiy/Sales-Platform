@@ -25,6 +25,7 @@ if (process.argv.includes('--png')) {
       ['ilbi-logo-email.png', horizontal, 610, 280, null],
       ['ilbi-icon-512.png', icon, 512, 512, '#ffffff'],
       ['ilbi-icon-180.png', icon, 180, 180, '#ffffff'],
+      ['ilbi-bot-avatar.jpg', icon, 512, 512, '#ffffff'],
     ]) {
       const data = await browser.evaluate(`(async () => {
         const svg = ${JSON.stringify(content)};
@@ -36,7 +37,7 @@ if (process.argv.includes('--png')) {
         const context = canvas.getContext('2d');
         if (${JSON.stringify(background)}) { context.fillStyle = ${JSON.stringify(background)}; context.fillRect(0, 0, canvas.width, canvas.height); }
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL('image/png').split(',')[1];
+        return canvas.toDataURL(${JSON.stringify(name.endsWith('.jpg') ? 'image/jpeg' : 'image/png')}, 0.94).split(',')[1];
       })()`);
       const png = Buffer.from(data, 'base64');
       await writeFile(new URL(name, target), png);

@@ -180,7 +180,7 @@ except importlib.metadata.PackageNotFoundError:
         APP_VERSION = "0.13.1"
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'ILBI ILBI Platform API',
+    'TITLE': 'ILBI Platform API',
     'DESCRIPTION': (
         "ILBI savdo platformasi, omborxona, kassa va B2B tizimi uchun rasmiy OpenAPI/Swagger hujjatlari."
     ),
@@ -226,7 +226,7 @@ elif EMAIL_HOST_USER:
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@ilbi.uz")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "ILBI <noreply@ilbi.uz>")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 

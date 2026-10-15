@@ -119,3 +119,9 @@ If `CHROME_PATH` is omitted, Playwright uses its installed browser. Review every
 `AuthContext.jsx` exports the provider component; consumers import `useAuth` from `hooks/useAuth.js`. The context object lives in `context/authContext.js` and preserves its identity across Vite updates. Keep hooks and context creation outside the provider's component module so a development update cannot leave consumers attached to a different context object.
 
 The app error boundary reloads the page without clearing local storage. Do not clear browser data as a routine repair: it also removes the guest support credential, remembered sessions and local drafts.
+
+## ILBI screenshots and bot profile
+
+The 16 current focused PNG guides are regenerated with `scripts/capture_rebranding_guides.mjs` against an isolated synthetic preview. Set `ILBI_DOCS_AUTH_FILE` to a private fixture file containing `_meta.synthetic=true` and the matching `_meta.origin`; never use real account sessions. The script also verifies mobile login, both loading themes and reduced motion. Unused old full-screen screenshots and their duplicate public copies were removed; the documented `/api/v1/docs/images/` endpoint continues serving focused images.
+
+`branding/ilbi-bot-profile.json` is the reviewed public profile for `@ilbi_bot`. `scripts/update_bot_branding.py` checks the bot identity before applying names, descriptions, commands and avatar; matching updates are skipped. Credentials stay in ignored env files and no chat messages are sent by this command.

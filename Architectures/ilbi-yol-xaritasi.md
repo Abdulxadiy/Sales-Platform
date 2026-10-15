@@ -97,7 +97,7 @@ Repo: `Sales-Platform/` — `ilbi/` (Django 6 + DRF), `frontend/ilbi/` (React 18
 - `sales-platform-celery_worker-1` (Celery background worker)
 - `sales-platform-celery_beat-1` (Celery Beat periodic scheduler)
 - `sales-platform-bot-1` (Telegram SMS/OTP & Notification bot)
-- `sales-platform-frontend-1` (Vite dev/client server, port 5173)
+- `sales-platform-frontend-1` (Vite dev/client server, `FRONTEND_PORT` default 5173; shu lokal Docker muhitida 5174)
 - `sales-platform-nginx-1` (Nginx reverse proxy, port 80)
 
 **Asosiy HTTP API (`/api/v1/`) — to'liq yo'nalishlar:**

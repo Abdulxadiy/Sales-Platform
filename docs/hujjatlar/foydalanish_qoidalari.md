@@ -1,6 +1,6 @@
 # ILBI — foydalanish qoidalari
 
-Yangilangan: **2026-10-14**. Bu qoidalar hisob egalari, xodimlar, administratorlar va yordam markazidagi mehmonlarga taalluqli.
+Yangilangan: **2026-10-15**. Bu qoidalar hisob egalari, xodimlar, administratorlar va yordam markazidagi mehmonlarga taalluqli.
 
 ## 1. Shaxsiy hisob
 

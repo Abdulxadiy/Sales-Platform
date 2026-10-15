@@ -1,6 +1,6 @@
 # ILBI frontend
 
-React/Vite interface for the ILBI sales platform. Updated: 2026-10-14.
+React/Vite interface for the ILBI sales platform. Updated: 2026-10-15.
 
 ## Development
 
@@ -46,3 +46,11 @@ Retail POS uses UZS; the USD calculator is informational. The backend currently 
 If the support app was added while Docker services were already running, apply its migration with `docker compose exec -T ilbi python manage.py migrate support --noinput` from the repository root. Backend source reloads do not apply schema changes.
 
 A failed support read backs off instead of issuing overlapping repeated requests. The retry button resumes reads. For a development render error, reload once; the recovery button preserves local sessions, guest chat access and drafts.
+
+## ILBI identity
+
+`IlbiLogo.jsx` and the opening use the same vector paths in `src/components/common/ilbi/logo.js`. Product branding has no PRO badge. `public/brand` contains generated SVG, email PNG and touch/avatar exports; regenerate with `node scripts/build_brand_assets.mjs --png` from the repository root.
+
+`brandStorage.js` preserves legacy sessions, tenant drafts, pending checkout keys and guest conversations. Both storage namespaces stay synchronized during the compatibility period; logout clears both. Do not remove compatibility keys until the rollback period is over.
+
+The application uses noindex/robots restrictions for operational and receipt pages. It does not install a PWA or publish a private-data sitemap.

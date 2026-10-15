@@ -19,6 +19,10 @@ npm run lint
 npm run build
 ```
 
+`npm run test:camera` runs Chrome/Chromium against generated barcode video frames, covering the scanner lifecycle and all five camera entry points in POS, catalog and inventory intake. It uses mocked API responses and requires neither a physical camera nor a backend. Set `CHROME_PATH` if Chrome is installed outside the standard locations.
+
+Camera capture requires HTTPS (or localhost for development) and browser camera permission. The shared scanner releases its stream and closes as soon as it reads a code; its decoder loads only when the camera is opened.
+
 ## Routes and access
 
 `App.jsx` defines public entry pages, authenticated layout routes and role gates. Account state comes from `context/AuthContext.jsx`; consumers use `hooks/useAuth.js` and the stable context object is in `context/authContext.js`; active shop context comes from `TenantContext`. The API checks permissions independently of frontend navigation.

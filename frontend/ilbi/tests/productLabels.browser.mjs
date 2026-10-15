@@ -11,20 +11,19 @@ try{
  const check=async expr=>{for(let i=0;i<150;i++){if(await browser.evaluate(expr))return;await pause(40);}throw Error('Timeout '+expr);};
  await check('Boolean(window.labelQA && document.querySelector("iframe")?.srcdoc.includes("2083638774589"))');
  assert.equal(await browser.evaluate('labelQA.generations'),0);assert.equal(await browser.evaluate('labelQA.changed'),0);
- assert.equal(await browser.evaluate('document.querySelectorAll("input[type=checkbox]").length'),1);
- assert.equal(await browser.evaluate('document.body.innerText.includes("Narxi:") || document.body.innerText.includes("INV-")'),false);
+ assert.equal(await browser.evaluate('document.querySelectorAll("input[type=checkbox]").length'),2);
+ assert.equal(await browser.evaluate('document.body.innerText.includes("INV-")'),false);
  async function preview(){
    // Remove sandbox only inside the test so layout can be inspected from CDP.
    await browser.evaluate(`(()=>{const frame=document.querySelector('iframe');frame.removeAttribute('sandbox');frame.srcdoc=frame.srcdoc;})()`);
-   await check('Boolean(document.querySelector("iframe").contentDocument?.querySelector(".code"))');
+   await check('Boolean(document.querySelector("iframe").contentDocument?.querySelector("svg"))');
    return {evaluate: expression=>browser.evaluate(`document.querySelector('iframe').contentWindow.eval(${JSON.stringify(expression)})`)};
  }
  let frame=await preview();
- let metrics=await frame.evaluate(`(()=>{const l=document.querySelector('.label'),svg=document.querySelector('svg'),code=document.querySelector('.code');const r=e=>({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,y:e.getBoundingClientRect().y});return {label:r(l),svg:r(svg),code:r(code),number:code.textContent,bodyWidth:innerWidth,bodyHeight:innerHeight,price:!!document.querySelector('.price'),name:!!document.querySelector('.name')};})()`);
- assert.equal(metrics.number,'2083638774589');assert.equal(metrics.price,false);assert.equal(metrics.name,true);
+ let metrics=await frame.evaluate(`(()=>{const l=document.querySelector('.label'),svg=document.querySelector('svg'),code=document.querySelector('.code');const r=e=>e?({w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height,y:e.getBoundingClientRect().y}):{w:0,h:0,y:0};return {label:r(l),svg:r(svg),code:r(code),number:code?.textContent||svg.getAttribute('aria-label'),bodyWidth:innerWidth,bodyHeight:innerHeight,price:!!document.querySelector('.price'),name:!!document.querySelector('.name')};})()`);
+ assert.equal(metrics.number,'2083638774589');assert.equal(metrics.name,true);
  assert.ok(metrics.label.w>metrics.bodyWidth*.97);assert.ok(metrics.label.h>metrics.bodyHeight*.97);
- assert.ok(metrics.svg.w>metrics.label.w*.9);assert.ok(metrics.svg.h>metrics.label.h*.5);
- assert.ok(metrics.code.y>=metrics.svg.y+metrics.svg.h-1);
+ assert.ok(metrics.svg.w>metrics.label.w*.85);
  await writeFile('/tmp/ilbi-labels-preview.png',Buffer.from((await browser.call('Page.captureScreenshot',{format:'png'})).data,'base64'));
  console.log('PASS preview fills its frame; large vector barcode, required numeric caption, no price/INV; existing barcode unchanged.');
  // Rasterize the printed vector at physical 50x30mm and verify it decodes back

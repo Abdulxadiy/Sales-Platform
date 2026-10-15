@@ -30,7 +30,13 @@ class GenerateVariantBarcodeView(CatalogAPIView):
             is_active=True,
             product__is_active=True,
         )
-        if not variant.barcode:
+        force = False
+        if isinstance(request.data, dict) and request.data.get("force"):
+            force = True
+        if request.query_params.get("force") in ("true", "1"):
+            force = True
+
+        if not variant.barcode or force:
             old_barcode = variant.barcode
             while True:
                 # Internal shop code: 12 digits plus an EAN-compatible check digit.

@@ -13,20 +13,32 @@ test('Code128 encodes leading zeros and rejects unsupported characters', () => {
   assert.throws(() => barcodeSvg('☃'), /Shtrix-kod/);
 });
 
-test('name is optional, barcode text is mandatory, and prices are never printed', () => {
+test('name and price can be toggled, barcode text is mandatory, and typography is bold', () => {
   const full = labelDocument(variant, { ...options, showPrice: true });
   assert.ok(!full.includes('<script>'));
   assert.match(full, /&lt;script&gt;/);
   assert.match(full, /class="name"/);
-  assert.ok(!full.includes('class="price"'));
-  assert.ok(!full.includes('15000'));
-  assert.ok(!full.includes('UZS'));
-  const noName = labelDocument(variant, { ...options, showName: false });
+  assert.match(full, /class="price"/);
+  assert.match(full, /15\s?000/);
+  assert.match(full, /font-weight:\s*700/);
+  assert.match(full, /font-weight:\s*800/);
+
+  const noPrice = labelDocument(variant, { ...options, showPrice: false });
+  assert.ok(!noPrice.includes('class="price"'));
+  assert.ok(!noPrice.includes('15000'));
+
+  const noName = labelDocument(variant, { ...options, showName: false, showPrice: false });
   assert.ok(!noName.includes('class="name"'));
   assert.match(noName, /<div class="code">001234<\/div>/);
   assert.match(full, /shape-rendering="crispEdges"/);
+
   const legacy = labelDocument({ ...variant, barcode: 'INV-5-20002' }, options);
   assert.match(legacy, /<div class="code">INV-5-20002<\/div>/);
+
+  const ean = labelDocument({ ...variant, barcode: '4780065642112' }, options);
+  assert.match(ean, /viewBox="0 0 \d+ 54"/);
+  assert.match(ean, /780065/);
+  assert.match(ean, /642112/);
 });
 
 test('preview scales a single label and print keeps actual millimeter dimensions', () => {

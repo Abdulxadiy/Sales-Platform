@@ -478,7 +478,11 @@ export const catalogApi = {
   getImportTemplate: () => request('/catalog/import/template/', { responseType: 'blob' }),
   previewImport: (body) => request('/catalog/import/preview/', { method: 'POST', body }),
   commitImport: (id) => request(`/catalog/import/${id}/commit/`, { method: 'POST' }),
-  generateBarcode: (id) => request(`/catalog/variants/${id}/barcode/`, { method: 'POST' }),
+  generateBarcode: (id, params = {}) =>
+    request(`/catalog/variants/${id}/barcode/${params?.force ? '?force=true' : ''}`, {
+      method: 'POST',
+      body: Object.keys(params).length ? JSON.stringify(params) : undefined,
+    }),
   getCategories: () => request('/catalog/categories/'),
   createCategory: (data) =>
     request('/catalog/categories/', {

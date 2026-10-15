@@ -10,7 +10,7 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
   const toast = useToast();
   const [variant, setVariant] = useState(initialVariant);
   const [busy, setBusy] = useState(false);
-  const [options, setOptions] = useState({ format: 'a4', width: 50, height: 30, copies: 1, showName: true });
+  const [options, setOptions] = useState({ format: 'a4', width: 50, height: 30, copies: 1, showName: true, showPrice: true });
   const update = (field, value) => setOptions(prev => ({ ...prev, [field]: value }));
 
   const preview = useMemo(() => {
@@ -23,10 +23,10 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
     if (busy) return;
     setBusy(true);
     try {
-      const updated = await catalogApi.generateBarcode(variant.id);
+      const updated = await catalogApi.generateBarcode(variant.id, { force: true });
       setVariant(updated);
       onChanged?.();
-      toast.success('Yangi shtrix-kod yaratildi');
+      toast.success('Yangi raqamli EAN-13 shtrix-kod yaratildi');
     } catch (error) {
       toast.error(error.message);
     } finally {
@@ -68,11 +68,23 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
             </div>
           </div>
 
-          {!variant.barcode && (
+          {(!variant.barcode || !/^\d{12,13}$/.test(variant.barcode)) && (
             canGenerate ? (
-              <button className="btn btn-primary" onClick={generate} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={generate}
+                disabled={busy}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+              >
                 <Sparkles size={14} />
-                <span>{busy ? 'Kutilmoqda…' : 'Raqamli shtrix-kod yaratish'}</span>
+                <span>
+                  {busy
+                    ? 'Kutilmoqda…'
+                    : (!variant.barcode
+                        ? 'Raqamli shtrix-kod yaratish'
+                        : 'Raqamli EAN-13 kodiga o‘tkazish')}
+                </span>
               </button>
             ) : (
               <span style={{ fontSize: 12, color: 'var(--accent-rose)' }}>Shtrix-kodni yaratish uchun do‘kon egasiga murojaat qiling</span>
@@ -177,6 +189,26 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
             <span>Mahsulot nomini chiqarish</span>
           </label>
 
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              userSelect: 'none',
+              color: options.showPrice ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={options.showPrice}
+              onChange={e => update('showPrice', e.target.checked)}
+              style={{ accentColor: 'var(--primary)', width: 16, height: 16, cursor: 'pointer' }}
+            />
+            <span>Mahsulot narxini chiqarish</span>
+          </label>
         </div>
 
         {/* Preview Frame */}
@@ -203,18 +235,32 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
             <div
               style={{
                 borderRadius: 'var(--radius-md, 12px)',
-                overflow: 'hidden',
                 border: '1px solid var(--border-subtle)',
-                background: '#ffffff',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)',
+                background: 'var(--bg-chip, #f8fafc)',
+                padding: 16,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
             >
-              <iframe
-                title="Yorliq namunasi"
-                sandbox=""
-                srcDoc={preview.html}
-                style={{ width: '100%', aspectRatio: `${options.width || 50} / ${options.height || 30}`, height: 'auto', border: 'none', display: 'block' }}
-              />
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 380,
+                  aspectRatio: `${options.width || 50} / ${options.height || 30}`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)',
+                  background: '#ffffff',
+                }}
+              >
+                <iframe
+                  title="Yorliq namunasi"
+                  sandbox=""
+                  srcDoc={preview.html}
+                  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                />
+              </div>
             </div>
           )}
         </div>

@@ -368,8 +368,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--tenant-id",
             type=int,
-            required=True,
-            help="Tenant ID to seed products into (required)",
+            required=False,
+            help="Tenant ID to seed products into",
+        )
+        parser.add_argument(
+            "--public-code",
+            type=str,
+            required=False,
+            help="Tenant public code, e.g. 0D2008E8",
         )
         parser.add_argument(
             "--batch-size",
@@ -391,15 +397,23 @@ class Command(BaseCommand):
             )
 
         total_target = options["count"]
-        tenant_id = options["tenant_id"]
+        tenant_id = options.get("tenant_id")
+        public_code = options.get("public_code")
         batch_size = options["batch_size"]
+
+        if not tenant_id and not public_code:
+            raise CommandError("Either --tenant-id or --public-code must be provided.")
 
         start_time = time.time()
 
         try:
-            tenant = Tenant.objects.get(id=tenant_id)
+            if public_code:
+                tenant = Tenant.objects.get(public_code__iexact=public_code.strip())
+            else:
+                tenant = Tenant.objects.get(id=tenant_id)
         except Tenant.DoesNotExist as err:
-            raise CommandError(f"Tenant with ID {tenant_id} not found.") from err
+            identifier = public_code if public_code else tenant_id
+            raise CommandError(f"Tenant with identifier '{identifier}' not found.") from err
 
         owner = tenant.owner
         if not owner:
@@ -476,7 +490,7 @@ class Command(BaseCommand):
                     (i // (cat_count * len(cat_def["brands"]) * len(cat_def["items"]))) % len(cat_def["specs"])
                 ]
 
-                prod_name = f"{brand} {item} {spec} (Model #{item_idx:04d})"
+                prod_name = f"{brand} {item} {spec} (Model #{item_idx:05d})"
 
                 # Pricing
                 p_min_low, p_min_high = cat_def["price_min_range"]

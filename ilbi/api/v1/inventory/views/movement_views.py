@@ -1,10 +1,15 @@
+from datetime import timedelta
+
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 
-from api.query_params import positive_id
 from api.permissions import HasEmployeePermission
+from api.query_params import positive_id
+from api.schema import optional_pagination
 from api.v1.inventory.serializers import (
     AdjustCreateSerializer,
     BatchIntakeCreateSerializer,
@@ -26,7 +31,7 @@ class StockMovementListView(InventoryAPIView):
     permission_classes = [HasEmployeePermission]
     required_permission = "inventory.view_stock"
 
-    @extend_schema(request=None, responses={200: StockMovementOutputSerializer(many=True)})
+    @extend_schema(request=None, responses={200: optional_pagination(StockMovementOutputSerializer)})
     def get(self, request):
         movements = StockMovement.objects.filter(tenant=self.tenant).select_related(
             "created_by", "product_variant", "product_variant__product", "product_variant__product__category"
@@ -35,6 +40,35 @@ class StockMovementListView(InventoryAPIView):
         if variant_id:
             get_object_or_404(ProductVariant, pk=variant_id, tenant=self.tenant)
             movements = movements.filter(product_variant_id=variant_id)
+
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            movements = movements.filter(
+                Q(product_variant__product__name__icontains=search)
+                | Q(product_variant__name__icontains=search)
+                | Q(note__icontains=search)
+            )
+        movement_type = request.query_params.get("type")
+        if movement_type and movement_type != "all":
+            movements = movements.filter(type=movement_type)
+        date_filter = request.query_params.get("date")
+        today = timezone.localdate()
+        if date_filter == "today":
+            movements = movements.filter(created_at__date=today)
+        elif date_filter == "yesterday":
+            movements = movements.filter(created_at__date=today - timedelta(days=1))
+        elif date_filter == "week":
+            movements = movements.filter(created_at__gte=timezone.now() - timedelta(days=7))
+        elif date_filter == "month":
+            movements = movements.filter(created_at__date__gte=today.replace(day=1), created_at__date__lte=today)
+        movements = movements.order_by("-created_at", "-pk")
+        if request.query_params.get("page"):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            page_data = paginator.paginate_queryset(movements, request)
+            return paginator.get_paginated_response(
+                StockMovementOutputSerializer(page_data, many=True, context={"request": request}).data
+            )
 
         return Response(StockMovementOutputSerializer(movements, many=True, context={"request": request}).data)
 
@@ -59,7 +93,10 @@ class _BaseMovementCreateView(InventoryAPIView):
             )
         except StockServiceError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(StockMovementOutputSerializer(movement, context={"request": request}).data, status=status.HTTP_201_CREATED)
+        return Response(
+            StockMovementOutputSerializer(movement, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class StockIntakeCreateView(_BaseMovementCreateView):
@@ -94,7 +131,10 @@ class StockBatchIntakeCreateView(InventoryAPIView):
         except StockServiceError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(StockMovementOutputSerializer(movements, many=True, context={"request": request}).data, status=status.HTTP_201_CREATED)
+        return Response(
+            StockMovementOutputSerializer(movements, many=True, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class CustomerReturnCreateView(_BaseMovementCreateView):

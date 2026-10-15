@@ -1,7 +1,7 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
-import { refreshAccessToken, request, getAccessToken, getRefreshToken, setTokens, inventoryApi } from '../src/api/client.js';
+import { refreshAccessToken, request, getAccessToken, getRefreshToken, setTokens, inventoryApi, catalogApi } from '../src/api/client.js';
 import { getOrCreateRequestKey } from '../src/utils/requestKey.js';
 
 class Storage {
@@ -142,4 +142,29 @@ test('support can omit an obsolete tenant selection while retaining account auth
     return json({ results: [] });
   };
   assert.deepEqual(await request('/support/conversations/', { skipTenant: true }), { results: [] });
+});
+
+
+test('list requests retain server pagination, filters, cart ids and cancellation', async () => {
+  setTokens(token(), token());
+  const controller = new AbortController();
+  const seen = [];
+  globalThis.fetch = async (url, options) => {
+    seen.push(new URL(url, 'http://localhost'));
+    assert.equal(options.signal, controller.signal);
+    return json({ results: [], count: 0 });
+  };
+  await catalogApi.getVariants({ page: 3, page_size: 20, search: 'Cola', category: 7 }, { signal: controller.signal });
+  await inventoryApi.getStock({ page: 2, page_size: 25, sort: 'qty_desc', category: 7 }, { signal: controller.signal });
+  await inventoryApi.getMovements({ page: 4, page_size: 25, date: 'today', type: 'kirim' }, { signal: controller.signal });
+  await catalogApi.getVariants({ ids: '1,77' }, { signal: controller.signal });
+  assert.equal(seen[0].searchParams.get('page'), '3');
+  assert.equal(seen[0].searchParams.get('page_size'), '20');
+  assert.equal(seen[0].searchParams.get('search'), 'Cola');
+  assert.equal(seen[1].searchParams.get('sort'), 'qty_desc');
+  assert.equal(seen[1].searchParams.get('page_size'), '25');
+  assert.equal(seen[2].searchParams.get('page'), '4');
+  assert.equal(seen[2].searchParams.get('date'), 'today');
+  assert.equal(seen[2].searchParams.get('type'), 'kirim');
+  assert.equal(seen[3].searchParams.get('ids'), '1,77');
 });

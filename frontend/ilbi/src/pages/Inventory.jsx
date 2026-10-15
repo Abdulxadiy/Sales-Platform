@@ -1,3 +1,4 @@
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
@@ -46,24 +47,44 @@ export default function Inventory() {
   const { activeTenant } = useTenant();
 
   const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'transfers' | 'deficits' | 'movements'
-  const [stockList, setStockList] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [transferTargets, setTransferTargets] = useState([]);
-  const [movements, setMovements] = useState([]);
   const [deficitsList, setDeficitsList] = useState([]);
   const [deficitCount, setDeficitCount] = useState(0);
   const [deficitSearch, setDeficitSearch] = useState('');
   const [variants, setVariants] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [stockPage, setStockPage] = useState(1);
+  const [loadingOther, setLoading] = useState(false);
   const STOCK_PAGE_SIZE = 25;
-  const [movementPage, setMovementPage] = useState(1);
   const MOVEMENT_PAGE_SIZE = 25;
   const [inventoryFilters, setInventoryFilters, resetInventoryFilters] = usePersistedState(
     `ilbi_inventory_filters_v2:${activeTenant?.id || 'pending'}`,
     DEFAULT_INVENTORY_FILTERS
   );
+
+  const stockSearch = useDebouncedValue(inventoryFilters.stockSearch.trim());
+  const movementSearch = useDebouncedValue(inventoryFilters.movementSearch.trim());
+  const stockParams = {
+    search: stockSearch,
+    category: inventoryFilters.stockCategory === 'all' ? undefined : inventoryFilters.stockCategory,
+    sort: inventoryFilters.stockSort,
+  };
+  const { items: stockList, total: stockCount, page: stockPage, setPage: setStockPage,
+    refresh: refreshStock, loading: loadingStock, error: stockError } = usePaginatedList(
+    inventoryApi.getStock, stockParams,
+    { tenantId: activeTenant?.id, pageSize: STOCK_PAGE_SIZE, enabled: activeTab === 'stock' },
+  );
+  const { items: movements, total: movementCount, page: movementPage, setPage: setMovementPage,
+    refresh: refreshMovements, loading: loadingMovements, error: movementError } = usePaginatedList(
+    inventoryApi.getMovements,
+    { search: movementSearch, type: inventoryFilters.movementType, date: inventoryFilters.movementDate },
+    { tenantId: activeTenant?.id, pageSize: MOVEMENT_PAGE_SIZE, enabled: activeTab === 'movements' },
+  );
+  const loading = loadingOther || loadingStock || loadingMovements;
+  useEffect(() => {
+    const error = stockError || movementError;
+    if (error) toast.error(error.message || 'Ombor ma’lumotlarini yuklab bo‘lmadi.');
+  }, [stockError, movementError, toast]);
 
   // Modals state
   const [intakeModalOpen, setIntakeModalOpen] = useState(false);
@@ -114,9 +135,7 @@ export default function Inventory() {
     setLoading(true);
     try {
       if (activeTab === 'stock') {
-        const res = await inventoryApi.getStock({});
-        const list = res.results || res;
-        setStockList(Array.isArray(list) ? list : []);
+        refreshStock();
       } else if (activeTab === 'transfers') {
         const [res, availableTargets] = await Promise.all([
           inventoryApi.getTransfers(), tenantApi.getTransferTargets(),
@@ -131,31 +150,39 @@ export default function Inventory() {
         setDeficitsList(arr);
         setDeficitCount(arr.length);
       } else if (activeTab === 'movements') {
-        const res = await inventoryApi.getMovements();
-        const list = res.results || res;
-        setMovements(Array.isArray(list) ? list : []);
+        refreshMovements();
       }
     } catch {
       toast.error('Ombor ma’lumotlarini yuklashda xatolik yuz berdi');
     } finally {
       setLoading(false);
     }
-  }, [activeTab, activeTenant?.id, deficitSearch, toast]);
+  }, [activeTab, activeTenant?.id, deficitSearch, toast, refreshStock, refreshMovements]);
 
   useEffect(() => {
-    loadData();
+    if (activeTab !== 'stock' && activeTab !== 'movements') loadData();
+  }, [loadData, activeTab]);
+
+  useEffect(() => {
     refreshDeficitCount();
-    catalogApi.getVariants().then((res) => {
-      const list = res.results || res;
-      setVariants(Array.isArray(list) ? list : []);
-    }).catch(() => {});
+    let active = true;
     catalogApi.getCategories().then((res) => {
-      const list = res.results || res;
-      setCategories(Array.isArray(list) ? list : []);
+      if (active) setCategories(res.results || res);
     }).catch(() => {});
-  }, [loadData, refreshDeficitCount]);
+    return () => { active = false; };
+  }, [activeTenant?.id, refreshDeficitCount]);
 
-
+  // Full option lists are needed only when an inventory operation is opened.
+  const needsVariantOptions = intakeModalOpen || adjustModalOpen || customerReturnModalOpen
+    || supplierReturnModalOpen || writeOffModalOpen || activeTab === 'transfers';
+  useEffect(() => {
+    if (!needsVariantOptions) return;
+    let active = true;
+    catalogApi.getVariants().then(res => {
+      if (active) setVariants(res.results || res);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [needsVariantOptions, activeTenant?.id]);
 
   // Adjust stock (Qoldiqni to‘g‘rilash)
   const handleAdjustSubmit = async (e) => {
@@ -292,138 +319,10 @@ export default function Inventory() {
     return `${v.product_name || v.name} — ${qtyStr} ${v.unit || 'dona'}`;
   };
 
-  const filteredStock = useMemo(() => {
-    return stockList
-      .filter((item) => {
-        // 1. Search text
-        const q = (inventoryFilters.stockSearch || '').toLowerCase().trim();
-        if (q) {
-          const name = (item.product_name || item.name || '').toLowerCase();
-          const sku = (item.sku || '').toLowerCase();
-          const code = (item.code || '').toLowerCase();
-          const barcode = (item.barcode || '').toLowerCase();
-          if (!name.includes(q) && !sku.includes(q) && !code.includes(q) && !barcode.includes(q)) {
-            return false;
-          }
-        }
-
-        // 2. Category filter
-        if (inventoryFilters.stockCategory && inventoryFilters.stockCategory !== 'all') {
-          const target = String(inventoryFilters.stockCategory).toLowerCase().trim();
-          const itemCatId = String(item.category_id ?? item.category ?? '').toLowerCase().trim();
-          const itemCatName = String(item.category_name || '').toLowerCase().trim();
-
-          const catObj = categories.find(
-            (c) => String(c.id).toLowerCase() === target || String(c.name).toLowerCase() === target
-          );
-          const matchedTargetName = catObj ? String(catObj.name).toLowerCase().trim() : '';
-          const matchedTargetId = catObj ? String(catObj.id).toLowerCase().trim() : '';
-
-          const match =
-            (itemCatId && (itemCatId === target || itemCatId === matchedTargetId)) ||
-            (itemCatName && (itemCatName === target || itemCatName === matchedTargetName));
-
-          if (!match) {
-            return false;
-          }
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        const nameA = (a.product_name || a.name || '').toLowerCase();
-        const nameB = (b.product_name || b.name || '').toLowerCase();
-        const qtyA = Number(a.quantity ?? a.stock_quantity ?? 0);
-        const qtyB = Number(b.quantity ?? b.stock_quantity ?? 0);
-        const priceA = Number(a.last_cost_price || 0);
-        const priceB = Number(b.last_cost_price || 0);
-
-        switch (inventoryFilters.stockSort) {
-          case 'name_desc':
-            return nameB.localeCompare(nameA);
-          case 'qty_desc':
-            return qtyB - qtyA;
-          case 'qty_asc':
-            return qtyA - qtyB;
-          case 'price_desc':
-            return priceB - priceA;
-          case 'price_asc':
-            return priceA - priceB;
-          case 'name_asc':
-          default:
-            return nameA.localeCompare(nameB);
-        }
-      });
-  }, [stockList, inventoryFilters, categories]);
-
-  const paginatedStock = useMemo(() => {
-    const start = (stockPage - 1) * STOCK_PAGE_SIZE;
-    return filteredStock.slice(start, start + STOCK_PAGE_SIZE);
-  }, [filteredStock, stockPage, STOCK_PAGE_SIZE]);
-
-  useEffect(() => {
-    setStockPage(1);
-  }, [inventoryFilters.stockSearch, inventoryFilters.stockCategory, inventoryFilters.stockSort, activeTenant?.id]);
-
-  const filteredMovements = useMemo(() => {
-    return movements.filter((m) => {
-      // 1. Search text
-      const q = (inventoryFilters.movementSearch || '').toLowerCase().trim();
-      if (q) {
-        const pName = (m.product_name || m.product_variant_name || m.variant_name || '').toLowerCase();
-        const note = (m.note || m.reason || '').toLowerCase();
-        if (!pName.includes(q) && !note.includes(q)) {
-          return false;
-        }
-      }
-
-      // 2. Movement type
-      if (inventoryFilters.movementType && inventoryFilters.movementType !== 'all') {
-        const mType = (m.type || m.movement_type || '').toLowerCase();
-        if (mType !== inventoryFilters.movementType.toLowerCase()) {
-          return false;
-        }
-      }
-
-      // 3. Date presets
-      if (m.created_at && inventoryFilters.movementDate !== 'all') {
-        const mDate = new Date(m.created_at);
-        const y = mDate.getFullYear();
-        const mo = String(mDate.getMonth() + 1).padStart(2, '0');
-        const d = String(mDate.getDate()).padStart(2, '0');
-        const dateKey = `${y}-${mo}-${d}`;
-
-        const now = new Date();
-        const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-
-        if (inventoryFilters.movementDate === 'today') {
-          if (dateKey !== todayKey) return false;
-        } else if (inventoryFilters.movementDate === 'yesterday') {
-          if (dateKey !== yesterdayKey) return false;
-        } else if (inventoryFilters.movementDate === 'week') {
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          if (mDate < weekAgo) return false;
-        } else if (inventoryFilters.movementDate === 'month') {
-          if (mDate.getMonth() !== now.getMonth() || mDate.getFullYear() !== now.getFullYear()) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    });
-  }, [movements, inventoryFilters]);
-
-  const paginatedMovements = useMemo(() => {
-    const start = (movementPage - 1) * MOVEMENT_PAGE_SIZE;
-    return filteredMovements.slice(start, start + MOVEMENT_PAGE_SIZE);
-  }, [filteredMovements, movementPage, MOVEMENT_PAGE_SIZE]);
-
-  useEffect(() => {
-    setMovementPage(1);
-  }, [inventoryFilters.movementSearch, inventoryFilters.movementType, inventoryFilters.movementDate, activeTenant?.id]);
+  const filteredStock = stockList;
+  const paginatedStock = stockList;
+  const filteredMovements = movements;
+  const paginatedMovements = movements;
 
   const hasActiveStockFilters =
     Boolean(inventoryFilters.stockSearch) ||
@@ -574,7 +473,7 @@ export default function Inventory() {
 
         {/* Row 2: Action Buttons - ALWAYS stays cleanly below the tabs on all sections */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {activeTab === 'stock' && <ExcelExportButton endpoint="/inventory/stock/export/" ids={filteredStock.map(row => row.id)} filename="ilbi-ombor.xlsx" disabled={loading} />}
+          {activeTab === 'stock' && <ExcelExportButton endpoint="/inventory/stock/export/" params={stockParams} filename="ilbi-ombor.xlsx" disabled={loading} />}
           <button
             onClick={() => {
               setSelectedVariantForIntake(null);
@@ -814,7 +713,7 @@ export default function Inventory() {
                 whiteSpace: 'nowrap',
               }}
             >
-              Topildi: <strong style={{ color: 'var(--text-primary)' }}>{filteredStock.length}</strong> ta tovar
+              Topildi: <strong style={{ color: 'var(--text-primary)' }}>{stockCount}</strong> ta tovar
             </div>
         </div>
       )}
@@ -1037,7 +936,7 @@ export default function Inventory() {
             })}
 
             <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
-              Topildi: <strong style={{ color: 'var(--text-primary)' }}>{filteredMovements.length}</strong> ta harakat
+              Topildi: <strong style={{ color: 'var(--text-primary)' }}>{movementCount}</strong> ta harakat
             </div>
           </div>
         </div>
@@ -1365,20 +1264,20 @@ export default function Inventory() {
       </div>
 
       {/* Pagination Controls for Stock Tab */}
-      {activeTab === 'stock' && filteredStock.length > STOCK_PAGE_SIZE && (
+      {activeTab === 'stock' && stockCount > STOCK_PAGE_SIZE && (
         <Pagination
           currentPage={stockPage}
-          totalItems={filteredStock.length}
+          totalItems={stockCount}
           pageSize={STOCK_PAGE_SIZE}
           onPageChange={setStockPage}
         />
       )}
 
       {/* Pagination Controls for Movements Tab */}
-      {activeTab === 'movements' && filteredMovements.length > MOVEMENT_PAGE_SIZE && (
+      {activeTab === 'movements' && movementCount > MOVEMENT_PAGE_SIZE && (
         <Pagination
           currentPage={movementPage}
-          totalItems={filteredMovements.length}
+          totalItems={movementCount}
           pageSize={MOVEMENT_PAGE_SIZE}
           onPageChange={setMovementPage}
         />

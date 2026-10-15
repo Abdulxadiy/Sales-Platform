@@ -6,7 +6,7 @@ from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -475,6 +475,18 @@ class ProductVariantListView(CatalogAPIView):
                 .select_related("product", "product__category", "stock")
                 .prefetch_related("stock_batches", "product__gallery_images")
             )
+
+        ids = request.query_params.get("ids")
+        if ids is not None:
+            selected_ids = serializers.ListField(
+                child=serializers.IntegerField(min_value=1), max_length=1000
+            ).run_validation(ids.split(",") if ids else [])
+            qs = qs.filter(pk__in=selected_ids)
+
+        lookup = request.query_params.get("lookup")
+        if lookup:
+            value = lookup.strip()
+            qs = qs.filter(Q(barcode__iexact=value) | Q(code__iexact=value) | Q(sku__iexact=value))
 
         in_stock = request.query_params.get("in_stock")
         if in_stock and in_stock.lower() in ("true", "1"):

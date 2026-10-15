@@ -34,6 +34,8 @@ import { getOrCreateRequestKey } from '../utils/requestKey';
 import { useAuth } from '../hooks/useAuth';
 import { usePersistedState } from '../hooks/usePersistedState';
 
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
+
 const EMPTY_CART = [];
 
 export default function POS() {
@@ -48,14 +50,17 @@ export default function POS() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [allVariants, setAllVariants] = useState([]);
-  const allVariantsRef = useRef([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
+  const debouncedSearch = useDebouncedValue(searchQuery.trim());
+  const { items: variants, total: variantCount, page: posPage, setPage: setPosPage,
+    refresh: loadVariants, loading: loadingProducts, error: productError } = usePaginatedList(
+    catalogApi.getVariants, { search: debouncedSearch, category: selectedCategory },
+    { tenantId: activeTenant?.id, pageSize: 20 },
+  );
+  const [checkoutVariants, setCheckoutVariants] = useState([]);
   const [usdRate, setUsdRate] = useState(0);
   const [usdCalculatorOpen, setUsdCalculatorOpen] = useState(false);
   const [usdCalculatorAmount, setUsdCalculatorAmount] = useState('');
   const [usdCalculatorSaleTotalUzs, setUsdCalculatorSaleTotalUzs] = useState('');
-  const [posPage, setPosPage] = useState(1);
   const POS_PAGE_SIZE = 20;
 
   // 1-Narx (Partner Price) Switcher - Persisted
@@ -151,63 +156,19 @@ export default function POS() {
     return getDefaultPrice(item.variant, isPartnerSale);
   }, [getDefaultPrice, isPartnerSale]);
 
-  const loadVariants = useCallback(async () => {
-    setLoadingProducts(true);
-    try {
-      const params = {};
-      const res = await catalogApi.getVariants(params);
-      const items = res.results || res;
-      const list = Array.isArray(items) ? items : [];
-      setAllVariants(list);
-      allVariantsRef.current = list;
-    } catch {
-      setAllVariants([]);
-      allVariantsRef.current = [];
-    } finally {
-      setLoadingProducts(false);
-    }
+  useEffect(() => {
+    const controller = new AbortController();
+    catalogApi.getCategories().then((res) => {
+      if (!controller.signal.aborted) setCategories(res.results || res);
+    }).catch(() => {});
+    return () => controller.abort();
   }, [activeTenant?.id]);
 
-  // Load initial categories and variants
   useEffect(() => {
-    catalogApi.getCategories().then((res) => {
-      const list = res.results || res;
-      setCategories(Array.isArray(list) ? list : []);
-    }).catch(() => {});
+    if (productError) toast.error(productError.message || 'Tovarlarni yuklab bo‘lmadi.');
+  }, [productError, toast]);
 
-    loadVariants();
-  }, [loadVariants]);
-
-  // In-memory instant filtering (0ms latency, zero HTTP requests)
-  const variants = useMemo(() => {
-    let list = allVariants;
-    if (selectedCategory) {
-      list = list.filter((v) => v.category_id === selectedCategory);
-    }
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter((v) => {
-        const pName = (v.product_name || '').toLowerCase();
-        const vName = (v.name || '').toLowerCase();
-        const bCode = (v.barcode || '').toLowerCase();
-        const code = (v.code || '').toLowerCase();
-        const sku = (v.sku || '').toLowerCase();
-        return pName.includes(q) || vName.includes(q) || bCode.includes(q) || code.includes(q) || sku.includes(q);
-      });
-    }
-    return list;
-  }, [allVariants, selectedCategory, searchQuery]);
-
-  // Paginated subset of filtered variants for display
-  const paginatedVariants = useMemo(() => {
-    const start = (posPage - 1) * POS_PAGE_SIZE;
-    return variants.slice(start, start + POS_PAGE_SIZE);
-  }, [variants, posPage, POS_PAGE_SIZE]);
-
-  // Reset to first page when category or search changes
-  useEffect(() => {
-    setPosPage(1);
-  }, [selectedCategory, searchQuery]);
+  const paginatedVariants = variants;
 
   const handleCategorySelect = (catId) => {
     setSelectedCategory(catId);
@@ -386,7 +347,7 @@ export default function POS() {
   );
 
   const expiredCartItems = cart.flatMap(item => {
-    const variant = allVariants.find(v => v.id === item.variant.id) || item.variant;
+    const variant = checkoutVariants.find(v => v.id === item.variant.id) || variants.find(v => v.id === item.variant.id) || item.variant;
     return (variant.expired_batches || []).length ? [{ variant, batches: variant.expired_batches }] : [];
   });
 
@@ -404,10 +365,9 @@ export default function POS() {
 
     let currentVariants;
     try {
-      const data = await catalogApi.getVariants();
+      const data = await catalogApi.getVariants({ ids: cart.map(item => item.variant.id).join(',') });
       currentVariants = Array.isArray(data) ? data : data.results || [];
-      setAllVariants(currentVariants);
-      allVariantsRef.current = currentVariants;
+      setCheckoutVariants(currentVariants);
     } catch (error) {
       toast.error(error.message || 'Joriy ombor qoldig‘ini tekshirib bo‘lmadi.');
       return;
@@ -438,59 +398,39 @@ export default function POS() {
     setCheckoutOpen(true);
   };
 
-  // Barcode quick add on Enter (instantly searches in-memory array)
-  const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      const q = searchQuery.trim().toLowerCase();
-      if (!q) {
-        if (cart.length > 0) {
-          handleOpenCheckout();
-        }
-        return;
+  // Resolve scanner codes against the whole catalog, including other pages.
+  const lookupAndAdd = async (code, allowName = false) => {
+    const q = code.trim();
+    if (!q) return;
+    const tenantId = activeTenant?.id;
+    try {
+      const data = await catalogApi.getVariants({ lookup: q, page: 1, page_size: 2 });
+      let match = data.results[0];
+      if (!match && allowName) {
+        const found = await catalogApi.getVariants({ search: q, page: 1, page_size: 2 });
+        if (found.count === 1) match = found.results[0];
       }
-      e.preventDefault();
-      // Try exact barcode match or 3-level code first across all branch variants
-      const exactMatch = allVariantsRef.current.find(
-        (v) =>
-          v.barcode?.toLowerCase() === q ||
-          v.code?.toLowerCase() === q ||
-          v.sku?.toLowerCase() === q
-      );
-      if (exactMatch) {
-        if (addToCart(exactMatch)) {
-          setSearchQuery('');
-          toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
-        }
-      } else if (variants.length === 1) {
-        if (addToCart(variants[0])) {
-          setSearchQuery('');
-          toast.success(`"${variants[0].product_name}" savatga qo‘shildi`);
-        }
-      } else {
-        toast.error(`"${searchQuery}" shtrix-kodli tovar topilmadi`);
+      if (String(tenantId) !== String(previousTenantId.current)) return;
+      if (match && addToCart(match)) {
+        setSearchQuery('');
+        toast.success(`"${match.product_name}" savatga qo‘shildi`);
+      } else if (!match) {
+        setSearchQuery(code);
+        toast.info(`"${code}" kodi bo‘yicha tovar topilmadi`);
       }
+    } catch (error) {
+      toast.error(error.message || 'Tovarni qidirib bo‘lmadi.');
     }
   };
 
-  const handleCameraBarcodeScan = (code) => {
-    const q = (code || '').trim().toLowerCase();
-    if (!q) return;
-    const exactMatch = allVariantsRef.current.find(
-      (v) =>
-        v.barcode?.toLowerCase() === q ||
-        v.code?.toLowerCase() === q ||
-        v.sku?.toLowerCase() === q
-    );
-    if (exactMatch) {
-      if (addToCart(exactMatch)) {
-        setSearchQuery('');
-        toast.success(`"${exactMatch.product_name}" savatga qo‘shildi`);
-      }
-    } else {
-      setSearchQuery(code);
-      toast.info(`"${code}" kodi bo‘yicha qidirilmoqda...`);
-    }
+  const handleSearchKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (searchQuery.trim()) lookupAndAdd(searchQuery, true);
+    else if (cart.length > 0) handleOpenCheckout();
   };
+
+  const handleCameraBarcodeScan = (code) => lookupAndAdd(code);
 
   // Complete Sale
   const handleConfirmSale = async (e) => {
@@ -1121,10 +1061,10 @@ export default function POS() {
         </div>
 
         {/* POS Pagination Bar */}
-        {variants.length > POS_PAGE_SIZE && (
+        {variantCount > POS_PAGE_SIZE && (
           <Pagination
             currentPage={posPage}
-            totalItems={variants.length}
+            totalItems={variantCount}
             pageSize={POS_PAGE_SIZE}
             onPageChange={setPosPage}
             compact={true}

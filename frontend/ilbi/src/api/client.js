@@ -545,15 +545,13 @@ export const catalogApi = {
       method: 'POST',
       body: data instanceof FormData ? data : JSON.stringify(data),
     }),
-  getVariants: (params = {}) => {
+  getVariants: (params = {}, options = {}) => {
     const query = new URLSearchParams();
-    if (params.search) query.append('search', params.search);
-    if (params.barcode) query.append('barcode', params.barcode);
-    if (params.category) query.append('category', params.category);
-    if (params.in_stock !== undefined) query.append('in_stock', params.in_stock);
-    if (params.archived !== undefined) query.append('archived', params.archived);
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+    }
     const qs = query.toString();
-    return request(`/catalog/variants/${qs ? `?${qs}` : ''}`);
+    return request(`/catalog/variants/${qs ? `?${qs}` : ''}`, options);
   },
   updateVariant: (id, data) =>
     request(`/catalog/variants/${id}/`, {
@@ -572,13 +570,14 @@ export const catalogApi = {
 
 export const inventoryApi = {
   getBatches: (params = {}) => request(`/inventory/batches/?${new URLSearchParams(params)}`),
-  getStock: (pageOrParams = 1, search = '') => {
+  getStock: (pageOrParams = 1, search = '', options = {}) => {
     if (typeof pageOrParams === 'object' && pageOrParams !== null) {
       const query = new URLSearchParams();
-      if (pageOrParams.page) query.append('page', pageOrParams.page);
-      if (pageOrParams.search) query.append('search', pageOrParams.search);
+      for (const [key, value] of Object.entries(pageOrParams)) {
+        if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+      }
       const qs = query.toString();
-      return request(`/inventory/stock/${qs ? `?${qs}` : ''}`);
+      return request(`/inventory/stock/${qs ? `?${qs}` : ''}`, typeof search === 'object' ? search : options);
     }
     let q = `?page=${pageOrParams}`;
     if (search) q += `&search=${encodeURIComponent(search)}`;
@@ -587,7 +586,14 @@ export const inventoryApi = {
   getStockDetail: (variantId) => {
     return request(`/inventory/stock/${variantId}/`);
   },
-  getMovements: (page = 1) => request(`/inventory/movements/?page=${page}`),
+  getMovements: (pageOrParams = 1, options = {}) => {
+    const params = typeof pageOrParams === 'object' ? pageOrParams : { page: pageOrParams };
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+    }
+    return request(`/inventory/movements/?${query}`, options);
+  },
   batchStockIntake: (data) =>
     request('/inventory/intake/batch/', {
       method: 'POST',

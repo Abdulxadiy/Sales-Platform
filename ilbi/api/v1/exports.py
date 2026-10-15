@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from api.mixins import OwnerStaffOnlyAPIView
 from api.permissions import HasEmployeePermission
+from api.v1.inventory.views.stock_views import filtered_stock_queryset
 from api.v1.sales.serializers import SaleListQuerySerializer
 from api.v1.sales.views.sale_views import SaleListCreateView
 from apps.accounts.services.permission_service import PermissionService
@@ -40,6 +41,16 @@ class StockExportView(SelectedExportView):
         stock = self.selected(
             request, Stock.objects.filter(tenant=self.tenant).select_related("product_variant__product__category")
         )
+        return self.export_stock(request, stock)
+
+    @extend_schema(responses={(200, XLSX_MIME): OpenApiTypes.BINARY})
+    def get(self, request):
+        stock = filtered_stock_queryset(self.tenant, request.query_params)
+        if stock.count() > MAX_EXPORT_ROWS:
+            raise ValidationError("Eksport 20 000 qatordan oshdi. Filtrlarni toraytiring.")
+        return self.export_stock(request, stock)
+
+    def export_stock(self, request, stock):
         cost_allowed = PermissionService.has_permission(
             request.user, "catalog.view_cost_price", tenant=self.tenant, employee=self.employee
         )

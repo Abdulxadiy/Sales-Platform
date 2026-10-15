@@ -1,3 +1,4 @@
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Package,
@@ -360,24 +361,20 @@ export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [categories, setCategories] = useState([]);
-  const [variants, setVariants] = useState([]);
   const [selectedCat, setSelectedCat] = useState('');
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('active'); // 'active' | 'archived'
   const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
   const [scannerTarget, setScannerTarget] = useState('search'); // 'search' | 'product_barcode' | 'edit_barcode'
-  const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 24;
-
-  const paginatedVariants = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return variants.slice(start, start + pageSize);
-  }, [variants, currentPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCat, search, activeTab]);
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const { items: variants, total: variantCount, page: currentPage, setPage: setCurrentPage,
+    refresh: loadVariants, loading: loadingVariants, error: variantError } = usePaginatedList(
+    catalogApi.getVariants,
+    { category: selectedCat, search: debouncedSearch, archived: activeTab === 'archived' },
+    { tenantId: activeTenant?.id, pageSize },
+  );
+  const paginatedVariants = variants;
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -439,29 +436,15 @@ export default function Catalog() {
     } catch {
       // ignore
     }
-  }, [toast]);
-
-  const loadVariants = useCallback(async (cat = '', query = '', isArchived = false) => {
-    setLoading(true);
-    try {
-      const res = await catalogApi.getVariants({
-        category: cat || undefined,
-        search: query || undefined,
-        archived: isArchived ? 'true' : undefined,
-      });
-      const list = res.results || res;
-      setVariants(Array.isArray(list) ? list : []);
-    } catch {
-      toast.error('Katalogni yuklashda xatolik yuz berdi');
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     loadCategories();
-    loadVariants('', '', activeTab === 'archived');
-  }, [loadCategories, loadVariants, activeTab]);
+  }, [loadCategories, activeTenant?.id]);
+
+  useEffect(() => {
+    if (variantError) toast.error(variantError.message || 'Katalogni yuklab bo‘lmadi.');
+  }, [variantError, toast]);
 
   useEffect(() => {
     if (searchParams.get('new') === '1' || searchParams.get('action') === 'new_product') {
@@ -479,19 +462,16 @@ export default function Catalog() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    loadVariants(selectedCat, search, tab === 'archived');
   };
 
   const handleSearch = (e) => {
     const val = e.target.value;
     setSearch(val);
-    loadVariants(selectedCat, val, activeTab === 'archived');
   };
 
   const handleCatChange = (e) => {
     const val = e.target.value;
     setSelectedCat(val);
-    loadVariants(val, search, activeTab === 'archived');
   };
 
   const handleCameraScan = (code) => {
@@ -505,7 +485,6 @@ export default function Catalog() {
       toast.success(`Shtrix-kod kiritildi: ${cleanCode}`);
     } else {
       setSearch(cleanCode);
-      loadVariants(selectedCat, cleanCode, activeTab === 'archived');
       toast.info(`"${cleanCode}" shtrix-kodi bo‘yicha qidirilmoqda...`);
     }
   };
@@ -522,7 +501,7 @@ export default function Catalog() {
     try {
       await catalogApi.unarchiveVariant(id);
       toast.success('Tovar arxivdan chiqarildi');
-      loadVariants(selectedCat, search, true);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Arxivdan chiqarishda xatolik');
     }
@@ -696,7 +675,7 @@ export default function Catalog() {
       setProductModalOpen(false);
       resetProductForm();
       setProductImage(null);
-      loadVariants(selectedCat, search, activeTab === 'archived');
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Mahsulotni saqlashda xatolik');
     } finally {
@@ -766,7 +745,7 @@ export default function Catalog() {
 
       toast.success('Tovar narxi muvaffaqiyatli yangilandi!');
       setEditPriceModalOpen(false);
-      loadVariants(selectedCat, search);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Narxni yangilashda xatolik');
     } finally {
@@ -787,7 +766,7 @@ export default function Catalog() {
     try {
       await catalogApi.archiveVariant(id);
       toast.info('Tovar arxivlandi');
-      loadVariants(selectedCat, search);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Arxivlashda xatolik');
     }
@@ -831,7 +810,7 @@ export default function Catalog() {
       toast.success('Kategoriya muvaffaqiyatli yangilandi!');
       setEditingCategory(null);
       await loadCategories();
-      await loadVariants(selectedCat, search);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Kategoriyani yangilashda xatolik');
     } finally {
@@ -855,7 +834,7 @@ export default function Catalog() {
         setEditingCategory(null);
       }
       await loadCategories();
-      await loadVariants(selectedCat, search);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Kategoriyani o‘chirishda xatolik');
     }
@@ -951,7 +930,7 @@ export default function Catalog() {
       toast.success(`"${editProductForm.name}" mahsuloti muvaffaqiyatli yangilandi!`);
       setEditProductModalOpen(false);
       setEditProductImage(null);
-      await loadVariants(selectedCat, search);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Mahsulotni yangilashda xatolik');
     } finally {
@@ -971,7 +950,7 @@ export default function Catalog() {
     try {
       await catalogApi.deleteProduct(v.product);
       toast.success(`"${v.product_name}" mahsuloti o‘chirildi`);
-      await loadVariants(selectedCat, search);
+      loadVariants();
     } catch (err) {
       toast.error(err.message || 'Mahsulotni o‘chirishda xatolik');
     }
@@ -1154,7 +1133,7 @@ export default function Catalog() {
           gap: 18,
         }}
       >
-        {loading ? (
+        {loadingVariants ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
             Tovarlar yuklanmoqda...
           </div>
@@ -1418,11 +1397,11 @@ export default function Catalog() {
           })
         )}
 
-        {variants.length > pageSize && (
+        {variantCount > pageSize && (
           <div style={{ gridColumn: '1 / -1' }}>
             <Pagination
               currentPage={currentPage}
-              totalItems={variants.length}
+              totalItems={variantCount}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
             />
@@ -1430,9 +1409,9 @@ export default function Catalog() {
         )}
       </div>
 
-      {importOpen && <CatalogImportModal onClose={() => setImportOpen(false)} onSuccess={() => { loadCategories(); loadVariants(selectedCat, search); }} />}
-      {labelVariant && <ProductLabelsModal key={labelVariant.id} variant={labelVariant} canGenerate={canChangeProduct} onClose={() => setLabelVariant(null)} onChanged={() => loadVariants(selectedCat, search)} />}
-      <ProductToolsModal productId={toolsProductId} onClose={() => setToolsProductId(null)} onChanged={() => loadVariants(selectedCat, search)} />
+      {importOpen && <CatalogImportModal onClose={() => setImportOpen(false)} onSuccess={() => { loadCategories(); loadVariants(); }} />}
+      {labelVariant && <ProductLabelsModal key={labelVariant.id} variant={labelVariant} canGenerate={canChangeProduct} onClose={() => setLabelVariant(null)} onChanged={() => loadVariants()} />}
+      <ProductToolsModal productId={toolsProductId} onClose={() => setToolsProductId(null)} onChanged={() => loadVariants()} />
 
       {/* Create Product Modal */}
       <Modal

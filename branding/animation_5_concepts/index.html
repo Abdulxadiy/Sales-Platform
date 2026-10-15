@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ilbi.uz — 5 ta Rasmiy Animatsiya Konseptlari Studio (60 FPS)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #1A2230;
+      --navy-dark: #0D1420;
+      --navy-tile: #0B2D4B;
+      --blue-electric: #00A3FF;
+      --blue-deep: #0052D4;
+      --green-brand: #38C72E;
+      --bg-canvas: #090E17;
+      --bg-panel: rgba(14, 21, 33, 0.95);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --anim-ease-gather: cubic-bezier(0.22, 1, 0.36, 1);
+      --anim-ease-glide: cubic-bezier(0.16, 1, 0.3, 1);
+      --anim-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-canvas);
+      color: #E2E8F0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    .suite-header {
+      background: rgba(9, 14, 23, 0.96);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 99999;
+    }
+
+    .suite-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-status {
+      background: rgba(0, 163, 255, 0.15);
+      color: #00A3FF;
+      border: 1px solid rgba(0, 163, 255, 0.35);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-status::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      background: #00A3FF;
+      border-radius: 50%;
+      box-shadow: 0 0 10px #00A3FF;
+      display: inline-block;
+    }
+
+    .badge-untouched {
+      background: rgba(56, 199, 46, 0.15);
+      color: #38C72E;
+      border: 1px solid rgba(56, 199, 46, 0.3);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .suite-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.01em;
+    }
+
+    /* TABS */
+    .tabs-row {
+      background: rgba(14, 21, 33, 0.98);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs-row::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #94A3B8;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.09);
+      color: #FFFFFF;
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .tab-btn.active {
+      background: #00A3FF;
+      color: #051329;
+      border-color: #00A3FF;
+      box-shadow: 0 4px 14px rgba(0, 163, 255, 0.35);
+    }
+
+    .tab-btn.concept-5.active {
+      background: #38C72E;
+      color: #061F0E;
+      border-color: #38C72E;
+      box-shadow: 0 4px 14px rgba(56, 199, 46, 0.35);
+    }
+
+    /* CONTROLS BAR */
+    .controls-panel {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 10px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-play {
+      background: #00A3FF;
+      color: #051329;
+      box-shadow: 0 2px 10px rgba(0, 163, 255, 0.35);
+    }
+    .btn-play.green {
+      background: #38C72E;
+      color: #061F0E;
+      box-shadow: 0 2px 10px rgba(56, 199, 46, 0.35);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.07);
+      color: #E2E8F0;
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .segmented-control {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .segmented-btn {
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #94A3B8;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .segmented-btn.active {
+      background: rgba(255, 255, 255, 0.18);
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    /* TIMELINE SCRUBBER */
+    .scrubber-panel {
+      background: rgba(11, 17, 28, 0.95);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .scrubber-slider {
+      flex: 1;
+      min-width: 220px;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .scrubber-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #00A3FF;
+      box-shadow: 0 0 12px #00A3FF;
+      cursor: grab;
+      border: 2.5px solid #FFFFFF;
+      transition: transform 0.1s ease;
+    }
+
+    .time-display {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #00A3FF;
+      min-width: 80px;
+    }
+
+    /* ACTIVE CONCEPT INFO BANNER */
+    .concept-banner {
+      background: linear-gradient(90deg, rgba(0, 163, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .concept-title-group h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .concept-subtitle {
+      font-size: 12px;
+      color: #94A3B8;
+      margin-top: 2px;
+    }
+
+    .stage-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .stage-pill {
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #94A3B8;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .stage-pill.active {
+      background: rgba(0, 163, 255, 0.2);
+      border-color: #00A3FF;
+      color: #00A3FF;
+      font-weight: 700;
+    }
+
+    /* VIEWPORT STAGE */
+    .viewport-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+    }
+
+    .device-container {
+      position: relative;
+      background: #FAFCFD;
+      border-radius: 16px;
+      box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1), height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .device-container.mode-desktop {
+      width: 1200px;
+      height: 720px;
+    }
+
+    .device-container.mode-tablet {
+      width: 768px;
+      height: 720px;
+    }
+
+    .device-container.mode-mobile {
+      width: 390px;
+      height: 720px;
+      border-radius: 40px;
+      box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.85), 0 0 0 12px #1E293B, 0 0 0 14px rgba(255, 255, 255, 0.15);
+    }
+
+    .device-container.mode-fullscreen {
+      width: 100%;
+      height: 100%;
+      border-radius: 0;
+      position: fixed;
+      inset: 0;
+      z-index: 99998;
+    }
+
+    /* ANIMATION CANVAS & OVERLAY */
+    .splash-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      background: #FAFCFD;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      will-change: opacity, transform;
+    }
+
+    .ambient-bg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(0, 163, 255, 0.04) 0%, rgba(250, 252, 253, 0.9) 60%, #FAFCFD 100%);
+      pointer-events: none;
+    }
+
+    .anim-anchor {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      will-change: transform;
+      z-index: 10;
+    }
+
+    .device-container.mode-mobile .anim-anchor {
+      transform: translate(-50%, -50%) scale(0.72);
+      transform-origin: center center;
+    }
+    .device-container.mode-tablet .anim-anchor {
+      transform: translate(-50%, -50%) scale(0.88);
+      transform-origin: center center;
+    }
+
+    /* UNDERLYING RETAIL SAAS WEBSITE */
+    .live-website-view {
+      position: absolute;
+      inset: 0;
+      background: #F8FAFC;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+      overflow-y: auto;
+      color: #0F172A;
+    }
+
+    .dash-navbar {
+      height: 64px;
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+
+    .dash-logo-mini {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: #1A2230;
+    }
+    .dash-logo-mini span { color: #00A3FF; }
+
+    .dash-store-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #F1F5F9;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .store-dot {
+      width: 8px;
+      height: 8px;
+      background: #00A3FF;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #00A3FF;
+    }
+
+    .dash-body {
+      flex: 1;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .metric-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .metric-val {
+      font-size: 28px;
+      font-weight: 800;
+      color: #1A2230;
+      margin-top: 8px;
+    }
+
+    /* STORYBOARD REFERENCE FOOTER */
+    .storyboard-footer {
+      background: #0E1522;
+      border-top: 1px solid var(--border-subtle);
+      padding: 16px 24px;
+    }
+
+    .footer-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #F8FAFC;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stages-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .stage-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .card-num {
+      font-size: 11px;
+      font-weight: 800;
+      color: #00A3FF;
+      margin-bottom: 3px;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      color: #94A3B8;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 768px) {
+      .stages-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="suite-header">
+    <div class="suite-brand">
+      <div class="badge-status">Animation Studio</div>
+      <div class="badge-untouched">Loyiha kodi tegilmagan</div>
+      <h1 class="suite-title">ilbi.uz — 5 ta Rasmiy Animatsiya</h1>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-play" id="btnReplay">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        Replay (Space)
+      </button>
+
+      <button class="btn btn-secondary" id="btnPlayPause">
+        <span id="textPlayPause">Pause</span>
+      </button>
+
+      <div class="segmented-control" id="speedControl">
+        <button class="segmented-btn" data-speed="0.25">0.25x</button>
+        <button class="segmented-btn" data-speed="0.5">0.5x</button>
+        <button class="segmented-btn active" data-speed="1">1.0x</button>
+        <button class="segmented-btn" data-speed="1.5">1.5x</button>
+      </div>
+
+      <div class="segmented-control" id="deviceControl">
+        <button class="segmented-btn active" data-device="desktop">Desktop</button>
+        <button class="segmented-btn" data-device="tablet">Tablet</button>
+        <button class="segmented-btn" data-device="mobile">Mobile (390px)</button>
+        <button class="segmented-btn" data-device="fullscreen">Fullscreen</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONCEPT TABS -->
+  <nav class="tabs-row" id="conceptTabs">
+    <button class="tab-btn active" data-concept="1">
+      <span>1. Chiziq Bo'ylab Ochilish</span>
+    </button>
+    <button class="tab-btn" data-concept="2">
+      <span>2. Blokma-Blok Qurilish</span>
+    </button>
+    <button class="tab-btn" data-concept="3">
+      <span>3. Nuqta Pop-Up & Bounce</span>
+    </button>
+    <button class="tab-btn" data-concept="4">
+      <span>4. Yorug'lik Sweep & Finish</span>
+    </button>
+    <button class="tab-btn concept-5" data-concept="5">
+      <span>5. 4-Modul & 16° Burilish (POS)</span>
+    </button>
+  </nav>
+
+  <!-- ACTIVE CONCEPT INFO BANNER -->
+  <div class="concept-banner" id="conceptBanner">
+    <div class="concept-title-group">
+      <h2 id="bannerTitle">1. CHIZIQ BO'YLAB OCHILISH</h2>
+      <p class="concept-subtitle" id="bannerSubtitle">Logo asta-sekin chiziqdan shakllanib, to'liq ko'rinishga keladi.</p>
+    </div>
+    <div class="stage-indicator" id="stagePills">
+      <span class="stage-pill active" id="pill1">01 Boshlanish</span>
+      <span class="stage-pill" id="pill2">02 Chiziq</span>
+      <span class="stage-pill" id="pill3">03 Monogram</span>
+      <span class="stage-pill" id="pill4">04 Matn</span>
+      <span class="stage-pill" id="pill5">05 Yakun</span>
+    </div>
+  </div>
+
+  <!-- TIMELINE SCRUBBER -->
+  <div class="scrubber-panel">
+    <span class="time-display" id="timeDisplay">0.00s / 1.80s</span>
+    <input type="range" class="scrubber-slider" id="timelineSlider" min="0" max="1800" value="0" step="10">
+    <div class="btn-group">
+      <button class="btn btn-secondary" style="padding: 4px 10px; font-size:11px;" id="btnToggleWebsite">
+        Saytga O'tish: <strong id="websiteToggleState" style="color:#00A3FF; margin-left:4px;">ON</strong>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN VIEWPORT STAGE -->
+  <main class="viewport-stage">
+    <div class="device-container mode-desktop" id="deviceContainer">
+
+      <!-- SPLASH SCREEN OVERLAY -->
+      <div class="splash-overlay" id="splashOverlay">
+        <div class="ambient-bg" id="ambientBg"></div>
+
+        <!-- Master Center Anchor -->
+        <div class="anim-anchor" id="animAnchor">
+          <!-- Dynamic Animation Canvas Injected Here -->
+          <div id="animationStage" style="position:relative; display:flex; flex-direction:column; align-items:center;"></div>
+        </div>
+      </div>
+
+      <!-- UNDERLYING LIVE RETAIL SAAS WEBSITE -->
+      <div class="live-website-view" id="liveWebsite">
+        <nav class="dash-navbar">
+          <div class="dash-logo-mini">
+            <svg width="28" height="28" viewBox="0 0 240 240" fill="none">
+              <circle cx="56" cy="50" r="20" fill="#1C2333"/>
+              <path d="M36 94 C36 86 42 80 50 80 H76 V182 C76 195 65 206 52 206 C43 206 36 199 36 190 Z" fill="#1C2333"/>
+              <path d="M110 80 C156 80 192 108 192 144 C192 180 156 208 110 208 C90 208 80 196 80 196 V170 C80 170 92 180 110 180 C138 180 162 164 162 144 C162 124 138 108 110 108 H90 V80 H110 Z" fill="#1C2333"/>
+              <path d="M90 32 C90 14 105 2 120 2 C132 2 140 10 140 24 V154 C140 178 126 198 104 204 C94 206 88 198 90 188 C94 176 108 165 108 144 V46 C108 38 100 32 90 32 Z" fill="#00A3FF"/>
+            </svg>
+            ilbi<span>.uz</span>
+          </div>
+          <div class="dash-store-badge">
+            <span class="store-dot"></span>
+            Toshkent Bosh Do'koni #1 (Faol)
+          </div>
+          <div style="font-size: 13px; font-weight:700; color:#1A2230;">
+            Abdulxadiy (Admin)
+          </div>
+        </nav>
+
+        <div class="dash-body">
+          <h2 style="font-size: 24px; font-weight: 800; color: #1A2230;">Chakana Savdo va Do'kon Boshqaruvi</h2>
+          <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Kassalar, tovarlar harakati va kunlik moliyaviy oqimlar</p>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span style="font-size:12px; font-weight:700; color:#64748B;">BUGUNGI TUSHUM</span>
+              <div class="metric-val">34,120,000 UZS</div>
+            </div>
+            <div class="metric-card">
+              <span style="font-size:12px; font-weight:700; color:#64748B;">FAOL KASSALAR</span>
+              <div class="metric-val">6 / 6 Ochiq</div>
+            </div>
+            <div class="metric-card">
+              <span style="font-size:12px; font-weight:700; color:#64748B;">SOTUVLAR SONI</span>
+              <div class="metric-val">524 Chek</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- STORYBOARD STAGES REFERENCE FOOTER -->
+  <footer class="storyboard-footer" id="storyboardFooter">
+    <div class="footer-title">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00A3FF" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+      Storyboard Bosqichlari va Harakat Qo'llanmasi
+    </div>
+    <div class="stages-grid" id="footerStagesGrid"></div>
+  </footer>
+
+  <!-- SCRIPT ENGINE -->
+  <script>
+    (function () {
+      const CONCEPTS = {
+        1: {
+          title: "1. CHIZIQ BO'YLAB OCHILISH",
+          subtitle: "Logo asta-sekin chiziqdan shakllanib, to'liq ko'rinishga keladi.",
+          color: "#00A3FF",
+          stages: [
+            { num: "01. Boshlanish", desc: "Yupqa ko'k chiziq markazda paydo bo'ladi." },
+            { num: "02. Chiziq chizilishi", desc: "Chiziq pastga o'sib, egri shakl (ribbon) hosil qiladi." },
+            { num: "03. Monogram yig'ilishi", desc: "Qora elementlar sekin paydo bo'lib, monogram shakllanadi." },
+            { num: "04. Matn chiqishi", desc: "'ilbi.uz' yozuvi pastdan chiqadi, ko'k nuqta yig'ilib puflab paydo bo'ladi." },
+            { num: "05. Yakuniy holat", desc: "Logotip to'liq shaklda barqarorlashadi." }
+          ]
+        },
+        2: {
+          title: "2. BLOKMA-BLOK QURILISH",
+          subtitle: "Sodda elementlardan yaxlit brandga (Modular Block Assembly).",
+          color: "#00A3FF",
+          stages: [
+            { num: "01. Elementlar", desc: "Logotip qismlari fazoda alohida ko'rinishda." },
+            { num: "02. Yaqinlashish", desc: "Elementlar markazga qarab harakatlanadi." },
+            { num: "03. Monogram yig'ilishi", desc: "'ib' monogrami barcha qismlardan jipslashadi." },
+            { num: "04. Matn terilishi", desc: "'ilbi.uz' harflari ketma-ket (staggered) teriladi." },
+            { num: "05. Yakun", desc: "To'liq logotip shakllanadi va barqarorlashadi." }
+          ]
+        },
+        3: {
+          title: "3. NUQTA POP-UP VA SOFT BOUNCE",
+          subtitle: "Kichik harakat — katta taassurot (Dot Pop-Up & Elastic Bounce).",
+          color: "#00A3FF",
+          stages: [
+            { num: "01. Nuqta chiqishi", desc: "Ekran pastki qismidan ko'k nuqta paydo bo'ladi." },
+            { num: "02. Sakrash", desc: "Nuqta yuqoriga energiyali sakrab harakatlanadi." },
+            { num: "03. Belgi paydo bo'lishi", desc: "Nuqta yuqorida portlab, 'i' va 'b' yumshoq elastik masshtabda ochiladi." },
+            { num: "04. Matn ko'tarilishi", desc: "'ilbi.uz' matni pastdan ko'tarilib, yumshoq bounce bilan joylashadi." },
+            { num: "05. Yakuniy lockup", desc: "Barchasi o'z joyiga tushib, nozik mikro-to'lqin bilan barqarorlashadi." }
+          ]
+        },
+        4: {
+          title: "4. YORUG'LIK SWEEP VA PREMIUM FINISH",
+          subtitle: "Bir logo. Ko'proq imkoniyat (Anamorphic Light Beam & Specular Shimmer).",
+          color: "#00A3FF",
+          stages: [
+            { num: "01. Xira boshlanish", desc: "Logo to'liq ko'rinadi, biroz xira/subdued holatda." },
+            { num: "02. Yorug'lik kirishi", desc: "Chap tomondan ko'k yorug'lik chizig'i kirib keladi." },
+            { num: "03. Sweep effekti", desc: "Yorug'lik logodan o'tib, ko'k qism va konturlarni porlatadi." },
+            { num: "04. To'liq ochilish", desc: "Yorug'lik o'ngdan chiqib ketadi, logo kristalldek aniq ochiladi." },
+            { num: "05. Premium hold", desc: "Logo barqaror holatda. Yengil doimiy nur yoki nozik pulsatsiya saqlanadi." }
+          ]
+        },
+        5: {
+          title: "5. 4-MODUL BIRLASHISHI VA 16° BURILISH",
+          subtitle: "Chakana savdo boshqaruvi: Xodimlar, Kassa, Tahlil, Savdo birlashuvi.",
+          color: "#38C72E",
+          stages: [
+            { num: "01. Markaziy Hub", desc: "Yashil markaziy nuqta paydo bo'lib, radial to'lqin taratadi." },
+            { num: "02. 4 Modul Yig'ilishi", desc: "4 ta plitka 16° burchak bilan aylanib, markazga yig'iladi." },
+            { num: "03. Birlashuv", desc: "2×2 emblem jipslashib, markazda ulanish aksenti porlaydi." },
+            { num: "04. ilbi.uz Matni", desc: "Emblem chapga surilib, 'ilbi.uz' yozuvi o'ngdan kiradi." },
+            { num: "05. Saytga O'tish", desc: "Splash qatlami so'nib, orqadagi do'kon boshqaruvi ochiladi." }
+          ]
+        }
+      };
+
+      let activeConcept = 1;
+      let currentTimeMs = 0;
+      const TOTAL_DURATION = 1800;
+      let isPlaying = true;
+      let playbackSpeed = 1.0;
+      let websiteTransitionEnabled = true;
+      let lastTimestamp = null;
+      let animationFrameId = null;
+
+      const animationStage = document.getElementById('animationStage');
+      const splashOverlay = document.getElementById('splashOverlay');
+      const timeDisplay = document.getElementById('timeDisplay');
+      const timelineSlider = document.getElementById('timelineSlider');
+      const btnReplay = document.getElementById('btnReplay');
+      const btnPlayPause = document.getElementById('btnPlayPause');
+      const textPlayPause = document.getElementById('textPlayPause');
+      const speedControl = document.getElementById('speedControl');
+      const deviceControl = document.getElementById('deviceControl');
+      const deviceContainer = document.getElementById('deviceContainer');
+      const conceptTabs = document.getElementById('conceptTabs');
+      const bannerTitle = document.getElementById('bannerTitle');
+      const bannerSubtitle = document.getElementById('bannerSubtitle');
+      const stagePills = document.getElementById('stagePills');
+      const footerStagesGrid = document.getElementById('footerStagesGrid');
+      const btnToggleWebsite = document.getElementById('btnToggleWebsite');
+      const websiteToggleState = document.getElementById('websiteToggleState');
+
+      function easeOutGlide(t) { return 1 - Math.pow(1 - t, 3.8); }
+      function easeOutGather(t) { return 1 - Math.pow(1 - t, 3.2); }
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+      function buildConceptDOM(conceptId) {
+        const config = CONCEPTS[conceptId];
+        bannerTitle.textContent = config.title;
+        bannerSubtitle.textContent = config.subtitle;
+        bannerTitle.style.color = config.color;
+
+        stagePills.innerHTML = config.stages.map((st, i) => 
+          `<span class="stage-pill ${i === 0 ? 'active' : ''}" id="pill${i+1}">${st.num}</span>`
+        ).join('');
+
+        footerStagesGrid.innerHTML = config.stages.map(st => `
+          <div class="stage-card">
+            <div class="card-num" style="color:${config.color}">${st.num}</div>
+            <div class="card-desc">${st.desc}</div>
+          </div>
+        `).join('');
+
+        btnReplay.className = conceptId === 5 ? 'btn btn-play green' : 'btn btn-play';
+
+        if (conceptId === 1) {
+          animationStage.innerHTML = `
+            <div style="position:relative; width: 260px; height: 260px; display:flex; align-items:center; justify-content:center;">
+              <div id="c1_line" style="position:absolute; width: 5px; height: 0; background: linear-gradient(180deg, #00C6FF 0%, #0072FF 100%); border-radius: 999px; box-shadow: 0 0 16px #00A3FF; transform-origin: top center;"></div>
+              <svg id="c1_svg" width="220" height="220" viewBox="0 0 240 240" fill="none" style="overflow:visible;">
+                <defs>
+                  <linearGradient id="c1_blueRibbon" x1="50%" y1="0%" x2="50%" y2="100%">
+                    <stop offset="0%" stop-color="#00A3FF"/>
+                    <stop offset="60%" stop-color="#0066FF"/>
+                    <stop offset="100%" stop-color="#0038FF"/>
+                  </linearGradient>
+                  <filter id="c1_glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0038FF" flood-opacity="0.22"/>
+                  </filter>
+                  <filter id="c1_shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0B132B" flood-opacity="0.12"/>
+                  </filter>
+                </defs>
+                <path id="c1_ribbon" d="M90 32 C90 14 105 2 120 2 C132 2 140 10 140 24 V154 C140 178 126 198 104 204 C94 206 88 198 90 188 C94 176 108 165 108 144 V46 C108 38 100 32 90 32 Z" fill="url(#c1_blueRibbon)" filter="url(#c1_glow)" style="transform-origin: 115px 100px;"/>
+                <circle id="c1_idot" cx="56" cy="50" r="20" fill="#1C2333" filter="url(#c1_shadow)"/>
+                <path id="c1_istem" d="M36 94 C36 86 42 80 50 80 H76 V182 C76 195 65 206 52 206 C43 206 36 199 36 190 Z" fill="#1C2333" filter="url(#c1_shadow)"/>
+                <path id="c1_bloop" d="M110 80 C156 80 192 108 192 144 C192 180 156 208 110 208 C90 208 80 196 80 196 V170 C80 170 92 180 110 180 C138 180 162 164 162 144 C162 124 138 108 110 108 H90 V80 H110 Z" fill="#1C2333" filter="url(#c1_shadow)"/>
+              </svg>
+            </div>
+            <div id="c1_wordmark" style="margin-top: 18px; font-size: 52px; font-weight: 800; color: #1C2333; letter-spacing: -0.04em; display:flex; align-items:baseline;">
+              <span>ilbi</span><span id="c1_dot" style="color:#00A3FF; display:inline-block; margin: 0 1px;">.</span><span>uz</span>
+            </div>
+            <div id="c1_ground" style="width: 200px; height: 16px; background: radial-gradient(ellipse, rgba(11, 45, 75, 0.14) 0%, transparent 70%); border-radius: 50%; margin-top: -6px; opacity: 0;"></div>
+          `;
+        } else if (conceptId === 2) {
+          animationStage.innerHTML = `
+            <div style="position:relative; width: 260px; height: 260px; display:flex; align-items:center; justify-content:center;">
+              <svg width="220" height="220" viewBox="0 0 240 240" fill="none" style="overflow:visible;">
+                <defs>
+                  <linearGradient id="c2_blueRibbon" x1="50%" y1="0%" x2="50%" y2="100%">
+                    <stop offset="0%" stop-color="#00A3FF"/><stop offset="60%" stop-color="#0066FF"/><stop offset="100%" stop-color="#0038FF"/>
+                  </linearGradient>
+                  <filter id="c2_shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0B132B" flood-opacity="0.12"/></filter>
+                </defs>
+                <circle id="c2_idot" cx="56" cy="50" r="20" fill="#1C2333" filter="url(#c2_shadow)"/>
+                <path id="c2_istem" d="M36 94 C36 86 42 80 50 80 H76 V182 C76 195 65 206 52 206 C43 206 36 199 36 190 Z" fill="#1C2333" filter="url(#c2_shadow)"/>
+                <path id="c2_ribbon" d="M90 32 C90 14 105 2 120 2 C132 2 140 10 140 24 V154 C140 178 126 198 104 204 C94 206 88 198 90 188 C94 176 108 165 108 144 V46 C108 38 100 32 90 32 Z" fill="url(#c2_blueRibbon)"/>
+                <path id="c2_bloop" d="M110 80 C156 80 192 108 192 144 C192 180 156 208 110 208 C90 208 80 196 80 196 V170 C80 170 92 180 110 180 C138 180 162 164 162 144 C162 124 138 108 110 108 H90 V80 H110 Z" fill="#1C2333" filter="url(#c2_shadow)"/>
+              </svg>
+            </div>
+            <div id="c2_wordmark" style="margin-top: 18px; font-size: 52px; font-weight: 800; color: #1C2333; letter-spacing: -0.04em; display:flex;">
+              <span class="c2-char" id="c2_c1" style="display:inline-block;">i</span>
+              <span class="c2-char" id="c2_c2" style="display:inline-block;">l</span>
+              <span class="c2-char" id="c2_c3" style="display:inline-block;">b</span>
+              <span class="c2-char" id="c2_c4" style="display:inline-block;">i</span>
+              <span class="c2-char" id="c2_c5" style="display:inline-block; color:#00A3FF;">.</span>
+              <span class="c2-char" id="c2_c6" style="display:inline-block;">u</span>
+              <span class="c2-char" id="c2_c7" style="display:inline-block;">z</span>
+            </div>
+            <div id="c2_ground" style="width: 200px; height: 16px; background: radial-gradient(ellipse, rgba(11, 45, 75, 0.14) 0%, transparent 70%); border-radius: 50%; margin-top: -6px; opacity: 0;"></div>
+          `;
+        } else if (conceptId === 3) {
+          animationStage.innerHTML = `
+            <div style="position:relative; width: 260px; height: 260px; display:flex; align-items:center; justify-content:center;">
+              <div id="c3_dot" style="position:absolute; width: 24px; height: 24px; border-radius: 50%; background: #00A3FF; box-shadow: 0 0 16px #00A3FF; z-index: 20; will-change: transform;"></div>
+              <div id="c3_waveL" style="position:absolute; left: -15px; width: 20px; height: 60px; border-left: 3px solid rgba(0, 163, 255, 0.5); border-radius: 50%; opacity: 0;"></div>
+              <div id="c3_waveR" style="position:absolute; right: -15px; width: 20px; height: 60px; border-right: 3px solid rgba(0, 163, 255, 0.5); border-radius: 50%; opacity: 0;"></div>
+              <svg id="c3_svg" width="220" height="220" viewBox="0 0 240 240" fill="none" style="overflow:visible; transform-origin:center center;">
+                <defs>
+                  <linearGradient id="c3_blueRibbon" x1="50%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stop-color="#00A3FF"/><stop offset="60%" stop-color="#0066FF"/><stop offset="100%" stop-color="#0038FF"/></linearGradient>
+                  <filter id="c3_shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0B132B" flood-opacity="0.12"/></filter>
+                </defs>
+                <circle cx="56" cy="50" r="20" fill="#1C2333" filter="url(#c3_shadow)"/>
+                <path d="M36 94 C36 86 42 80 50 80 H76 V182 C76 195 65 206 52 206 C43 206 36 199 36 190 Z" fill="#1C2333" filter="url(#c3_shadow)"/>
+                <path d="M90 32 C90 14 105 2 120 2 C132 2 140 10 140 24 V154 C140 178 126 198 104 204 C94 206 88 198 90 188 C94 176 108 165 108 144 V46 C108 38 100 32 90 32 Z" fill="url(#c3_blueRibbon)"/>
+                <path d="M110 80 C156 80 192 108 192 144 C192 180 156 208 110 208 C90 208 80 196 80 196 V170 C80 170 92 180 110 180 C138 180 162 164 162 144 C162 124 138 108 110 108 H90 V80 H110 Z" fill="#1C2333" filter="url(#c3_shadow)"/>
+              </svg>
+            </div>
+            <div id="c3_wordmark" style="margin-top: 18px; font-size: 52px; font-weight: 800; color: #1C2333; letter-spacing: -0.04em;">ilbi<span style="color:#00A3FF;">.</span>uz</div>
+            <div id="c3_ground" style="width: 200px; height: 16px; background: radial-gradient(ellipse, rgba(11, 45, 75, 0.14) 0%, transparent 70%); border-radius: 50%; margin-top: -6px; opacity: 0;"></div>
+          `;
+        } else if (conceptId === 4) {
+          animationStage.innerHTML = `
+            <div style="position:relative; width: 260px; height: 260px; display:flex; align-items:center; justify-content:center;">
+              <div id="c4_beam" style="position:absolute; width: 400px; height: 4px; background: linear-gradient(90deg, transparent 0%, rgba(0, 163, 255, 0.95) 50%, transparent 100%); box-shadow: 0 0 24px #00C6FF; pointer-events:none; z-index: 30; opacity: 0;"></div>
+              <div id="c4_flare" style="position:absolute; width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle, #FFFFFF 0%, #00C6FF 60%, transparent 100%); pointer-events:none; z-index: 31; opacity: 0;"></div>
+              <div id="c4_aura" style="position:absolute; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, rgba(0, 163, 255, 0.18) 0%, transparent 70%); filter:blur(20px); pointer-events:none; opacity: 0;"></div>
+              <svg id="c4_svg" width="220" height="220" viewBox="0 0 240 240" fill="none" style="overflow:visible;">
+                <defs>
+                  <linearGradient id="c4_blueRibbon" x1="50%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stop-color="#00A3FF"/><stop offset="60%" stop-color="#0066FF"/><stop offset="100%" stop-color="#0038FF"/></linearGradient>
+                  <linearGradient id="c4_shimmerGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.6"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+                </defs>
+                <circle cx="56" cy="50" r="20" fill="#1C2333"/>
+                <path d="M36 94 C36 86 42 80 50 80 H76 V182 C76 195 65 206 52 206 C43 206 36 199 36 190 Z" fill="#1C2333"/>
+                <path d="M90 32 C90 14 105 2 120 2 C132 2 140 10 140 24 V154 C140 178 126 198 104 204 C94 206 88 198 90 188 C94 176 108 165 108 144 V46 C108 38 100 32 90 32 Z" fill="url(#c4_blueRibbon)"/>
+                <path d="M110 80 C156 80 192 108 192 144 C192 180 156 208 110 208 C90 208 80 196 80 196 V170 C80 170 92 180 110 180 C138 180 162 164 162 144 C162 124 138 108 110 108 H90 V80 H110 Z" fill="#1C2333"/>
+                <rect id="c4_specular" x="0" y="0" width="240" height="240" fill="url(#c4_shimmerGrad)" style="mix-blend-mode: overlay; opacity: 0; pointer-events:none;"/>
+              </svg>
+            </div>
+            <div id="c4_wordmark" style="margin-top: 18px; font-size: 52px; font-weight: 800; color: #1C2333; letter-spacing: -0.04em;">ilbi<span style="color:#00A3FF;">.</span>uz</div>
+            <div id="c4_ground" style="width: 200px; height: 16px; background: radial-gradient(ellipse, rgba(11, 45, 75, 0.14) 0%, transparent 70%); border-radius: 50%; margin-top: -6px; opacity: 0.8;"></div>
+          `;
+        } else if (conceptId === 5) {
+          animationStage.innerHTML = `
+            <div id="c5_lockup" style="display:flex; align-items:center; position:relative;">
+              <div id="c5_emblemWrap" style="position:relative; width: 140px; height: 140px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <svg width="100%" height="100%" viewBox="0 0 148 148" fill="none" style="overflow:visible;">
+                  <defs>
+                    <linearGradient id="c5_streakTL" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0B2D4B" stop-opacity="0"/><stop offset="100%" stop-color="#0B2D4B" stop-opacity="0.4"/></linearGradient>
+                    <linearGradient id="c5_streakTR" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#38C72E" stop-opacity="0"/><stop offset="100%" stop-color="#38C72E" stop-opacity="0.5"/></linearGradient>
+                  </defs>
+                  <g id="c5_streaks" style="opacity:0;"><path d="M-40 -40 L35 35 L40 25 L-25 -50 Z" fill="url(#c5_streakTL)"/><path d="M188 -40 L113 35 L108 25 L173 -50 Z" fill="url(#c5_streakTR)"/></g>
+                  <g id="c5_tl" style="transform-origin: 37.5px 37.5px;"><rect x="5" y="5" width="65" height="65" rx="18" fill="#0B2D4B"/><circle cx="37.5" cy="28" r="5.5" fill="#FFF"/><path d="M29 45.5 C29 39.5 33.5 37.5 37.5 37.5 C41.5 37.5 46 39.5 46 45.5 Z" fill="#FFF"/><circle cx="27" cy="31" r="4.2" fill="#FFF"/><circle cx="48" cy="31" r="4.2" fill="#FFF"/></g>
+                  <g id="c5_tr" style="transform-origin: 110.5px 37.5px;"><rect x="78" y="5" width="65" height="65" rx="18" fill="#38C72E"/><rect x="99.5" y="21" width="22" height="14" rx="2" fill="#FFF"/><rect x="108.5" y="35" width="4" height="4" fill="#FFF"/><path d="M94 39 L127 39 L130.5 49 L90.5 49 Z" fill="#FFF"/></g>
+                  <g id="c5_bl" style="transform-origin: 37.5px 110.5px;"><rect x="5" y="78" width="65" height="65" rx="18" fill="#38C72E"/><rect x="23" y="108" width="7" height="15" rx="3" fill="#FFF"/><rect x="34" y="98" width="7" height="25" rx="3" fill="#FFF"/><rect x="45" y="88" width="7" height="35" rx="3" fill="#FFF"/></g>
+                  <g id="c5_br" style="transform-origin: 110.5px 110.5px;"><rect x="78" y="78" width="65" height="65" rx="18" fill="#0B2D4B"/><path d="M93 94 L99 94 L104.5 111 L123 111 L127.5 99.5 L102.5 99.5" stroke="#FFF" stroke-width="3.6" stroke-linecap="round"/><circle cx="108" cy="119" r="3.2" fill="#FFF"/><circle cx="120" cy="119" r="3.2" fill="#FFF"/></g>
+                </svg>
+                <div id="c5_hubRing" style="position:absolute; width: 50px; height: 50px; border-radius: 50%; border: 2.5px solid rgba(56, 199, 46, 0.6); transform:scale(0); opacity:0;"></div>
+                <div id="c5_hub" style="position:absolute; width: 28px; height: 28px; border-radius: 50%; background: #38C72E; border: 4px solid #FFF; box-shadow: 0 2px 10px rgba(56, 199, 46, 0.4); transform:scale(0); opacity:0; z-index:30;">
+                  <div id="c5_gleam" style="position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%; background:radial-gradient(circle, #FFF 0%, #FFE600 50%, transparent 80%); opacity:0;"></div>
+                </div>
+              </div>
+              <div id="c5_wordmark" style="margin-left: 24px; font-size: 72px; font-weight: 800; letter-spacing: -0.04em; color: #0B2D4B; white-space:nowrap; opacity:0; transform:translateX(30px);">ilbi<span style="color:#38C72E;">.uz</span></div>
+              <div id="c5_ground" style="position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); width:90%; height:18px; background:radial-gradient(ellipse, rgba(11, 45, 75, 0.14) 0%, transparent 70%); border-radius:50%; opacity:0;"></div>
+            </div>
+          `;
+        }
+      }
+
+      function renderFrame(t) {
+        currentTimeMs = clamp(t, 0, TOTAL_DURATION);
+        timeDisplay.textContent = (currentTimeMs / 1000).toFixed(2) + 's / 1.80s';
+        timelineSlider.value = currentTimeMs;
+
+        const stageIndex = Math.min(4, Math.floor((currentTimeMs / TOTAL_DURATION) * 5));
+        for (let i = 1; i <= 5; i++) {
+          const pill = document.getElementById('pill' + i);
+          if (pill) pill.classList.toggle('active', i - 1 === stageIndex);
+        }
+
+        if (activeConcept === 1) {
+          const line = document.getElementById('c1_line');
+          const svg = document.getElementById('c1_svg');
+          const ribbon = document.getElementById('c1_ribbon');
+          const idot = document.getElementById('c1_idot');
+          const istem = document.getElementById('c1_istem');
+          const bloop = document.getElementById('c1_bloop');
+          const wordmark = document.getElementById('c1_wordmark');
+          const dot = document.getElementById('c1_dot');
+          const ground = document.getElementById('c1_ground');
+
+          if (t <= 250) {
+            const p = t / 250;
+            line.style.opacity = p.toString();
+            line.style.height = (p * 140) + 'px';
+            svg.style.opacity = '0'; wordmark.style.opacity = '0'; ground.style.opacity = '0';
+          } else if (t <= 600) {
+            line.style.opacity = '0'; svg.style.opacity = '1';
+            const p = (t - 250) / 350;
+            const ease = easeOutGather(p);
+            ribbon.style.opacity = '1'; ribbon.style.transform = `scale(${0.7 + ease * 0.3})`;
+            idot.style.opacity = '0'; istem.style.opacity = '0'; bloop.style.opacity = '0';
+            wordmark.style.opacity = '0'; ground.style.opacity = '0';
+          } else if (t <= 1000) {
+            line.style.opacity = '0'; svg.style.opacity = '1'; ribbon.style.transform = 'scale(1)';
+            const p = (t - 600) / 400;
+            const ease = easeOutGather(p);
+            idot.style.opacity = ease.toString(); idot.style.transform = `translateY(${(1 - ease) * -25}px)`;
+            istem.style.opacity = ease.toString(); istem.style.transform = `translateX(${(1 - ease) * -30}px)`;
+            bloop.style.opacity = ease.toString(); bloop.style.transform = `translateX(${(1 - ease) * 30}px)`;
+            wordmark.style.opacity = '0'; ground.style.opacity = (ease * 0.6).toString();
+          } else if (t <= 1350) {
+            idot.style.opacity = '1'; idot.style.transform = 'none';
+            istem.style.opacity = '1'; istem.style.transform = 'none';
+            bloop.style.opacity = '1'; bloop.style.transform = 'none'; ground.style.opacity = '0.8';
+            const p = (t - 1000) / 350;
+            const ease = easeOutGlide(p);
+            wordmark.style.opacity = ease.toString(); wordmark.style.transform = `translateY(${(1 - ease) * 20}px)`;
+            if (p > 0.6) {
+              const dotP = (p - 0.6) / 0.4;
+              dot.style.transform = `scale(${1 + Math.sin(dotP * Math.PI) * 0.5})`;
+            } else dot.style.transform = 'scale(1)';
+          } else {
+            idot.style.opacity = '1'; idot.style.transform = 'none';
+            istem.style.opacity = '1'; istem.style.transform = 'none';
+            bloop.style.opacity = '1'; bloop.style.transform = 'none';
+            wordmark.style.opacity = '1'; wordmark.style.transform = 'none';
+            dot.style.transform = 'scale(1)'; ground.style.opacity = '0.8';
+          }
+        } else if (activeConcept === 2) {
+          const idot = document.getElementById('c2_idot');
+          const istem = document.getElementById('c2_istem');
+          const ribbon = document.getElementById('c2_ribbon');
+          const bloop = document.getElementById('c2_bloop');
+          const wordmark = document.getElementById('c2_wordmark');
+          const chars = wordmark.querySelectorAll('.c2-char');
+          const ground = document.getElementById('c2_ground');
+
+          if (t <= 650) {
+            const p = t / 650;
+            const ease = easeOutGather(p);
+            const dist = (1 - ease) * 55;
+            idot.style.transform = `translateY(${-dist}px)`; istem.style.transform = `translateX(${-dist}px)`;
+            bloop.style.transform = `translateX(${dist}px)`; ribbon.style.transform = `scale(${0.85 + ease * 0.15})`;
+            chars.forEach(ch => { ch.style.opacity = '0'; ch.style.transform = 'translateY(15px)'; });
+            ground.style.opacity = (ease * 0.4).toString();
+          } else if (t <= 950) {
+            idot.style.transform = 'none'; istem.style.transform = 'none';
+            bloop.style.transform = 'none'; ribbon.style.transform = 'none';
+            chars.forEach(ch => { ch.style.opacity = '0'; }); ground.style.opacity = '0.6';
+          } else if (t <= 1350) {
+            idot.style.transform = 'none'; istem.style.transform = 'none';
+            bloop.style.transform = 'none'; ribbon.style.transform = 'none'; ground.style.opacity = '0.8';
+            const progress = (t - 950) / 400;
+            const activeCount = Math.floor(progress * chars.length);
+            chars.forEach((ch, idx) => {
+              if (idx <= activeCount) { ch.style.opacity = '1'; ch.style.transform = 'translateY(0)'; }
+              else { ch.style.opacity = '0'; ch.style.transform = 'translateY(12px)'; }
+            });
+          } else {
+            chars.forEach(ch => { ch.style.opacity = '1'; ch.style.transform = 'none'; });
+            ground.style.opacity = '0.8';
+          }
+        } else if (activeConcept === 3) {
+          const dot = document.getElementById('c3_dot');
+          const svg = document.getElementById('c3_svg');
+          const wordmark = document.getElementById('c3_wordmark');
+          const waveL = document.getElementById('c3_waveL');
+          const waveR = document.getElementById('c3_waveR');
+          const ground = document.getElementById('c3_ground');
+
+          if (t <= 250) {
+            const p = t / 250;
+            dot.style.opacity = p.toString(); dot.style.transform = `translateY(120px) scale(${p})`;
+            svg.style.opacity = '0'; wordmark.style.opacity = '0';
+            waveL.style.opacity = '0'; waveR.style.opacity = '0'; ground.style.opacity = '0';
+          } else if (t <= 550) {
+            const p = (t - 250) / 300;
+            const easeY = 1 - Math.pow(1 - p, 2);
+            dot.style.opacity = '1'; dot.style.transform = `translateY(${120 - easeY * 120}px) scale(${0.85}, ${1.3})`;
+            svg.style.opacity = '0'; wordmark.style.opacity = '0';
+          } else if (t <= 950) {
+            dot.style.opacity = '0'; svg.style.opacity = '1';
+            const p = (t - 550) / 400;
+            let scale = p < 0.6 ? (p / 0.6) * 1.08 : 1.08 - ((p - 0.6) / 0.4) * 0.08;
+            svg.style.transform = `scale(${scale})`; wordmark.style.opacity = '0'; ground.style.opacity = (p * 0.6).toString();
+          } else if (t <= 1300) {
+            dot.style.opacity = '0'; svg.style.opacity = '1'; svg.style.transform = 'scale(1)';
+            const p = (t - 950) / 350;
+            const ease = easeOutGlide(p);
+            wordmark.style.opacity = ease.toString(); wordmark.style.transform = `translateY(${(1 - ease) * 24}px)`;
+            ground.style.opacity = '0.8';
+          } else {
+            dot.style.opacity = '0'; svg.style.opacity = '1'; svg.style.transform = 'scale(1)';
+            wordmark.style.opacity = '1'; wordmark.style.transform = 'none'; ground.style.opacity = '0.8';
+            const p = (t - 1300) / 500;
+            if (p < 0.7) {
+              const waveAlpha = Math.sin(p * Math.PI) * 0.7;
+              waveL.style.opacity = waveAlpha.toString(); waveR.style.opacity = waveAlpha.toString();
+              waveL.style.transform = `translateX(${-p * 15}px) scaleY(${1 + p * 0.4})`;
+              waveR.style.transform = `translateX(${p * 15}px) scaleY(${1 + p * 0.4})`;
+            } else { waveL.style.opacity = '0'; waveR.style.opacity = '0'; }
+          }
+        } else if (activeConcept === 4) {
+          const beam = document.getElementById('c4_beam');
+          const flare = document.getElementById('c4_flare');
+          const aura = document.getElementById('c4_aura');
+          const specular = document.getElementById('c4_specular');
+          const svg = document.getElementById('c4_svg');
+          const wordmark = document.getElementById('c4_wordmark');
+
+          if (t <= 250) {
+            svg.style.opacity = '0.35'; wordmark.style.opacity = '0.35';
+            beam.style.opacity = '0'; flare.style.opacity = '0'; aura.style.opacity = '0'; specular.style.opacity = '0';
+          } else if (t <= 1350) {
+            const p = (t - 250) / 1100;
+            const xPos = -200 + (p * 400);
+            beam.style.opacity = (Math.sin(p * Math.PI) * 0.95).toString();
+            flare.style.opacity = beam.style.opacity;
+            beam.style.transform = `translate(${xPos}px, 0)`; flare.style.transform = `translate(${xPos}px, 0)`;
+            const bright = 0.35 + (p * 0.65);
+            svg.style.opacity = bright.toString(); wordmark.style.opacity = bright.toString();
+            if (p >= 0.3 && p <= 0.7) specular.style.opacity = Math.sin(((p - 0.3) / 0.4) * Math.PI).toString();
+            else specular.style.opacity = '0';
+          } else {
+            svg.style.opacity = '1'; wordmark.style.opacity = '1';
+            beam.style.opacity = '0'; flare.style.opacity = '0'; specular.style.opacity = '0';
+            const p = (t - 1350) / 450;
+            aura.style.opacity = (Math.sin(p * Math.PI) * 0.8).toString();
+          }
+        } else if (activeConcept === 5) {
+          const lockup = document.getElementById('c5_lockup');
+          const streaks = document.getElementById('c5_streaks');
+          const tl = document.getElementById('c5_tl');
+          const tr = document.getElementById('c5_tr');
+          const bl = document.getElementById('c5_bl');
+          const br = document.getElementById('c5_br');
+          const hub = document.getElementById('c5_hub');
+          const hubRing = document.getElementById('c5_hubRing');
+          const gleam = document.getElementById('c5_gleam');
+          const wordmark = document.getElementById('c5_wordmark');
+          const ground = document.getElementById('c5_ground');
+
+          if (t <= 150) {
+            const p = t / 150;
+            hub.style.transform = `scale(${0.7 + p * 0.3})`; hub.style.opacity = p.toString();
+            hubRing.style.transform = `scale(${p * 1.5})`; hubRing.style.opacity = ((1 - p) * 0.7).toString();
+            tl.style.opacity = '0'; tr.style.opacity = '0'; bl.style.opacity = '0'; br.style.opacity = '0'; wordmark.style.opacity = '0';
+          } else if (t <= 650) {
+            hub.style.transform = 'scale(1)'; hub.style.opacity = '1'; hubRing.style.opacity = '0';
+            const p = (t - 150) / 500;
+            const ease = easeOutGather(p);
+            const travel = (1 - ease) * 115;
+            const angle = (1 - ease) * 16;
+            tl.style.opacity = '1'; tl.style.transform = `translate(${-travel}px, ${-travel}px) rotate(${-angle}deg)`;
+            tr.style.opacity = '1'; tr.style.transform = `translate(${travel}px, ${-travel}px) rotate(${angle}deg)`;
+            bl.style.opacity = '1'; bl.style.transform = `translate(${-travel}px, ${travel}px) rotate(${-angle}deg)`;
+            br.style.opacity = '1'; br.style.transform = `translate(${travel}px, ${travel}px) rotate(${angle}deg)`;
+            if (p >= 0.2 && p <= 0.8) streaks.style.opacity = (Math.sin(((p - 0.2) / 0.6) * Math.PI) * 0.8).toString();
+            else streaks.style.opacity = '0';
+          } else if (t <= 1100) {
+            tl.style.transform = 'none'; tr.style.transform = 'none'; bl.style.transform = 'none'; br.style.transform = 'none';
+            streaks.style.opacity = '0';
+            const p = (t - 650) / 450;
+            const ease = easeOutGlide(p);
+            lockup.style.transform = `translateX(${-ease * 110}px)`;
+            wordmark.style.opacity = ease.toString(); wordmark.style.transform = `translateX(${(1 - ease) * 30}px)`;
+            ground.style.opacity = (ease * 0.8).toString();
+          } else {
+            lockup.style.transform = 'translateX(-110px)'; wordmark.style.opacity = '1'; wordmark.style.transform = 'none';
+            ground.style.opacity = '0.8';
+            if (t >= 1100 && t <= 1400) {
+              const gleamP = (t - 1100) / 300;
+              gleam.style.opacity = (Math.sin(gleamP * Math.PI) * 0.95).toString();
+            } else gleam.style.opacity = '0';
+          }
+        }
+
+        // TRANSITION INTO LIVE SAAS PLATFORM
+        if (websiteTransitionEnabled && t >= 1350) {
+          const exitP = (t - 1350) / 450;
+          const exitEase = easeOutGlide(exitP);
+          const alpha = 1 - exitEase;
+          splashOverlay.style.opacity = alpha.toString();
+          splashOverlay.style.transform = `scale(${1 + exitEase * 0.025})`;
+          splashOverlay.style.pointerEvents = alpha < 0.05 ? 'none' : 'auto';
+        } else {
+          splashOverlay.style.opacity = '1';
+          splashOverlay.style.transform = 'scale(1)';
+          splashOverlay.style.pointerEvents = 'auto';
+        }
+      }
+
+      function tick(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const delta = (timestamp - lastTimestamp) * playbackSpeed;
+        lastTimestamp = timestamp;
+
+        if (isPlaying) {
+          currentTimeMs += delta;
+          if (currentTimeMs >= TOTAL_DURATION) {
+            currentTimeMs = TOTAL_DURATION;
+            isPlaying = false;
+            updatePlayPauseUI();
+          }
+          renderFrame(currentTimeMs);
+        }
+        animationFrameId = requestAnimationFrame(tick);
+      }
+
+      function updatePlayPauseUI() {
+        textPlayPause.textContent = isPlaying ? 'Pause' : 'Play';
+      }
+
+      function replay() {
+        currentTimeMs = 0;
+        isPlaying = true;
+        lastTimestamp = null;
+        updatePlayPauseUI();
+        renderFrame(0);
+      }
+
+      function switchConcept(id) {
+        activeConcept = parseInt(id);
+        conceptTabs.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.classList.toggle('active', parseInt(btn.dataset.concept) === activeConcept);
+        });
+        buildConceptDOM(activeConcept);
+        replay();
+      }
+
+      conceptTabs.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tab-btn');
+        if (btn) switchConcept(btn.dataset.concept);
+      });
+
+      btnReplay.addEventListener('click', replay);
+
+      btnPlayPause.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        if (isPlaying && currentTimeMs >= TOTAL_DURATION) currentTimeMs = 0;
+        lastTimestamp = null;
+        updatePlayPauseUI();
+      });
+
+      timelineSlider.addEventListener('input', (e) => {
+        isPlaying = false;
+        updatePlayPauseUI();
+        renderFrame(parseFloat(e.target.value));
+      });
+
+      speedControl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.segmented-btn');
+        if (!btn) return;
+        speedControl.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        playbackSpeed = parseFloat(btn.dataset.speed);
+      });
+
+      deviceControl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.segmented-btn');
+        if (!btn) return;
+        deviceControl.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        deviceContainer.className = 'device-container mode-' + btn.dataset.device;
+      });
+
+      btnToggleWebsite.addEventListener('click', () => {
+        websiteTransitionEnabled = !websiteTransitionEnabled;
+        websiteToggleState.textContent = websiteTransitionEnabled ? 'ON' : 'OFF';
+        websiteToggleState.style.color = websiteTransitionEnabled ? '#00A3FF' : '#94A3B8';
+        renderFrame(currentTimeMs);
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.key === ' ' || e.key === 'r' || e.key === 'R') {
+          if (e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            replay();
+          }
+        }
+      });
+
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('concept')) {
+        activeConcept = parseInt(urlParams.get('concept'));
+        conceptTabs.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.classList.toggle('active', parseInt(btn.dataset.concept) === activeConcept);
+        });
+      }
+      buildConceptDOM(activeConcept);
+
+      if (urlParams.has('device')) {
+        const dev = urlParams.get('device');
+        deviceControl.querySelectorAll('.segmented-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.device === dev);
+        });
+        deviceContainer.className = 'device-container mode-' + dev;
+      }
+
+      if (urlParams.has('t')) {
+        isPlaying = false;
+        updatePlayPauseUI();
+        renderFrame(parseFloat(urlParams.get('t')));
+      } else {
+        renderFrame(0);
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    })();
+  </script>
+</body>
+</html>

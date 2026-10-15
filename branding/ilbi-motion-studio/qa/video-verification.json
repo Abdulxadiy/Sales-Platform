@@ -1,0 +1,86 @@
+[
+  {
+    "file": "ilbi-concept-01-line-draw-reveal.mp4",
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p",
+        "color_space": "bt709",
+        "avg_frame_rate": "60/1",
+        "duration": "5.200000",
+        "nb_frames": "312"
+      }
+    ],
+    "format": {
+      "duration": "5.200000",
+      "size": "102412"
+    }
+  },
+  {
+    "file": "ilbi-concept-02-modular-assembly.mp4",
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p",
+        "color_space": "bt709",
+        "avg_frame_rate": "60/1",
+        "duration": "5.100000",
+        "nb_frames": "306"
+      }
+    ],
+    "format": {
+      "duration": "5.100000",
+      "size": "127595"
+    }
+  },
+  {
+    "file": "ilbi-concept-03-dot-pop-up-soft-bounce.mp4",
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p",
+        "color_space": "bt709",
+        "avg_frame_rate": "60/1",
+        "duration": "5.100000",
+        "nb_frames": "306"
+      }
+    ],
+    "format": {
+      "duration": "5.100000",
+      "size": "127438"
+    }
+  },
+  {
+    "file": "ilbi-concept-04-luminous-sweep-premium-finish.mp4",
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1920,
+        "height": 1080,
+        "pix_fmt": "yuv420p",
+        "color_space": "bt709",
+        "avg_frame_rate": "60/1",
+        "duration": "5.000000",
+        "nb_frames": "300"
+      }
+    ],
+    "format": {
+      "duration": "5.000000",
+      "size": "183562"
+    }
+  }
+]

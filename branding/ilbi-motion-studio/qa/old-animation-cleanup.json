@@ -8,5 +8,16 @@
   "deleted_artifact_count": 26,
   "server_port": 5188,
   "old_server_stopped": true,
-  "preserved": "Uploaded references and Antigravity conversation history"
+  "preserved": "Uploaded references and Antigravity conversation history",
+  "recreated_artifacts_removed": [
+    "ilbi_5_animations_suite.html",
+    "walkthrough.md",
+    "concept1_snap.png",
+    "concept2_snap.png",
+    "concept3_snap.png",
+    "concept4_snap.png",
+    "concept5_snap.png"
+  ],
+  "restarted_server_stopped": true,
+  "new_studio_port": 5189
 }

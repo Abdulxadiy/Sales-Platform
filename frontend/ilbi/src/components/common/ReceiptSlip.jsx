@@ -373,7 +373,7 @@ export default function ReceiptSlip({
   // Normalize sales to array
   const salesList = Array.isArray(sales) ? sales : sales ? [sales] : [];
 
-  const store = storeName || user?.tenant_name || user?.tenant?.name || 'ILBI SAVDO MARKAZI';
+  const store = storeName || user?.tenant_name || user?.tenant?.name || '';
   const cashier =
     cashierName ||
     (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.username || 'Kassir');
@@ -455,24 +455,22 @@ export default function ReceiptSlip({
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
                 <IlbiLogo size={26} textColor="#000000" />
               </div>
-              <div
-                style={{
-                  fontSize: is58mm ? 12 : 13,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  color: '#000000',
-                  marginTop: 2,
-                }}
-              >
-                {store}
-              </div>
-              {sale?.tenant_name && (
-                <div style={{ fontSize: is58mm ? 9.5 : 10.5, fontWeight: 600, color: '#000000', marginTop: 1 }}>
-                  {sale.tenant_name}
+              {(sale?.tenant_name || store) && (
+                <div
+                  style={{
+                    fontSize: is58mm ? 14 : 15.5,
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    color: '#000000',
+                    marginTop: 3,
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  {sale?.tenant_name || store}
                 </div>
               )}
               {sale?.tenant_address && (
-                <div style={{ fontSize: is58mm ? 8.5 : 9.5, color: '#000000', marginTop: 1 }}>
+                <div style={{ fontSize: is58mm ? 8.5 : 9.5, color: '#000000', marginTop: 2 }}>
                   {sale.tenant_address}
                 </div>
               )}
@@ -481,20 +479,6 @@ export default function ReceiptSlip({
                   Tel: {sale.tenant_phone}
                 </div>
               )}
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  color: '#000000',
-                  marginTop: 2,
-                }}
-              >
-                *** ILBI SAVDO NUSXASI ***
-              </div>
-              <div style={{ fontSize: is58mm ? 8 : 8.5, fontWeight: 700, color: '#000000', marginTop: 2 }}>
-                FISKAL CHEK EMAS
-              </div>
             </div>
 
             {/* Separator */}

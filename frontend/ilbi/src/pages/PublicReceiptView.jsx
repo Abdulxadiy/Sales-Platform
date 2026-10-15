@@ -225,7 +225,7 @@ export default function PublicReceiptView() {
             <IlbiLogo size={36} textColor="#0f172a" />
           </div>
           <h1 style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 4px', color: '#0f172a' }}>
-            {receipt.store_name || 'ILBI SAVDO MARKAZI'}
+            {receipt.store_name || ''}
           </h1>
           {(receipt.store_address || receipt.store_phone) && (
             <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6 }}>

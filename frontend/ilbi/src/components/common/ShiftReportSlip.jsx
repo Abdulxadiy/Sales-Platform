@@ -23,7 +23,7 @@ export default function ShiftReportSlip({
 
   if (!report) return null;
 
-  const store = report?.tenant_name || user?.tenant_name || user?.tenant?.name || 'ILBI SAVDO MARKAZI';
+  const store = report?.tenant_name || user?.tenant_name || user?.tenant?.name || '';
   const cashier = report?.closed_by_name || report?.user_name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Admin');
 
   const formatMoney = (val, cur = 'UZS') => {

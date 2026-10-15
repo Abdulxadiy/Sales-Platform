@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101215" />
+    <title>ilbi.uz — Motion Studio</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="src/style.css" />
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <div class="studio">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="ilbi.uz Motion Studio bosh sahifasi">ilbi<span>.</span>uz <span class="brand-divider"></span><span class="brand-caption">MOTION STUDIO</span></a>
+        <div class="header-meta"><span class="status-dot"></span> 04 konsept <span class="meta-divider">/</span> 60 fps <span class="edition">COLLECTION 01</span></div>
+      </header>
+      <main>
+        <section class="intro">
+          <div><p class="eyebrow">ILBI.UZ / BRAND IN MOTION</p><h1>Kichik harakat.<br /><span>Katta taassurot.</span></h1></div>
+          <p class="intro-note">Bir brend. To‘rt xil xarakter.<br />Konseptni tanlang va har bir lahzani ko‘ring.</p>
+        </section>
+        <section class="workspace" aria-label="Animatsiya studiyasi">
+          <div class="player-column">
+            <div class="stage-heading"><div><span class="stage-dot"></span><span id="current-label">01 / LINE-DRAW REVEAL</span></div><div class="stage-actions"><button id="clean" class="text-button" title="Faqat animatsiyani alohida oynada ochish">Toza ko‘rinish <span aria-hidden="true">↗</span></button><button id="fullscreen" class="icon-button" aria-label="To‘liq ekranda ko‘rish" title="To‘liq ekran">⛶</button></div></div>
+            <div class="stage-shell"><div id="stage" class="stage" aria-label="Animatsiya ko‘rish maydoni"></div></div>
+            <div class="transport">
+              <div class="timeline-row"><span id="time" class="timecode">00.00</span><label class="sr-only" for="timeline">Animatsiya vaqti</label><input id="timeline" type="range" min="0" max="5.2" value="0" step="0.001" /><span id="duration" class="timecode muted">05.20</span></div>
+              <div class="control-row">
+                <div class="playback-controls"><button id="play" class="play-button" aria-label="Ijroni to‘xtatish" title="Ijro / pauza (Space)"><span id="play-icon" aria-hidden="true">Ⅱ</span><span id="play-label">Pauza</span></button><button id="restart" class="icon-button" aria-label="Boshidan qayta ijro etish" title="Qayta ijro (R)">↺</button><span class="control-divider"></span><label class="sr-only" for="speed">Ijro tezligi</label><select id="speed" aria-label="Ijro tezligi"><option value=".25">0.25×</option><option value=".5">0.5×</option><option value="1" selected>1× tezlik</option><option value="1.5">1.5×</option><option value="2">2×</option></select></div>
+                <div class="format-controls" role="group" aria-label="Kadr formati"><button data-format="landscape" aria-pressed="true">16:9</button><button data-format="square" aria-pressed="false">1:1</button><button data-format="portrait" aria-pressed="false">9:16</button></div>
+              </div>
+            </div>
+          </div>
+          <aside class="inspector">
+            <div class="inspector-top"><span class="eyebrow">KONSEPT <span id="concept-number">01</span></span><span id="duration-badge" class="duration-badge">5.2 s</span></div>
+            <h2 id="concept-name">Chiziq bo‘ylab ochilish</h2><p id="concept-description" class="description"></p>
+            <div class="inspector-divider"></div><p class="eyebrow sequence-label">HARAKAT KETMA-KETLIGI</p><ol id="beats" class="beats"></ol>
+            <div class="inspector-bottom"><button id="reference" class="reference-button"><span aria-hidden="true">▧</span> Asl storyboard <span aria-hidden="true">↗</span></button><a id="download-video" class="download-button" download href="exports/ilbi-concept-01-line-draw-reveal.mp4"><span>MP4 yuklab olish</span><span aria-hidden="true">↓</span></a><span class="export-spec">1920 × 1080 · H.264 · 60 fps</span></div>
+          </aside>
+        </section>
+        <section class="collection" aria-labelledby="collection-title"><div class="section-heading"><h2 id="collection-title">To‘rt xil xarakter</h2><span>01 — 04 / KONSEPTLAR</span></div><div id="concepts" class="concept-grid" role="group" aria-label="Animatsiya konseptini tanlash"></div></section>
+        <section class="downloads" aria-label="Barcha videolar"><div><span class="eyebrow">TAYYOR VIDEOLAR</span><p>Istalgan joyda namoyish qilish uchun.</p></div><a href="exports/" id="all-exports">Barcha eksportlar <span aria-hidden="true">↗</span></a></section>
+        <p id="motion-notice" class="motion-notice" hidden>Qurilmangizda kamaytirilgan harakat rejimi yoqilgan. Yakuniy logo ko‘rsatilmoqda.</p>
+      </main>
+      <footer><span>ilbi.uz <span class="muted">/ Motion studies</span></span><span class="keyboard-help"><kbd>Space</kbd> ijro / pauza <kbd>R</kbd> qayta ijro <kbd>← →</kbd> bir kadr</span><span>SVG · 60 FPS</span></footer>
+    </div>
+    <dialog id="reference-dialog" aria-labelledby="reference-title"><div class="dialog-heading"><h2 id="reference-title">Asl storyboard</h2><button id="close-reference" class="icon-button" aria-label="Storyboard oynasini yopish">×</button></div><img id="reference-image" src="assets/references/concept-01.png" alt="Chiziq bo‘ylab ochilish konseptining besh bosqichli asl storyboardi" /></dialog>
+  </body>
+</html>

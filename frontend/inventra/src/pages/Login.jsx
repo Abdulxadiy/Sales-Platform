@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { authApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import InventraLogo from '../components/common/InventraLogo';
-import InventraIntroAnimation from '../components/common/InventraIntroAnimation';
+import IlbiIntroAnimation from '../components/common/IlbiIntroAnimation';
 import TelegramConnectionGate from '../components/auth/TelegramConnectionGate';
 
 const OTP_EXPIRY_SECONDS = 180; // 3 daqiqa
@@ -301,8 +301,7 @@ export default function Login() {
     >
       {/* Fullscreen Intro Animation */}
       {showIntro && (
-        <InventraIntroAnimation
-          isDark={isDark}
+        <IlbiIntroAnimation
           onComplete={() => setShowIntro(false)}
         />
       )}

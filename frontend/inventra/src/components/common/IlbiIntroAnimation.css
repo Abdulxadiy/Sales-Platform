@@ -1,0 +1,65 @@
+.ilbi-intro {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: #fff;
+  color: #141820;
+  overscroll-behavior: contain;
+}
+
+.ilbi-intro[open] {
+  display: grid;
+  place-items: center;
+}
+
+.ilbi-intro::backdrop {
+  background: transparent;
+}
+
+.ilbi-intro__stage {
+  width: min(84vw, 520px, 80vh);
+  width: min(84vw, 520px, 80dvh);
+  aspect-ratio: 458 / 466;
+  pointer-events: none;
+}
+
+.ilbi-intro__stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ilbi-intro__skip {
+  position: absolute;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border: 1px solid #dce4ee;
+  border-radius: 10px;
+  background: #f7f9fc;
+  color: #526078;
+  font: 500 12px/1.5 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.ilbi-intro__skip:hover {
+  border-color: #7daeff;
+  background: #eff5ff;
+  color: #0059de;
+}
+
+.ilbi-intro__skip:focus-visible {
+  outline: 2px solid #006bff;
+  outline-offset: 4px;
+}

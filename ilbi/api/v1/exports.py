@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from api.mixins import OwnerStaffOnlyAPIView
-from api.permissions import HasEmployeePermission
+from api.permissions import HasEmployeePermission, IsOwner
 from api.v1.inventory.views.stock_views import filtered_stock_queryset
 from api.v1.sales.serializers import SaleListQuerySerializer
 from api.v1.sales.views.sale_views import SaleListCreateView
@@ -54,7 +54,7 @@ def export_details(request):
 
 
 class SelectedExportView(OwnerStaffOnlyAPIView):
-    permission_classes = [HasEmployeePermission]
+    permission_classes = [IsOwner, HasEmployeePermission]
 
     def selected(self, request, queryset):
         serializer = SelectedRowsSerializer(data=request.data)
@@ -154,7 +154,7 @@ class StockExportView(SelectedExportView):
             "ilbi-stock.xlsx",
             "Ombor",
             formats=formats,
-            widths={"Mahsulot": 36, "Variant": 25, "Kategoriya": 26, "Shtrix-kod": 24},
+            widths={"Mahsulot": 64, "Variant": 32, "Kategoriya": 28, "Shtrix-kod": 24},
             report={
                 "tenant": self.tenant.name,
                 "scope": scope,
@@ -216,6 +216,7 @@ class CounterpartyExportView(SelectedExportView):
 
 
 class SalesExportView(SaleListCreateView):
+    permission_classes = [IsOwner, HasEmployeePermission]
     http_method_names = ["get", "head", "options"]
 
     @extend_schema(parameters=[SaleListQuerySerializer], responses={(200, XLSX_MIME): OpenApiTypes.BINARY})

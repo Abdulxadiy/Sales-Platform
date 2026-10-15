@@ -16,6 +16,7 @@ import Pagination from './Pagination';
 import { catalogApi } from '../../api/client';
 import { downloadFile } from '../../utils/downloadFile';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const FIELD_NAMES = {
   name: 'Mahsulot',
@@ -43,6 +44,7 @@ function formatFileSize(bytes) {
 
 export default function CatalogImportModal({ onClose, onSuccess }) {
   const toast = useToast();
+  const { isOwner } = useAuth();
   const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -113,6 +115,7 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
   };
 
   const template = async () => {
+    if (!isOwner) return;
     try {
       downloadFile(await catalogApi.getImportTemplate(), 'ilbi-import-shablon.xlsx');
     } catch (error) {
@@ -137,9 +140,11 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
               <span className="import-step-num">1</span>
               <div>
                 <strong style={{ display: 'block', color: 'var(--text-primary)', marginBottom: 2 }}>
-                  Shablonni to‘ldiring
+                  {isOwner ? 'Shablonni to‘ldiring' : 'Faylni tayyorlang'}
                 </strong>
-                <span>Tayyor namunaviy Excel faylini yuklab oling va tovarlaringizni kiriting.</span>
+                <span>{isOwner
+                  ? 'Tayyor namunaviy Excel faylini yuklab oling va tovarlaringizni kiriting.'
+                  : 'Mahsulot ma’lumotlarini Excel yoki CSV fayliga kiriting.'}</span>
               </div>
             </div>
 
@@ -302,7 +307,7 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
 
         {/* Action Row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button
+          {isOwner && <button
             type="button"
             className="btn btn-secondary"
             onClick={template}
@@ -311,7 +316,7 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
           >
             <Download size={15} />
             <span>Excel Shablonini Yuklab Olish</span>
-          </button>
+          </button>}
 
           <button
             type="button"

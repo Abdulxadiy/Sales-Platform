@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
-from api.permissions import HasEmployeePermission
+from api.permissions import HasEmployeePermission, IsOwner
 from apps.catalog.models.import_model import CatalogImportJob
 from apps.catalog.services import CategoryServiceError, ProductServiceError
 from apps.catalog.services.import_service import TEMPLATE_HEADERS, CatalogImportService
@@ -28,7 +28,7 @@ class ImportJobSerializer(serializers.ModelSerializer):
 
 
 class CatalogImportTemplateView(CatalogAPIView):
-    permission_classes = [HasEmployeePermission]
+    permission_classes = [IsOwner, HasEmployeePermission]
     required_permission = "catalog.add_product"
 
     @extend_schema(responses={(200, XLSX_MIME): OpenApiTypes.BINARY})
@@ -45,7 +45,7 @@ class CatalogImportTemplateView(CatalogAPIView):
                 "yaroqlilik_sanasi": "@",
                 **{key: MONEY_FORMAT for key in ["hamkor_narxi", "minimal_narx", "sotuv_narxi", "tannarx"]},
             },
-            widths={"mahsulot": 36, "kategoriya": 28, "variant": 25, "shtrix_kod": 25, "yaroqlilik_sanasi": 24},
+            widths={"mahsulot": 64, "kategoriya": 28, "variant": 32, "shtrix_kod": 25, "yaroqlilik_sanasi": 24},
             report={
                 "tenant": self.tenant.name,
                 "sheet_title": "Qo‘llanma",

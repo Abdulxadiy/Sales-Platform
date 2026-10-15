@@ -167,7 +167,7 @@ def test_bad_format_large_import_and_expired_preview_are_rejected(client):
     assert client.post(f"/api/v1/catalog/import/{preview.data['id']}/commit/").status_code == 400
 
 
-def test_excel_export_respects_selection_tenant_and_cost_permission(client, owner, tenant):
+def test_excel_export_respects_selection_tenant_and_owner_only_access(client, owner, tenant):
     from apps.inventory.services import StockService
 
     variant = ProductVariantFactory(tenant=tenant)
@@ -178,15 +178,15 @@ def test_excel_export_respects_selection_tenant_and_cost_permission(client, owne
     employee = EmployeeFactory(user=staff, tenant=tenant)
     employee.permissions.add(Permission.objects.get(category="inventory", codename="view_stock"))
     client.force_authenticate(staff)
-    rows = contents(client.post("/api/v1/inventory/stock/export/", {"ids": [stock.pk]}, format="json"))
-    assert "Tannarx" not in rows[0]
+    assert client.post("/api/v1/inventory/stock/export/", {"ids": [stock.pk]}, format="json").status_code == 403
+    assert client.post("/api/v1/inventory/stock/export/", {"ids": []}, format="json").status_code == 403
     batches = client.get("/api/v1/inventory/batches/")
     assert batches.status_code == 200
     assert "cost_price" not in batches.data[0]
-    assert len(rows) == 2
+    assert client.get("/api/v1/sales/export/").status_code == 403
+    client.force_authenticate(owner)
     assert len(contents(client.post("/api/v1/inventory/stock/export/", {"ids": []}, format="json"))) == 1
     assert client.post("/api/v1/inventory/stock/export/", {"ids": [99999999]}, format="json").status_code == 400
-    assert client.get("/api/v1/sales/export/").status_code == 403
 
 
 def test_sales_export_includes_all_filtered_pages_and_escapes_excel_formula(client, owner, tenant):

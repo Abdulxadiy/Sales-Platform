@@ -457,7 +457,7 @@ export default function Inventory() {
 
         {/* Row 2: Action Buttons - ALWAYS stays cleanly below the tabs on all sections */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {activeTab === 'stock' && <>
+          {activeTab === 'stock' && isOwner && <>
             <ExcelExportButton endpoint="/inventory/stock/export/" params={{ scope: 'all' }}
               filename="ilbi-butun-ombor.xlsx" disabled={loading}
               label="Butun omborni Excelga yuklash"

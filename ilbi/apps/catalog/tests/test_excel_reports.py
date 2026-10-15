@@ -9,7 +9,7 @@ from openpyxl import load_workbook
 from rest_framework.test import APIClient
 
 from apps.catalog.services.import_service import TEMPLATE_HEADERS
-from apps.core.spreadsheets import MONEY_FORMAT, QUANTITY_FORMAT, XLSX_MIME
+from apps.core.spreadsheets import INTEGER_FORMAT, MONEY_FORMAT, QUANTITY_FORMAT, XLSX_MIME, excel_response
 from apps.inventory.models import Stock
 from apps.permissions.models import Permission
 from apps.sales.models import Sale
@@ -17,10 +17,12 @@ from tests.factories import (
     CategoryFactory,
     CounterpartyFactory,
     EmployeeFactory,
+    PlatformAdminFactory,
     ProductFactory,
     ProductVariantFactory,
     SaleFactory,
     StaffFactory,
+    TenantFactory,
 )
 
 pytestmark = pytest.mark.django_db
@@ -74,7 +76,7 @@ def test_stock_report_formats_identifiers_numbers_and_print_layout(client, inven
     book = workbook(client.get("/api/v1/inventory/stock/export/", {"scope": "all"}))
     sheet = book["Ombor"]
     assert book.active == sheet
-    assert sheet.freeze_panes == "A2"
+    assert sheet.freeze_panes == "B2"
     assert sheet.auto_filter.ref == f"A1:P{len(inventory) + 1}"
     assert not sheet.sheet_view.showGridLines
     assert sheet["A1"].font.bold and sheet["A1"].font.color.rgb == "00FFFFFF"
@@ -82,7 +84,11 @@ def test_stock_report_formats_identifiers_numbers_and_print_layout(client, inven
     assert sheet["A3"].fill.fgColor.rgb == "00F0F5FA"
     assert sheet["D2"].data_type == "s" and sheet["D2"].number_format == "@"
     assert sheet["E2"].value.startswith("00") and sheet["E2"].number_format == "@"
-    assert sheet["G2"].data_type == "n" and sheet["G2"].number_format == QUANTITY_FORMAT
+    assert sheet["G2"].data_type == "n" and sheet["G2"].number_format == INTEGER_FORMAT
+    assert sheet["G1"].alignment.horizontal == sheet["G2"].alignment.horizontal == "center"
+    assert sheet["I1"].alignment.horizontal == sheet["I2"].alignment.horizontal == "right"
+    assert sheet["A1"].alignment.horizontal == sheet["A2"].alignment.horizontal == "left"
+    assert sheet["G2"].border.left.style == sheet["G2"].border.right.style == "thin"
     assert sheet["I2"].number_format == MONEY_FORMAT
     assert sheet.page_setup.orientation == "landscape"
     assert sheet.page_setup.fitToWidth == 1 and sheet.page_setup.fitToHeight == 0
@@ -100,23 +106,82 @@ def test_stock_report_formats_identifiers_numbers_and_print_layout(client, inven
 
 
 @pytest.mark.parametrize("allow_cost", [False, True])
-def test_full_export_checks_cost_permission_on_data_and_summary(client, inventory, tenant, allow_cost):
+def test_staff_cannot_export_even_with_stock_and_cost_permissions(client, inventory, tenant, allow_cost):
     staff = StaffFactory()
     employee = EmployeeFactory(user=staff, tenant=tenant)
     employee.permissions.add(Permission.objects.get(category="inventory", codename="view_stock"))
     if allow_cost:
         employee.permissions.add(Permission.objects.get(category="catalog", codename="view_cost_price"))
     client.force_authenticate(staff)
-    book = workbook(client.get("/api/v1/inventory/stock/export/", {"scope": "all"}))
-    headers = next(book.active.values)
-    assert ("Tannarx" in headers) == allow_cost
-    assert ("Tannarx qiymati" in headers) == allow_cost
-    summary = dict(book["Hisobot"].values)
-    assert ("Tannarx qiymati · UZS" in summary) == allow_cost
-    if not allow_cost:
-        assert "Tannarx qiymati" not in summary
+    assert client.get("/api/v1/inventory/stock/export/", {"scope": "all"}).status_code == 403
     employee.permissions.clear()
     assert client.get("/api/v1/inventory/stock/export/", {"scope": "all"}).status_code == 403
+
+
+@pytest.mark.parametrize("role", ["staff", "platform_admin", "other_owner"])
+def test_all_excel_downloads_reject_nonowners_including_direct_requests(client, tenant, role):
+    if role == "staff":
+        user = StaffFactory()
+        employee = EmployeeFactory(user=user, tenant=tenant)
+        employee.permissions.set(Permission.objects.all())
+    elif role == "platform_admin":
+        user = PlatformAdminFactory()
+    else:
+        other = TenantFactory()
+        user = other.owner
+        EmployeeFactory(user=user, tenant=other)
+    client.force_authenticate(user)
+    for endpoint in [
+        "/api/v1/inventory/stock/export/",
+        "/api/v1/inventory/stock/export/?scope=all",
+        "/api/v1/sales/export/",
+        "/api/v1/sales/counterparties/export/",
+        "/api/v1/catalog/import/template/",
+    ]:
+        assert client.get(endpoint, HTTP_X_TENANT_ID=str(tenant.pk)).status_code == 403, endpoint
+        assert client.head(endpoint, HTTP_X_TENANT_ID=str(tenant.pk)).status_code == 403, endpoint
+        assert client.options(endpoint, HTTP_X_TENANT_ID=str(tenant.pk)).status_code == 403, endpoint
+    for endpoint in ["/api/v1/inventory/stock/export/", "/api/v1/sales/counterparties/export/"]:
+        response = client.post(endpoint, {"ids": []}, format="json", HTTP_X_TENANT_ID=str(tenant.pk))
+        assert response.status_code == 403, endpoint
+
+
+def test_long_product_names_wrap_and_expand_their_own_rows(client, inventory):
+    product = inventory[0].product_variant.product
+    product.name = "11D Full Glue Himoya oynasi Redmi 12 Matoviy " * 4 + "(Model #03478)"
+    product.save(update_fields=["name"])
+    book = workbook(client.get("/api/v1/inventory/stock/export/", {"scope": "all"}))
+    sheet = book.active
+    row = next(row for row in sheet.iter_rows(min_row=2) if row[0].value == product.name)
+    assert row[0].value.endswith("(Model #03478)")
+    assert row[0].alignment.wrap_text
+    assert row[0].font.bold
+    assert sheet.column_dimensions["A"].width >= 60
+    assert sheet.row_dimensions[row[0].row].height >= 78
+    assert sheet.row_dimensions[row[0].row].height > sheet.row_dimensions[row[0].row + 1].height
+
+
+def test_quantity_cells_show_zero_integers_and_fractions_without_dangling_separator():
+    quantities = [Decimal("0.000"), Decimal("181.000"), Decimal("1.125"), Decimal("2.500")]
+    book = workbook(
+        excel_response(
+            ["Mahsulot", "Qoldiq"],
+            ([f"Item {index}", quantity] for index, quantity in enumerate(quantities)),
+            "test.xlsx",
+            formats={"Qoldiq": QUANTITY_FORMAT},
+        )
+    )
+    cells = [row[1] for row in book.active.iter_rows(min_row=2)]
+    assert [cell.value for cell in cells] == [0, 181, 1.125, 2.5]
+    assert all(cell.data_type == "n" for cell in cells)
+    assert [cell.number_format for cell in cells] == [
+        INTEGER_FORMAT,
+        INTEGER_FORMAT,
+        QUANTITY_FORMAT,
+        "#,##0.0;[Red](#,##0.0);0",
+    ]
+    assert "—" not in MONEY_FORMAT
+    assert all(cell.alignment.horizontal == "center" for cell in cells)
 
 
 def test_debt_report_keeps_negative_balances_and_currency_totals(client, tenant):

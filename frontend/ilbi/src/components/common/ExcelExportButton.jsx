@@ -3,6 +3,7 @@ import { Download } from 'lucide-react';
 import { request } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { downloadFile } from '../../utils/downloadFile';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ExcelExportButton({
   endpoint, ids, params, filename, disabled = false,
@@ -10,8 +11,9 @@ export default function ExcelExportButton({
 }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const { isOwner } = useAuth();
   const download = async () => {
-    if (busy) return;
+    if (!isOwner || busy) return;
     setBusy(true);
     try {
       const query = new URLSearchParams();
@@ -25,6 +27,7 @@ export default function ExcelExportButton({
     } catch (error) { toast.error(error.message || 'Excel faylni yuklab bo‘lmadi.'); }
     finally { setBusy(false); }
   };
+  if (!isOwner) return null;
   return <button type="button" className="btn btn-secondary" disabled={disabled || busy} onClick={download}
     aria-busy={busy} title={title}>
     <Download size={16} /> {busy ? 'Yuklanmoqda…' : label}

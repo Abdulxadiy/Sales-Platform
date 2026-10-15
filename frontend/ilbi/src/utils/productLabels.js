@@ -42,12 +42,21 @@ export function barcodeSvg(code) {
       height: 40,
     });
 
-    const leftMargin = 10;
-    let curX = leftMargin;
+    const quietZone = 11;
+    let curX = quietZone;
     const rects = [];
     const texts = [];
 
-    for (const enc of target.encodings) {
+    // First digit is placed in the left quiet zone before the start guard
+    if (target.encodings[0]?.text) {
+      texts.push(
+        `<text x="5" y="50.5" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', Consolas, monospace" font-size="11" font-weight="700">${escapeHtml(target.encodings[0].text)}</text>`
+      );
+    }
+
+    // Process start guard, left digits, center guard, right digits, end guard
+    for (let eIdx = 1; eIdx < target.encodings.length; eIdx++) {
+      const enc = target.encodings[eIdx];
       const isGuard = enc.options.height > 40;
       // Guard bars (start 101, center 01010, end 101) extend down past normal data bars
       const barHeight = isGuard ? 48 : 38;
@@ -57,8 +66,7 @@ export function barcodeSvg(code) {
         }
       }
       if (enc.text) {
-        const isFirstDigit = enc.text.length === 1;
-        const posX = isFirstDigit ? curX + enc.data.length / 2 - 2.5 : curX + enc.data.length / 2;
+        const posX = curX + enc.data.length / 2;
         texts.push(
           `<text x="${posX.toFixed(1)}" y="50.5" text-anchor="middle" font-family="'JetBrains Mono', 'SF Mono', Consolas, monospace" font-size="11" font-weight="700">${escapeHtml(enc.text)}</text>`
         );
@@ -66,8 +74,7 @@ export function barcodeSvg(code) {
       curX += enc.data.length;
     }
 
-    const rightMargin = 10;
-    const totalWidth = curX + rightMargin;
+    const totalWidth = curX + quietZone; // 11 + 95 + 11 = 117 modules (center guard at 58.5 / 117 = 50.0% center)
 
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} 54" preserveAspectRatio="none" shape-rendering="crispEdges" role="img" aria-label="${escapeHtml(code)}"><rect width="${totalWidth}" height="54" fill="white"/><g fill="black">${rects.join('')}</g><g fill="black">${texts.join('')}</g></svg>`;
   }

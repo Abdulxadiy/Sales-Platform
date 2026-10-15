@@ -9,24 +9,23 @@ export function barcodeSvg(code) {
   const bits = target.encodings.map(encoding => encoding.data).join('');
   const width = bits.length + 20; // Ten modules of quiet space on either side.
   const bars = [...bits].map((bit, index) => bit === '1' ? `<rect x="${index + 10}" y="0" width="1" height="50"/>` : '').join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 50" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(code)}"><rect width="${width}" height="50" fill="white"/><g fill="black">${bars}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 50" preserveAspectRatio="none" shape-rendering="crispEdges" role="img" aria-label="${escapeHtml(code)}"><rect width="${width}" height="50" fill="white"/><g fill="black">${bars}</g></svg>`;
 }
 
-export function labelDocument(variant, { format, width, height, copies, showName, showPrice }) {
+export function labelDocument(variant, { format, width, height, copies, showName }, { preview = false } = {}) {
   const w = Number(width), h = Number(height), count = Number(copies);
   if (!Number.isFinite(w) || w < 30 || w > 190 || !Number.isFinite(h) || h < 20 || h > 100 || !Number.isInteger(count) || count < 1 || count > 200) {
     throw new Error('O‘lcham: eni 30–190 mm, bo‘yi 20–100 mm. Nusxa: 1–200.');
   }
-  if (h < (showName && showPrice ? 28 : showName || showPrice ? 23 : 20)) {
-    throw new Error('Yozuvlar sig‘ishi uchun kattaroq bo‘y tanlang yoki nom va narxni o‘chiring.');
+  if (showName && h < 23) {
+    throw new Error('Mahsulot nomi sig‘ishi uchun bo‘yni kamida 23 mm qiling yoki nomni o‘chiring.');
   }
   const svg = barcodeSvg(variant.barcode);
   const modules = Number(svg.match(/viewBox="0 0 (\d+) 50"/)[1]);
   const minimumWidth = Math.ceil((modules * 0.2 + 3) * 10) / 10;
   if (w < minimumWidth) throw new Error(`Shtrix-kod siqilib qolmasligi uchun yorliq enini kamida ${minimumWidth} mm qiling.`);
-  const name = `${variant.product_name || variant.name}${variant.product_name && variant.name !== 'Standart' ? ` / ${variant.name}` : ''}`;
-  const price = `${Number(variant.price_recommended || 0).toLocaleString('uz-UZ')} ${variant.currency || 'UZS'}`;
-  const label = `<article class="label">${showName ? `<div class="name">${escapeHtml(name)}</div>` : ''}${svg}<div class="code">${escapeHtml(variant.barcode)}</div>${showPrice ? `<div class="price">${escapeHtml(price)}</div>` : ''}</article>`;
+  const name = [variant.product_name, variant.name && variant.name !== 'Standart' && variant.name !== variant.product_name ? variant.name : ''].filter(Boolean).join(' / ') || variant.name || '';
+  const label = `<article class="label">${showName ? `<div class="name">${escapeHtml(name)}</div>` : ''}${svg}<div class="code">${escapeHtml(variant.barcode)}</div></article>`;
   const perPage = format === 'a4' ? Math.floor(190 / w) * Math.floor(277 / h) : 1;
   const pages = [];
   for (let start = 0; start < count; start += perPage) {
@@ -34,14 +33,21 @@ export function labelDocument(variant, { format, width, height, copies, showName
   }
   return `<!doctype html><html lang="uz"><head><meta charset="UTF-8"><title>Mahsulot yorliqlari</title><style>
     @page { size: ${format === 'a4' ? 'A4' : `${w}mm ${h}mm`}; margin: ${format === 'a4' ? '10mm' : '0'}; }
-    * { box-sizing: border-box; } body { margin: 0; background: white; color: black; font-family: Arial,sans-serif; }
+    :root { --unit: 1mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: white; color: black; font-family: Arial,sans-serif; }
     .sheet { display: grid; grid-template-columns: repeat(${format === 'a4' ? Math.floor(190 / w) : 1}, ${w}mm); align-content: start; break-after: page; }
     .sheet:last-child { break-after: auto; }
-    .label { width: ${w}mm; height: ${h}mm; padding: 1.5mm; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: .7mm; overflow: hidden; break-inside: avoid; }
-    svg { width: 100%; min-height: 7mm; height: ${Math.max(7, Math.min(15, h * .4))}mm; flex-shrink: 0; }
-    .name { font-size: 9pt; line-height: 1.1; width: 100%; text-align: center; max-height: 7mm; overflow: hidden; }
-    .code { font: 7pt monospace; } .price { font-weight: bold; font-size: 10pt; }
-  </style></head><body>${pages.join('')}</body></html>`;
+    .label { width: calc(${w} * var(--unit)); height: calc(${h} * var(--unit)); padding: calc(1.5 * var(--unit)); display: flex; flex-direction: column; align-items: center; gap: calc(.6 * var(--unit)); overflow: hidden; break-inside: avoid; }
+    svg { display: block; width: 100%; flex: 1 1 0; min-height: 0; }
+    .name { flex-shrink: 0; font-size: calc(3.175 * var(--unit)); line-height: 1.1; width: 100%; text-align: center; max-height: calc(7 * var(--unit)); overflow: hidden; overflow-wrap: anywhere; }
+    .code { flex-shrink: 0; font: calc(2.82 * var(--unit))/1.15 monospace; text-align: center; white-space: nowrap; }
+    @media screen {
+      body.preview { height: 100vh; --unit: min(calc(100vw / ${w}), calc(100vh / ${h})); }
+      .preview .sheet { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    }
+  </style></head><body${preview ? ' class="preview"' : ''}>${pages.join('')}</body></html>`;
+
 }
 
 export function printLabelDocument(html) {

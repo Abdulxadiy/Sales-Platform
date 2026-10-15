@@ -3,19 +3,19 @@ import Modal from './Modal';
 import { catalogApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { labelDocument, printLabelDocument } from '../../utils/productLabels';
-import { Printer, Barcode, Sparkles, CheckSquare, Square, Info } from 'lucide-react';
+import { Printer, Sparkles, Info } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
 export default function ProductLabelsModal({ variant: initialVariant, canGenerate, onClose, onChanged }) {
   const toast = useToast();
   const [variant, setVariant] = useState(initialVariant);
   const [busy, setBusy] = useState(false);
-  const [options, setOptions] = useState({ format: 'a4', width: 50, height: 30, copies: 1, showName: true, showPrice: true });
+  const [options, setOptions] = useState({ format: 'a4', width: 50, height: 30, copies: 1, showName: true });
   const update = (field, value) => setOptions(prev => ({ ...prev, [field]: value }));
 
   const preview = useMemo(() => {
     if (!variant.barcode) return { html: '', error: 'Bu mahsulotga hali shtrix-kod berilmagan.' };
-    try { return { html: labelDocument(variant, { ...options, copies: 1 }), error: '' }; }
+    try { return { html: labelDocument(variant, { ...options, copies: 1 }, { preview: true }), error: '' }; }
     catch (error) { return { html: '', error: error.message }; }
   }, [variant, options]);
 
@@ -43,7 +43,7 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Shtrix-kod & Narx Yorlig‘i Chop Etish" maxWidth={680}>
+    <Modal isOpen onClose={onClose} title="Shtrix-kod yorlig‘ini chop etish" maxWidth={680}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Product Info Banner */}
         <div
@@ -64,30 +64,11 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
               {variant.product_name || variant.name}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-              Variant: <strong>{variant.name}</strong> · Narxi: <strong>{Number(variant.price_recommended || 0).toLocaleString()} {variant.currency || 'UZS'}</strong>
+              Variant: <strong>{variant.name}</strong>
             </div>
           </div>
 
-          {variant.barcode ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-card)',
-                fontFamily: 'monospace',
-                fontSize: 12,
-                fontWeight: 700,
-                color: 'var(--primary)',
-              }}
-            >
-              <Barcode size={16} />
-              <span>{variant.barcode}</span>
-            </div>
-          ) : (
+          {!variant.barcode && (
             canGenerate ? (
               <button className="btn btn-primary" onClick={generate} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                 <Sparkles size={14} />
@@ -165,7 +146,7 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
               className="input-field"
               type="number"
               min="1"
-              max="500"
+              max="200"
               value={options.copies}
               onChange={e => update('copies', e.target.value)}
               style={{ padding: '8px 10px', fontSize: 13 }}
@@ -196,26 +177,6 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
             <span>Mahsulot nomini chiqarish</span>
           </label>
 
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              userSelect: 'none',
-              color: options.showPrice ? 'var(--text-primary)' : 'var(--text-muted)',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={options.showPrice}
-              onChange={e => update('showPrice', e.target.checked)}
-              style={{ accentColor: 'var(--primary)', width: 16, height: 16, cursor: 'pointer' }}
-            />
-            <span>Sotuv narxini chiqarish</span>
-          </label>
         </div>
 
         {/* Preview Frame */}
@@ -252,7 +213,7 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
                 title="Yorliq namunasi"
                 sandbox=""
                 srcDoc={preview.html}
-                style={{ width: '100%', height: 160, border: 'none', display: 'block' }}
+                style={{ width: '100%', aspectRatio: `${options.width || 50} / ${options.height || 30}`, height: 'auto', border: 'none', display: 'block' }}
               />
             </div>
           )}

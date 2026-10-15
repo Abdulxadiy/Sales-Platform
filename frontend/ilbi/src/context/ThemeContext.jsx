@@ -5,7 +5,7 @@ const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    return localStore.getItem('ilbi_theme') || 'light';
+    return localStore.getItem('ilbi_theme') === 'dark' ? 'dark' : 'light';
   });
 
   useEffect(() => {

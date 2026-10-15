@@ -198,7 +198,7 @@ export default function MyTenants() {
               alignItems: 'center',
               justifyContent: 'center',
               color: 'var(--primary)',
-              boxShadow: '0 2px 10px rgba(245, 158, 11, 0.2)',
+              boxShadow: '0 2px 10px rgba(var(--primary-rgb), 0.2)',
             }}
           >
             <Store size={22} />
@@ -417,11 +417,11 @@ export default function MyTenants() {
                           gap: 6,
                           padding: '8px 16px',
                           borderRadius: 'var(--radius-sm, 10px)',
-                          background: 'rgba(16, 185, 129, 0.12)',
+                          background: 'rgba(var(--success-rgb), 0.12)',
                           color: 'var(--accent-emerald)',
                           fontSize: 13,
                           fontWeight: 700,
-                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                          border: '1px solid rgba(var(--success-rgb), 0.25)',
                         }}
                       >
                         <Check size={16} strokeWidth={2.5} />
@@ -700,10 +700,10 @@ export default function MyTenants() {
                           padding: '3px 8px',
                           borderRadius: 6,
                           background: isApproved
-                            ? 'rgba(16, 185, 129, 0.15)'
+                            ? 'rgba(var(--success-rgb), 0.15)'
                             : isRejected
-                            ? 'rgba(244, 63, 94, 0.15)'
-                            : 'rgba(245, 158, 11, 0.15)',
+                            ? 'rgba(var(--danger-rgb), 0.15)'
+                            : 'rgba(var(--primary-rgb), 0.15)',
                           color: isApproved
                             ? 'var(--accent-emerald)'
                             : isRejected
@@ -744,10 +744,10 @@ export default function MyTenants() {
                           fontSize: 12,
                           color: 'var(--accent-rose)',
                           marginTop: 6,
-                          background: 'rgba(244, 63, 94, 0.08)',
+                          background: 'rgba(var(--danger-rgb), 0.08)',
                           padding: '6px 10px',
                           borderRadius: 6,
-                          border: '1px solid rgba(244, 63, 94, 0.2)',
+                          border: '1px solid rgba(var(--danger-rgb), 0.2)',
                         }}
                       >
                         Sabab: {profile.review_reason}

@@ -365,7 +365,7 @@ export default function Shifts() {
                     fontSize: 11,
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-xs)',
-                    background: isShiftOpen ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                    background: isShiftOpen ? 'rgba(34, 197, 94, 0.15)' : 'rgba(var(--danger-rgb), 0.15)',
                     color: isShiftOpen ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                     fontWeight: 800,
                   }}
@@ -422,8 +422,8 @@ export default function Shifts() {
               style={{
                 padding: '9px 15px',
                 borderRadius: 'var(--radius-sm)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                background: 'rgba(var(--danger-rgb), 0.1)',
                 color: 'var(--accent-rose)',
                 fontSize: 13,
                 fontWeight: 700,
@@ -645,7 +645,7 @@ export default function Shifts() {
                             borderRadius: 'var(--radius-xs)',
                             fontSize: 12,
                             fontWeight: 700,
-                            background: isExact ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            background: isExact ? 'rgba(34, 197, 94, 0.12)' : 'rgba(var(--danger-rgb), 0.12)',
                             color: isExact ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                           }}
                         >
@@ -707,7 +707,7 @@ export default function Shifts() {
                 expenses.map((ex) => (
                   <tr key={ex.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <td style={{ padding: '14px 20px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-xs)', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--accent-rose)', fontSize: 12, fontWeight: 700 }}>
+                      <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-xs)', background: 'rgba(var(--danger-rgb), 0.1)', color: 'var(--accent-rose)', fontSize: 12, fontWeight: 700 }}>
                         {ex.category}
                       </span>
                     </td>
@@ -1050,7 +1050,7 @@ export default function Shifts() {
             <button
               type="submit"
               disabled={submittingExpense}
-              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-rose)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-rose)', color: 'var(--on-danger)', fontWeight: 700, cursor: 'pointer' }}
             >
               {submittingExpense ? 'Saqlanmoqda...' : 'Chiqimni Saqlash'}
             </button>
@@ -1232,7 +1232,7 @@ export default function Shifts() {
             <button
               type="submit"
               disabled={submittingIncome}
-              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-emerald)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-emerald)', color: 'var(--on-success)', fontWeight: 700, cursor: 'pointer' }}
             >
               {submittingIncome ? 'Saqlanmoqda...' : 'Kirimni Saqlash'}
             </button>

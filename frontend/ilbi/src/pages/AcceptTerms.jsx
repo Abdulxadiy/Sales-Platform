@@ -136,7 +136,7 @@ export default function AcceptTerms() {
           height: 500,
           borderRadius: '50%',
           background: isDark
-            ? 'radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(12, 10, 9, 0) 70%)'
+            ? 'radial-gradient(circle, rgba(var(--primary-rgb), 0.15) 0%, rgba(12, 10, 9, 0) 70%)'
             : 'radial-gradient(circle, rgba(99, 102, 241, 0.10) 0%, rgba(240, 239, 235, 0) 70%)',
           top: '15%',
           left: '50%',
@@ -278,8 +278,8 @@ export default function AcceptTerms() {
                   width: 32,
                   height: 32,
                   borderRadius: 10,
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#10b981',
+                  background: 'rgba(var(--success-rgb), 0.15)',
+                  color: 'var(--accent-emerald)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -340,8 +340,8 @@ export default function AcceptTerms() {
                   width: 32,
                   height: 32,
                   borderRadius: 10,
-                  background: 'rgba(245, 158, 11, 0.15)',
-                  color: '#f59e0b',
+                  background: 'rgba(var(--primary-rgb), 0.15)',
+                  color: 'var(--primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -392,8 +392,8 @@ export default function AcceptTerms() {
           style={{
             padding: '14px 16px',
             borderRadius: 16,
-            background: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(99, 102, 241, 0.06)',
-            border: isDark ? '1px solid rgba(245, 158, 11, 0.2)' : '1px solid rgba(99, 102, 241, 0.15)',
+            background: isDark ? 'rgba(var(--primary-rgb), 0.08)' : 'var(--primary-light)',
+            border: isDark ? '1px solid rgba(var(--primary-rgb), 0.2)' : '1px solid var(--border-card)',
             marginBottom: 20,
           }}
         >
@@ -480,7 +480,7 @@ export default function AcceptTerms() {
               borderRadius: 14,
               border: 'none',
               background: agreed ? 'var(--primary)' : 'var(--bg-chip)',
-              color: agreed ? '#ffffff' : 'var(--text-muted)',
+              color: agreed ? 'var(--text-on-primary)' : 'var(--text-muted)',
               fontSize: 14,
               fontWeight: 700,
               cursor: agreed && !submitting ? 'pointer' : 'not-allowed',
@@ -488,7 +488,7 @@ export default function AcceptTerms() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              boxShadow: agreed ? '0 4px 14px rgba(245, 158, 11, 0.35)' : 'none',
+              boxShadow: agreed ? 'var(--shadow-sm)' : 'none',
               transition: 'all 0.2s',
               opacity: agreed ? 1 : 0.6,
             }}

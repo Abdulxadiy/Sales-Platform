@@ -103,7 +103,7 @@ export default function FloatingNotificationToast({
         border: '1px solid var(--border-hover)',
         borderRadius: 18,
         boxShadow:
-          '0 20px 45px -10px rgba(0, 0, 0, 0.45), 0 0 20px rgba(245, 158, 11, 0.15)',
+          '0 20px 45px -10px rgba(0, 0, 0, 0.45), 0 0 20px rgba(var(--primary-rgb), 0.15)',
         cursor: 'pointer',
         overflow: 'hidden',
         position: 'relative',
@@ -149,7 +149,7 @@ export default function FloatingNotificationToast({
                     letterSpacing: '0.06em',
                     padding: '1px 6px',
                     borderRadius: 999,
-                    background: 'rgba(16, 185, 129, 0.15)',
+                    background: 'rgba(var(--success-rgb), 0.15)',
                     color: 'var(--accent-emerald)',
                     display: 'flex',
                     alignItems: 'center',

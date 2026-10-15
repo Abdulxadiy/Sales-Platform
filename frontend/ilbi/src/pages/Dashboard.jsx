@@ -310,7 +310,7 @@ export default function Dashboard() {
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
                 To‘xtatilgan do‘konlar
               </span>
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(var(--danger-rgb), 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <PowerOff size={18} color="var(--accent-rose)" />
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function Dashboard() {
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
                 Kutilayotgan sotuvchi profillari
               </span>
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(6, 182, 212, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(var(--info-rgb), 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShieldCheck size={18} color="var(--accent-cyan)" />
               </div>
             </div>
@@ -346,7 +346,7 @@ export default function Dashboard() {
               <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
                 Audit yozuvlari
               </span>
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(var(--primary-rgb), 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <ShieldCheck size={18} color="var(--accent-amber)" />
               </div>
             </div>
@@ -467,7 +467,7 @@ export default function Dashboard() {
                             borderRadius: 'var(--radius-full)',
                             fontSize: 11,
                             fontWeight: 700,
-                            background: t.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            background: t.is_active ? 'rgba(var(--success-rgb), 0.15)' : 'rgba(var(--danger-rgb), 0.15)',
                             color: t.is_active ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                           }}
                         >
@@ -535,7 +535,7 @@ export default function Dashboard() {
           {/* Panel A: Security Unban Tool */}
           <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: 'rgba(var(--danger-rgb), 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Unlock size={18} color="var(--accent-rose)" />
               </div>
               <div>
@@ -771,14 +771,14 @@ export default function Dashboard() {
           }}
         >
           {/* Top Card 1: Jami Nasiyalar Qarzi (Do'konga qaytishi kerak bo'lgan pul) */}
-          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #f59e0b' }}>
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid var(--primary)' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
                     Jami Nasiyalar Qarzi
                   </span>
-                  <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>
+                  <div style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>
                     {overview.debtors_count ? `${overview.debtors_count} ta qarzdor mijoz` : 'Undirilmagan nasiyalar'}
                   </div>
                 </div>
@@ -787,16 +787,16 @@ export default function Dashboard() {
                     width: 36,
                     height: 36,
                     borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(245, 158, 11, 0.14)',
+                    background: 'rgba(var(--primary-rgb), 0.14)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <BookOpen size={18} color="#f59e0b" />
+                  <BookOpen size={18} color="var(--primary)" />
                 </div>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: '#f59e0b' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--primary)' }}>
                 {loading && !data ? (
                   <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
                 ) : (
@@ -805,7 +805,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-              <div style={{ fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
                 + {formatUSD(overview.total_debt_usd)}
               </div>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -815,7 +815,7 @@ export default function Dashboard() {
           </div>
 
           {/* Top Card 2: Ombor Qoldig'i (Tannarx bo'yicha jami tovar kapitali) */}
-          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #10b981' }}>
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid var(--accent-emerald)' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
@@ -832,13 +832,13 @@ export default function Dashboard() {
                     width: 36,
                     height: 36,
                     borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(16, 185, 129, 0.14)',
+                    background: 'rgba(var(--success-rgb), 0.14)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Package size={18} color="#10b981" />
+                  <Package size={18} color="var(--accent-emerald)" />
                 </div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -853,14 +853,14 @@ export default function Dashboard() {
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 Tovarlar tannarx qiymati
               </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-emerald)', background: 'rgba(var(--success-rgb), 0.12)', padding: '2px 8px', borderRadius: 6 }}>
                 Aktiv
               </span>
             </div>
           </div>
 
           {/* Top Card 3: Kutilayotgan Savdo Tushumi (Sotuv bahosida) */}
-          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid #6366f1' }}>
+          <div className="glass-card" style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderLeft: '3px solid var(--accent-purple)' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
@@ -882,7 +882,7 @@ export default function Dashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Store size={18} color="#6366f1" />
+                  <Store size={18} color="var(--accent-purple)" />
                 </div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -897,7 +897,7 @@ export default function Dashboard() {
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 Yalpi savdo potensiali
               </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 8px', borderRadius: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-purple)', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 8px', borderRadius: 6 }}>
                 Potensial
               </span>
             </div>
@@ -938,7 +938,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-              <div style={{ fontSize: 13, color: '#1d4ed8', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--chart-profit)', fontWeight: 600 }}>
                 + {formatUSD(overview.all_time_profit_usd)}
               </div>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -970,7 +970,7 @@ export default function Dashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <TrendingUp size={18} color="#15803d" />
+                  <TrendingUp size={18} color="var(--chart-revenue)" />
                 </div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -1089,7 +1089,7 @@ export default function Dashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <TrendingUp size={16} color="#15803d" />
+                  <TrendingUp size={16} color="var(--chart-revenue)" />
                 </div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -1101,7 +1101,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-              <div style={{ fontSize: 13, color: '#15803d', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--chart-revenue)', fontWeight: 600 }}>
                 + {formatUSD(kpi.total_revenue_usd)}
               </div>
               <InlineCardSparkline
@@ -1110,7 +1110,7 @@ export default function Dashboard() {
                     ? data.sales_chart.map((c) => Number(c.revenue_uzs || 1) / 1000 + 10)
                     : [12, 18, 15, 24, 21, 29, 35]
                 }
-                color="#15803d"
+                color="var(--chart-revenue)"
               />
             </div>
           </div>
@@ -1123,7 +1123,7 @@ export default function Dashboard() {
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>
                     Berilgan Nasiya
                   </span>
-                  <div style={{ fontSize: 10, color: '#b45309', fontWeight: 600 }}>
+                  <div style={{ fontSize: 10, color: 'var(--chart-debt)', fontWeight: 600 }}>
                     {kpi.debt_sales_count ? `${kpi.debt_sales_count} ta nasiya cheki` : 'Ushbu davrda'}
                   </div>
                 </div>
@@ -1138,7 +1138,7 @@ export default function Dashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Wallet size={16} color="#b45309" />
+                  <Wallet size={16} color="var(--chart-debt)" />
                 </div>
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
@@ -1150,7 +1150,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-              <div style={{ fontSize: 13, color: '#b45309', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--chart-debt)', fontWeight: 600 }}>
                 + {formatUSD(kpi.debt_sales_usd)}
               </div>
               <InlineCardSparkline
@@ -1159,7 +1159,7 @@ export default function Dashboard() {
                     ? data.sales_chart.map((c) => Number(c.debt_sales_uzs || 1) / 1000 + 8)
                     : [5, 10, 8, 14, 12, 19, 22]
                 }
-                color="#b45309"
+                color="var(--chart-debt)"
               />
             </div>
           </div>
@@ -1195,7 +1195,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-              <div style={{ fontSize: 13, color: '#1d4ed8', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--chart-profit)', fontWeight: 600 }}>
                 + {formatUSD(kpi.net_profit_usd)}
               </div>
               <InlineCardSparkline
@@ -1244,7 +1244,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 10 }}>
-              <div style={{ fontSize: 13, color: '#b91c1c', fontWeight: 600 }}>
+              <div style={{ fontSize: 13, color: 'var(--chart-cost)', fontWeight: 600 }}>
                 + {formatUSD(costUSD)}
               </div>
               <InlineCardSparkline
@@ -1439,10 +1439,10 @@ export default function Dashboard() {
                       size={20}
                       color={
                         idx === 0
-                          ? '#fbbf24'
+                          ? 'var(--accent-amber)'
                           : idx === 1
                           ? '#94a3b8'
-                          : '#b45309'
+                          : 'var(--chart-debt)'
                       }
                     />
                     <div>

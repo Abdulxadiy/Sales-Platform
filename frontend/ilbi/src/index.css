@@ -1,63 +1,87 @@
 /* ==========================================================================
-   ILBI DESIGN SYSTEM — Warm Obsidian & Amber Gold Cyber-Minimal Theme
+   ILBI DESIGN SYSTEM — Warm Bone / Inverse Graphite
    Sampled & Enhanced from Files/sidebar-tutorial architecture
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    Theme Variables
    -------------------------------------------------------------------------- */
+:root {
+  --bg-main: var(--bg-app);
+  --bg-surface-elevated: var(--bg-modal);
+  --border: var(--border-card);
+  --border-medium: var(--border-hover);
+  --accent: var(--primary);
+  --accent-bg: var(--primary-light);
+  --accent-border: var(--border-hover);
+  --brand-primary: var(--primary);
+  --accent-sky: var(--accent-cyan);
+  --accent-blue: var(--chart-profit);
+  --text-h: var(--text-primary);
+  --social-bg: var(--bg-chip);
+  --shadow: var(--shadow-md);
+  --shadow-sidebar: var(--shadow-lg);
+  --shadow-glow-emerald: 0 4px 16px rgba(var(--success-rgb), 0.18);
+}
+
 :root,
 [data-theme="dark"] {
-  /* Dark Mode: Warm Obsidian (#0C0A09) & Amber Gold (#F59E0B) */
-  --bg-app: #0C0A09;
-  --bg-sidebar: #141210;
-  --bg-surface: #1A1715;
-  --bg-card: rgba(26, 23, 21, 0.82);
-  --bg-card-hover: rgba(36, 31, 28, 0.94);
-  --bg-input: rgba(18, 16, 14, 0.88);
-  --bg-chip: rgba(245, 158, 11, 0.1);
-  --bg-chip-hover: rgba(245, 158, 11, 0.18);
-  --bg-modal: #181513;
-
-  --border-subtle: rgba(245, 158, 11, 0.14);
-  --border-card: rgba(245, 158, 11, 0.18);
-  --border-modal: rgba(245, 158, 11, 0.26);
-  --border-hover: rgba(245, 158, 11, 0.42);
-  --border-focus: #F59E0B;
-  --dialog-backdrop: rgba(12, 10, 9, 0.85);
-
-  /* Primary Accent: Amber Gold & Warm Amber Glow */
-  --primary: #F59E0B;
-  --primary-hover: #D97706;
-  --primary-light: rgba(245, 158, 11, 0.15);
-  --primary-glow: 0 0 25px rgba(245, 158, 11, 0.38);
-  --primary-foreground: #0C0A09;
-  --text-on-primary: #0C0A09;
-
-  /* Secondary Accents */
+  color-scheme: dark;
+  /* Inverse of light: graphite surfaces, bone-white controls, blue ILBI identity. */
+  --bg-app: #0B0909;
+  --bg-sidebar: #141212;
+  --bg-surface: #1A1818;
+  --bg-card: #171515;
+  --bg-card-hover: #222020;
+  --bg-input: #100E0E;
+  --bg-chip: #252222;
+  --bg-chip-hover: #302C2C;
+  --bg-modal: #191717;
+  --border-subtle: rgba(240, 239, 235, 0.08);
+  --border-card: rgba(240, 239, 235, 0.12);
+  --border-modal: rgba(240, 239, 235, 0.16);
+  --border-hover: rgba(240, 239, 235, 0.25);
+  --border-focus: #F0EFEB;
+  --dialog-backdrop: rgba(11, 9, 9, 0.85);
+  --primary: #F0EFEB;
+  --primary-rgb: 240, 239, 235;
+  --on-primary-rgb: 11, 9, 9;
+  --primary-hover: #DAD9D2;
+  --primary-light: rgba(240, 239, 235, 0.08);
+  --primary-glow: 0 0 20px rgba(240, 239, 235, 0.08);
+  --primary-foreground: #0B0909;
+  --text-on-primary: #0B0909;
   --accent-emerald: #10b981;
-  --accent-cyan: #06b6d4;
-  --accent-amber: #f59e0b;
-  --accent-rose: #f43f5e;
+  --accent-cyan: #22d3ee;
+  --accent-amber: #fbbf24;
+  --accent-rose: #fb7185;
   --accent-purple: #c084fc;
-
-  /* Typography Colors */
-  --text-primary: #FAF6F0;
-  --text-secondary: #B5AD9F;
-  --text-muted: #7E7567;
-  --text-inverse: #0C0A09;
-
-  /* Shadows */
+  --warning-rgb: 251, 191, 36;
+  --success-rgb: 16, 185, 129;
+  --danger-rgb: 251, 113, 133;
+  --info-rgb: 34, 211, 238;
+  --on-success: #04251a;
+  --on-danger: #310510;
+  --on-warning: #281b02;
+  --on-info: #052830;
+  --chart-revenue: #34d399;
+  --chart-cost: #fb7185;
+  --chart-profit: #60a5fa;
+  --chart-debt: #fbbf24;
+  --text-primary: #F0EFEB;
+  --text-secondary: #B8B2B2;
+  --text-muted: #A19A9A;
+  --text-inverse: #0B0909;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 10px 30px -4px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 20px 50px -10px rgba(0, 0, 0, 0.75);
-  /* Chart Tooltip Solid */
-  --chart-tooltip-bg: #1c1917;
-  --chart-tooltip-border: rgba(255, 255, 255, 0.14);
-  --chart-tooltip-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.75), 0 4px 10px rgba(0, 0, 0, 0.4);
+  --chart-tooltip-bg: #191717;
+  --chart-tooltip-border: rgba(240, 239, 235, 0.12);
+  --chart-tooltip-shadow: var(--shadow-lg);
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   /* Light Mode: Warm Bone (#F0EFEB) & Obsidian Black (#0B0909) */
   --bg-app: #F0EFEB;
   --bg-sidebar: #ffffff;
@@ -78,6 +102,8 @@
 
   /* Primary Accent: Obsidian Black */
   --primary: #0B0909;
+  --primary-rgb: 11, 9, 9;
+  --on-primary-rgb: 240, 239, 235;
   --primary-hover: #262323;
   --primary-light: rgba(11, 9, 9, 0.08);
   --primary-glow: 0 0 20px rgba(11, 9, 9, 0.18);
@@ -85,16 +111,28 @@
   --text-on-primary: #F0EFEB;
 
   /* Secondary Accents */
-  --accent-emerald: #059669;
-  --accent-cyan: #0284c7;
-  --accent-amber: #d97706;
-  --accent-rose: #e11d48;
-  --accent-purple: #7c3aed;
+  --accent-emerald: #047857;
+  --accent-cyan: #0369a1;
+  --accent-amber: #92400e;
+  --accent-rose: #be123c;
+  --accent-purple: #6d28d9;
+  --warning-rgb: 146, 64, 14;
+  --success-rgb: 4, 120, 87;
+  --danger-rgb: 190, 18, 60;
+  --info-rgb: 3, 105, 161;
+  --on-success: #ffffff;
+  --on-danger: #ffffff;
+  --on-warning: #ffffff;
+  --on-info: #ffffff;
+  --chart-revenue: #15803d;
+  --chart-cost: #b91c1c;
+  --chart-profit: #1d4ed8;
+  --chart-debt: #92400e;
 
   /* Typography Colors */
   --text-primary: #0B0909;
   --text-secondary: #4a4646;
-  --text-muted: #7d7777;
+  --text-muted: #6c6666;
   --text-inverse: #ffffff;
 
   /* Shadows */
@@ -135,6 +173,11 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--text-on-primary);
 }
 
 a {
@@ -341,14 +384,14 @@ input[type="number"] {
   height: 44px;
   border-radius: 14px;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--primary) 0%, #EA580C 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   color: var(--text-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   font-size: 15px;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.25);
 }
 
 .sidebar .profile .details {
@@ -893,7 +936,7 @@ input[type="number"] {
 [data-theme="dark"] .chart-pill-btn.pill-debt.active {
   border-color: rgba(180, 83, 9, 0.50);
   background: rgba(180, 83, 9, 0.20);
-  color: #f59e0b;
+  color: var(--chart-debt);
 }
 
 /* Solid Clean Chart Hover Tooltip (Oddiy no-shaffof oyna) */
@@ -934,7 +977,7 @@ input[type="number"] {
   background: var(--primary) !important;
   color: var(--primary-foreground) !important;
   font-weight: 700;
-  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.28);
+  box-shadow: var(--shadow-sm);
 }
 
 [data-theme="light"] .btn-primary {
@@ -966,7 +1009,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   background: var(--primary-hover) !important;
   color: var(--primary-foreground) !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.42);
+  box-shadow: var(--shadow-md);
 }
 
 [data-theme="light"] .btn-primary:hover:not(:disabled) {
@@ -985,23 +1028,23 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .btn-danger {
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(var(--danger-rgb), 0.15);
   color: var(--accent-rose);
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  border: 1px solid rgba(var(--danger-rgb), 0.3);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: rgba(244, 63, 94, 0.25);
+  background: rgba(var(--danger-rgb), 0.25);
 }
 
 .btn-success {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(var(--success-rgb), 0.15);
   color: var(--accent-emerald);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(var(--success-rgb), 0.3);
 }
 
 .btn-success:hover:not(:disabled) {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(var(--success-rgb), 0.25);
 }
 
 /* Inputs & Form Elements */
@@ -1030,7 +1073,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 /* Custom Select */
 select.input-field {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23F59E0B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23938D8D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 38px;
@@ -1320,7 +1363,7 @@ dialog.custom-dialog[open] .dialog-content {
 
 .notif-floating-toast:hover {
   transform: translateY(-2px);
-  box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(var(--primary-rgb), 0.25);
 }
 
 .notif-card {
@@ -1331,11 +1374,11 @@ dialog.custom-dialog[open] .dialog-content {
   border-color: var(--border-hover);
 }
 
-/* Neon Text Helpers */
+/* Legacy utility names follow the neutral application accent. */
 .neon-amber,
 .neon-lime {
   color: var(--primary);
-  text-shadow: 0 0 14px rgba(245, 158, 11, 0.45);
+  text-shadow: none;
 }
 
 /* ==========================================================================
@@ -1537,13 +1580,13 @@ dialog.custom-dialog[open] .dialog-content {
   color: var(--text-primary);
 }
 .doc-alert.tip {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(var(--success-rgb), 0.35);
+  background: rgba(var(--success-rgb), 0.08);
   color: var(--text-primary);
 }
 .doc-alert.important {
-  border-color: rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(var(--primary-rgb), 0.4);
+  background: rgba(var(--primary-rgb), 0.1);
   color: var(--text-primary);
 }
 .doc-alert.warning {
@@ -1552,8 +1595,8 @@ dialog.custom-dialog[open] .dialog-content {
   color: var(--text-primary);
 }
 .doc-alert.caution {
-  border-color: rgba(244, 63, 94, 0.4);
-  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(var(--danger-rgb), 0.4);
+  background: rgba(var(--danger-rgb), 0.1);
   color: var(--text-primary);
 }
 
@@ -1947,12 +1990,12 @@ dialog.doc-image-dialog .doc-image-scroll img.is-zoomed {
 }
 
 .import-metric-chip.success {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(var(--success-rgb), 0.15);
   color: var(--accent-emerald);
 }
 
 .import-metric-chip.error {
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(var(--danger-rgb), 0.15);
   color: var(--accent-rose);
 }
 
@@ -1965,4 +2008,37 @@ dialog.doc-image-dialog .doc-image-scroll img.is-zoomed {
 
 .custom-select-wrapper[data-open="true"] {
   z-index: 100 !important;
+}
+
+/* Paper documents are output artifacts, with their own light color scheme. */
+.thermal-receipt-paper,
+#printable-shift-report,
+#printable-invoice-a4,
+[data-print-surface="paper"] {
+  color-scheme: light;
+}
+
+@media print {
+  :root, [data-theme="dark"], [data-theme="light"] {
+    color-scheme: light;
+    --bg-app: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-modal: #ffffff;
+    --bg-input: #ffffff;
+    --bg-chip: #eeeeee;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --text-muted: #444444;
+    --primary: #000000;
+    --primary-foreground: #ffffff;
+    --text-on-primary: #ffffff;
+    --border-subtle: #cccccc;
+    --border-card: #cccccc;
+    --chart-revenue: #15803d;
+    --chart-cost: #b91c1c;
+    --chart-profit: #1d4ed8;
+    --chart-debt: #92400e;
+  }
 }

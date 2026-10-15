@@ -47,9 +47,9 @@ const getExpiryStatus = (dateStr) => {
     return {
       type: 'expired',
       label: `Muddati o‘tgan (${Math.abs(diffDays)} kun oldin)`,
-      bg: 'rgba(239, 68, 68, 0.15)',
-      color: 'var(--accent-rose, #ef4444)',
-      borderColor: 'rgba(239, 68, 68, 0.35)',
+      bg: 'rgba(var(--danger-rgb), 0.15)',
+      color: 'var(--accent-rose)',
+      borderColor: 'rgba(var(--danger-rgb), 0.35)',
       icon: <AlertCircle size={12} />,
       tooltip: 'Ushbu partiyaning yaroqlilik muddati tugagan!',
     };
@@ -58,9 +58,9 @@ const getExpiryStatus = (dateStr) => {
     return {
       type: 'warning',
       label: `${diffDays} kun qoldi`,
-      bg: 'rgba(245, 158, 11, 0.15)',
-      color: 'var(--accent-amber, #f59e0b)',
-      borderColor: 'rgba(245, 158, 11, 0.35)',
+      bg: 'rgba(var(--warning-rgb), 0.15)',
+      color: 'var(--accent-amber)',
+      borderColor: 'rgba(var(--warning-rgb), 0.35)',
       icon: <AlertTriangle size={12} />,
       tooltip: 'Yaroqlilik muddati 1 oydan kam qoldi',
     };
@@ -70,9 +70,9 @@ const getExpiryStatus = (dateStr) => {
     return {
       type: 'ok',
       label: `${months} oy yaroqli`,
-      bg: 'rgba(16, 185, 129, 0.12)',
-      color: 'var(--accent-emerald, #10b981)',
-      borderColor: 'rgba(16, 185, 129, 0.28)',
+      bg: 'rgba(var(--success-rgb), 0.12)',
+      color: 'var(--accent-emerald)',
+      borderColor: 'rgba(var(--success-rgb), 0.28)',
       icon: <CheckCircle2 size={12} />,
       tooltip: `Yaroqlilik sanasi: ${dateStr}`,
     };
@@ -81,9 +81,9 @@ const getExpiryStatus = (dateStr) => {
   return {
     type: 'ok',
     label: `${years} yil yaroqli`,
-    bg: 'rgba(16, 185, 129, 0.12)',
-    color: 'var(--accent-emerald, #10b981)',
-    borderColor: 'rgba(16, 185, 129, 0.28)',
+    bg: 'rgba(var(--success-rgb), 0.12)',
+    color: 'var(--accent-emerald)',
+    borderColor: 'rgba(var(--success-rgb), 0.28)',
     icon: <CheckCircle2 size={12} />,
     tooltip: `Yaroqlilik sanasi: ${dateStr}`,
   };
@@ -477,13 +477,13 @@ export default function RapidStockIntakeModal({
                 width: 42,
                 height: 42,
                 borderRadius: 'var(--radius-sm)',
-                background: 'rgba(245, 158, 11, 0.12)',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
+                background: 'rgba(var(--primary-rgb), 0.12)',
+                border: '1px solid rgba(var(--primary-rgb), 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--primary, #f59e0b)',
-                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.12)',
+                color: 'var(--primary)',
+                boxShadow: '0 2px 8px rgba(var(--primary-rgb), 0.12)',
               }}
             >
               <PackagePlus size={22} />
@@ -507,11 +507,11 @@ export default function RapidStockIntakeModal({
                 gap: 6,
                 padding: '6px 12px',
                 borderRadius: 20,
-                background: items.length > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-chip)',
+                background: items.length > 0 ? 'rgba(var(--success-rgb), 0.12)' : 'var(--bg-chip)',
                 color: items.length > 0 ? 'var(--accent-emerald)' : 'var(--text-muted)',
                 fontSize: 12,
                 fontWeight: 600,
-                border: items.length > 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid var(--border-subtle)',
+                border: items.length > 0 ? '1px solid rgba(var(--success-rgb), 0.25)' : '1px solid var(--border-subtle)',
               }}
               title="Siz sahifadan chiqib ketsangiz ham, barcha kiritilgan ma'lumotlar saqlanadi"
             >
@@ -542,9 +542,9 @@ export default function RapidStockIntakeModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
-                color: 'var(--primary, #f59e0b)',
+                background: 'rgba(var(--primary-rgb), 0.08)',
+                border: '1px solid rgba(var(--primary-rgb), 0.25)',
+                color: 'var(--primary)',
                 padding: '7px 12px',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: 12,
@@ -574,7 +574,7 @@ export default function RapidStockIntakeModal({
         >
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-              <Truck size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
+              <Truck size={13} style={{ color: 'var(--primary)' }} />
               Ta’minotchi
             </label>
             <input
@@ -598,7 +598,7 @@ export default function RapidStockIntakeModal({
 
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-              <FileText size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
+              <FileText size={13} style={{ color: 'var(--primary)' }} />
               Faktura / Nakladnoy №
             </label>
             <input
@@ -622,7 +622,7 @@ export default function RapidStockIntakeModal({
 
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-              <MessageSquare size={13} style={{ color: 'var(--primary, #f59e0b)' }} />
+              <MessageSquare size={13} style={{ color: 'var(--primary)' }} />
               Izoh
             </label>
             <input
@@ -859,7 +859,7 @@ export default function RapidStockIntakeModal({
                           padding: '4px 8px',
                           borderRadius: 4,
                           background: isSelected ? 'var(--primary)' : 'var(--bg-chip)',
-                          color: isSelected ? '#fff' : 'var(--text-secondary)',
+                          color: isSelected ? 'var(--text-on-primary)' : 'var(--text-secondary)',
                           fontSize: 11,
                           fontWeight: 600,
                         }}
@@ -885,9 +885,9 @@ export default function RapidStockIntakeModal({
             gap: 8,
             padding: '0 16px',
             borderRadius: 'var(--radius-sm)',
-            background: 'rgba(245, 158, 11, 0.12)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            color: 'var(--primary, #f59e0b)',
+            background: 'rgba(var(--primary-rgb), 0.12)',
+            border: '1px solid rgba(var(--primary-rgb), 0.3)',
+            color: 'var(--primary)',
             fontWeight: 700,
             fontSize: 13,
             cursor: 'pointer',
@@ -901,8 +901,8 @@ export default function RapidStockIntakeModal({
             e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.12)';
-            e.currentTarget.style.color = 'var(--primary, #f59e0b)';
+            e.currentTarget.style.background = 'rgba(var(--primary-rgb), 0.12)';
+            e.currentTarget.style.color = 'var(--primary)';
             e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
@@ -957,7 +957,7 @@ export default function RapidStockIntakeModal({
                   <tr>
                     <td colSpan={9} style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <ScanBarcode size={38} style={{ opacity: 0.35, color: 'var(--primary, #f59e0b)' }} />
+                        <ScanBarcode size={38} style={{ opacity: 0.35, color: 'var(--primary)' }} />
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                           Hozircha tovarlar qo‘shilmadi
                         </div>
@@ -986,7 +986,7 @@ export default function RapidStockIntakeModal({
                         style={{
                           borderBottom: '1px solid var(--border-subtle)',
                           background: isRecentlyAdded
-                            ? 'rgba(245, 158, 11, 0.08)'
+                            ? 'rgba(var(--primary-rgb), 0.08)'
                             : idx % 2 === 1
                             ? 'rgba(255, 255, 255, 0.02)'
                             : 'transparent',
@@ -1010,11 +1010,11 @@ export default function RapidStockIntakeModal({
                                   style={{
                                     fontSize: 11,
                                     padding: '1px 6px',
-                                    background: 'rgba(245, 158, 11, 0.1)',
+                                    background: 'rgba(var(--primary-rgb), 0.1)',
                                     borderRadius: 4,
-                                    color: 'var(--primary, #f59e0b)',
+                                    color: 'var(--primary)',
                                     fontWeight: 600,
-                                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                                    border: '1px solid rgba(var(--primary-rgb), 0.25)',
                                   }}
                                 >
                                   {snap.sub}
@@ -1109,9 +1109,9 @@ export default function RapidStockIntakeModal({
                               fontWeight: 700,
                               padding: '3px 8px',
                               borderRadius: 6,
-                              background: snap.stock > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              background: snap.stock > 0 ? 'rgba(var(--success-rgb), 0.12)' : 'rgba(var(--danger-rgb), 0.12)',
                               color: snap.stock > 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-                              border: snap.stock > 0 ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
+                              border: snap.stock > 0 ? '1px solid rgba(var(--success-rgb), 0.25)' : '1px solid rgba(var(--danger-rgb), 0.25)',
                               display: 'inline-block',
                               whiteSpace: 'nowrap',
                             }}
@@ -1220,7 +1220,7 @@ export default function RapidStockIntakeModal({
                         </td>
 
                         {/* 8. Jami Qiymat */}
-                        <td style={{ padding: '10px 12px', fontWeight: 700, color: lineTotal > 0 ? 'var(--primary, #f59e0b)' : 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: lineTotal > 0 ? 'var(--primary)' : 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                           {lineTotal.toLocaleString()} {currency}
                         </td>
 
@@ -1239,7 +1239,7 @@ export default function RapidStockIntakeModal({
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: 'var(--primary, #f59e0b)',
+                                color: 'var(--primary)',
                                 cursor: 'pointer',
                                 padding: 5,
                                 borderRadius: 4,
@@ -1261,7 +1261,7 @@ export default function RapidStockIntakeModal({
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: 'var(--accent-rose, #ef4444)',
+                                color: 'var(--accent-rose)',
                                 cursor: 'pointer',
                                 padding: 5,
                                 borderRadius: 4,
@@ -1402,7 +1402,7 @@ export default function RapidStockIntakeModal({
                 alignItems: 'center',
                 gap: 8,
                 transition: 'all 0.15s ease',
-                boxShadow: items.length > 0 ? '0 4px 14px rgba(245, 158, 11, 0.28)' : 'none',
+                boxShadow: items.length > 0 ? '0 4px 14px rgba(var(--primary-rgb), 0.28)' : 'none',
               }}
             >
               <PackagePlus size={16} />

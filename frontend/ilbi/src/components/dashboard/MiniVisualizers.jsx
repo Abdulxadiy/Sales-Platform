@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 /**
@@ -68,8 +68,8 @@ function getMonotoneMiniSpline(points) {
  */
 export function MiniEqualizer({
   data = [],
-  activeColor = '#10b981',
-  highlightColor = '#fbbf24',
+  activeColor = 'var(--accent-emerald)',
+  highlightColor = 'var(--accent-amber)',
   barCount = 28,
   title = 'Sotuvlar Faolligi',
   value = '95.4%',
@@ -279,10 +279,10 @@ export function MiniGauge({
             padding: 1,
           }}
         >
-          <div style={{ flex: 1, background: '#f59e0b', borderRadius: '3px 0 0 3px' }} />
-          <div style={{ flex: 1.2, background: '#eab308' }} />
+          <div style={{ flex: 1, background: 'var(--accent-amber)', borderRadius: '3px 0 0 3px' }} />
+          <div style={{ flex: 1.2, background: 'var(--accent-amber)' }} />
           <div style={{ flex: 1.5, background: '#84cc16' }} />
-          <div style={{ flex: 2, background: '#10b981' }} />
+          <div style={{ flex: 2, background: 'var(--accent-emerald)' }} />
           <div style={{ flex: 0.8, background: 'var(--border-subtle)', borderRadius: '0 3px 3px 0' }} />
         </div>
       </div>
@@ -300,6 +300,7 @@ export function MiniSparkline({
   isPositive = true,
   data = [12, 18, 15, 24, 20, 28, 25, 30, 28, 36, 34, 42, 40, 48, 50],
 }) {
+  const gradientId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const { pathData, areaPath, lastPoint } = useMemo(() => {
     if (!data || data.length === 0) {
       return { pathData: '', areaPath: '', lastPoint: { x: 100, y: 20 } };
@@ -333,7 +334,7 @@ export function MiniSparkline({
     return { pathData: d, areaPath: area, lastPoint: last };
   }, [data]);
 
-  const strokeColor = isPositive ? '#10b981' : '#f43f5e';
+  const strokeColor = isPositive ? 'var(--accent-emerald)' : 'var(--accent-rose)';
   const badgeColor = isPositive ? 'var(--accent-emerald)' : 'var(--accent-rose)';
 
   return (
@@ -383,7 +384,7 @@ export function MiniSparkline({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 2,
-              background: isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
+              background: isPositive ? 'rgba(var(--success-rgb), 0.12)' : 'rgba(var(--danger-rgb), 0.12)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-xs)',
             }}
@@ -441,10 +442,11 @@ export function MiniSparkline({
  */
 export function InlineCardSparkline({
   data = [12, 16, 14, 22, 19, 26, 32],
-  color = '#6366f1',
+  color = 'var(--accent-purple)',
   width = 86,
   height = 34,
 }) {
+  const gradientId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const { pathData, areaPath, lastPoint } = useMemo(() => {
     if (!data || data.length === 0) return { pathData: '', areaPath: '', lastPoint: null };
     const min = Math.min(...data);
@@ -467,7 +469,7 @@ export function InlineCardSparkline({
 
   if (!pathData) return null;
 
-  const gradId = `inline-grad-${color.replace('#', '')}-${Math.round(width)}`;
+  const gradId = `inline-grad-${gradientId}`;
 
   return (
     <div style={{ width, height, position: 'relative', overflow: 'visible' }}>

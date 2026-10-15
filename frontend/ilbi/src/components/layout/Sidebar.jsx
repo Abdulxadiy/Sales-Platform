@@ -337,16 +337,16 @@ export default function Sidebar({
                   padding: '11px 14px',
                   borderRadius: 14,
                   background: isActive
-                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(16, 185, 129, 0.14))'
-                    : 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(16, 185, 129, 0.08))',
+                    ? 'rgba(var(--primary-rgb), 0.08)'
+                    : 'rgba(var(--primary-rgb), 0.04)',
                   border: isActive
                     ? '1.5px solid var(--primary)'
-                    : '1px solid rgba(245, 158, 11, 0.25)',
+                    : '1px solid rgba(var(--primary-rgb), 0.25)',
                   cursor: 'pointer',
                   display: 'block',
                   textDecoration: 'none',
                   transition: 'all 0.2s ease',
-                  boxShadow: isActive ? '0 0 14px rgba(245, 158, 11, 0.2)' : 'none',
+                  boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
                 })}
                 title="Yordam markazi — To‘liq sahifani ochish"
               >
@@ -356,7 +356,7 @@ export default function Sidebar({
                       width: 32,
                       height: 32,
                       borderRadius: 10,
-                      background: 'rgba(245, 158, 11, 0.18)',
+                      background: 'rgba(var(--primary-rgb), 0.18)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -378,7 +378,7 @@ export default function Sidebar({
                           padding: '1px 5px',
                           borderRadius: 999,
                           background: 'var(--accent-emerald)',
-                          color: '#0C0A09',
+                          color: 'var(--on-success)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 3,

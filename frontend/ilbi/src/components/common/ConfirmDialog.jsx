@@ -100,8 +100,8 @@ export default function ConfirmDialog({
   // Icon, color and default text configuration based on type
   let IconComponent = HelpCircle;
   let accentColor = 'var(--primary)';
-  let bgBadge = 'rgba(245, 158, 11, 0.12)';
-  let borderBadge = 'rgba(245, 158, 11, 0.28)';
+  let bgBadge = 'rgba(var(--primary-rgb), 0.12)';
+  let borderBadge = 'rgba(var(--primary-rgb), 0.28)';
   let defaultTitle = isAlert ? 'Ma’lumot' : 'Tasdiqlash';
   let defaultConfirmText = 'Tasdiqlash';
   let confirmBtnBg = 'var(--primary)';
@@ -111,38 +111,38 @@ export default function ConfirmDialog({
   if (type === 'danger') {
     IconComponent = customIcon || Trash2;
     accentColor = 'var(--accent-rose)';
-    bgBadge = 'rgba(244, 63, 94, 0.12)';
-    borderBadge = 'rgba(244, 63, 94, 0.28)';
+    bgBadge = 'rgba(var(--danger-rgb), 0.12)';
+    borderBadge = 'rgba(var(--danger-rgb), 0.28)';
     defaultTitle = isAlert ? 'Diqqat: Xatolik' : 'O‘chirishni tasdiqlash';
     defaultConfirmText = 'Ha, o‘chirish';
     confirmBtnBg = 'var(--accent-rose)';
-    confirmBtnColor = '#ffffff';
-    confirmBtnHover = '#e11d48';
+    confirmBtnColor = 'var(--on-danger)';
+    confirmBtnHover = 'var(--accent-rose)';
   } else if (type === 'warning') {
     IconComponent = customIcon || AlertTriangle;
     accentColor = 'var(--accent-amber)';
-    bgBadge = 'rgba(245, 158, 11, 0.12)';
-    borderBadge = 'rgba(245, 158, 11, 0.28)';
+    bgBadge = 'rgba(var(--warning-rgb), 0.12)';
+    borderBadge = 'rgba(var(--warning-rgb), 0.28)';
     defaultTitle = isAlert ? 'Ogohlantirish' : 'Diqqat qiling';
     defaultConfirmText = 'Davom etish';
     confirmBtnBg = 'var(--accent-amber)';
-    confirmBtnColor = 'var(--text-inverse)';
-    confirmBtnHover = '#d97706';
+    confirmBtnColor = 'var(--on-warning)';
+    confirmBtnHover = 'var(--accent-amber)';
   } else if (type === 'success') {
     IconComponent = customIcon || CheckCircle2;
     accentColor = 'var(--accent-emerald)';
-    bgBadge = 'rgba(16, 185, 129, 0.12)';
-    borderBadge = 'rgba(16, 185, 129, 0.28)';
+    bgBadge = 'rgba(var(--success-rgb), 0.12)';
+    borderBadge = 'rgba(var(--success-rgb), 0.28)';
     defaultTitle = 'Muvaffaqiyatli';
     defaultConfirmText = 'Qabul qilish';
     confirmBtnBg = 'var(--accent-emerald)';
-    confirmBtnColor = '#ffffff';
-    confirmBtnHover = '#059669';
+    confirmBtnColor = 'var(--on-success)';
+    confirmBtnHover = 'var(--accent-emerald)';
   } else if (type === 'info') {
     IconComponent = customIcon || Info;
     accentColor = 'var(--accent-cyan)';
-    bgBadge = 'rgba(6, 182, 212, 0.12)';
-    borderBadge = 'rgba(6, 182, 212, 0.28)';
+    bgBadge = 'rgba(var(--info-rgb), 0.12)';
+    borderBadge = 'rgba(var(--info-rgb), 0.28)';
     defaultTitle = isAlert ? 'Eslatma' : 'Tasdiqlash';
     defaultConfirmText = 'Tasdiqlash';
     confirmBtnBg = 'var(--primary)';
@@ -348,7 +348,7 @@ export default function ConfirmDialog({
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: type === 'danger'
-                  ? '0 4px 14px rgba(244, 63, 94, 0.35)'
+                  ? '0 4px 14px rgba(var(--danger-rgb), 0.35)'
                   : '0 4px 14px rgba(0, 0, 0, 0.15)',
                 transition: 'all 0.15s ease',
               }}

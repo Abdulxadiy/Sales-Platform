@@ -10,8 +10,8 @@
   padding: 0;
   border: 0;
   overflow: hidden;
-  background: #fff;
-  color: #141820;
+  background: var(--bg-app);
+  color: var(--text-primary);
   overscroll-behavior: contain;
 }
 
@@ -45,21 +45,26 @@
   align-items: center;
   gap: 10px;
   padding: 10px 15px;
-  border: 1px solid #dce4ee;
+  border: 1px solid var(--border-card);
   border-radius: 10px;
-  background: #f7f9fc;
-  color: #526078;
+  background: var(--bg-chip);
+  color: var(--text-secondary);
   font: 500 12px/1.5 system-ui, sans-serif;
   cursor: pointer;
 }
 
 .ilbi-intro__skip:hover {
-  border-color: #7daeff;
-  background: #eff5ff;
-  color: #0059de;
+  border-color: var(--border-focus);
+  background: var(--bg-chip-hover);
+  color: var(--text-primary);
 }
 
 .ilbi-intro__skip:focus-visible {
-  outline: 2px solid #006bff;
+  outline: 2px solid var(--border-focus);
   outline-offset: 4px;
+}
+
+/* Scope the animated ink override to the app; exported brand artwork stays unchanged. */
+.ilbi-intro__stage linearGradient[id$="-ink"] stop {
+  stop-color: var(--text-primary);
 }

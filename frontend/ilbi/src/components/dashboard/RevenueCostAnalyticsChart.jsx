@@ -134,10 +134,10 @@ export default function RevenueCostAnalyticsChart({
   // Nasiya (Debt): Warm Bronze / Ochre
   // Chiqim (Costs): Deep Burgundy Wine Red
   // Sof foyda (Net profit): Deep Sapphire Royal Blue
-  const COLOR_REV = '#15803d'; // Forest Pine Green (To'q o'rmon archasi yashili)
-  const COLOR_DEBT = '#b45309'; // Warm Bronze / Ochre (To'q bronza / Oxra)
-  const COLOR_COST = '#b91c1c'; // Deep Burgundy Wine Red (Sharob qizil / Bordeaux)
-  const COLOR_PROFIT = '#1d4ed8'; // Deep Sapphire Royal Blue (Chuqur safir ko'k)
+  const COLOR_REV = 'var(--chart-revenue)'; // Forest Pine Green (To'q o'rmon archasi yashili)
+  const COLOR_DEBT = 'var(--chart-debt)'; // Warm Bronze / Ochre (To'q bronza / Oxra)
+  const COLOR_COST = 'var(--chart-cost)'; // Deep Burgundy Wine Red (Sharob qizil / Bordeaux)
+  const COLOR_PROFIT = 'var(--chart-profit)'; // Deep Sapphire Royal Blue (Chuqur safir ko'k)
 
   // Prepare normalized points
   const { pointsData, maxY, yTicks } = useMemo(() => {
@@ -537,9 +537,9 @@ export default function RevenueCostAnalyticsChart({
                   fontWeight: 600,
                   padding: '2px 8px',
                   borderRadius: 12,
-                  background: 'rgba(16, 185, 129, 0.12)',
+                  background: 'rgba(var(--success-rgb), 0.12)',
                   color: COLOR_REV,
-                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  border: '1px solid rgba(var(--success-rgb), 0.25)',
                 }}
               >
                 Andoza (Demo)
@@ -738,7 +738,7 @@ export default function RevenueCostAnalyticsChart({
                 {showCosts && <path d={costArea} fill="url(#chart-cost-grad)" />}
                 {showProfit && <path d={profArea} fill="url(#chart-prof-grad)" />}
 
-                {/* 1. Revenue curve (Neon Green #10b981) */}
+                {/* 1. Revenue curve (Neon Green var(--accent-emerald)) */}
                 {showRevenue && (
                   <path
                     d={revPath}
@@ -750,7 +750,7 @@ export default function RevenueCostAnalyticsChart({
                   />
                 )}
 
-                {/* 2. Debt curve (Warm Amber #f59e0b) */}
+                {/* 2. Debt curve (Warm Amber var(--accent-amber)) */}
                 {showDebt && (
                   <path
                     d={debtPath}
@@ -762,7 +762,7 @@ export default function RevenueCostAnalyticsChart({
                   />
                 )}
 
-                {/* 3. Costs curve (Neon Red #f43f5e) */}
+                {/* 3. Costs curve (Neon Red var(--accent-rose)) */}
                 {showCosts && (
                   <path
                     d={costPath}

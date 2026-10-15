@@ -111,7 +111,7 @@ export default function ProductToolsModal({ productId, onClose, onChanged }) {
                     }}
                     onMouseEnter={(e) => {
                       if (!busy) {
-                        e.currentTarget.style.background = '#ef4444';
+                        e.currentTarget.style.background = 'var(--accent-rose)';
                         e.currentTarget.style.borderColor = '#ffffff';
                         e.currentTarget.style.transform = 'scale(1.15)';
                       }

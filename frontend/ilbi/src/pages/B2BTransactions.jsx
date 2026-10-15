@@ -319,7 +319,7 @@ export default function B2BTransactions() {
               width: 44,
               height: 44,
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(16, 185, 129, 0.12)',
+              background: 'rgba(var(--success-rgb), 0.12)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -387,7 +387,7 @@ export default function B2BTransactions() {
               width: 44,
               height: 44,
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(245, 158, 11, 0.12)',
+              background: 'rgba(var(--primary-rgb), 0.12)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -634,7 +634,7 @@ export default function B2BTransactions() {
                               borderRadius: 'var(--radius-xs)',
                               border: 'none',
                               background: 'var(--accent-emerald)',
-                              color: '#fff',
+                              color: 'var(--on-success)',
                               fontSize: 12,
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -652,8 +652,8 @@ export default function B2BTransactions() {
                             style={{
                               padding: '6px 12px',
                               borderRadius: 'var(--radius-xs)',
-                              border: '1px solid rgba(239, 68, 68, 0.3)',
-                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                              background: 'rgba(var(--danger-rgb), 0.1)',
                               color: 'var(--accent-rose)',
                               fontSize: 12,
                               fontWeight: 600,
@@ -745,9 +745,9 @@ export default function B2BTransactions() {
                               background: isCompleted
                                 ? 'rgba(34, 197, 94, 0.12)'
                                 : isB2BReturnPending
-                                ? 'rgba(245, 158, 11, 0.12)'
+                                ? 'rgba(var(--primary-rgb), 0.12)'
                                 : isRejected
-                                ? 'rgba(239, 68, 68, 0.12)'
+                                ? 'rgba(var(--danger-rgb), 0.12)'
                                 : 'rgba(59, 130, 246, 0.12)',
                               color: isCompleted
                                 ? 'var(--accent-emerald)'
@@ -807,8 +807,8 @@ export default function B2BTransactions() {
                                 style={{
                                   padding: '6px 10px',
                                   borderRadius: 'var(--radius-xs)',
-                                  border: '1px solid rgba(16, 185, 129, 0.35)',
-                                  background: 'rgba(16, 185, 129, 0.08)',
+                                  border: '1px solid rgba(var(--success-rgb), 0.35)',
+                                  background: 'rgba(var(--success-rgb), 0.08)',
                                   color: 'var(--accent-emerald)',
                                   fontSize: 12,
                                   fontWeight: 600,
@@ -831,8 +831,8 @@ export default function B2BTransactions() {
                                 style={{
                                   padding: '6px 10px',
                                   borderRadius: 'var(--radius-xs)',
-                                  border: '1px solid rgba(245, 158, 11, 0.4)',
-                                  background: 'rgba(245, 158, 11, 0.08)',
+                                  border: '1px solid rgba(var(--primary-rgb), 0.4)',
+                                  background: 'rgba(var(--primary-rgb), 0.08)',
                                   color: 'var(--accent-amber)',
                                   fontSize: 12,
                                   fontWeight: 600,
@@ -927,7 +927,7 @@ export default function B2BTransactions() {
             <button
               type="submit"
               disabled={submittingB2BAccept}
-              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-emerald)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-emerald)', color: 'var(--on-success)', fontWeight: 600, cursor: 'pointer' }}
             >
               {submittingB2BAccept ? 'Qabul qilinmoqda...' : 'Kategoriyalarga qabul qilish'}
             </button>
@@ -973,7 +973,7 @@ export default function B2BTransactions() {
             <button
               type="submit"
               disabled={submittingB2BReject}
-              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-rose)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-rose)', color: 'var(--on-danger)', fontWeight: 600, cursor: 'pointer' }}
             >
               {submittingB2BReject ? 'Rad etilmoqda...' : 'Rad Etishni Tasdiqlash'}
             </button>
@@ -989,7 +989,7 @@ export default function B2BTransactions() {
         maxWidth={760}
       >
         <form onSubmit={handleConfirmReceiveB2BReturn} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ padding: 12, borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.10)', color: 'var(--text-secondary)', fontSize: 13 }}>
+          <div style={{ padding: 12, borderRadius: 'var(--radius-sm)', background: 'rgba(var(--primary-rgb), 0.10)', color: 'var(--text-secondary)', fontSize: 13 }}>
             Faqat amalda qaytib kelib tekshirilgan miqdorni kiriting. Tasdiqlangan miqdor jo‘natuvchi omboriga qaytadi; qolgan tafovut ochiq qoladi.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '45vh', overflowY: 'auto' }}>
@@ -1059,7 +1059,7 @@ export default function B2BTransactions() {
             <button
               type="submit"
               disabled={submittingB2BReturn}
-              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-emerald)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-emerald)', color: 'var(--on-success)', fontWeight: 600, cursor: 'pointer' }}
             >
               {submittingB2BReturn ? 'Saqlanmoqda...' : 'Qabul qilinganini tasdiqlash'}
             </button>
@@ -1075,7 +1075,7 @@ export default function B2BTransactions() {
         maxWidth={760}
       >
         <form onSubmit={handleConfirmCloseB2BDiscrepancy} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ padding: 12, borderRadius: 'var(--radius-sm)', background: 'rgba(245, 158, 11, 0.10)', color: 'var(--text-secondary)', fontSize: 13 }}>
+          <div style={{ padding: 12, borderRadius: 'var(--radius-sm)', background: 'rgba(var(--primary-rgb), 0.10)', color: 'var(--text-secondary)', fontSize: 13 }}>
             Faqat amalda qaytmagan yoki shikastlangan miqdorni kiriting. Miqdor sotuv narxida sotuv summasi va hamkor qarz/kreditidan ayriladi; qarz to‘langan bo‘lsa hamkor kreditiga yoziladi. Bu naqd qaytarim emas va ombor qoldig‘ini o‘zgartirmaydi.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '45vh', overflowY: 'auto' }}>
@@ -1150,7 +1150,7 @@ export default function B2BTransactions() {
             <button
               type="submit"
               disabled={submittingB2BDiscrepancy}
-              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-amber)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '10px 20px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-amber)', color: 'var(--on-warning)', fontWeight: 600, cursor: 'pointer' }}
             >
               {submittingB2BDiscrepancy ? 'Yopilmoqda...' : 'Tafovutni yopish'}
             </button>

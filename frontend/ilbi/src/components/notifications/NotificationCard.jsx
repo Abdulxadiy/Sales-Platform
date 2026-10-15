@@ -236,7 +236,7 @@ function MinimalZReportReceipt({ parsed, notificationTitle }) {
             style={{
               marginTop: 6,
               padding: '8px 10px',
-              background: 'rgba(239, 68, 68, 0.1)',
+              background: 'rgba(var(--danger-rgb), 0.1)',
               borderRadius: 4,
               fontSize: 12,
               color: 'var(--accent-rose)',
@@ -519,7 +519,7 @@ export default function NotificationCard({ notification, onMarkRead, onDelete })
               style={{
                 padding: '4px 8px',
                 fontSize: 11,
-                color: 'var(--accent-rose, #ef4444)',
+                color: 'var(--accent-rose)',
               }}
               title="O‘chirish"
             >

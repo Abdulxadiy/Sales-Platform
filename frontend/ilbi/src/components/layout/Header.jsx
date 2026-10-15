@@ -153,11 +153,11 @@ export default function Header({
               padding: '6px 14px',
               borderRadius: 999,
               background: isShiftOpen
-                ? 'rgba(16, 185, 129, 0.12)'
-                : 'rgba(239, 68, 68, 0.12)',
+                ? 'rgba(var(--success-rgb), 0.12)'
+                : 'rgba(var(--danger-rgb), 0.12)',
               border: isShiftOpen
-                ? '1px solid rgba(16, 185, 129, 0.25)'
-                : '1px solid rgba(239, 68, 68, 0.25)',
+                ? '1px solid rgba(var(--success-rgb), 0.25)'
+                : '1px solid rgba(var(--danger-rgb), 0.25)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
             }}

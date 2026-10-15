@@ -193,8 +193,8 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
             style={{
               padding: '14px 16px',
               borderRadius: 12,
-              background: 'var(--amber-bg, rgba(245, 158, 11, 0.08))',
-              border: '1px solid var(--amber-border, rgba(245, 158, 11, 0.25))',
+              background: 'rgba(var(--warning-rgb), 0.08)',
+              border: '1px solid rgba(var(--warning-rgb), 0.25)',
               display: 'flex',
               alignItems: 'flex-start',
               gap: 12,
@@ -204,7 +204,7 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
               marginBottom: 12,
             }}
           >
-            <AlertCircle size={20} style={{ color: 'var(--amber-500, #f59e0b)', flexShrink: 0, marginTop: 2 }} />
+            <AlertCircle size={20} style={{ color: 'var(--accent-amber)', flexShrink: 0, marginTop: 2 }} />
             <div>
               <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
                 Transfer uchun boshqa filial do‘kon topilmadi
@@ -221,7 +221,7 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
-                      color: 'var(--brand-primary, #6366f1)',
+                      color: 'var(--brand-primary, var(--accent-purple))',
                       fontWeight: 600,
                       textDecoration: 'none',
                     }}
@@ -316,8 +316,8 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'var(--accent-rose, #f43f5e)',
-                      borderColor: 'rgba(244, 63, 94, 0.25)',
+                      color: 'var(--accent-rose)',
+                      borderColor: 'rgba(var(--danger-rgb), 0.25)',
                       borderRadius: 10,
                     }}
                   >
@@ -379,8 +379,8 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                   padding: '3px 10px',
                   borderRadius: 999,
                   background: transfer.status === 'pending' ? 'rgba(234, 179, 8, 0.12)' : 'rgba(34, 197, 94, 0.12)',
-                  color: transfer.status === 'pending' ? 'var(--accent-amber, #f59e0b)' : 'var(--accent-emerald, #10b981)',
-                  border: transfer.status === 'pending' ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
+                  color: transfer.status === 'pending' ? 'var(--accent-amber)' : 'var(--accent-emerald)',
+                  border: transfer.status === 'pending' ? '1px solid rgba(var(--primary-rgb), 0.25)' : '1px solid rgba(var(--success-rgb), 0.25)',
                   fontSize: 12,
                   fontWeight: 600,
                 }}
@@ -408,8 +408,8 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                     gap: 6,
                     padding: '8px 16px',
                     fontSize: 13,
-                    background: 'var(--accent-emerald, #10b981)',
-                    borderColor: 'var(--accent-emerald, #10b981)',
+                    background: 'var(--accent-emerald)',
+                    borderColor: 'var(--accent-emerald)',
                   }}
                 >
                   <Check size={14} />
@@ -446,8 +446,8 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                     gap: 6,
                     padding: '8px 16px',
                     fontSize: 13,
-                    color: 'var(--accent-amber, #f59e0b)',
-                    borderColor: 'rgba(245, 158, 11, 0.3)',
+                    color: 'var(--accent-amber)',
+                    borderColor: 'rgba(var(--primary-rgb), 0.3)',
                   }}
                 >
                   <span>Tafovutni yopish</span>

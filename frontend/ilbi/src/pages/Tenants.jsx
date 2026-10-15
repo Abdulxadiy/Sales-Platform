@@ -363,8 +363,8 @@ export default function Tenants() {
                           height: 32,
                           borderRadius: 'var(--radius-xs)',
                           background: t.is_active
-                            ? 'rgba(16, 185, 129, 0.15)'
-                            : 'rgba(239, 68, 68, 0.15)',
+                            ? 'rgba(var(--success-rgb), 0.15)'
+                            : 'rgba(var(--danger-rgb), 0.15)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -404,10 +404,10 @@ export default function Tenants() {
                         padding: '4px 10px',
                         borderRadius: 'var(--radius-full)',
                         background: t.is_active
-                          ? 'rgba(16, 185, 129, 0.15)'
-                          : 'rgba(239, 68, 68, 0.15)',
+                          ? 'rgba(var(--success-rgb), 0.15)'
+                          : 'rgba(var(--danger-rgb), 0.15)',
                         color: t.is_active ? 'var(--accent-emerald)' : 'var(--accent-rose)',
-                        border: `1px solid ${t.is_active ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                        border: `1px solid ${t.is_active ? 'rgba(var(--success-rgb), 0.3)' : 'rgba(var(--danger-rgb), 0.3)'}`,
                       }}
                     >
                       {t.is_active ? 'Faol' : 'Muzlatilgan'}
@@ -468,8 +468,8 @@ export default function Tenants() {
                           borderRadius: 'var(--radius-xs)',
                           border: 'none',
                           background: t.is_active
-                            ? 'rgba(239, 68, 68, 0.12)'
-                            : 'rgba(16, 185, 129, 0.12)',
+                            ? 'rgba(var(--danger-rgb), 0.12)'
+                            : 'rgba(var(--success-rgb), 0.12)',
                           color: t.is_active ? 'var(--accent-rose)' : 'var(--accent-emerald)',
                           fontSize: 12,
                           fontWeight: 600,

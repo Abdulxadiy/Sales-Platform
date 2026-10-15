@@ -383,8 +383,8 @@ export default function Profile() {
             style={{
               padding: '8px 14px',
               borderRadius: 'var(--radius-sm)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(var(--danger-rgb), 0.25)',
+              background: 'rgba(var(--danger-rgb), 0.08)',
               color: 'var(--accent-rose)',
               fontSize: 12,
               fontWeight: 600,
@@ -939,8 +939,8 @@ export default function Profile() {
               style={{
                 padding: 14,
                 borderRadius: 10,
-                background: 'rgba(245, 158, 11, 0.08)',
-                border: '1px solid rgba(245, 158, 11, 0.25)',
+                background: 'rgba(var(--primary-rgb), 0.08)',
+                border: '1px solid rgba(var(--primary-rgb), 0.25)',
                 fontSize: 12.5,
                 display: 'flex',
                 alignItems: 'flex-start',

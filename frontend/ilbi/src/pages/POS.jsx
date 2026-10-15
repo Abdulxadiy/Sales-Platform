@@ -527,8 +527,8 @@ export default function POS() {
               padding: '9px 12px',
               borderRadius: 8,
               border: 'none',
-              background: mobileTab === 'catalog' ? 'var(--primary, #f59e0b)' : 'transparent',
-              color: mobileTab === 'catalog' ? '#000' : 'var(--text-secondary)',
+              background: mobileTab === 'catalog' ? 'var(--primary)' : 'transparent',
+              color: mobileTab === 'catalog' ? 'var(--text-on-primary)' : 'var(--text-secondary)',
               fontWeight: 700,
               fontSize: 13,
               cursor: 'pointer',
@@ -550,8 +550,8 @@ export default function POS() {
               padding: '9px 12px',
               borderRadius: 8,
               border: 'none',
-              background: mobileTab === 'cart' ? 'var(--primary, #f59e0b)' : 'transparent',
-              color: mobileTab === 'cart' ? '#000' : 'var(--text-secondary)',
+              background: mobileTab === 'cart' ? 'var(--primary)' : 'transparent',
+              color: mobileTab === 'cart' ? 'var(--text-on-primary)' : 'var(--text-secondary)',
               fontWeight: 700,
               fontSize: 13,
               cursor: 'pointer',
@@ -569,8 +569,8 @@ export default function POS() {
                 fontSize: 11,
                 padding: '1px 6px',
                 borderRadius: 999,
-                background: mobileTab === 'cart' ? '#000' : 'var(--primary, #f59e0b)',
-                color: mobileTab === 'cart' ? '#fff' : '#000',
+                background: mobileTab === 'cart' ? 'var(--text-on-primary)' : 'var(--primary)',
+                color: mobileTab === 'cart' ? 'var(--primary)' : 'var(--text-on-primary)',
                 fontWeight: 800,
               }}
             >
@@ -651,7 +651,7 @@ export default function POS() {
                     ? '1px solid var(--accent-emerald)'
                     : '1px solid var(--border-subtle)',
                   background: isPartnerSale
-                    ? 'rgba(16, 185, 129, 0.15)'
+                    ? 'rgba(var(--success-rgb), 0.15)'
                     : 'rgba(255, 255, 255, 0.04)',
                   color: isPartnerSale ? 'var(--accent-emerald)' : 'var(--text-secondary)',
                   fontSize: 13,
@@ -662,7 +662,7 @@ export default function POS() {
                   gap: 6,
                   cursor: 'pointer',
                   flex: isMobile ? 1 : 'none',
-                  boxShadow: isPartnerSale ? '0 0 15px rgba(16, 185, 129, 0.3)' : 'none',
+                  boxShadow: isPartnerSale ? '0 0 15px rgba(var(--success-rgb), 0.3)' : 'none',
                   transition: 'all var(--transition-fast)',
                   whiteSpace: 'nowrap',
                 }}
@@ -685,8 +685,8 @@ export default function POS() {
                 className="btn btn-secondary"
                 onClick={() => setUsdCalculatorOpen((open) => !open)}
                 style={{
-                  borderColor: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
-                  color: usdCalculatorOpen ? 'var(--primary, #f59e0b)' : undefined,
+                  borderColor: usdCalculatorOpen ? 'var(--primary)' : undefined,
+                  color: usdCalculatorOpen ? 'var(--primary)' : undefined,
                   flex: isMobile ? 1 : 'none',
                   display: 'flex',
                   alignItems: 'center',
@@ -726,7 +726,7 @@ export default function POS() {
               {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(245, 158, 11, 0.12)', color: 'var(--primary, #f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(var(--primary-rgb), 0.12)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Banknote size={16} />
                   </div>
                   <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
@@ -739,8 +739,8 @@ export default function POS() {
                     style={{
                       padding: '3px 10px',
                       borderRadius: 20,
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      background: 'rgba(var(--success-rgb), 0.12)',
+                      border: '1px solid rgba(var(--success-rgb), 0.25)',
                       color: 'var(--accent-emerald)',
                       fontSize: 12,
                       fontWeight: 700,
@@ -775,8 +775,8 @@ export default function POS() {
                         style={{
                           fontSize: 10.5,
                           fontWeight: 600,
-                          color: 'var(--primary, #f59e0b)',
-                          background: 'rgba(245, 158, 11, 0.1)',
+                          color: 'var(--primary)',
+                          background: 'rgba(var(--primary-rgb), 0.1)',
                           border: 'none',
                           borderRadius: 4,
                           padding: '2px 6px',
@@ -848,7 +848,7 @@ export default function POS() {
               >
                 <div>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block' }}>USD ning so‘mdagi qiymati:</span>
-                  <strong style={{ fontSize: 15, color: 'var(--primary, #f59e0b)', fontWeight: 800 }}>
+                  <strong style={{ fontSize: 15, color: 'var(--primary)', fontWeight: 800 }}>
                     {usdAmount > 0 ? `${usdValueUzs.toLocaleString('uz-UZ')} UZS` : '0 UZS'}
                   </strong>
                 </div>
@@ -862,7 +862,7 @@ export default function POS() {
                       style={{
                         fontSize: 15,
                         fontWeight: 800,
-                        color: changeUzs >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose, #ef4444)',
+                        color: changeUzs >= 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                       }}
                     >
                       {Math.abs(changeUzs).toLocaleString('uz-UZ')} UZS
@@ -976,7 +976,7 @@ export default function POS() {
                           fontSize: 10,
                           padding: '2px 6px',
                           borderRadius: 4,
-                          background: inStock ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          background: inStock ? 'rgba(var(--success-rgb), 0.15)' : 'rgba(var(--danger-rgb), 0.15)',
                           color: inStock ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                           fontWeight: 700,
                         }}
@@ -1037,7 +1037,7 @@ export default function POS() {
                           width: 28,
                           height: 28,
                           borderRadius: 'var(--radius-xs)',
-                          background: 'rgba(99, 102, 241, 0.15)',
+                          background: 'var(--primary-light)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1087,11 +1087,11 @@ export default function POS() {
               justifyContent: 'space-between',
               padding: '12px 16px',
               borderRadius: 14,
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              color: '#000',
+              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
+              color: 'var(--text-on-primary)',
               fontWeight: 700,
               fontSize: 13.5,
-              boxShadow: '0 8px 24px rgba(245, 158, 11, 0.42)',
+              boxShadow: '0 8px 24px rgba(var(--primary-rgb), 0.42)',
               cursor: 'pointer',
               marginTop: 10,
             }}
@@ -1148,7 +1148,7 @@ export default function POS() {
                 gap: 6,
                 background: 'none',
                 border: 'none',
-                color: 'var(--primary, #f59e0b)',
+                color: 'var(--primary)',
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -1179,7 +1179,7 @@ export default function POS() {
                 fontSize: 11,
                 fontWeight: 700,
                 background: 'var(--primary)',
-                color: '#fff',
+                color: 'var(--text-on-primary)',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
               }}
@@ -1241,7 +1241,7 @@ export default function POS() {
                   style={{
                     padding: 12,
                     borderRadius: 'var(--radius-sm)',
-                    background: (isOutOfStock || isOverStock) ? 'rgba(239, 68, 68, 0.06)' : 'rgba(255, 255, 255, 0.03)',
+                    background: (isOutOfStock || isOverStock) ? 'rgba(var(--danger-rgb), 0.06)' : 'rgba(255, 255, 255, 0.03)',
                     border: (isOutOfStock || isOverStock)
                       ? '1px solid var(--accent-rose)'
                       : isBelowMin
@@ -1446,7 +1446,7 @@ export default function POS() {
           {hasStockError && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.12)',
+                background: 'rgba(var(--danger-rgb), 0.12)',
                 border: '1px solid var(--accent-rose)',
                 color: 'var(--accent-rose)',
                 padding: '8px 12px',
@@ -1473,9 +1473,9 @@ export default function POS() {
               borderRadius: 'var(--radius-sm)',
               border: 'none',
               background: cart.length > 0 && !hasStockError
-                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                ? 'var(--accent-emerald)'
                 : 'rgba(255,255,255,0.06)',
-              color: cart.length > 0 && !hasStockError ? '#fff' : 'var(--text-muted)',
+              color: cart.length > 0 && !hasStockError ? 'var(--on-success)' : 'var(--text-muted)',
               fontSize: 16,
               fontWeight: 700,
               cursor: cart.length > 0 && !hasStockError ? 'pointer' : 'not-allowed',
@@ -1502,7 +1502,7 @@ export default function POS() {
         maxWidth={isSplitCheckout ? 840 : 540}
       >
         <form onSubmit={handleConfirmSale} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {expiredCartItems.length > 0 && <div role="alert" style={{ padding: 14, border: '1px solid var(--accent-amber)', borderRadius: 8, background: 'rgba(245,158,11,.1)' }}>
+          {expiredCartItems.length > 0 && <div role="alert" style={{ padding: 14, border: '1px solid var(--accent-amber)', borderRadius: 8, background: 'rgba(var(--primary-rgb), .1)' }}>
             <strong>Diqqat: yaroqlilik muddati o‘tgan partiya bor.</strong>
             {expiredCartItems.map(({ variant, batches }) => <div key={variant.id}>{variant.product_name || variant.name}: {batches.map(batch => `${batch.batch_code || 'Partiya'} — ${batch.expires_on}`).join('; ')}</div>)}
             <div>Sotuvni davom ettirish mumkin.</div>
@@ -1529,7 +1529,7 @@ export default function POS() {
                       padding: '12px 10px',
                       borderRadius: 'var(--radius-sm)',
                       border: active ? '1px solid var(--accent-emerald)' : '1px solid var(--border-subtle)',
-                      background: active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                      background: active ? 'rgba(var(--success-rgb), 0.15)' : 'rgba(255, 255, 255, 0.03)',
                       color: active ? 'var(--accent-emerald)' : 'var(--text-secondary)',
                       cursor: 'pointer',
                       display: 'flex',
@@ -1631,8 +1631,8 @@ export default function POS() {
                     justifyContent: 'space-between',
                     padding: '8px 12px',
                     borderRadius: 'var(--radius-sm)',
-                    background: 'rgba(16, 185, 129, 0.12)',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    background: 'rgba(var(--success-rgb), 0.12)',
+                    border: '1px solid rgba(var(--success-rgb), 0.25)',
                   }}
                 >
                   <span

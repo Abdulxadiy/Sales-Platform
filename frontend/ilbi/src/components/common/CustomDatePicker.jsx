@@ -303,7 +303,7 @@ export default function CustomDatePicker({
           color: selectedDate ? 'var(--text-primary)' : 'var(--text-muted)',
           cursor: disabled ? 'not-allowed' : 'pointer',
           outline: 'none',
-          boxShadow: isOpen ? '0 0 0 2px rgba(245, 158, 11, 0.2)' : 'none',
+          boxShadow: isOpen ? '0 0 0 2px rgba(var(--primary-rgb), 0.2)' : 'none',
           transition: 'all 0.15s ease',
           opacity: disabled ? 0.6 : 1,
           whiteSpace: 'nowrap',
@@ -336,8 +336,8 @@ export default function CustomDatePicker({
                 transition: 'all 0.15s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--accent-rose, #ef4444)';
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                e.currentTarget.style.color = 'var(--accent-rose)';
+                e.currentTarget.style.background = 'rgba(var(--danger-rgb), 0.15)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = 'var(--text-muted)';
@@ -467,7 +467,7 @@ export default function CustomDatePicker({
                 style={{
                   fontSize: 10.5,
                   fontWeight: 700,
-                  color: idx >= 5 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)',
+                  color: idx >= 5 ? 'var(--accent-rose)' : 'var(--text-muted)',
                   padding: '4px 0',
                 }}
               >
@@ -505,10 +505,10 @@ export default function CustomDatePicker({
                     borderRadius: 6,
                     border: currentToday && !selected ? '1px solid var(--primary)' : 'none',
                     background: selected
-                      ? 'var(--primary, #f59e0b)'
+                      ? 'var(--primary)'
                       : 'transparent',
                     color: selected
-                      ? '#ffffff'
+                      ? 'var(--text-on-primary)'
                       : disabledDay
                       ? 'rgba(150, 150, 150, 0.3)'
                       : 'var(--text-primary)',

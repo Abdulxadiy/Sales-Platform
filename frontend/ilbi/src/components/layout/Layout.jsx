@@ -425,9 +425,9 @@ export default function Layout({ children }) {
                 borderRadius: 8,
                 fontSize: 12.5,
                 fontWeight: 600,
-                background: hasDiff ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                background: hasDiff ? 'rgba(var(--danger-rgb), 0.1)' : 'rgba(var(--success-rgb), 0.1)',
                 color: hasDiff ? 'var(--accent-rose)' : 'var(--accent-emerald)',
-                border: `1px solid ${hasDiff ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)'}`,
+                border: `1px solid ${hasDiff ? 'rgba(var(--danger-rgb), 0.25)' : 'rgba(var(--success-rgb), 0.25)'}`,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -563,7 +563,7 @@ export default function Layout({ children }) {
                   style={{
                     padding: '6px 11px',
                     fontSize: 11.5,
-                    color: 'var(--accent-rose, #ef4444)',
+                    color: 'var(--accent-rose)',
                   }}
                   title="Barcha xabarnomalarni tozalash"
                 >

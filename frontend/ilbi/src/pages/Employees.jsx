@@ -23,7 +23,7 @@ function employeeStatus(employee) {
   if (employee.archived_at) return { label: 'O‘chirilgan', color: 'var(--text-muted)' };
   if (!employee.is_active) return { label: 'Ishdan bo‘shatilgan', color: 'var(--text-muted)' };
   if (!employee.account_active) return { label: 'Bloklangan', color: 'var(--accent-rose)' };
-  if (!employee.password_set) return { label: 'Faollashmagan', color: '#b7791f' };
+  if (!employee.password_set) return { label: 'Faollashmagan', color: 'var(--accent-amber)' };
   return { label: 'Faol', color: 'var(--accent-emerald)' };
 }
 

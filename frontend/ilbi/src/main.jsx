@@ -26,30 +26,30 @@ class ErrorBoundary extends Component {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#090d16',
-          color: '#f8fafc',
+          background: 'var(--bg-app)',
+          color: 'var(--text-primary)',
           padding: 24,
           fontFamily: 'system-ui, sans-serif'
         }}>
           <div style={{
             maxWidth: 540,
-            background: 'rgba(30, 41, 59, 0.7)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
+            background: 'var(--bg-card)',
+            border: '1px solid rgba(var(--danger-rgb), 0.3)',
             borderRadius: 16,
             padding: 28,
             boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
           }}>
-            <h2 style={{ margin: '0 0 12px', color: '#f43f5e', fontSize: 20 }}>
+            <h2 style={{ margin: '0 0 12px', color: 'var(--accent-rose)', fontSize: 20 }}>
               Kutilmagan xatolik yuz berdi
             </h2>
-            <p style={{ margin: '0 0 16px', color: '#94a3b8', fontSize: 14 }}>
+            <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: 14 }}>
               Ilovani yuklashda xatolik aniqlandi:
             </p>
             <pre style={{
-              background: '#020617',
+              background: 'var(--bg-input)',
               padding: 14,
               borderRadius: 8,
-              color: '#fda4af',
+              color: 'var(--accent-rose)',
               fontSize: 12,
               overflowX: 'auto',
               whiteSpace: 'pre-wrap',
@@ -62,8 +62,8 @@ class ErrorBoundary extends Component {
                 window.location.reload();
               }}
               style={{
-                background: '#6366f1',
-                color: '#fff',
+                background: 'var(--primary)',
+                color: 'var(--text-on-primary)',
                 border: 'none',
                 padding: '10px 20px',
                 borderRadius: 8,

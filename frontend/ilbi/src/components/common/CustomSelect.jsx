@@ -207,7 +207,7 @@ export default function CustomSelect({
           color: selectedOption ? 'var(--text-primary)' : 'var(--text-muted)',
           cursor: disabled ? 'not-allowed' : 'pointer',
           outline: 'none',
-          boxShadow: isOpen ? '0 0 0 2px rgba(245, 158, 11, 0.2)' : 'none',
+          boxShadow: isOpen ? '0 0 0 2px rgba(var(--primary-rgb), 0.2)' : 'none',
           transition: 'all 0.15s ease',
           opacity: disabled ? 0.6 : 1,
           textAlign: 'left',
@@ -239,7 +239,7 @@ export default function CustomSelect({
                 fontWeight: 700,
                 padding: '1px 6px',
                 borderRadius: 4,
-                background: 'rgba(245, 158, 11, 0.15)',
+                background: 'rgba(var(--primary-rgb), 0.15)',
                 color: 'var(--primary)',
                 marginLeft: 2,
               }}
@@ -317,7 +317,7 @@ export default function CustomSelect({
                       ? 'var(--text-muted)'
                       : 'var(--text-primary)',
                     background: isSelected
-                      ? 'rgba(245, 158, 11, 0.12)'
+                      ? 'rgba(var(--primary-rgb), 0.12)'
                       : 'transparent',
                     cursor: opt.disabled ? 'not-allowed' : 'pointer',
                     transition: 'background 0.15s ease, color 0.15s ease',
@@ -349,7 +349,7 @@ export default function CustomSelect({
                           fontWeight: 700,
                           padding: '1px 6px',
                           borderRadius: 4,
-                          background: isSelected ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                          background: isSelected ? 'rgba(var(--primary-rgb), 0.25)' : 'rgba(255, 255, 255, 0.08)',
                           color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
                         }}
                       >

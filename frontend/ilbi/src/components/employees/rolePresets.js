@@ -16,7 +16,7 @@ export const ROLE_PRESETS = [
     label: 'Kassir',
     badge: 'Kassa & Savdo',
     icon: Wallet,
-    color: '#10b981',
+    color: 'var(--accent-emerald)',
     description: 'Kassa savdosi (POS), smenani boshqarish, kassa kirim-chiqimlari va qarz to‘lovlari',
     permissions: [
       'manage_shift',
@@ -35,7 +35,7 @@ export const ROLE_PRESETS = [
     label: 'Katta kassir',
     badge: 'Kengaytirilgan kassa',
     icon: ShoppingCart,
-    color: '#8b5cf6',
+    color: 'var(--accent-purple)',
     description: 'Savdo, chekni bekor qilish (void), mijozlar boshqaruvi va qarz to‘lovlari',
     permissions: [
       'manage_shift',
@@ -56,7 +56,7 @@ export const ROLE_PRESETS = [
     label: 'Omborchi',
     badge: 'Ombor & Kirim',
     icon: Layers,
-    color: '#3b82f6',
+    color: 'var(--chart-profit)',
     description: 'Ombor zaxiralari, qabul qilish (kirim), qoldiqni tuzatish va tovarlar katalogi',
     permissions: [
       'view_stock',
@@ -74,7 +74,7 @@ export const ROLE_PRESETS = [
     label: 'Bosh omborchi',
     badge: 'Ombor & Logistika',
     icon: Package,
-    color: '#0284c7',
+    color: 'var(--accent-cyan)',
     description: 'Ombor, tovar tannarxini ko‘rish, transferlar, B2B va mahsulotlar boshqaruvi',
     permissions: [
       'view_stock',
@@ -95,7 +95,7 @@ export const ROLE_PRESETS = [
     label: 'Menejer',
     badge: 'Do‘kon boshqaruvi',
     icon: Users,
-    color: '#6366f1',
+    color: 'var(--accent-purple)',
     description: 'Kassa, savdo, qaytarish, tovarlar, ombor va dashboard ko‘rsatkichlari',
     permissions: [
       'manage_shift',
@@ -125,7 +125,7 @@ export const ROLE_PRESETS = [
     label: 'Buxgalter',
     badge: 'Moliya & Audit',
     icon: TrendingUp,
-    color: '#06b6d4',
+    color: 'var(--accent-cyan)',
     description: 'Moliyaviy hisobotlar, kassa nazorati, qarzlar, analitika va tovar tannarxi',
     permissions: [
       'manage_shift',
@@ -147,7 +147,7 @@ export const ROLE_PRESETS = [
     label: 'Operator',
     badge: 'Mijozlar & B2B',
     icon: Briefcase,
-    color: '#ec4899',
+    color: 'var(--accent-rose)',
     description: 'Mijozlar (kontragentlar), savdolar, qarz to‘lovlari va B2B transferlar',
     permissions: [
       'add_sale',
@@ -165,7 +165,7 @@ export const ROLE_PRESETS = [
     label: 'Administrator',
     badge: 'To‘liq vakolat',
     icon: ShieldCheck,
-    color: '#eab308',
+    color: 'var(--accent-amber)',
     description: 'Barcha bo‘limlar va barcha 25 ta operatsiyaga to‘liq kirish huquqi',
     permissions: [
       'manage_shift',

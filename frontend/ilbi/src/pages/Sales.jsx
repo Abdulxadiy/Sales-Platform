@@ -501,8 +501,8 @@ export default function Sales() {
               style={{
                 padding: '8px 12px',
                 borderRadius: 'var(--radius-sm)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                background: 'rgba(var(--danger-rgb), 0.08)',
                 color: 'var(--accent-rose)',
                 fontSize: 12,
                 fontWeight: 600,
@@ -606,7 +606,7 @@ export default function Sales() {
                   padding: 0,
                   overflow: 'hidden',
                   marginBottom: 20,
-                  border: headerInfo.isToday ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid var(--border-card)',
+                  border: headerInfo.isToday ? '1px solid rgba(var(--primary-rgb), 0.4)' : '1px solid var(--border-card)',
                 }}
               >
                 {/* Day Header */}
@@ -619,7 +619,7 @@ export default function Sales() {
                     gap: 12,
                     padding: '14px 20px',
                     background: headerInfo.isToday
-                      ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.03) 100%)'
+                      ? 'linear-gradient(90deg, rgba(var(--primary-rgb), 0.12) 0%, rgba(var(--primary-rgb), 0.03) 100%)'
                       : 'var(--bg-card)',
                     borderBottom: '1px solid var(--border-subtle)',
                   }}
@@ -679,7 +679,7 @@ export default function Sales() {
                         style={{
                           padding: '4px 10px',
                           borderRadius: 'var(--radius-sm)',
-                          background: 'rgba(239, 68, 68, 0.12)',
+                          background: 'rgba(var(--danger-rgb), 0.12)',
                           color: 'var(--accent-rose)',
                           fontWeight: 600,
                           fontSize: 12,
@@ -773,9 +773,9 @@ export default function Sales() {
                                   background: isCompleted
                                     ? 'rgba(34, 197, 94, 0.12)'
                                     : isPartiallyVoided
-                                    ? 'rgba(245, 158, 11, 0.12)'
+                                    ? 'rgba(var(--primary-rgb), 0.12)'
                                     : isVoided
-                                    ? 'rgba(239, 68, 68, 0.12)'
+                                    ? 'rgba(var(--danger-rgb), 0.12)'
                                     : 'rgba(100, 116, 139, 0.12)',
                                   color: isCompleted
                                     ? 'var(--accent-emerald)'
@@ -855,8 +855,8 @@ export default function Sales() {
                                     style={{
                                       padding: '6px 10px',
                                       borderRadius: 'var(--radius-xs)',
-                                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                                      background: 'rgba(239, 68, 68, 0.08)',
+                                      border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                                      background: 'rgba(var(--danger-rgb), 0.08)',
                                       color: 'var(--accent-rose)',
                                       fontSize: 12,
                                       fontWeight: 600,
@@ -1011,8 +1011,8 @@ export default function Sales() {
                           style={{
                             padding: '4px 8px',
                             borderRadius: 'var(--radius-xs)',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                            background: 'rgba(var(--danger-rgb), 0.1)',
                             color: 'var(--accent-rose)',
                             fontSize: 11,
                             fontWeight: 600,
@@ -1111,8 +1111,8 @@ export default function Sales() {
                     style={{
                       padding: '9px 16px',
                       borderRadius: 'var(--radius-sm)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                      background: 'rgba(var(--danger-rgb), 0.1)',
                       color: 'var(--accent-rose)',
                       fontSize: 13,
                       fontWeight: 600,
@@ -1152,8 +1152,8 @@ export default function Sales() {
               gap: 10,
               padding: 12,
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
+              background: 'rgba(var(--danger-rgb), 0.1)',
+              border: '1px solid rgba(var(--danger-rgb), 0.2)',
               color: 'var(--accent-rose)',
               fontSize: 13,
             }}
@@ -1211,7 +1211,7 @@ export default function Sales() {
                 borderRadius: 'var(--radius-sm)',
                 border: 'none',
                 background: 'var(--accent-rose)',
-                color: '#fff',
+                color: 'var(--on-danger)',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
@@ -1306,7 +1306,7 @@ export default function Sales() {
                 borderRadius: 'var(--radius-sm)',
                 border: 'none',
                 background: 'var(--accent-rose)',
-                color: '#fff',
+                color: 'var(--on-danger)',
                 fontWeight: 600,
                 cursor: 'pointer',
               }}

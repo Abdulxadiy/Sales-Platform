@@ -378,7 +378,7 @@ export default function Inventory() {
                     fontSize: 10.5,
                     padding: '1px 6px',
                     borderRadius: 999,
-                    background: activeTab === 'transfers' ? 'rgba(255,255,255,0.25)' : 'var(--accent-amber, #f59e0b)',
+                    background: activeTab === 'transfers' ? 'rgba(255,255,255,0.25)' : 'var(--accent-amber)',
                     color: '#ffffff',
                     fontWeight: 800,
                   }}
@@ -393,7 +393,7 @@ export default function Inventory() {
                 padding: '8px 18px',
                 borderRadius: 'var(--radius-xs)',
                 border: 'none',
-                background: activeTab === 'deficits' ? 'var(--accent-rose, #ef4444)' : 'transparent',
+                background: activeTab === 'deficits' ? 'var(--accent-rose)' : 'transparent',
                 color: activeTab === 'deficits' ? '#ffffff' : 'var(--text-secondary)',
                 fontWeight: 700,
                 fontSize: 13,
@@ -411,7 +411,7 @@ export default function Inventory() {
                     fontSize: 10.5,
                     padding: '1px 6px',
                     borderRadius: 999,
-                    background: activeTab === 'deficits' ? 'rgba(255,255,255,0.25)' : 'var(--accent-rose, #ef4444)',
+                    background: activeTab === 'deficits' ? 'rgba(255,255,255,0.25)' : 'var(--accent-rose)',
                     color: '#ffffff',
                     fontWeight: 800,
                   }}
@@ -562,8 +562,8 @@ export default function Inventory() {
             style={{
               padding: '9px 14px',
               borderRadius: 'var(--radius-sm)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(var(--danger-rgb), 0.3)',
+              background: 'rgba(var(--danger-rgb), 0.08)',
               color: 'var(--accent-rose)',
               fontWeight: 600,
               fontSize: 13,
@@ -669,8 +669,8 @@ export default function Inventory() {
                 style={{
                   padding: '8px 12px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                  background: 'rgba(var(--danger-rgb), 0.08)',
                   color: 'var(--accent-rose)',
                   fontSize: 12,
                   fontWeight: 600,
@@ -719,8 +719,8 @@ export default function Inventory() {
             style={{
               padding: '10px 14px',
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
+              background: 'rgba(var(--danger-rgb), 0.08)',
+              border: '1px solid rgba(var(--danger-rgb), 0.2)',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
@@ -728,9 +728,9 @@ export default function Inventory() {
               color: 'var(--text-secondary)',
             }}
           >
-            <AlertTriangle size={18} style={{ color: 'var(--accent-rose, #ef4444)', flexShrink: 0 }} />
+            <AlertTriangle size={18} style={{ color: 'var(--accent-rose)', flexShrink: 0 }} />
             <div>
-              <strong style={{ color: 'var(--text-primary)' }}>Kamchiliklar mezoni:</strong> So‘nggi 30 kun ichida kamida <strong style={{ color: 'var(--primary)' }}>10 ta sotilgan</strong> va ayni paytda ombordagi qoldig‘i <strong style={{ color: 'var(--accent-rose, #ef4444)' }}>5 yoki undan kam qolgan (≤5)</strong> tovarlar. Yangi tovar kirimi qilinib, qoldiq 5 tadan oshsa, tovar ushbu ro‘yxatdan avtomatik ravishda chiqib ketadi.
+              <strong style={{ color: 'var(--text-primary)' }}>Kamchiliklar mezoni:</strong> So‘nggi 30 kun ichida kamida <strong style={{ color: 'var(--primary)' }}>10 ta sotilgan</strong> va ayni paytda ombordagi qoldig‘i <strong style={{ color: 'var(--accent-rose)' }}>5 yoki undan kam qolgan (≤5)</strong> tovarlar. Yangi tovar kirimi qilinib, qoldiq 5 tadan oshsa, tovar ushbu ro‘yxatdan avtomatik ravishda chiqib ketadi.
             </div>
           </div>
 
@@ -772,8 +772,8 @@ export default function Inventory() {
                 style={{
                   padding: '8px 12px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                  background: 'rgba(var(--danger-rgb), 0.08)',
                   color: 'var(--accent-rose)',
                   fontSize: 12,
                   fontWeight: 600,
@@ -789,7 +789,7 @@ export default function Inventory() {
             )}
 
             <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
-              Kamchiliklar: <strong style={{ color: 'var(--accent-rose, #ef4444)' }}>{deficitsList.length}</strong> ta tovar
+              Kamchiliklar: <strong style={{ color: 'var(--accent-rose)' }}>{deficitsList.length}</strong> ta tovar
             </div>
           </div>
         </div>
@@ -868,8 +868,8 @@ export default function Inventory() {
                 style={{
                   padding: '8px 12px',
                   borderRadius: 'var(--radius-sm)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(var(--danger-rgb), 0.3)',
+                  background: 'rgba(var(--danger-rgb), 0.08)',
                   color: 'var(--accent-rose)',
                   fontSize: 12,
                   fontWeight: 600,
@@ -983,7 +983,7 @@ export default function Inventory() {
                             borderRadius: 'var(--radius-full)',
                             fontSize: 12,
                             fontWeight: 700,
-                            background: qty > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            background: qty > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(var(--danger-rgb), 0.15)',
                             color: qty > 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                           }}
                         >
@@ -1068,7 +1068,7 @@ export default function Inventory() {
                               width: 8,
                               height: 8,
                               borderRadius: '50%',
-                              background: isZero ? 'var(--accent-rose, #ef4444)' : '#f59e0b',
+                              background: isZero ? 'var(--accent-rose)' : 'var(--accent-amber)',
                             }}
                           />
                           <div>
@@ -1092,7 +1092,7 @@ export default function Inventory() {
                             padding: '4px 10px',
                             borderRadius: 'var(--radius-xs)',
                             background: 'rgba(59, 130, 246, 0.12)',
-                            color: '#3b82f6',
+                            color: 'var(--chart-profit)',
                             fontWeight: 700,
                             fontSize: 12,
                           }}
@@ -1105,8 +1105,8 @@ export default function Inventory() {
                           style={{
                             padding: '4px 10px',
                             borderRadius: 'var(--radius-xs)',
-                            background: isZero ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: isZero ? 'var(--accent-rose, #ef4444)' : '#d97706',
+                            background: isZero ? 'rgba(var(--danger-rgb), 0.15)' : 'rgba(var(--primary-rgb), 0.15)',
+                            color: isZero ? 'var(--accent-rose)' : 'var(--accent-amber)',
                             fontWeight: 800,
                             fontSize: 13,
                           }}
@@ -1124,8 +1124,8 @@ export default function Inventory() {
                             borderRadius: 'var(--radius-xs)',
                             fontSize: 11,
                             fontWeight: 700,
-                            background: isZero ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                            color: isZero ? 'var(--accent-rose, #ef4444)' : '#d97706',
+                            background: isZero ? 'rgba(var(--danger-rgb), 0.12)' : 'rgba(var(--primary-rgb), 0.12)',
+                            color: isZero ? 'var(--accent-rose)' : 'var(--accent-amber)',
                           }}
                         >
                           <AlertTriangle size={12} />
@@ -1206,7 +1206,7 @@ export default function Inventory() {
                             fontWeight: 700,
                             padding: '4px 8px',
                             borderRadius: 'var(--radius-xs)',
-                            background: isIn ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                            background: isIn ? 'rgba(34, 197, 94, 0.12)' : 'rgba(var(--danger-rgb), 0.12)',
                             color: isIn ? 'var(--accent-emerald)' : 'var(--accent-rose)',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -1508,7 +1508,7 @@ export default function Inventory() {
       <Modal isOpen={writeOffModalOpen} onClose={() => setWriteOffModalOpen(false)} title="Hisobdan Chiqarish (Isrofgarchilik)">
         <form onSubmit={handleWriteOffSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={false} />
-          <div style={{ padding: 12, borderRadius: 'var(--radius-xs)', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--accent-rose)', fontSize: 13 }}>
+          <div style={{ padding: 12, borderRadius: 'var(--radius-xs)', background: 'rgba(var(--danger-rgb), 0.1)', border: '1px solid rgba(var(--danger-rgb), 0.2)', color: 'var(--accent-rose)', fontSize: 13 }}>
             Diqqat: Ushbu amal tovarlarni ombordan butunlay hisobdan chiqaradi va tizim auditiga qayd etiladi.
           </div>
 
@@ -1567,7 +1567,7 @@ export default function Inventory() {
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-rose)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+              style={{ padding: '10px 22px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-rose)', color: 'var(--on-danger)', fontWeight: 700, cursor: 'pointer' }}
             >
               {isSubmitting ? 'Chiqarilmoqda...' : 'Hisobdan Chiqarish'}
             </button>

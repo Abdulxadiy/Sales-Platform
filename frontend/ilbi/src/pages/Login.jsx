@@ -366,7 +366,7 @@ export default function Login() {
         </button>
       </div>
 
-      {/* Decorative Ambient Glow (Warm Amber in dark mode) */}
+      {/* Decorative ambient glow follows the active neutral accent */}
       <div
         style={{
           position: 'absolute',
@@ -374,7 +374,7 @@ export default function Login() {
           height: 440,
           borderRadius: '50%',
           background: isDark
-            ? 'radial-gradient(circle, rgba(245, 158, 11, 0.18) 0%, rgba(12, 10, 9, 0) 70%)'
+            ? 'radial-gradient(circle, rgba(var(--primary-rgb), 0.18) 0%, rgba(12, 10, 9, 0) 70%)'
             : 'radial-gradient(circle, rgba(11, 9, 9, 0.08) 0%, rgba(240, 239, 235, 0) 70%)',
           top: '20%',
           left: '50%',
@@ -411,8 +411,8 @@ export default function Login() {
         {errorMsg && (
           <div
             style={{
-              background: 'rgba(244, 63, 94, 0.12)',
-              border: '1px solid rgba(244, 63, 94, 0.3)',
+              background: 'rgba(var(--danger-rgb), 0.12)',
+              border: '1px solid rgba(var(--danger-rgb), 0.3)',
               borderRadius: 12,
               padding: '10px 14px',
               color: 'var(--accent-rose)',
@@ -839,7 +839,7 @@ export default function Login() {
                       width: 44,
                       height: 44,
                       borderRadius: 14,
-                      background: 'rgba(245, 158, 11, 0.15)',
+                      background: 'rgba(var(--primary-rgb), 0.15)',
                       color: 'var(--primary)',
                       display: 'flex',
                       alignItems: 'center',
@@ -871,8 +871,8 @@ export default function Login() {
                   style={{
                     padding: '12px 14px',
                     borderRadius: 10,
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    background: 'rgba(var(--primary-rgb), 0.08)',
+                    border: '1px solid rgba(var(--primary-rgb), 0.25)',
                     fontSize: 12.5,
                     color: 'var(--text-primary)',
                     lineHeight: 1.5,
@@ -891,8 +891,8 @@ export default function Login() {
                   style={{
                     padding: '12px 14px',
                     borderRadius: 12,
-                    background: 'rgba(245, 158, 11, 0.06)',
-                    border: '1px dashed rgba(245, 158, 11, 0.3)',
+                    background: 'rgba(var(--primary-rgb), 0.06)',
+                    border: '1px dashed rgba(var(--primary-rgb), 0.3)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 6,
@@ -939,7 +939,7 @@ export default function Login() {
                       width: 44,
                       height: 44,
                       borderRadius: 14,
-                      background: 'rgba(244, 63, 94, 0.12)',
+                      background: 'rgba(var(--danger-rgb), 0.12)',
                       color: 'var(--accent-rose)',
                       display: 'flex',
                       alignItems: 'center',

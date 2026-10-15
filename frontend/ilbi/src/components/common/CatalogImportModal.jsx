@@ -231,7 +231,7 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
                   width: 44,
                   height: 44,
                   borderRadius: 12,
-                  background: 'rgba(16, 185, 129, 0.15)',
+                  background: 'rgba(var(--success-rgb), 0.15)',
                   color: 'var(--accent-emerald)',
                   display: 'flex',
                   alignItems: 'center',
@@ -260,7 +260,7 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
                       fontSize: 11,
                       fontWeight: 700,
                       color: 'var(--accent-emerald)',
-                      background: 'rgba(16, 185, 129, 0.12)',
+                      background: 'rgba(var(--success-rgb), 0.12)',
                       padding: '2px 8px',
                       borderRadius: 999,
                       whiteSpace: 'nowrap',
@@ -386,7 +386,7 @@ export default function CatalogImportModal({ onClose, onSuccess }) {
                       <tr
                         key={row.row_number}
                         style={{
-                          background: hasError ? 'rgba(244, 63, 94, 0.05)' : undefined,
+                          background: hasError ? 'rgba(var(--danger-rgb), 0.05)' : undefined,
                         }}
                       >
                         <td style={{ fontWeight: 700, color: 'var(--text-muted)' }}>{row.row_number}</td>

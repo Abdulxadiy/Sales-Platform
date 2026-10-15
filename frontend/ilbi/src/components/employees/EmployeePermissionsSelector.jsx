@@ -24,31 +24,31 @@ const CATEGORY_META = {
   cashbox: {
     name: 'Kassa va Smenalar',
     icon: Wallet,
-    color: '#10b981',
+    color: 'var(--accent-emerald)',
     description: 'Smena ochish/yopish, kassa kirim-chiqimlari va hisobotlar',
   },
   catalog: {
     name: 'Katalog va Mahsulotlar',
     icon: Package,
-    color: '#f59e0b',
+    color: 'var(--primary)',
     description: 'Mahsulotlar, kategoriyalar, narxlar va tannarxni ko‘rish',
   },
   inventory: {
     name: 'Ombor va Zaxira',
     icon: Layers,
-    color: '#3b82f6',
+    color: 'var(--chart-profit)',
     description: 'Zaxiralar, tezkor kirim, qoldiqlarni tuzatish va do‘konlararo transfer',
   },
   sales: {
     name: 'Savdo va POS',
     icon: ShoppingCart,
-    color: '#8b5cf6',
+    color: 'var(--accent-purple)',
     description: 'POS kassa savdosi, sotuvni bekor qilish, mijozlar va qarz to‘lovlari',
   },
   analytics: {
     name: 'Hisobot va Analitika',
     icon: TrendingUp,
-    color: '#06b6d4',
+    color: 'var(--accent-cyan)',
     description: 'Dashboard analitikasi, savdo ko‘rsatkichlari va davriy hisobotlar',
   },
 };
@@ -107,13 +107,13 @@ function NeumorphicSwitch({ checked, onChange, disabled, id }) {
         height: 24,
         borderRadius: 9999,
         border: checked
-          ? '1px solid var(--primary, #6366f1)'
+          ? '1px solid var(--primary)'
           : '1px solid var(--border-subtle, rgba(255,255,255,0.12))',
         background: checked
-          ? 'linear-gradient(135deg, var(--primary, #6366f1) 0%, #4338ca 100%)'
+          ? 'var(--primary)'
           : 'var(--bg-chip, rgba(255,255,255,0.06))',
         boxShadow: checked
-          ? '0 0 10px rgba(99, 102, 241, 0.45), inset 0 1px 1px rgba(255,255,255,0.3)'
+          ? 'var(--shadow-sm)'
           : 'inset 0 2px 4px rgba(0,0,0,0.35)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -130,7 +130,7 @@ function NeumorphicSwitch({ checked, onChange, disabled, id }) {
           width: 18,
           height: 18,
           borderRadius: '50%',
-          background: checked ? '#ffffff' : '#94a3b8',
+          background: checked ? 'var(--text-on-primary)' : 'var(--text-muted)',
           boxShadow: checked
             ? '0 2px 5px rgba(0, 0, 0, 0.35)'
             : '0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255,255,255,0.4)',
@@ -173,20 +173,20 @@ function StylishCategoryCheckbox({ checked, indeterminate, onChange, disabled })
         justifyContent: 'center',
         cursor: disabled ? 'not-allowed' : 'pointer',
         background: checked
-          ? 'var(--primary, #6366f1)'
+          ? 'var(--primary)'
           : indeterminate
           ? 'rgba(99, 102, 241, 0.15)'
           : 'var(--bg-surface, rgba(255,255,255,0.03))',
         border: checked || indeterminate
-          ? '1.5px solid var(--primary, #6366f1)'
+          ? '1.5px solid var(--primary)'
           : '1.5px solid var(--border-hover, rgba(255,255,255,0.25))',
         boxShadow: checked ? '0 0 8px rgba(99, 102, 241, 0.35)' : 'none',
         transition: 'all 0.18s ease',
         flexShrink: 0,
       }}
     >
-      {checked && <Check size={13} strokeWidth={3} color="#ffffff" />}
-      {!checked && indeterminate && <Minus size={13} strokeWidth={3} color="var(--primary, #6366f1)" />}
+      {checked && <Check size={13} strokeWidth={3} color="var(--text-on-primary)" />}
+      {!checked && indeterminate && <Minus size={13} strokeWidth={3} color="var(--primary)" />}
     </div>
   );
 }
@@ -389,9 +389,9 @@ export default function EmployeePermissionsSelector({
               height: 38,
               borderRadius: 10,
               background: isFullAccess
-                ? 'var(--primary, #6366f1)'
+                ? 'var(--primary)'
                 : 'var(--bg-chip, rgba(255, 255, 255, 0.06))',
-              color: isFullAccess ? '#ffffff' : 'var(--primary, #6366f1)',
+              color: isFullAccess ? 'var(--text-on-primary)' : 'var(--primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -414,13 +414,13 @@ export default function EmployeePermissionsSelector({
                   padding: '2px 8px',
                   borderRadius: 999,
                   background: isFullAccess
-                    ? 'rgba(16, 185, 129, 0.2)'
+                    ? 'rgba(var(--success-rgb), 0.2)'
                     : 'var(--bg-chip, rgba(255, 255, 255, 0.06))',
                   color: isFullAccess
-                    ? 'var(--accent-emerald, #10b981)'
+                    ? 'var(--accent-emerald)'
                     : 'var(--text-muted, #9ca3af)',
                   border: isFullAccess
-                    ? '1px solid rgba(16, 185, 129, 0.35)'
+                    ? '1px solid rgba(var(--success-rgb), 0.35)'
                     : '1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))',
                 }}
               >
@@ -464,13 +464,13 @@ export default function EmployeePermissionsSelector({
               alignItems: 'center',
               gap: 6,
               background: presetsOpen
-                ? 'var(--primary, #6366f1)'
+                ? 'var(--primary)'
                 : activePreset
                 ? 'rgba(99, 102, 241, 0.15)'
                 : 'var(--bg-chip, rgba(255, 255, 255, 0.05))',
-              color: presetsOpen ? '#ffffff' : activePreset ? 'var(--primary, #6366f1)' : 'var(--text-primary)',
+              color: presetsOpen ? 'var(--text-on-primary)' : activePreset ? 'var(--primary)' : 'var(--text-primary)',
               border: presetsOpen || activePreset
-                ? '1px solid var(--primary, #6366f1)'
+                ? '1px solid var(--primary)'
                 : '1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))',
               fontWeight: 600,
               cursor: disabled ? 'not-allowed' : 'pointer',
@@ -480,7 +480,7 @@ export default function EmployeePermissionsSelector({
             onClick={() => setPresetsOpen((prev) => !prev)}
             title="Tayyor lavozim shablonlarini ochish yoki yig‘ishtirish"
           >
-            <Sparkles size={13} color={presetsOpen ? '#ffffff' : (activePreset?.color || 'var(--primary)')} />
+            <Sparkles size={13} color={presetsOpen ? 'var(--text-on-primary)' : (activePreset?.color || 'var(--primary)')} />
             <span>
               {activePreset ? `Shablon: ${activePreset.label}` : 'Lavozim shablonlari (8)'}
             </span>
@@ -496,7 +496,7 @@ export default function EmployeePermissionsSelector({
                 padding: '5px 10px',
                 fontSize: 11.5,
                 borderRadius: 8,
-                color: 'var(--accent-rose, #ef4444)',
+                color: 'var(--accent-rose)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
@@ -581,7 +581,7 @@ export default function EmployeePermissionsSelector({
                   height: 26,
                   borderRadius: 6,
                   background: 'rgba(99, 102, 241, 0.2)',
-                  color: 'var(--primary, #6366f1)',
+                  color: 'var(--primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -654,7 +654,7 @@ export default function EmployeePermissionsSelector({
                       ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0.08) 100%)'
                       : 'var(--bg-chip, rgba(255, 255, 255, 0.03))',
                     border: isCurrent
-                      ? '1.5px solid var(--primary, #6366f1)'
+                      ? '1.5px solid var(--primary)'
                       : '1px solid var(--border-subtle, rgba(255, 255, 255, 0.07))',
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     display: 'flex',
@@ -677,7 +677,7 @@ export default function EmployeePermissionsSelector({
                           width: 26,
                           height: 26,
                           borderRadius: 7,
-                          background: `${preset.color}22`,
+                          background: 'color-mix(in srgb, ' + preset.color + ' 13%, transparent)',
                           color: preset.color,
                           display: 'flex',
                           alignItems: 'center',
@@ -699,14 +699,14 @@ export default function EmployeePermissionsSelector({
                           padding: '1px 6px',
                           borderRadius: 999,
                           background: isCurrent
-                            ? 'var(--primary, #6366f1)'
+                            ? 'var(--primary)'
                             : 'rgba(255, 255, 255, 0.06)',
-                          color: isCurrent ? '#ffffff' : 'var(--text-muted)',
+                          color: isCurrent ? 'var(--text-on-primary)' : 'var(--text-muted)',
                         }}
                       >
                         {matchedCount} ta
                       </span>
-                      {isCurrent && <Check size={13} color="var(--primary, #6366f1)" strokeWidth={3} />}
+                      {isCurrent && <Check size={13} color="var(--text-on-primary)" strokeWidth={3} />}
                     </div>
                   </div>
                   <div
@@ -799,7 +799,7 @@ export default function EmployeePermissionsSelector({
                         width: 30,
                         height: 30,
                         borderRadius: 8,
-                        background: `${meta.color}1a`,
+                        background: 'color-mix(in srgb, ' + meta.color + ' 10%, transparent)',
                         color: meta.color,
                         display: 'flex',
                         alignItems: 'center',
@@ -821,14 +821,14 @@ export default function EmployeePermissionsSelector({
                             padding: '1px 6px',
                             borderRadius: 999,
                             background: isCatAllSelected
-                              ? 'rgba(16, 185, 129, 0.2)'
+                              ? 'rgba(var(--success-rgb), 0.2)'
                               : catSelectedCount > 0
                               ? 'rgba(99, 102, 241, 0.18)'
                               : 'var(--bg-chip, rgba(255, 255, 255, 0.05))',
                             color: isCatAllSelected
-                              ? 'var(--accent-emerald, #10b981)'
+                              ? 'var(--accent-emerald)'
                               : catSelectedCount > 0
-                              ? 'var(--primary, #6366f1)'
+                              ? 'var(--primary)'
                               : 'var(--text-muted, #9ca3af)',
                           }}
                         >
@@ -946,9 +946,9 @@ export default function EmployeePermissionsSelector({
                                     fontWeight: 700,
                                     padding: '1px 5px',
                                     borderRadius: 4,
-                                    background: 'rgba(239, 68, 68, 0.15)',
-                                    color: 'var(--accent-rose, #ef4444)',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    background: 'rgba(var(--danger-rgb), 0.15)',
+                                    color: 'var(--accent-rose)',
+                                    border: '1px solid rgba(var(--danger-rgb), 0.3)',
                                   }}
                                 >
                                   {perm.codename === 'view_cost_price' ? 'Maxfiy' : 'Muhim'}

@@ -23,7 +23,7 @@
             saved = localStorage.getItem('inventra_theme');
             if (saved !== null) localStorage.setItem('ilbi_theme', saved);
           }
-          var theme = saved || 'light';
+          var theme = saved === 'dark' ? 'dark' : 'light';
           document.documentElement.setAttribute('data-theme', theme);
         } catch (e) {}
       })();

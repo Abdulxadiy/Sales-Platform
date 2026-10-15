@@ -330,7 +330,7 @@ export default function Services() {
                 border: isActive ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
                 background: isActive ? 'var(--primary)' : 'var(--bg-card)',
                 color: isActive ? 'var(--text-on-primary)' : 'var(--text-secondary)',
-                boxShadow: isActive ? '0 4px 14px rgba(245, 158, 11, 0.25)' : 'none',
+                boxShadow: isActive ? '0 4px 14px rgba(var(--primary-rgb), 0.25)' : 'none',
                 transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
@@ -739,7 +739,7 @@ export default function Services() {
                             justifyContent: 'center',
                           }}
                         >
-                          {isChecked && <Check size={11} color="white" />}
+                          {isChecked && <Check size={11} color="var(--text-on-primary)" />}
                         </div>
                       </div>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
@@ -796,7 +796,7 @@ export default function Services() {
                             justifyContent: 'center',
                           }}
                         >
-                          {isChecked && <Check size={11} color="white" />}
+                          {isChecked && <Check size={11} color="var(--text-on-primary)" />}
                         </div>
                       </div>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
@@ -853,7 +853,7 @@ export default function Services() {
                             justifyContent: 'center',
                           }}
                         >
-                          {isChecked && <Check size={11} color="white" />}
+                          {isChecked && <Check size={11} color="var(--text-on-primary)" />}
                         </div>
                       </div>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
@@ -1262,7 +1262,7 @@ export default function Services() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <AlertTriangle size={18} style={{ color: 'var(--accent-rose, #ef4444)' }} />
+                  <AlertTriangle size={18} style={{ color: 'var(--accent-rose)' }} />
                   <span>Kamchiliklar (Defitsit) Tovarlar Hisoboti Jadvali</span>
                 </h3>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -1276,8 +1276,8 @@ export default function Services() {
                   gap: 6,
                   padding: '6px 14px',
                   borderRadius: 999,
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  color: 'var(--accent-rose, #ef4444)',
+                  background: 'rgba(var(--danger-rgb), 0.1)',
+                  color: 'var(--accent-rose)',
                   fontSize: 13,
                   fontWeight: 700,
                 }}
@@ -1334,7 +1334,7 @@ export default function Services() {
                             justifyContent: 'center',
                           }}
                         >
-                          {isChecked && <Check size={10} color="white" />}
+                          {isChecked && <Check size={10} color="var(--text-on-primary)" />}
                         </div>
                       </div>
                       <span style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.3 }}>
@@ -1430,7 +1430,7 @@ export default function Services() {
           <div className="glass-card" style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div style={{ maxWidth: 650 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={17} style={{ color: 'var(--accent-rose, #ef4444)' }} />
+                <AlertTriangle size={17} style={{ color: 'var(--accent-rose)' }} />
                 <span>Kamchiliklar Hisobotini Hozir Yuborish (Instant Trigger)</span>
               </h3>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -1446,8 +1446,8 @@ export default function Services() {
                 padding: '11px 20px',
                 fontSize: 13.5,
                 fontWeight: 700,
-                color: 'var(--accent-rose, #ef4444)',
-                border: '1px solid var(--accent-rose, #ef4444)',
+                color: 'var(--accent-rose)',
+                border: '1px solid var(--accent-rose)',
               }}
             >
               <Send size={16} />

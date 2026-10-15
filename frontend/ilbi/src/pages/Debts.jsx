@@ -270,10 +270,10 @@ export default function Debts() {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Jami Nasiya (UZS)
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: totalDebtUzs > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-primary)', marginTop: 4 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: totalDebtUzs > 0 ? 'var(--accent-rose)' : 'var(--text-primary)', marginTop: 4 }}>
             {totalDebtUzs.toLocaleString()} UZS
           </div>
-          <div style={{ fontSize: 12, color: totalDebtUzs > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--accent-amber)', marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: 12, color: totalDebtUzs > 0 ? 'var(--accent-rose)' : 'var(--accent-amber)', marginTop: 4, fontWeight: 600 }}>
             {debtorsCount} nafar qarzdor mijoz
           </div>
         </div>
@@ -294,10 +294,10 @@ export default function Debts() {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Mijoz Haqqi (Ortiqcha to‘lov)
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-emerald)', marginTop: 4 }}>
             +{totalCreditUzs.toLocaleString()} UZS
           </div>
-          <div style={{ fontSize: 12, color: '#10b981', marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: 12, color: 'var(--accent-emerald)', marginTop: 4, fontWeight: 600 }}>
             {creditCount} nafar mijoz haqqi bor
           </div>
         </div>
@@ -368,7 +368,7 @@ export default function Debts() {
               padding: '7px 14px',
               borderRadius: 'var(--radius-xs)',
               border: 'none',
-              background: counterpartyFilter === 'credit' ? '#10b981' : 'var(--bg-chip)',
+              background: counterpartyFilter === 'credit' ? 'var(--accent-emerald)' : 'var(--bg-chip)',
               color: counterpartyFilter === 'credit' ? '#ffffff' : 'var(--text-secondary)',
               fontSize: 12.5,
               fontWeight: 700,
@@ -519,9 +519,9 @@ export default function Debts() {
                                 fontWeight: 700,
                                 padding: '2px 7px',
                                 borderRadius: 4,
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                color: 'var(--accent-rose, #ef4444)',
-                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                background: 'rgba(var(--danger-rgb), 0.12)',
+                                color: 'var(--accent-rose)',
+                                border: '1px solid rgba(var(--danger-rgb), 0.25)',
                               }}
                             >
                               Qarzdor
@@ -594,17 +594,17 @@ export default function Debts() {
                       <td style={{ padding: '14px 16px' }}>
                         {debtUzs > 0 ? (
                           <div>
-                            <div style={{ fontWeight: 800, color: 'var(--accent-rose, #ef4444)', fontSize: 13.5 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-rose)', fontSize: 13.5 }}>
                               {debtUzs.toLocaleString()} UZS
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--accent-rose, #ef4444)', opacity: 0.85, fontWeight: 600 }}>Mijoz qarzi</div>
+                            <div style={{ fontSize: 10, color: 'var(--accent-rose)', opacity: 0.85, fontWeight: 600 }}>Mijoz qarzi</div>
                           </div>
                         ) : debtUzs < 0 ? (
                           <div>
-                            <div style={{ fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: 4 }}>
                               +{Math.abs(debtUzs).toLocaleString()} UZS
                             </div>
-                            <div style={{ fontSize: 10.5, color: '#10b981', fontWeight: 600 }}>Mijoz haqqi bor</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--accent-emerald)', fontWeight: 600 }}>Mijoz haqqi bor</div>
                           </div>
                         ) : (
                           <span style={{ color: 'var(--text-muted)' }}>0 UZS</span>
@@ -615,17 +615,17 @@ export default function Debts() {
                       <td style={{ padding: '14px 16px' }}>
                         {debtUsd > 0 ? (
                           <div>
-                            <div style={{ fontWeight: 800, color: 'var(--accent-rose, #ef4444)', fontSize: 13.5 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-rose)', fontSize: 13.5 }}>
                               ${debtUsd.toFixed(2)}
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--accent-rose, #ef4444)', opacity: 0.85, fontWeight: 600 }}>Mijoz qarzi</div>
+                            <div style={{ fontSize: 10, color: 'var(--accent-rose)', opacity: 0.85, fontWeight: 600 }}>Mijoz qarzi</div>
                           </div>
                         ) : debtUsd < 0 ? (
                           <div>
-                            <div style={{ fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: 4 }}>
                               +${Math.abs(debtUsd).toFixed(2)}
                             </div>
-                            <div style={{ fontSize: 10.5, color: '#10b981', fontWeight: 600 }}>Mijoz haqqi bor</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--accent-emerald)', fontWeight: 600 }}>Mijoz haqqi bor</div>
                           </div>
                         ) : (
                           <span style={{ color: 'var(--text-muted)' }}>$0.00</span>
@@ -1031,7 +1031,7 @@ export default function Debts() {
                   Do‘kon kursi (1 USD = <strong>{Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS</strong>)
                 </span>
               </span>
-              <span style={{ fontWeight: 800, color: 'var(--accent-rose, #ef4444)' }}>
+              <span style={{ fontWeight: 800, color: 'var(--accent-rose)' }}>
                 ~{((parseFloat(paymentAmount) || 0) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayiriladi
               </span>
             </div>
@@ -1081,14 +1081,14 @@ export default function Debts() {
             style={{
               padding: '12px 14px',
               borderRadius: 'var(--radius-sm)',
-              background: 'rgba(16, 185, 129, 0.08)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
+              background: 'rgba(var(--success-rgb), 0.08)',
+              border: '1px solid rgba(var(--success-rgb), 0.25)',
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Sparkles size={16} />
               <span>Bizda Qolgan Ortiqcha Haq</span>
             </div>
@@ -1229,14 +1229,14 @@ export default function Debts() {
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'var(--accent-emerald)' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
                 {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz Haqqi (UZS)' : 'Nasiya Qarzi (UZS)'}
               </div>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 800,
-                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose, #ef4444)' : Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
+                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose)' : Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)',
                   marginTop: 3,
                 }}
               >
@@ -1244,20 +1244,20 @@ export default function Debts() {
                   ? `+${Math.abs(Number(selectedCpDetail?.debt_balance_uzs || 0)).toLocaleString()} UZS`
                   : `${Number(selectedCpDetail?.debt_balance_uzs || 0).toLocaleString()} UZS`}
               </div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_uzs || 0) !== 0 ? 600 : 400 }}>
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'var(--accent-emerald)' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose)' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_uzs || 0) !== 0 ? 600 : 400 }}>
                 {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'Mijoz qarzi' : 'Joriy so‘m balansi'}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'var(--accent-emerald)' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
                 {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz Haqqi (USD)' : 'Nasiya Qarzi (USD)'}
               </div>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 800,
-                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose, #ef4444)' : Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
+                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose)' : Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)',
                   marginTop: 3,
                 }}
               >
@@ -1265,7 +1265,7 @@ export default function Debts() {
                   ? `+$${Math.abs(Number(selectedCpDetail?.debt_balance_usd || 0)).toFixed(2)}`
                   : `$${Number(selectedCpDetail?.debt_balance_usd || 0).toFixed(2)}`}
               </div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_usd || 0) !== 0 ? 600 : 400 }}>
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'var(--accent-emerald)' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose)' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_usd || 0) !== 0 ? 600 : 400 }}>
                 {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'Mijoz qarzi' : 'Joriy dollar balansi'}
               </div>
             </div>
@@ -1303,8 +1303,8 @@ export default function Debts() {
                   padding: '8px 16px',
                   borderRadius: 'var(--radius-xs)',
                   border: 'none',
-                  background: '#10b981',
-                  color: '#ffffff',
+                  background: 'var(--accent-emerald)',
+                  color: 'var(--on-success)',
                   fontSize: 12.5,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -1481,7 +1481,7 @@ export default function Debts() {
                               {new Date(sale.created_at).toLocaleString('uz-UZ')}
                             </span>
                             {sale.payment_type === 'debt' && (
-                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)' }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 4, background: 'rgba(var(--primary-rgb), 0.15)', color: 'var(--accent-amber)' }}>
                                 Nasiya
                               </span>
                             )}

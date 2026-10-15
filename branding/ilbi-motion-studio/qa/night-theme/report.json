@@ -1,0 +1,54 @@
+{
+  "source": "Real React UI + isolated PostgreSQL/Redis synthetic fixtures",
+  "checks": [],
+  "states": [
+    {
+      "name": "owner-dark-dashboard",
+      "theme": "dark",
+      "primary": "#F0EFEB",
+      "background": "#0B0909",
+      "colorScheme": "dark",
+      "measured": 25,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "owner-dark-pos",
+      "theme": "dark",
+      "primary": "#F0EFEB",
+      "background": "#0B0909",
+      "colorScheme": "dark",
+      "measured": 24,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "owner-dark-catalog",
+      "theme": "dark",
+      "primary": "#F0EFEB",
+      "background": "#0B0909",
+      "colorScheme": "dark",
+      "measured": 25,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "owner-dark-inventory",
+      "theme": "dark",
+      "primary": "#F0EFEB",
+      "background": "#0B0909",
+      "colorScheme": "dark",
+      "measured": 25,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "horizontalOverflow": false
+    }
+  ],
+  "browserErrors": [],
+  "totalStates": 4,
+  "totalTextMeasurements": 99,
+  "contrastFindings": []
+}

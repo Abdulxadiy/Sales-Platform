@@ -213,7 +213,7 @@ export default function CustomerProfileModal({ conversationId, api, onClose, onC
         {toast && (
           <div style={{
             background: 'var(--primary)',
-            color: '#000',
+            color: 'var(--text-on-primary)',
             fontWeight: 600,
             fontSize: 12.5,
             padding: '8px 16px',

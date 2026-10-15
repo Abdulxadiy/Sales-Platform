@@ -97,7 +97,7 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 17 }}>
       <div style={{ textAlign: 'center', padding: '6px 0 0' }}>
-        <div style={{ width: 54, height: 54, borderRadius: 17, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: linked ? 'rgba(34, 197, 94, 0.15)' : 'var(--primary-light)', color: linked ? '#16a34a' : 'var(--primary)', marginBottom: 12 }}>
+        <div style={{ width: 54, height: 54, borderRadius: 17, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: linked ? 'rgba(34, 197, 94, 0.15)' : 'var(--primary-light)', color: linked ? 'var(--accent-emerald)' : 'var(--primary)', marginBottom: 12 }}>
           {linked ? <CheckCircle2 size={28} /> : <ShieldCheck size={28} />}
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 7px', color: 'var(--text-primary)' }}>
@@ -126,12 +126,12 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
         </>
       )}
 
-      <div aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '12px 14px', borderRadius: 12, background: linked ? 'rgba(34, 197, 94, 0.1)' : 'var(--primary-light)', color: linked ? '#16a34a' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600 }}>
+      <div aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '12px 14px', borderRadius: 12, background: linked ? 'rgba(34, 197, 94, 0.1)' : 'var(--primary-light)', color: linked ? 'var(--accent-emerald)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600 }}>
         {linked ? <CheckCircle2 size={18} /> : <RefreshCw size={17} className={checking ? 'animate-spin' : ''} />}
         <span>{linked ? (sending ? 'Tasdiqlash kodi yuborilmoqda...' : 'Raqamingiz botga muvaffaqiyatli ulandi') : checking ? 'Botga ulanish tekshirilmoqda...' : checked ? 'Raqamingiz hali botga ulanmagan' : 'Ulanishni tekshirib bo‘lmadi'}</span>
       </div>
 
-      {error && <div role="alert" style={{ background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.3)', borderRadius: 12, padding: '10px 12px', color: 'var(--accent-rose)', fontSize: 12.5 }}>{error}</div>}
+      {error && <div role="alert" style={{ background: 'rgba(var(--danger-rgb), 0.1)', border: '1px solid rgba(var(--danger-rgb), 0.3)', borderRadius: 12, padding: '10px 12px', color: 'var(--accent-rose)', fontSize: 12.5 }}>{error}</div>}
 
       {sessionExpired && onRenew ? (
         <button type="button" onClick={renewTicket} disabled={renewing} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>

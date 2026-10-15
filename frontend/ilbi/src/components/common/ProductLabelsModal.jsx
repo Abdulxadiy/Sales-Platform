@@ -222,8 +222,8 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
                 padding: '24px 16px',
                 textAlign: 'center',
                 borderRadius: 'var(--radius-md, 12px)',
-                background: 'rgba(244, 63, 94, 0.08)',
-                border: '1px dashed rgba(244, 63, 94, 0.3)',
+                background: 'rgba(var(--danger-rgb), 0.08)',
+                border: '1px dashed rgba(var(--danger-rgb), 0.3)',
                 color: 'var(--accent-rose)',
                 fontSize: 13,
               }}

@@ -157,8 +157,8 @@ function ProductCardImageCarousel({ variant, isOutOfStock, stockQty }) {
           padding: '3px 8px',
           borderRadius: 999,
           background: isOutOfStock
-            ? 'rgba(244, 63, 94, 0.92)'
-            : 'rgba(16, 185, 129, 0.92)',
+            ? 'rgba(var(--danger-rgb), 0.92)'
+            : 'rgba(var(--success-rgb), 0.92)',
           color: '#fff',
           backdropFilter: 'blur(4px)',
           boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
@@ -299,7 +299,7 @@ function ProductCardImageCarousel({ variant, isOutOfStock, stockQty }) {
                   width: idx === (currentIndex % total) ? 12 : 5,
                   height: 5,
                   borderRadius: idx === (currentIndex % total) ? 3 : '50%',
-                  background: idx === (currentIndex % total) ? 'var(--primary, #f59e0b)' : 'rgba(255, 255, 255, 0.45)',
+                  background: idx === (currentIndex % total) ? 'var(--primary)' : 'rgba(255, 255, 255, 0.45)',
                   border: 'none',
                   padding: 0,
                   cursor: 'pointer',
@@ -1014,9 +1014,9 @@ export default function Catalog() {
           style={{
             padding: '8px 18px',
             borderRadius: 10,
-            border: activeTab === 'active' ? '1px solid var(--primary, #f59e0b)' : '1px solid var(--border-subtle)',
-            background: activeTab === 'active' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-card)',
-            color: activeTab === 'active' ? 'var(--primary, #f59e0b)' : 'var(--text-primary)',
+            border: activeTab === 'active' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+            background: activeTab === 'active' ? 'rgba(var(--primary-rgb), 0.12)' : 'var(--bg-card)',
+            color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-primary)',
             fontWeight: activeTab === 'active' ? 700 : 600,
             fontSize: 13.5,
             cursor: 'pointer',
@@ -1024,7 +1024,7 @@ export default function Catalog() {
             alignItems: 'center',
             gap: 8,
             transition: 'all 0.15s ease',
-            boxShadow: activeTab === 'active' ? '0 0 12px rgba(245, 158, 11, 0.15)' : 'none',
+            boxShadow: activeTab === 'active' ? '0 0 12px rgba(var(--primary-rgb), 0.15)' : 'none',
           }}
         >
           <Package size={16} />
@@ -1037,9 +1037,9 @@ export default function Catalog() {
           style={{
             padding: '8px 18px',
             borderRadius: 10,
-            border: activeTab === 'archived' ? '1px solid var(--primary, #f59e0b)' : '1px solid var(--border-subtle)',
-            background: activeTab === 'archived' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-card)',
-            color: activeTab === 'archived' ? 'var(--primary, #f59e0b)' : 'var(--text-primary)',
+            border: activeTab === 'archived' ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+            background: activeTab === 'archived' ? 'rgba(var(--primary-rgb), 0.12)' : 'var(--bg-card)',
+            color: activeTab === 'archived' ? 'var(--primary)' : 'var(--text-primary)',
             fontWeight: activeTab === 'archived' ? 700 : 600,
             fontSize: 13.5,
             cursor: 'pointer',
@@ -1047,7 +1047,7 @@ export default function Catalog() {
             alignItems: 'center',
             gap: 8,
             transition: 'all 0.15s ease',
-            boxShadow: activeTab === 'archived' ? '0 0 12px rgba(245, 158, 11, 0.15)' : 'none',
+            boxShadow: activeTab === 'archived' ? '0 0 12px rgba(var(--primary-rgb), 0.15)' : 'none',
           }}
         >
           <Archive size={16} />
@@ -1225,11 +1225,11 @@ export default function Catalog() {
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: 5,
-                          background: 'rgba(245, 158, 11, 0.12)',
+                          background: 'rgba(var(--primary-rgb), 0.12)',
                           color: 'var(--primary)',
                           fontFamily: 'monospace',
                           whiteSpace: 'nowrap',
-                          border: '1px solid rgba(245, 158, 11, 0.22)',
+                          border: '1px solid rgba(var(--primary-rgb), 0.22)',
                         }}
                         title="3 Bosqichli Kod (Kategoriya/Subkategoriya/Narx)"
                       >
@@ -1340,8 +1340,8 @@ export default function Catalog() {
                           justifyContent: 'center',
                           gap: 6,
                           color: 'var(--accent-emerald)',
-                          borderColor: 'rgba(16, 185, 129, 0.4)',
-                          background: 'rgba(16, 185, 129, 0.08)',
+                          borderColor: 'rgba(var(--success-rgb), 0.4)',
+                          background: 'rgba(var(--success-rgb), 0.08)',
                         }}
                         title="Tovarni arxivdan chiqarib faol savdoga qaytarish"
                       >
@@ -1988,7 +1988,7 @@ export default function Catalog() {
                 fullWidth
               />
               {categoryForm.parent_id && (
-                <span style={{ fontSize: 11, color: 'var(--accent-emerald, #10b981)', marginTop: 4, display: 'block' }}>
+                <span style={{ fontSize: 11, color: 'var(--accent-emerald)', marginTop: 4, display: 'block' }}>
                   ✓ Ota kategoriyadan meros olindi
                 </span>
               )}
@@ -2249,7 +2249,7 @@ export default function Catalog() {
                       fullWidth
                     />
                     {editCategoryForm.parent_id && (
-                      <span style={{ fontSize: 10, color: 'var(--accent-emerald, #10b981)', marginTop: 2, display: 'block' }}>
+                      <span style={{ fontSize: 10, color: 'var(--accent-emerald)', marginTop: 2, display: 'block' }}>
                         ✓ Ota kategoriyadan meros olinadi
                       </span>
                     )}
@@ -2340,8 +2340,8 @@ export default function Catalog() {
                                 fontWeight: 600,
                                 padding: '2px 8px',
                                 borderRadius: 999,
-                                background: mainCat.currency === 'USD' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.12)',
-                                color: mainCat.currency === 'USD' ? 'var(--accent-emerald, #10b981)' : 'var(--primary)',
+                                background: mainCat.currency === 'USD' ? 'rgba(var(--success-rgb), 0.15)' : 'rgba(59, 130, 246, 0.12)',
+                                color: mainCat.currency === 'USD' ? 'var(--accent-emerald)' : 'var(--primary)',
                                 marginLeft: 6,
                               }}
                             >
@@ -2408,8 +2408,8 @@ export default function Catalog() {
                                   fontWeight: 600,
                                   padding: '1px 6px',
                                   borderRadius: 999,
-                                  background: sub.currency === 'USD' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(59, 130, 246, 0.12)',
-                                  color: sub.currency === 'USD' ? 'var(--accent-emerald, #10b981)' : 'var(--primary)',
+                                  background: sub.currency === 'USD' ? 'rgba(var(--success-rgb), 0.15)' : 'rgba(59, 130, 246, 0.12)',
+                                  color: sub.currency === 'USD' ? 'var(--accent-emerald)' : 'var(--primary)',
                                 }}
                               >
                                 {sub.currency}

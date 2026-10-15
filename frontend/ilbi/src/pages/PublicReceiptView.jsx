@@ -82,10 +82,10 @@ export default function PublicReceiptView() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f8fafc', padding: 20 }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)', padding: 20 }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 44, height: 44, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ fontSize: 15, color: '#94a3b8' }}>Elektron chek yuklanmoqda...</p>
+          <div style={{ width: 44, height: 44, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Elektron chek yuklanmoqda...</p>
         </div>
       </div>
     );
@@ -93,16 +93,16 @@ export default function PublicReceiptView() {
 
   if (error || !receipt) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f8fafc', padding: 20 }}>
-        <div style={{ maxWidth: 460, width: '100%', background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: '36px 28px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
-          <AlertTriangle size={48} color="#ef4444" style={{ margin: '0 auto 14px' }} />
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: '#f8fafc' }}>Chek Topilmadi</h2>
-          <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.5, marginBottom: 24 }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)', padding: 20 }}>
+        <div style={{ maxWidth: 460, width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-card)', borderRadius: 16, padding: '36px 28px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
+          <AlertTriangle size={48} color="var(--accent-rose)" style={{ margin: '0 auto 14px' }} />
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}>Chek Topilmadi</h2>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 24 }}>
             {error || 'Kiritilgan raqam bo‘yicha tizimda elektron chek mavjud emas yoki muddati o‘tgan.'}
           </p>
           <button
             onClick={() => window.location.reload()}
-            style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#3b82f6', color: '#ffffff', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+            style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--text-on-primary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
           >
             <RotateCcw size={16} />
             <span>Qayta urinish</span>
@@ -118,7 +118,7 @@ export default function PublicReceiptView() {
   const isVoided = receipt.status === 'voided';
 
   return (
-    <div className="public-receipt-page" style={{ minHeight: '100vh', background: '#0f172a', padding: '24px 16px 48px', color: '#0f172a', fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif" }}>
+    <div className="public-receipt-page" style={{ minHeight: '100vh', background: 'var(--bg-app)', padding: '24px 16px 48px', color: 'var(--text-primary)', fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif" }}>
       <style>{`
         @media print {
           body {
@@ -156,7 +156,7 @@ export default function PublicReceiptView() {
       <div className="no-print" style={{ maxWidth: 520, margin: '0 auto 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8' }}>Savdo nusxasi</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Savdo nusxasi</span>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
@@ -166,9 +166,9 @@ export default function PublicReceiptView() {
             style={{
               padding: '8px 14px',
               borderRadius: 8,
-              border: '1px solid #334155',
-              background: '#1e293b',
-              color: '#f8fafc',
+              border: '1px solid var(--border-card)',
+              background: 'var(--bg-card)',
+              color: 'var(--text-primary)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
@@ -188,15 +188,15 @@ export default function PublicReceiptView() {
               padding: '8px 18px',
               borderRadius: 8,
               border: 'none',
-              background: '#3b82f6',
-              color: '#ffffff',
+              background: 'var(--primary)',
+              color: 'var(--text-on-primary)',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 7,
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
             <Download size={15} />
@@ -208,6 +208,7 @@ export default function PublicReceiptView() {
       {/* Customer copy of the sale record; this is not a fiscal receipt. */}
       <div
         className="public-receipt-container"
+        data-print-surface="paper"
         style={{
           maxWidth: 520,
           margin: '0 auto',

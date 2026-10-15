@@ -163,9 +163,9 @@ export default function ZReportModernView({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(16, 185, 129, 0.1)',
+              background: 'rgba(var(--success-rgb), 0.1)',
               color: 'var(--accent-emerald)',
-              border: '1px solid rgba(16, 185, 129, 0.25)',
+              border: '1px solid rgba(var(--success-rgb), 0.25)',
               padding: '4px 10px',
               borderRadius: 20,
               fontSize: 11.5,
@@ -267,10 +267,10 @@ export default function ZReportModernView({
         <div
           style={{
             background: isZeroDiff
-              ? 'rgba(16, 185, 129, 0.05)'
-              : 'rgba(239, 68, 68, 0.06)',
+              ? 'rgba(var(--success-rgb), 0.05)'
+              : 'rgba(var(--danger-rgb), 0.06)',
             border: `1px solid ${
-              isZeroDiff ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.3)'
+              isZeroDiff ? 'rgba(var(--success-rgb), 0.25)' : 'rgba(var(--danger-rgb), 0.3)'
             }`,
             borderRadius: 10,
             padding: '12px 14px',
@@ -327,8 +327,8 @@ export default function ZReportModernView({
           style={{
             padding: '10px 14px',
             borderRadius: 8,
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
+            background: 'rgba(var(--danger-rgb), 0.08)',
+            border: '1px solid rgba(var(--danger-rgb), 0.25)',
             color: 'var(--accent-rose)',
             fontSize: 12.5,
             display: 'flex',

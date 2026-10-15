@@ -347,7 +347,7 @@ export default function Documentation() {
                 border: isActive ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
                 background: isActive ? 'var(--primary)' : 'var(--bg-chip)',
                 color: isActive ? 'var(--text-on-primary)' : 'var(--text-secondary)',
-                boxShadow: isActive ? '0 4px 14px rgba(245, 158, 11, 0.25)' : 'none',
+                boxShadow: isActive ? '0 4px 14px rgba(var(--primary-rgb), 0.25)' : 'none',
                 transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
@@ -360,8 +360,8 @@ export default function Documentation() {
                     fontWeight: 700,
                     padding: '2px 7px',
                     borderRadius: 8,
-                    background: isActive ? 'rgba(0, 0, 0, 0.25)' : 'rgba(245, 158, 11, 0.22)',
-                    color: isActive ? '#fff' : 'var(--primary)',
+                    background: isActive ? 'rgba(var(--on-primary-rgb), 0.12)' : 'rgba(var(--primary-rgb), 0.22)',
+                    color: isActive ? 'var(--text-on-primary)' : 'var(--primary)',
                     letterSpacing: '0.04em',
                     marginLeft: 2,
                   }}
@@ -411,7 +411,7 @@ export default function Documentation() {
               left: 0,
               right: 0,
               height: 4,
-              background: 'linear-gradient(90deg, #F59E0B, #EA580C, #10B981)',
+              background: 'linear-gradient(90deg, var(--primary), var(--primary-hover))',
             }}
           />
 
@@ -421,14 +421,14 @@ export default function Documentation() {
                 width: 64,
                 height: 64,
                 borderRadius: 20,
-                background: 'rgba(245, 158, 11, 0.12)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
+                background: 'rgba(var(--primary-rgb), 0.12)',
+                border: '1px solid rgba(var(--primary-rgb), 0.3)',
                 color: 'var(--primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
-                boxShadow: '0 4px 14px rgba(245, 158, 11, 0.2)',
+                boxShadow: '0 4px 14px rgba(var(--primary-rgb), 0.2)',
               }}
             >
               <ShieldCheck size={36} />

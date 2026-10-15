@@ -179,7 +179,7 @@ export default function CameraBarcodeScanner({
         <div style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: '4/3', overflow: 'hidden' }}>
           <video ref={videoRef} autoPlay muted playsInline aria-label="Kamera tasviri" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
           {isScanning && !errorMessage && (
-            <div aria-hidden="true" style={{ position: 'absolute', inset: '18% 6%', border: '2px solid var(--primary, #f59e0b)', borderRadius: 12, pointerEvents: 'none', boxShadow: '0 0 0 9999px rgba(0,0,0,.2)' }} />
+            <div aria-hidden="true" style={{ position: 'absolute', inset: '18% 6%', border: '2px solid var(--primary)', borderRadius: 12, pointerEvents: 'none', boxShadow: '0 0 0 9999px rgba(0,0,0,.2)' }} />
           )}
           {!isScanning && !errorMessage && (
             <div role="status" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: '#fff', textAlign: 'center', padding: 20 }}>
@@ -188,7 +188,7 @@ export default function CameraBarcodeScanner({
           )}
           {errorMessage && (
             <div role="alert" style={{ position: 'absolute', inset: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 12, background: '#141820', color: '#fff', padding: 16, borderRadius: 12 }}>
-              <AlertCircle size={30} color="#f87171" />
+              <AlertCircle size={30} color="var(--accent-rose)" />
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>{errorMessage}</p>
               <button type="button" className="btn btn-secondary" onClick={() => setAttempt(value => value + 1)}>Qayta urinish</button>
             </div>

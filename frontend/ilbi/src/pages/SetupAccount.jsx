@@ -462,13 +462,13 @@ export default function SetupAccount() {
                 width: 60,
                 height: 60,
                 borderRadius: 20,
-                background: 'rgba(244, 63, 94, 0.12)',
+                background: 'rgba(var(--danger-rgb), 0.12)',
                 color: 'var(--accent-rose)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16,
-                border: '1px solid rgba(244, 63, 94, 0.25)',
+                border: '1px solid rgba(var(--danger-rgb), 0.25)',
               }}
             >
               <Clock size={32} />
@@ -549,8 +549,8 @@ export default function SetupAccount() {
             {errorMsg && (
               <div
                 style={{
-                  background: 'rgba(244, 63, 94, 0.12)',
-                  border: '1px solid rgba(244, 63, 94, 0.3)',
+                  background: 'rgba(var(--danger-rgb), 0.12)',
+                  border: '1px solid rgba(var(--danger-rgb), 0.3)',
                   borderRadius: 12,
                   padding: '12px 14px',
                   color: 'var(--accent-rose)',
@@ -706,7 +706,7 @@ export default function SetupAccount() {
                     textAlign: 'center',
                     padding: '16px',
                     borderRadius: 14,
-                    background: 'var(--primary-light, rgba(245, 158, 11, 0.1))',
+                    background: 'var(--primary-light)',
                     border: '1px solid var(--border-subtle)',
                   }}
                 >

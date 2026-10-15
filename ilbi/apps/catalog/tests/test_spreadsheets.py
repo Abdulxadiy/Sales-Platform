@@ -213,10 +213,33 @@ def test_generated_barcode_is_idempotent_and_tenant_scoped(client, tenant):
     url = f"/api/v1/catalog/variants/{variant.pk}/barcode/"
     result = client.post(url)
     assert result.status_code == 200, result.data
-    assert result.data["barcode"].startswith("INV-")
+    assert result.data["barcode"].isdigit()
+    assert len(result.data["barcode"]) == 13
+    digits = result.data["barcode"]
+    assert sum(int(digit) * (1 if i % 2 == 0 else 3) for i, digit in enumerate(digits)) % 10 == 0
     assert client.post(url).data["barcode"] == result.data["barcode"]
     from apps.core.models import AuditLog
 
     assert AuditLog.objects.filter(tenant=tenant, action="barcode_generate", target_id=str(variant.pk)).count() == 1
     other = ProductVariantFactory()
     assert client.post(f"/api/v1/catalog/variants/{other.pk}/barcode/").status_code == 404
+
+
+@pytest.mark.parametrize("existing_code", ["0012345678905", "INV-5-20002", "INV-5-20002-1"])
+def test_existing_barcode_is_not_replaced(client, tenant, existing_code):
+    variant = ProductVariantFactory(tenant=tenant, barcode=existing_code)
+    result = client.post(f"/api/v1/catalog/variants/{variant.pk}/barcode/")
+    assert result.status_code == 200, result.data
+    assert result.data["barcode"] == existing_code
+    variant.refresh_from_db()
+    assert variant.barcode == existing_code
+
+
+def test_numeric_barcode_generator_skips_collisions(client, tenant, monkeypatch):
+    ProductVariantFactory(tenant=tenant, barcode="2000000000015")
+    candidates = iter([1, 2])
+    monkeypatch.setattr("api.v1.catalog.views.label_views.secrets.randbelow", lambda _: next(candidates))
+    variant = ProductVariantFactory(tenant=tenant, barcode=None)
+    result = client.post(f"/api/v1/catalog/variants/{variant.pk}/barcode/")
+    assert result.status_code == 200, result.data
+    assert result.data["barcode"] == "2000000000022"

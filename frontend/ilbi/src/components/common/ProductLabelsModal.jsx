@@ -25,7 +25,7 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
     try {
       const updated = await catalogApi.generateBarcode(variant.id);
       setVariant(updated);
-      onChanged();
+      onChanged?.();
       toast.success('Yangi shtrix-kod yaratildi');
     } catch (error) {
       toast.error(error.message);
@@ -72,10 +72,10 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
             canGenerate ? (
               <button className="btn btn-primary" onClick={generate} disabled={busy} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                 <Sparkles size={14} />
-                <span>{busy ? 'Kutilmoqda…' : 'Shtrix-kod yaratish'}</span>
+                <span>{busy ? 'Kutilmoqda…' : 'Raqamli shtrix-kod yaratish'}</span>
               </button>
             ) : (
-              <span style={{ fontSize: 12, color: 'var(--accent-rose)' }}>Shtrix-kod yo‘q</span>
+              <span style={{ fontSize: 12, color: 'var(--accent-rose)' }}>Shtrix-kodni yaratish uchun do‘kon egasiga murojaat qiling</span>
             )
           )}
         </div>

@@ -1,3 +1,5 @@
+import secrets
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -29,12 +31,14 @@ class GenerateVariantBarcodeView(CatalogAPIView):
             product__is_active=True,
         )
         if not variant.barcode:
-            base = f"INV-{self.tenant.pk}-{variant.pk}"
-            barcode = base
-            counter = 1
-            while ProductVariant.objects.filter(tenant=self.tenant, barcode=barcode).exclude(pk=variant.pk).exists():
-                barcode = f"{base}-{counter}"
-                counter += 1
+            old_barcode = variant.barcode
+            while True:
+                # Internal shop code: 12 digits plus an EAN-compatible check digit.
+                base = f"20{secrets.randbelow(10**10):010d}"
+                check = (-sum(int(digit) * (1 if i % 2 == 0 else 3) for i, digit in enumerate(base))) % 10
+                barcode = f"{base}{check}"
+                if not ProductVariant.objects.filter(tenant=self.tenant, barcode=barcode).exclude(pk=variant.pk).exists():
+                    break
             variant.barcode = barcode
             variant.save(update_fields=["barcode", "updated_at"])
             AuditService.log(
@@ -43,7 +47,7 @@ class GenerateVariantBarcodeView(CatalogAPIView):
                 tenant=self.tenant,
                 target_model="ProductVariant",
                 target_id=str(variant.pk),
-                changes={"barcode": {"old": None, "new": barcode}},
+                changes={"barcode": {"old": old_barcode, "new": barcode}},
                 description="Mahsulot uchun shtrix-kod yaratildi",
                 request=request,
             )

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { barcodeSvg, labelDocument } from '../src/utils/productLabels.js';
 
 const variant = { barcode: '001234', product_name: 'Sut <script>bad()</script>', name: 'Standart', price_recommended: '15000', currency: 'UZS' };
-const options = { format: 'a4', width: 50, height: 30, copies: 1, showName: true, showPrice: true };
+const options = { format: 'a4', width: 50, height: 30, copies: 1, showName: true };
 
 test('Code128 encodes leading zeros and rejects unsupported characters', () => {
   const svg = barcodeSvg('001234');
@@ -13,19 +13,29 @@ test('Code128 encodes leading zeros and rejects unsupported characters', () => {
   assert.throws(() => barcodeSvg('☃'), /Shtrix-kod/);
 });
 
-test('labels independently omit names and prices and escape user content', () => {
-  const full = labelDocument(variant, options);
+test('name is optional, barcode text is mandatory, and prices are never printed', () => {
+  const full = labelDocument(variant, { ...options, showPrice: true });
   assert.ok(!full.includes('<script>'));
   assert.match(full, /&lt;script&gt;/);
   assert.match(full, /class="name"/);
-  assert.match(full, /class="price"/);
+  assert.ok(!full.includes('class="price"'));
+  assert.ok(!full.includes('15000'));
+  assert.ok(!full.includes('UZS'));
   const noName = labelDocument(variant, { ...options, showName: false });
   assert.ok(!noName.includes('class="name"'));
-  assert.match(noName, /class="price"/);
-  const onlyBarcode = labelDocument(variant, { ...options, showName: false, showPrice: false });
-  assert.ok(!onlyBarcode.includes('class="name"'));
-  assert.ok(!onlyBarcode.includes('class="price"'));
-  assert.match(onlyBarcode, /<svg /);
+  assert.match(noName, /<div class="code">001234<\/div>/);
+  assert.match(full, /shape-rendering="crispEdges"/);
+  const legacy = labelDocument({ ...variant, barcode: 'INV-5-20002' }, options);
+  assert.match(legacy, /<div class="code">INV-5-20002<\/div>/);
+});
+
+test('preview scales a single label and print keeps actual millimeter dimensions', () => {
+  const preview = labelDocument(variant, options, { preview: true });
+  assert.match(preview, /<body class="preview">/);
+  assert.match(preview, /--unit: min\(calc\(100vw \/ 50\), calc\(100vh \/ 30\)\)/);
+  const print = labelDocument(variant, options);
+  assert.match(print, /<body>/);
+  assert.match(print, /--unit: 1mm/);
 });
 
 test('A4 sheets and sticker printer paginate by actual millimeter dimensions', () => {

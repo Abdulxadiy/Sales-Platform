@@ -457,7 +457,15 @@ export default function Inventory() {
 
         {/* Row 2: Action Buttons - ALWAYS stays cleanly below the tabs on all sections */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {activeTab === 'stock' && <ExcelExportButton endpoint="/inventory/stock/export/" params={stockParams} filename="ilbi-ombor.xlsx" disabled={loading} />}
+          {activeTab === 'stock' && <>
+            <ExcelExportButton endpoint="/inventory/stock/export/" params={{ scope: 'all' }}
+              filename="ilbi-butun-ombor.xlsx" disabled={loading}
+              label="Butun omborni Excelga yuklash"
+              title="Tanlangan do‘konning barcha ombor mahsulotlarini qidiruv va filtrlardan qat’i nazar yuklash" />
+            {(inventoryFilters.stockSearch.trim() || inventoryFilters.stockCategory !== 'all') &&
+              <ExcelExportButton endpoint="/inventory/stock/export/" params={stockParams}
+                filename="ilbi-ombor-filtrlangan.xlsx" disabled={loading} label="Filtrlangan ro‘yxatni yuklash" />}
+          </>}
           <button
             onClick={() => {
               setSelectedVariantForIntake(null);

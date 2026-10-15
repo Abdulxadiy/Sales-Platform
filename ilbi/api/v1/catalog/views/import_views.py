@@ -10,7 +10,7 @@ from api.permissions import HasEmployeePermission
 from apps.catalog.models.import_model import CatalogImportJob
 from apps.catalog.services import CategoryServiceError, ProductServiceError
 from apps.catalog.services.import_service import TEMPLATE_HEADERS, CatalogImportService
-from apps.core.spreadsheets import XLSX_MIME, excel_response
+from apps.core.spreadsheets import MONEY_FORMAT, QUANTITY_FORMAT, XLSX_MIME, excel_response
 from apps.inventory.services import StockServiceError
 
 from ._base import CatalogAPIView
@@ -33,7 +33,50 @@ class CatalogImportTemplateView(CatalogAPIView):
 
     @extend_schema(responses={(200, XLSX_MIME): OpenApiTypes.BINARY})
     def get(self, request):
-        return excel_response(TEMPLATE_HEADERS, [], "ilbi-import-template.xlsx", "Katalog")
+        return excel_response(
+            TEMPLATE_HEADERS,
+            [],
+            "ilbi-import-template.xlsx",
+            "Katalog",
+            formats={
+                "shtrix_kod": "@",
+                "miqdor": QUANTITY_FORMAT,
+                "partiya": "@",
+                "yaroqlilik_sanasi": "@",
+                **{key: MONEY_FORMAT for key in ["hamkor_narxi", "minimal_narx", "sotuv_narxi", "tannarx"]},
+            },
+            widths={"mahsulot": 36, "kategoriya": 28, "variant": 25, "shtrix_kod": 25, "yaroqlilik_sanasi": 24},
+            report={
+                "tenant": self.tenant.name,
+                "sheet_title": "Qo‘llanma",
+                "scope": "Katalog import shabloni",
+                "notes": [
+                    (
+                        "Boshlash",
+                        "Katalog varag‘idagi 1-qator sarlavhalarini o‘zgartirmang. Ma’lumotlarni 2-qatordan kiriting.",
+                    ),
+                    ("Majburiy ustunlar", "mahsulot, kategoriya, sotuv_narxi"),
+                    (
+                        "mahsulot / kategoriya",
+                        "Mahsulot va kategoriya nomi. Kategoriya mavjud bo‘lmasa, tegishli ruxsat bilan yaratiladi.",
+                    ),
+                    ("variant", "Variant nomi. Bo‘sh bo‘lsa: Standart."),
+                    ("birlik", "dona, kg, litr yoki metr. Bo‘sh bo‘lsa: dona."),
+                    ("shtrix_kod", "Matn sifatida kiriting: boshidagi nollar saqlanadi. Masalan: 0012345678905."),
+                    (
+                        "Narxlar",
+                        "hamkor_narxi, minimal_narx, sotuv_narxi, tannarx — manfiy bo‘lmagan sonlar. "
+                        "Valyuta belgisini yozmang.",
+                    ),
+                    ("valyuta", "UZS yoki USD. Bo‘sh bo‘lsa: UZS. Mavjud kategoriya valyutasiga mos bo‘lsin."),
+                    ("miqdor", "Boshlang‘ich kirim miqdori, 3 xonagacha kasr. Bo‘sh bo‘lsa: 0."),
+                    ("partiya", "Ixtiyoriy partiya kodi. Kirim miqdori berilganida ishlatiladi."),
+                    ("yaroqlilik_sanasi", "Ixtiyoriy sana: YYYY-MM-DD, masalan 2027-12-31."),
+                    ("Chegaralar", "Ko‘pi bilan 1000 qator va 8 MB. Formulalar o‘rniga qiymatlarni kiriting."),
+                    ("Saqlash", "Avval oldindan ko‘rish natijasini tekshiring, so‘ng importni tasdiqlang."),
+                ],
+            },
+        )
 
 
 class CatalogImportPreviewView(CatalogAPIView):

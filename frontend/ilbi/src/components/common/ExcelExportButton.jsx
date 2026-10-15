@@ -4,7 +4,10 @@ import { request } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { downloadFile } from '../../utils/downloadFile';
 
-export default function ExcelExportButton({ endpoint, ids, params, filename, disabled = false }) {
+export default function ExcelExportButton({
+  endpoint, ids, params, filename, disabled = false,
+  label = 'Excelga yuklash', title = 'Joriy filtrlarga mos barcha qatorlarni Excelga yuklash',
+}) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const download = async () => {
@@ -22,8 +25,8 @@ export default function ExcelExportButton({ endpoint, ids, params, filename, dis
     } catch (error) { toast.error(error.message || 'Excel faylni yuklab bo‘lmadi.'); }
     finally { setBusy(false); }
   };
-  return <button className="btn btn-secondary" disabled={disabled || busy} onClick={download}
-    title="Joriy filtrlarga mos barcha qatorlarni Excelga yuklash">
-    <Download size={16} /> {busy ? 'Yuklanmoqda…' : 'Excelga yuklash'}
+  return <button type="button" className="btn btn-secondary" disabled={disabled || busy} onClick={download}
+    aria-busy={busy} title={title}>
+    <Download size={16} /> {busy ? 'Yuklanmoqda…' : label}
   </button>;
 }

@@ -91,10 +91,36 @@ def test_stock_filters_sort_before_pagination_and_export_all_matches(client, row
     export = client.get('/api/v1/inventory/stock/export/', params)
     assert export.status_code == 200
     sheet = load_workbook(io.BytesIO(export.content), read_only=True).active
-    assert len(list(sheet.values)) == 32  # all matching rows, not just page two
+    exported = list(sheet.values)
+    assert len(exported) == 32  # all matching rows, not just page two
+    assert [row[6] for row in exported[1:]] == list(range(31, 0, -1))
     empty_category = CategoryFactory(tenant=rows[0].tenant)
     assert client.get(STOCK, {'category': empty_category.pk, 'page': 1}).data['count'] == 0
     assert client.get(STOCK, {'category': 'bad', 'page': 1}).status_code == 400
+
+
+def test_full_stock_export_ignores_filters_and_pages_but_keeps_tenant_scope(client, rows):
+    Stock.objects.filter(product_variant=rows[0]).update(quantity=0)
+    rows[0].is_active = False
+    rows[0].save(update_fields=['is_active'])
+    Stock.objects.create(tenant=rows[-1].tenant, product_variant=rows[-1], quantity=99)
+    response = client.get('/api/v1/inventory/stock/export/', {
+        'scope': 'all', 'page': 2, 'page_size': 1, 'search': 'BAR-30',
+        'category': rows[-1].product.category_id,
+    })
+    assert response.status_code == 200
+    workbook = load_workbook(io.BytesIO(response.content))
+    exported = list(workbook.active.values)
+    assert len(exported) == 32
+    headers = exported[0]
+    assert {row[3] for row in exported[1:]} == {v.sku for v in rows[:-1]}
+    assert exported[1][6] == 0
+    assert exported[1][headers.index('Holat')] == 'Arxivlangan'
+    metadata = dict(workbook['Hisobot'].values)
+    assert metadata['Qamrov'] == 'Butun ombor'
+    assert metadata['Qatorlar soni'] == 31
+    assert 'Qidiruv' not in metadata
+    assert client.get('/api/v1/inventory/stock/export/', {'scope': 'invalid'}).status_code == 400
 
 
 def test_movements_filters_and_pagination(client, rows):

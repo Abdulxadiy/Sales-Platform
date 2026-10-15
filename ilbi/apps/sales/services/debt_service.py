@@ -74,10 +74,27 @@ class DebtService:
         if currency not in ('UZS', 'USD'):
             raise DebtServiceError("Valyuta 'UZS' yoki 'USD' bo'lishi shart.")
 
+        effective_note = note.strip()
         if currency == 'UZS':
             cp.debt_balance_uzs -= amount
         else:
-            cp.debt_balance_usd -= amount
+            # Payment made in USD: convert to UZS using store's internal usd_rate
+            usd_rate = Decimal(str(getattr(target_branch, 'usd_rate', None) or getattr(counterparty.tenant, 'usd_rate', None) or Decimal('12800.00')))
+
+            # If counterparty has USD debt, pay off USD debt first
+            if cp.debt_balance_usd > 0:
+                usd_to_usd_debt = min(amount, cp.debt_balance_usd)
+                cp.debt_balance_usd -= usd_to_usd_debt
+                remaining_usd = amount - usd_to_usd_debt
+            else:
+                remaining_usd = amount
+
+            # Deduct remaining USD from UZS debt at shop rate
+            if remaining_usd != 0:
+                uzs_equivalent = (remaining_usd * usd_rate).quantize(Decimal('0.01'))
+                cp.debt_balance_uzs -= uzs_equivalent
+                conv_text = f"(Kurs: 1 USD = {usd_rate:,.0f} UZS -> {uzs_equivalent:,.0f} UZS so‘m qarzidan ayirildi)"
+                effective_note = f"{effective_note} {conv_text}".strip()
 
         payment = DebtPayment.objects.create(
             tenant=target_branch,
@@ -88,7 +105,7 @@ class DebtService:
             currency=currency,
             recorded_by=recorded_by,
             is_correction=is_correction,
-            note=note.strip(),
+            note=effective_note,
         )
 
         cls.check_threshold_and_notify(cp)

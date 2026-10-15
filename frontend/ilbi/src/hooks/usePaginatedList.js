@@ -29,7 +29,7 @@ export function usePaginatedList(fetchPage, params, { tenantId, pageSize = 20, e
     fetchPage({ ...filters, page, page_size: pageSize }, { signal: controller.signal })
       .then(data => {
         if (controller.signal.aborted) return;
-        setResult({ items: data.results, total: data.count, key, requestKey, error: null });
+        setResult({ items: data.results, total: data.count, key, requestKey, summary: data.summary, error: null });
       })
       .catch(err => {
         if (controller.signal.aborted) return;
@@ -45,6 +45,7 @@ export function usePaginatedList(fetchPage, params, { tenantId, pageSize = 20, e
   return {
     items: result.key === key ? result.items : [],
     total: result.key === key ? result.total : 0,
+    summary: result.key === key ? result.summary : undefined,
     page, setPage, refresh, loading: enabled && result.requestKey !== requestKey,
     error: result.requestKey === requestKey ? result.error : null,
   };

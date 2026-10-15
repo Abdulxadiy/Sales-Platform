@@ -1,6 +1,7 @@
+import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Eye } from 'lucide-react';
-import { auditApi, tenantApi } from '../api/client';
+import { auditApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../hooks/useAuth';
@@ -12,7 +13,6 @@ export default function Audit() {
   const [logs, setLogs] = useState([]);
   const [selectedAction, setSelectedAction] = useState('');
   const [selectedTenant, setSelectedTenant] = useState('');
-  const [tenants, setTenants] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -43,12 +43,6 @@ export default function Audit() {
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    tenantApi.getAllTenants().then(setTenants).catch(() => toast.error('Do‘konlar filtri yuklanmadi'));
-  }, [isAdmin, toast]);
-
 
   const actionLabels = {
     catalog_import: 'Katalog fayldan yuklandi',
@@ -82,7 +76,6 @@ export default function Audit() {
     b2b_return_discrepancy_close: 'B2B tafovuti yopildi',
   };
 
-  const tenantNames = Object.fromEntries(tenants.map((tenant) => [tenant.id, tenant.name]));
   const pageCount = Math.max(1, Math.ceil(total / 20));
 
   return (
@@ -156,21 +149,8 @@ export default function Audit() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
           <span>Do‘kon bo‘yicha:</span>
           <div style={{ width: 'min(360px, 100%)' }}>
-            <CustomSelect
-              value={selectedTenant}
-              onChange={(val) => {
-                setSelectedTenant(val);
-                setPage(1);
-              }}
-              options={[
-                { value: '', label: 'Barcha do‘konlar' },
-                ...tenants.map((tenant) => ({
-                  value: String(tenant.id),
-                  label: `${tenant.name} (#${tenant.id})`,
-                })),
-              ]}
-              size="sm"
-            />
+            <RemoteTenantSelect allowAll value={selectedTenant}
+              onChange={value => { setSelectedTenant(value); setPage(1); }} />
           </div>
         </div>
       )}
@@ -214,7 +194,7 @@ export default function Audit() {
                       {actionLabels[log.action] || log.action}
                     </span>
                   </td>
-                  {isAdmin && <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{tenantNames[log.tenant] || (log.tenant ? `#${log.tenant}` : 'Platforma')}</td>}
+                  {isAdmin && <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>{log.tenant_name || (log.tenant ? `#${log.tenant}` : 'Platforma')}</td>}
                   <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {log.actor_name || log.actor?.username || `Foydalanuvchi #${log.actor || 'Tizim'}`}
                   </td>

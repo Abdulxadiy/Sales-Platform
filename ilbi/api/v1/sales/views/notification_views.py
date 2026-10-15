@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.mixins import TenantContextMixin
+from api.pagination import StandardResultsSetPagination
+from api.query_params import positive_id
 from api.v1.sales.serializers import NotificationOutputSerializer
 from apps.sales.models import Notification
 
@@ -22,6 +24,22 @@ class NotificationListView(TenantContextMixin, APIView):
             if not self.tenant:
                 return Response([])
             qs = Notification.objects.filter(tenant=self.tenant, recipient=request.user)
+        if request.query_params.get('page'):
+            unread_count = qs.filter(is_read=False).count()
+            after = positive_id(request.query_params.get('after_id'), 'after_id')
+            before = positive_id(request.query_params.get('before_id'), 'before_id')
+            if after:
+                qs = qs.filter(pk__gt=after).order_by('pk')
+            else:
+                if before:
+                    qs = qs.filter(pk__lt=before)
+                qs = qs.order_by('-pk')
+            paginator = StandardResultsSetPagination()
+            rows = paginator.paginate_queryset(qs, request)
+            response = paginator.get_paginated_response(NotificationOutputSerializer(rows, many=True).data)
+            response.data['unread_count'] = unread_count
+            response.data['next_before_id'] = min((row.pk for row in rows), default=None) if response.data['next'] and not after else None
+            return response
         return Response(NotificationOutputSerializer(qs, many=True).data)
 
     @extend_schema(request=None, responses={204: None})
@@ -66,3 +84,14 @@ class NotificationReadView(TenantContextMixin, APIView):
         notif.is_read = True
         notif.save(update_fields=['is_read'])
         return Response({"detail": "Xabarnoma o'qildi deb belgilandi."}, status=status.HTTP_200_OK)
+
+
+class NotificationReadAllView(TenantContextMixin, APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        qs = Notification.objects.filter(recipient=request.user)
+        if request.user.role != 'platform_admin':
+            qs = qs.filter(tenant=self.tenant) if self.tenant else qs.none()
+        qs.filter(is_read=False).update(is_read=True)
+        return Response({'unread_count': 0})

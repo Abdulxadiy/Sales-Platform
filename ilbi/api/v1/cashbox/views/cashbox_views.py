@@ -1,3 +1,4 @@
+from django.db.models import Q, Prefetch
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -5,16 +6,43 @@ from rest_framework.response import Response
 
 from api.mixins import OwnerStaffOnlyAPIView
 from api.permissions import HasEmployeePermission
-from api.schema import ShiftStatusSerializer
+from api.schema import ShiftStatusSerializer, optional_pagination
+from api.pagination import StandardResultsSetPagination
 from api.v1.cashbox.serializers import (
     CashExpenseSerializer,
     CashIncomeSerializer,
     DailyCashReportSerializer,
+    DailyCashReportListSerializer,
     ShiftCloseSerializer,
     ShiftOpenSerializer,
 )
 from apps.cashbox.models import CashExpense, CashIncome, DailyCashReport
 from apps.cashbox.services.cashbox_service import CashboxService, CashboxServiceError
+
+
+def filter_cashbox_rows(queryset, request, text_field):
+    from rest_framework import serializers
+    search = (request.query_params.get("search") or "").strip()
+    if search:
+        condition = Q(**{f"{text_field}__icontains": search})
+        if queryset.model == DailyCashReport:
+            condition |= Q(closed_by__first_name__icontains=search) | Q(closed_by__last_name__icontains=search)
+            if search.isdigit():
+                condition |= Q(pk=int(search))
+        else:
+            condition |= Q(note__icontains=search)
+        queryset = queryset.filter(condition)
+    for param, lookup in (("date_from", "date__gte"), ("date_to", "date__lte")):
+        if request.query_params.get(param):
+            value = serializers.DateField().run_validation(request.query_params[param])
+            queryset = queryset.filter(**{lookup: value})
+    return queryset
+
+
+def cashbox_page(queryset, request, serializer):
+    paginator = StandardResultsSetPagination()
+    rows = paginator.paginate_queryset(queryset, request)
+    return paginator.get_paginated_response(serializer(rows, many=True).data)
 
 
 class _BaseCashboxAPIView(OwnerStaffOnlyAPIView):
@@ -25,9 +53,12 @@ class _BaseCashboxAPIView(OwnerStaffOnlyAPIView):
 class CashExpenseListCreateView(_BaseCashboxAPIView):
     """Kassadan xarajatlar ro'yxati va yangi xarajat kiritish."""
     permission_map = {'GET': 'cashbox.view_cashbox', 'POST': 'cashbox.record_expense'}
-    @extend_schema(request=None, responses={200: CashExpenseSerializer(many=True)})
+    @extend_schema(request=None, responses={200: optional_pagination(CashExpenseSerializer)})
     def get(self, request):
-        expenses = CashExpense.objects.filter(tenant=self.tenant)
+        expenses = CashExpense.objects.filter(tenant=self.tenant).select_related("recorded_by").order_by("-date", "-pk")
+        expenses = filter_cashbox_rows(expenses, request, "category")
+        if request.query_params.get("page"):
+            return cashbox_page(expenses, request, CashExpenseSerializer)
         serializer = CashExpenseSerializer(expenses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -57,9 +88,12 @@ class CashExpenseListCreateView(_BaseCashboxAPIView):
 class CashIncomeListCreateView(_BaseCashboxAPIView):
     """Kassaga qo'shimcha kirimlar ro'yxati va yangi kirim kiritish."""
     permission_map = {'GET': 'cashbox.view_cashbox', 'POST': 'cashbox.record_income'}
-    @extend_schema(request=None, responses={200: CashIncomeSerializer(many=True)})
+    @extend_schema(request=None, responses={200: optional_pagination(CashIncomeSerializer)})
     def get(self, request):
-        incomes = CashIncome.objects.filter(tenant=self.tenant)
+        incomes = CashIncome.objects.filter(tenant=self.tenant).select_related("recorded_by").order_by("-date", "-pk")
+        incomes = filter_cashbox_rows(incomes, request, "source")
+        if request.query_params.get("page"):
+            return cashbox_page(incomes, request, CashIncomeSerializer)
         serializer = CashIncomeSerializer(incomes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -92,7 +126,9 @@ class CurrentShiftStatusView(_BaseCashboxAPIView):
     """
     @extend_schema(request=None, responses={200: ShiftStatusSerializer})
     def get(self, request):
-        status_data = CashboxService.get_current_shift_status(self.tenant)
+        status_data = CashboxService.get_current_shift_status(
+            self.tenant, include_entries=request.query_params.get("compact", "").lower() not in ("true", "1"),
+        )
         # Format decimals to strings for clean JSON
         formatted = {
             k: f"{v:.2f}" if hasattr(v, "quantize") else v
@@ -131,9 +167,16 @@ class DailyCashReportListView(_BaseCashboxAPIView):
     """
     O'tgan Z-Hisobotlar ro'yxati.
     """
-    @extend_schema(request=None, responses={200: DailyCashReportSerializer(many=True)})
+    @extend_schema(request=None, responses={200: optional_pagination(DailyCashReportListSerializer)})
     def get(self, request):
-        reports = DailyCashReport.objects.filter(tenant=self.tenant)
+        reports = DailyCashReport.objects.filter(tenant=self.tenant).select_related("tenant", "closed_by").order_by("-closed_at", "-pk")
+        reports = filter_cashbox_rows(reports, request, "staff_notes")
+        if request.query_params.get("page"):
+            return cashbox_page(reports, request, DailyCashReportListSerializer)
+        reports = reports.prefetch_related(
+            Prefetch("incomes", queryset=CashIncome.objects.select_related("recorded_by")),
+            Prefetch("expenses", queryset=CashExpense.objects.select_related("recorded_by")),
+        )
         serializer = DailyCashReportSerializer(reports, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -144,7 +187,12 @@ class DailyCashReportDetailView(_BaseCashboxAPIView):
     """
     @extend_schema(request=None, responses={200: DailyCashReportSerializer})
     def get(self, request, pk):
-        report = get_object_or_404(DailyCashReport, tenant=self.tenant, pk=pk)
+        report = get_object_or_404(
+            DailyCashReport.objects.select_related("tenant", "closed_by").prefetch_related(
+                Prefetch("incomes", queryset=CashIncome.objects.select_related("recorded_by")),
+                Prefetch("expenses", queryset=CashExpense.objects.select_related("recorded_by")),
+            ), tenant=self.tenant, pk=pk,
+        )
         serializer = DailyCashReportSerializer(report)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

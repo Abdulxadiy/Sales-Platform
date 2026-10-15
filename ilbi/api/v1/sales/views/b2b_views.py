@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -5,6 +6,8 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from api.permissions import HasEmployeePermission
+from api.pagination import StandardResultsSetPagination
+from api.schema import optional_pagination
 from api.v1.sales.serializers import (
     B2BAcceptInputSerializer,
     B2BIncomingSaleSerializer,
@@ -23,7 +26,7 @@ class B2BInboxListView(SalesAPIView):
     permission_classes = [HasEmployeePermission]
     permission_map = {"GET": "sales.manage_b2b"}
 
-    @extend_schema(request=None, responses={200: B2BIncomingSaleSerializer(many=True)})
+    @extend_schema(request=None, responses={200: optional_pagination(B2BIncomingSaleSerializer)})
     def get(self, request):
         incoming = (
             Sale.objects.filter(
@@ -32,6 +35,14 @@ class B2BInboxListView(SalesAPIView):
             .select_related("tenant", "sold_by")
             .prefetch_related("items__product_variant__product")
         )
+        incoming = incoming.order_by('-created_at', '-pk')
+        search = (request.query_params.get('search') or '').strip()
+        if search:
+            incoming = incoming.filter(Q(receipt_number__icontains=search) | Q(tenant__name__icontains=search))
+        if request.query_params.get('page'):
+            paginator = StandardResultsSetPagination()
+            rows = paginator.paginate_queryset(incoming, request)
+            return paginator.get_paginated_response(B2BIncomingSaleSerializer(rows, many=True).data)
         return Response(B2BIncomingSaleSerializer(incoming, many=True).data)
 
 

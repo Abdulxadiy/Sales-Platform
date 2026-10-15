@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -43,7 +43,7 @@ class SaleListCreateView(SalesAPIView):
         query.is_valid(raise_exception=True)
         params = query.validated_data
         qs = Sale.objects.filter(tenant=self.tenant).select_related(
-            'sold_by', 'counterparty', 'b2b_target_tenant'
+            'tenant', 'sold_by', 'counterparty', 'b2b_target_tenant'
         ).prefetch_related('items__product_variant__product')
 
         status_param = params.get('status')
@@ -69,6 +69,7 @@ class SaleListCreateView(SalesAPIView):
             search = search.strip()
             qs = qs.filter(
                 Q(receipt_number__icontains=search)
+                | Q(b2b_target_tenant__name__icontains=search)
                 | Q(counterparty__name__icontains=search)
                 | Q(counterparty__phone_number__icontains=search)
                 | Q(sold_by__first_name__icontains=search)
@@ -93,7 +94,12 @@ class SaleListCreateView(SalesAPIView):
             from api.pagination import StandardResultsSetPagination
             paginator = StandardResultsSetPagination()
             page_data = paginator.paginate_queryset(qs, request)
-            return paginator.get_paginated_response(SaleOutputSerializer(page_data, many=True, context={"request": request}).data)
+            response = paginator.get_paginated_response(SaleOutputSerializer(page_data, many=True, context={"request": request}).data)
+            if request.query_params.get('b2b_only', '').lower() in ('true', '1'):
+                response.data['summary'] = Sale.objects.filter(tenant=self.tenant, b2b_target_tenant__isnull=False).aggregate(
+                    total_count=Count('pk'), return_pending_count=Count('pk', filter=Q(status=Sale.STATUS_B2B_RETURN_PENDING)),
+                )
+            return response
 
         return Response(SaleOutputSerializer(qs, many=True, context={"request": request}).data)
 
@@ -124,7 +130,7 @@ class SaleListCreateView(SalesAPIView):
         sale_ids = [s.id for s in sales]
         sales_qs = (
             Sale.objects.filter(id__in=sale_ids)
-            .select_related('sold_by', 'counterparty', 'b2b_target_tenant')
+            .select_related('tenant', 'sold_by', 'counterparty', 'b2b_target_tenant')
             .prefetch_related('items__product_variant__product')
         )
         return Response(SaleOutputSerializer(sales_qs, many=True, context={"request": request}).data, status=status.HTTP_201_CREATED)
@@ -138,7 +144,7 @@ class SaleDetailView(SalesAPIView):
     def get(self, request, pk):
         sale = get_object_or_404(
             Sale.objects.select_related(
-                'sold_by', 'counterparty', 'b2b_target_tenant'
+                'tenant', 'sold_by', 'counterparty', 'b2b_target_tenant'
             ).prefetch_related('items__product_variant__product'),
             pk=pk,
             tenant=self.tenant,

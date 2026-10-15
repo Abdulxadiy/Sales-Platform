@@ -483,6 +483,17 @@ class ProductVariantListView(CatalogAPIView):
             ).run_validation(ids.split(",") if ids else [])
             qs = qs.filter(pk__in=selected_ids)
 
+        for param, field in (("product_name", "product__name__iexact"), ("variant_name", "name__iexact")):
+            if request.query_params.get(param):
+                qs = qs.filter(**{field: request.query_params[param].strip()})
+
+        barcodes = request.query_params.get("barcodes")
+        if barcodes is not None:
+            values = serializers.ListField(child=serializers.CharField(max_length=64), max_length=1000).run_validation(
+                barcodes.split(",") if barcodes else []
+            )
+            qs = qs.filter(barcode__in=values)
+
         lookup = request.query_params.get("lookup")
         if lookup:
             value = lookup.strip()

@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   X,
   ChevronRight,
+  Store,
 } from 'lucide-react';
 import { parseZReport } from './NotificationParser';
 
@@ -207,7 +208,10 @@ export default function FloatingNotificationToast({
           {parsedZ ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span>🏢 {parsedZ.shop}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Store size={13} style={{ opacity: 0.7 }} />
+                  {parsedZ.shop}
+                </span>
                 <span style={{ color: 'var(--text-muted)' }}>•</span>
                 <strong style={{ color: 'var(--text-primary)' }}>
                   {parsedZ.cash.actualUzs}

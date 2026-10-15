@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Q, Count, Sum, F
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -24,6 +24,7 @@ from apps.sales.services import (
     DebtServiceError,
 )
 
+from apps.sales.services.counterparty_queries import filtered_counterparties
 from ._base import SalesAPIView
 
 
@@ -36,32 +37,30 @@ class CounterpartyListCreateView(SalesAPIView):
 
     @extend_schema(request=None, responses={200: optional_pagination(CounterpartyOutputSerializer)})
     def get(self, request):
-        active_only = request.query_params.get('active', 'true').lower() == 'true'
         from django.db.models import Prefetch
         payments_prefetch = Prefetch(
-            'payments',
-            queryset=DebtPayment.objects.select_related('recorded_by', 'branch', 'tenant').order_by('-paid_at'),
-            to_attr='prefetched_payments'
+            'payments', queryset=DebtPayment.objects.select_related('recorded_by', 'branch', 'tenant').order_by('-paid_at', '-pk')[:1],
+            to_attr='prefetched_payments',
         )
-        qs = Counterparty.objects.filter(tenant=self.tenant).prefetch_related(payments_prefetch)
-        if active_only:
-            qs = qs.filter(is_active=True)
-
-        search = request.query_params.get('search')
-        if search:
-            search = search.strip()
-            qs = qs.filter(Q(name__icontains=search) | Q(phone_number__icontains=search))
-
-        has_debt = request.query_params.get('has_debt')
-        if has_debt and has_debt.lower() in ('true', '1'):
-            qs = qs.filter(Q(debt_balance_uzs__gt=0) | Q(debt_balance_usd__gt=0))
-
+        qs = filtered_counterparties(self.tenant, request.query_params).select_related('target_tenant').prefetch_related(payments_prefetch)
         if request.query_params.get('page'):
             from api.pagination import StandardResultsSetPagination
             paginator = StandardResultsSetPagination()
             page_data = paginator.paginate_queryset(qs, request)
-            return paginator.get_paginated_response(CounterpartyOutputSerializer(page_data, many=True).data)
-
+            response = paginator.get_paginated_response(CounterpartyOutputSerializer(page_data, many=True).data)
+            # Store-wide KPIs stay independent of the current list page/filter.
+            summary = Counterparty.objects.filter(tenant=self.tenant, is_active=True).aggregate(
+                total_count=Count('pk'),
+                debtors_count=Count('pk', filter=Q(debt_balance_uzs__gt=0) | Q(debt_balance_usd__gt=0)),
+                credit_count=Count('pk', filter=Q(debt_balance_uzs__lt=0) | Q(debt_balance_usd__lt=0)),
+                settled_count=Count('pk', filter=Q(debt_balance_uzs=0, debt_balance_usd=0)),
+                total_debt_uzs=Sum('debt_balance_uzs', filter=Q(debt_balance_uzs__gt=0)),
+                total_debt_usd=Sum('debt_balance_usd', filter=Q(debt_balance_usd__gt=0)),
+                total_credit_uzs=Sum('debt_balance_uzs', filter=Q(debt_balance_uzs__lt=0)),
+            )
+            summary['total_credit_uzs'] = -(summary['total_credit_uzs'] or 0)
+            response.data['summary'] = summary
+            return response
         return Response(CounterpartyOutputSerializer(qs, many=True).data)
 
     @extend_schema(request=CounterpartyCreateSerializer, responses={201: CounterpartyOutputSerializer})
@@ -88,7 +87,7 @@ class CounterpartyDetailView(SalesAPIView):
         from django.db.models import Prefetch
         payments_prefetch = Prefetch(
             'payments',
-            queryset=DebtPayment.objects.select_related('recorded_by', 'branch', 'tenant').order_by('-paid_at'),
+            queryset=DebtPayment.objects.select_related('recorded_by', 'branch', 'tenant').order_by('-paid_at', '-pk')[:1],
             to_attr='prefetched_payments'
         )
         cp = get_object_or_404(
@@ -129,7 +128,12 @@ class DebtPaymentListCreateView(SalesAPIView):
     @extend_schema(request=None, responses={200: DebtPaymentOutputSerializer(many=True)})
     def get(self, request, counterparty_id):
         cp = get_object_or_404(Counterparty, pk=counterparty_id, tenant=self.tenant)
-        payments = DebtPayment.objects.filter(counterparty=cp).select_related('recorded_by', 'branch', 'tenant')
+        payments = DebtPayment.objects.filter(counterparty=cp).select_related('recorded_by', 'branch', 'tenant').order_by('-paid_at', '-pk')
+        if request.query_params.get('page'):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            rows = paginator.paginate_queryset(payments, request)
+            return paginator.get_paginated_response(DebtPaymentOutputSerializer(rows, many=True).data)
         return Response(DebtPaymentOutputSerializer(payments, many=True).data)
 
     @extend_schema(request=DebtPaymentCreateSerializer, responses={201: DebtPaymentOutputSerializer})
@@ -221,7 +225,7 @@ class CounterpartySalesListView(SalesAPIView):
             tenant=self.tenant,
             counterparty=cp,
         ).select_related(
-            'sold_by', 'counterparty', 'b2b_target_tenant'
+            'tenant', 'sold_by', 'counterparty', 'b2b_target_tenant'
         ).prefetch_related(
             'items__product_variant__product'
         ).order_by('-created_at')
@@ -239,14 +243,20 @@ class CounterpartySalesListView(SalesAPIView):
                 | Q(items__product_variant__name__icontains=search)
             ).distinct()
 
-        sales_data = SaleOutputSerializer(qs, many=True, context={"request": request}).data
-
-        total_sales_count = Sale.objects.filter(tenant=self.tenant, counterparty=cp).count()
-        debt_sales_count = Sale.objects.filter(tenant=self.tenant, counterparty=cp, payment_type=Sale.PAYMENT_DEBT).count()
-
+        summary = Sale.objects.filter(tenant=self.tenant, counterparty=cp).aggregate(
+            total_sales_count=Count('pk'), debt_sales_count=Count('pk', filter=Q(payment_type=Sale.PAYMENT_DEBT)),
+            total_spent_uzs=Sum(F('total_amount') - F('refunded_amount'), filter=Q(currency='UZS')),
+            total_spent_usd=Sum(F('total_amount') - F('refunded_amount'), filter=Q(currency='USD')),
+        )
+        summary['payments_count'] = cp.payments.count()
+        if request.query_params.get('page'):
+            from api.pagination import StandardResultsSetPagination
+            paginator = StandardResultsSetPagination()
+            rows = paginator.paginate_queryset(qs, request)
+            response = paginator.get_paginated_response(SaleOutputSerializer(rows, many=True, context={'request': request}).data)
+            response.data['summary'] = summary
+            return response
         return Response({
-            'counterparty': CounterpartyOutputSerializer(cp).data,
-            'total_sales_count': total_sales_count,
-            'debt_sales_count': debt_sales_count,
-            'sales': sales_data,
+            'counterparty': CounterpartyOutputSerializer(cp).data, **summary, 'summary': summary,
+            'sales': SaleOutputSerializer(qs, many=True, context={'request': request}).data,
         })

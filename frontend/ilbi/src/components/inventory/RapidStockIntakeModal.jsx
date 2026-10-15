@@ -14,12 +14,14 @@ import {
   FileText,
   MessageSquare,
   Layers,
+  X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Modal from '../common/Modal';
 import PriceInput from '../common/PriceInput';
 import CameraBarcodeScanner from '../common/CameraBarcodeScanner';
-import { inventoryApi } from '../../api/client';
+import { useDebouncedValue, usePaginatedList } from '../../hooks/usePaginatedList';
+import { inventoryApi, catalogApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { usePersistedState } from '../../hooks/usePersistedState';
@@ -92,7 +94,6 @@ export default function RapidStockIntakeModal({
   isOpen,
   onClose,
   onSuccess,
-  variants = [],
   preselectedVariantId = null,
 }) {
   const toast = useToast();
@@ -228,15 +229,14 @@ export default function RapidStockIntakeModal({
     [getVariantInfo, setDraft, toast]
   );
 
-  // Handle preselected variant if opened via "Quick Intake"
   useEffect(() => {
-    if (isOpen && preselectedVariantId && variants.length > 0) {
-      const match = variants.find((v) => String(v.id) === String(preselectedVariantId));
-      if (match) {
-        addItemToDraft(match);
-      }
-    }
-  }, [isOpen, preselectedVariantId, variants, addItemToDraft]);
+    if (!isOpen || !preselectedVariantId) return;
+    const controller = new AbortController();
+    catalogApi.getVariants({ ids: preselectedVariantId }, { signal: controller.signal }).then(rows => {
+      if (!controller.signal.aborted && rows[0]) addItemToDraft(rows[0]);
+    }).catch(error => { if (!controller.signal.aborted) toast.error(error.message); });
+    return () => controller.abort();
+  }, [isOpen, preselectedVariantId, addItemToDraft, toast]);
 
   // Close autocomplete on click outside
   useEffect(() => {
@@ -254,21 +254,21 @@ export default function RapidStockIntakeModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filtered variants for autocomplete
-  const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-
-    return variants
-      .filter((v) => {
-        const name = (v.product_name || v.name || '').toLowerCase();
-        const barcode = (v.barcode || '').toLowerCase();
-        const code = (v.code || '').toLowerCase();
-        const sku = (v.sku || '').toLowerCase();
-        return name.includes(q) || barcode.includes(q) || code.includes(q) || sku.includes(q);
-      })
-      .slice(0, 10);
-  }, [variants, searchQuery]);
+  const settledSearch = useDebouncedValue(searchQuery.trim());
+  const searchList = usePaginatedList(catalogApi.getVariants, { search: settledSearch },
+    { tenantId: activeTenant?.id, pageSize: 10, enabled: isOpen && Boolean(settledSearch) });
+  const searchResults = searchList.items;
+  useEffect(() => { if (searchList.error) toast.error(searchList.error.message); }, [searchList.error, toast]);
+  const resolveCode = async (code) => {
+    try {
+      const exact = await catalogApi.getVariants({ lookup: code.trim(), page: 1, page_size: 1 });
+      if (exact.results[0]) { addItemToDraft(exact.results[0]); return; }
+      const found = await catalogApi.getVariants({ search: code.trim(), page: 1, page_size: 10 });
+      const match = found.results[highlightedIndex] || found.results[0];
+      if (match) addItemToDraft(match);
+      else toast.info('Tovar topilmadi. Qidiruvni aniqlashtiring.');
+    } catch (error) { toast.error(error.message); }
+  };
 
   // Handle Search Input KeyDown (Barcode scanner or manual autocomplete)
   const handleSearchKeyDown = (e) => {
@@ -286,61 +286,13 @@ export default function RapidStockIntakeModal({
       const q = searchQuery.trim().toLowerCase();
       if (!q) return;
 
-      // 1. Check exact barcode match first
-      const exactMatch = variants.find(
-        (v) =>
-          v.barcode?.toLowerCase() === q ||
-          v.code?.toLowerCase() === q ||
-          v.sku?.toLowerCase() === q
-      );
-
-      if (exactMatch) {
-        addItemToDraft(exactMatch);
-        return;
-      }
-
-      // 2. If dropdown item is highlighted
-      if (searchResults.length > 0 && searchResults[highlightedIndex]) {
-        addItemToDraft(searchResults[highlightedIndex]);
-        return;
-      }
-
-      // 3. If exact 1 match
-      if (searchResults.length === 1) {
-        addItemToDraft(searchResults[0]);
-        return;
-      }
-
-      toast.info('Bunday shtrix-kod yoki tovar topilmadi. Qidiruvni aniqlashtiring');
+      resolveCode(searchQuery);
     } else if (e.key === 'Escape') {
       setIsDropdownOpen(false);
     }
   };
 
-  // Camera Barcode Scanner detection handler
-  const handleCameraBarcodeScan = useCallback(
-    (code) => {
-      const q = (code || '').trim().toLowerCase();
-      if (!q) return;
-
-      const exactMatch = variants.find(
-        (v) =>
-          v.barcode?.toLowerCase() === q ||
-          v.code?.toLowerCase() === q ||
-          v.sku?.toLowerCase() === q
-      );
-
-      if (exactMatch) {
-        addItemToDraft(exactMatch);
-        toast.success(`"${exactMatch.product_name || exactMatch.name}" kirim jadvaliga qo‘shildi`);
-      } else {
-        setSearchQuery(code);
-        setIsDropdownOpen(true);
-        toast.info(`"${code}" shtrix-kodi bo‘yicha tovar qidirilmoqda...`);
-      }
-    },
-    [variants, addItemToDraft, toast]
-  );
+  const handleCameraBarcodeScan = code => resolveCode(code);
 
   // Row update handlers
   const handleUpdateItem = (id, field, value) => {
@@ -752,7 +704,7 @@ export default function RapidStockIntakeModal({
                     padding: 4,
                   }}
                 >
-                  ✕
+                  <X size={12} />
                 </button>
               )}
               <div
@@ -1278,9 +1230,12 @@ export default function RapidStockIntakeModal({
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                             <button
                               type="button"
-                              onClick={() => {
-                                const match = variants.find((v) => String(v.id) === String(item.variantId));
-                                if (match) addItemToDraft(match, true);
+                              onClick={async () => {
+                                try {
+                                  const rows = await catalogApi.getVariants({ ids: item.variantId });
+                                  if (rows[0]) addItemToDraft(rows[0], true);
+                                  else toast.warning('Tovar faol katalogda topilmadi.');
+                                } catch (error) { toast.error(error.message); }
                               }}
                               style={{
                                 background: 'none',

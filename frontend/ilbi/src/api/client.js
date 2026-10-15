@@ -5,6 +5,10 @@ import { localStore, sessionStore, markAuthenticationCurrent } from '../utils/br
 
 const BASE_URL = '/api/v1';
 
+const queryString = (params = {}) => new URLSearchParams(Object.entries(params).filter(
+  ([, value]) => value !== undefined && value !== null && value !== '',
+)).toString();
+
 // Token Management
 export const isRememberMeActive = () => {
   return localStore.getItem('ilbi_remember_me') !== 'false';
@@ -384,26 +388,9 @@ export const tenantApi = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
-  getTenants: (params = {}) => {
+  getTenants: (params = {}, options = {}) => {
     const query = new URLSearchParams(params).toString();
-    return request(`/tenants/${query ? `?${query}` : ''}`);
-  },
-  getAllTenants: async () => {
-    const tenants = [];
-    let page = 1;
-    while (true) {
-      const response = await request(`/tenants/?page=${page}&page_size=100`);
-      if (Array.isArray(response)) return response;
-      if (!Array.isArray(response?.results)) {
-        throw new Error('Do‘konlar ro‘yxati kutilgan shaklda kelmadi.');
-      }
-      tenants.push(...response.results);
-      if (!response.next) return tenants;
-      if (response.results.length === 0 || page > Math.ceil(Number(response.count || 0) / 100) + 1) {
-        throw new Error('Do‘konlar ro‘yxatini to‘liq yuklab bo‘lmadi.');
-      }
-      page += 1;
-    }
+    return request(`/tenants/${query ? `?${query}` : ''}`, options);
   },
   createTenant: (data) =>
     request('/tenants/', {
@@ -649,13 +636,13 @@ export const inventoryApi = {
 };
 
 export const salesApi = {
-  getSales: (pageOrParams = 1, search = '') => {
+  getSales: (pageOrParams = 1, search = '', options = {}) => {
     const params = typeof pageOrParams === 'object' ? pageOrParams : { page: pageOrParams, search };
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
     }
-    return request(`/sales/?${query}`);
+    return request(`/sales/?${query}`, typeof search === 'object' ? search : options);
   },
   getSaleDetail: (id) => request(`/sales/${id}/`),
   rotateReceiptToken: (id) => request(`/sales/${id}/receipt-token/rotate/`, { method: 'POST' }),
@@ -679,10 +666,9 @@ export const salesApi = {
     });
   },
 
-  getCounterparties: (search = '') => {
-    const q = search ? `?search=${encodeURIComponent(search)}` : '';
-    return request(`/sales/counterparties/${q}`);
-  },
+  getCounterparties: (params = {}, options = {}) => request(
+    `/sales/counterparties/?${queryString(typeof params === 'string' ? { search: params } : params)}`, options,
+  ),
   createCounterparty: (data) =>
     request('/sales/counterparties/', {
       method: 'POST',
@@ -698,12 +684,13 @@ export const salesApi = {
       method: 'DELETE',
     }),
 
-  getCounterpartySales: (counterpartyId, params = {}) => {
+  getCounterpartySales: (counterpartyId, params = {}, options = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return request(`/sales/counterparties/${counterpartyId}/sales/${qs ? '?' + qs : ''}`);
+    return request(`/sales/counterparties/${counterpartyId}/sales/${qs ? '?' + qs : ''}`, options);
   },
-  getCounterpartyPayments: (counterpartyId, page = 1) =>
-    request(`/sales/counterparties/${counterpartyId}/payments/?page=${page}`),
+  getCounterpartyPayments: (id, params = { page: 1 }, options = {}) => request(
+    `/sales/counterparties/${id}/payments/?${queryString(typeof params === 'object' ? params : { page: params })}`, options,
+  ),
   recordDebtPayment: (counterpartyId, data) =>
     request(`/sales/counterparties/${counterpartyId}/payments/`, {
       method: 'POST',
@@ -715,7 +702,7 @@ export const salesApi = {
       body: JSON.stringify(data),
     }),
 
-  getB2BInbox: () => request('/sales/b2b/inbox/'),
+  getB2BInbox: (params = {}, options = {}) => request(`/sales/b2b/inbox/?${queryString(params)}`, options),
   acceptB2B: (saleId, itemsPayload) =>
     request(`/sales/b2b/${saleId}/accept/`, {
       method: 'POST',
@@ -737,7 +724,8 @@ export const salesApi = {
       body: JSON.stringify(payload),
     }),
 
-  getNotifications: () => request('/sales/notifications/'),
+  getNotifications: (params = {}, options = {}) => request(`/sales/notifications/?${queryString(params)}`, options),
+  markAllNotificationsRead: () => request('/sales/notifications/read-all/', { method: 'POST' }),
   markNotificationRead: (id) =>
     request(`/sales/notifications/${id}/read/`, {
       method: 'POST',
@@ -754,40 +742,27 @@ export const salesApi = {
 
 export const cashboxApi = {
   openShift: (data) => request('/cashbox/shift/open/', { method: 'POST', body: data }),
-  getCurrentShift: () => {
-    return request('/cashbox/shift/current/');
-  },
+  getCurrentShift: (params = {}, options = {}) => request(`/cashbox/shift/current/?${queryString(typeof params === 'object' ? params : {})}`, options),
   closeShift: (data) =>
     request('/cashbox/shift/close/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getExpenses: () => {
-    return request('/cashbox/expenses/');
-  },
+  getExpenses: (params = {}, options = {}) => request(`/cashbox/expenses/?${queryString(params)}`, options),
   createExpense: (data) =>
     request('/cashbox/expenses/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getIncome: () => {
-    return request('/cashbox/income/');
-  },
+  getIncome: (params = {}, options = {}) => request(`/cashbox/income/?${queryString(params)}`, options),
   createIncome: (data) =>
     request('/cashbox/income/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  getReports: (pageOrParams = 1) => {
-    if (typeof pageOrParams === 'object' && pageOrParams !== null) {
-      const query = new URLSearchParams();
-      if (pageOrParams.page) query.append('page', pageOrParams.page);
-      const qs = query.toString();
-      return request(`/cashbox/reports/${qs ? `?${qs}` : ''}`);
-    }
-    let q = `?page=${pageOrParams}`;
-    return request(`/cashbox/reports/${q}`);
-  },
+  getReports: (params = { page: 1 }, options = {}) => request(
+    `/cashbox/reports/?${queryString(typeof params === 'object' ? params : { page: params })}`, options,
+  ),
   getReportDetail: (id) => request(`/cashbox/reports/${id}/`),
 };
 

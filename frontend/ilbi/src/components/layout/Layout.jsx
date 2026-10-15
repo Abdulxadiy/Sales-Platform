@@ -1,3 +1,4 @@
+import { createVisiblePoller } from '../../utils/visiblePolling';
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
@@ -47,7 +48,6 @@ export default function Layout({ children }) {
   const [floatingNotifs, setFloatingNotifs] = useState([]);
 
   const knownIdsRef = useRef(new Set());
-  const isInitialLoadRef = useRef(true);
 
   const triggerFloatingToast = (notif) => {
     setFloatingNotifs((prev) => {
@@ -67,61 +67,51 @@ export default function Layout({ children }) {
 
   const notificationTenantRef = useRef(activeTenant?.id);
   notificationTenantRef.current = activeTenant?.id;
-  const loadNotifications = async (triggerToast = false) => {
-    const tenantId = activeTenant?.id;
-    if (!tenantId) return;
-    try {
-      const res = await salesApi.getNotifications();
-      if (notificationTenantRef.current !== tenantId) return;
-      const list = Array.isArray(res) ? res : res.results || [];
-      setNotifications(list);
-      const unread = list.filter((n) => !n.is_read);
-      setUnreadCount(unread.length);
-
-      if (isInitialLoadRef.current) {
-        list.forEach((n) => knownIdsRef.current.add(n.id));
-        isInitialLoadRef.current = false;
-      } else if (triggerToast) {
-        const newUnread = list.filter(
-          (n) => !n.is_read && !knownIdsRef.current.has(n.id)
-        );
-        newUnread.forEach((n) => {
-          knownIdsRef.current.add(n.id);
-          triggerFloatingToast(n);
-        });
-      }
-    } catch {
-      // ignore
-    }
-  };
-
+  const notificationPollerRef = useRef(null);
+  const historyCursorRef = useRef(null);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const loadNotifications = () => notificationPollerRef.current?.refresh();
   useEffect(() => {
-    if (isAdmin) return;
-    setNotifications([]);
-    setUnreadCount(0);
-    setFloatingNotifs([]);
+    setNotifications([]); setUnreadCount(0); setFloatingNotifs([]); setHasMoreNotifications(false);
     knownIdsRef.current = new Set();
-    isInitialLoadRef.current = true;
-    loadNotifications(false);
-
-    // Poll every 10 seconds for new notifications
-    const interval = setInterval(() => {
-      loadNotifications(true);
-    }, 10000);
-
-    const handleRefresh = () => {
-      setTimeout(() => loadNotifications(true), 600);
-    };
-
-    window.addEventListener('refresh_notifications', handleRefresh);
-    window.addEventListener('shift_closed', handleRefresh);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('refresh_notifications', handleRefresh);
-      window.removeEventListener('shift_closed', handleRefresh);
-    };
+    historyCursorRef.current = null;
+    if (isAdmin || !activeTenant?.id) return;
+    let newestId = 0;
+    const poller = createVisiblePoller(async signal => {
+      const initial = newestId === 0;
+      const response = await salesApi.getNotifications({ page: 1, page_size: 20, after_id: newestId || undefined }, { signal });
+      if (signal.aborted) return;
+      const rows = response.results;
+      setNotifications(prev => initial ? rows : [...new Map([...prev, ...rows].map(row => [row.id, row])).values()].sort((a,b) => b.id-a.id));
+      setUnreadCount(response.unread_count);
+      if (initial) {
+        historyCursorRef.current = response.next_before_id;
+        setHasMoreNotifications(Boolean(response.next_before_id));
+      }
+      for (const row of rows) {
+        if (!initial && !row.is_read && !knownIdsRef.current.has(row.id)) triggerFloatingToast(row);
+        knownIdsRef.current.add(row.id);
+        newestId = Math.max(newestId, row.id);
+      }
+      if (!initial && response.next) notificationPollerRef.current?.refresh();
+    }, { events: ['refresh_notifications', 'shift_closed'] });
+    notificationPollerRef.current = poller;
+    return () => { poller.stop(); notificationPollerRef.current = null; };
   }, [isAdmin, activeTenant?.id]);
+  const loadOlderNotifications = async () => {
+    if (loadingHistory || !historyCursorRef.current) return;
+    const tenantId = activeTenant?.id;
+    setLoadingHistory(true);
+    try {
+      const response = await salesApi.getNotifications({ page: 1, page_size: 20, before_id: historyCursorRef.current });
+      if (notificationTenantRef.current !== tenantId) return;
+      setNotifications(prev => [...new Map([...prev, ...response.results].map(row => [row.id,row])).values()].sort((a,b)=>b.id-a.id));
+      historyCursorRef.current = response.next_before_id;
+      setHasMoreNotifications(Boolean(response.next_before_id));
+    } catch (error) { toast.error(error.message); }
+    finally { setLoadingHistory(false); }
+  };
 
   useEffect(() => {
     setShiftModalOpen(false);
@@ -136,22 +126,22 @@ export default function Layout({ children }) {
   const handleMarkRead = async (id) => {
     try {
       await salesApi.markNotificationRead(id);
-      loadNotifications(false);
+      setNotifications(prev => prev.map(row => row.id === id ? {...row, is_read:true} : row));
+      loadNotifications();
     } catch {
       // ignore
     }
   };
 
   const handleMarkAllRead = async () => {
-    const unread = notifications.filter((n) => !n.is_read);
-    if (unread.length === 0) return;
+    if (!unreadCount) return;
     try {
-      await Promise.all(unread.map((n) => salesApi.markNotificationRead(n.id)));
+      await salesApi.markAllNotificationsRead();
+      setNotifications(prev => prev.map(row => ({...row, is_read:true})));
+      setUnreadCount(0);
       toast.success('Barcha bildirishnomalar o‘qildi deb belgilandi');
-      loadNotifications(false);
-    } catch {
-      loadNotifications(false);
-    }
+      loadNotifications();
+    } catch (error) { toast.error(error.message); }
   };
 
   const handleDeleteNotification = async (id) => {
@@ -183,6 +173,8 @@ export default function Layout({ children }) {
       await salesApi.clearAllNotifications();
       setNotifications([]);
       setUnreadCount(0);
+      setHasMoreNotifications(false);
+      historyCursorRef.current = null;
       toast.success('Barcha bildirishnomalar tozalandi');
     } catch {
       toast.error('Bildirishnomalarni tozalashda xatolik yuz berdi');
@@ -582,6 +574,9 @@ export default function Layout({ children }) {
             </div>
           </div>
 
+          {hasMoreNotifications && <button type="button" className="btn btn-secondary" onClick={loadOlderNotifications} disabled={loadingHistory}>
+            {loadingHistory ? 'Yuklanmoqda...' : 'Oldingi bildirishnomalarni yuklash'}
+          </button>}
           {/* List of Notification Cards */}
           {(() => {
             const list = notifications.filter((n) =>

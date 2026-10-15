@@ -45,6 +45,7 @@ from .serializers import (
     SellerProfileReviewQueueSerializer,
     SellerProfileReviewSerializer,
     TenantAdminSerializer,
+    TenantCompactSerializer,
     TenantChangeOwnerSerializer,
     TenantCreateForOwnerSerializer,
     TenantCreateSerializer,
@@ -279,7 +280,38 @@ class TenantListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsPlatformAdmin]
 
     def get_serializer_class(self):
-        return TenantCreateSerializer if self.request.method == 'POST' else TenantAdminSerializer
+        if self.request.method == 'POST':
+            return TenantCreateSerializer
+        return TenantCompactSerializer if self.request.query_params.get('compact') == 'true' else TenantAdminSerializer
+
+    def get_queryset(self):
+        from api.query_params import positive_id
+        qs = super().get_queryset()
+        params = self.request.query_params
+        selected_id = positive_id(params.get('id'), 'id')
+        if selected_id:
+            qs = qs.filter(pk=selected_id)
+        search = (params.get('search') or '').strip()
+        if search:
+            condition = Q(name__icontains=search) | Q(description__icontains=search) | Q(owner__phone_number__icontains=search)
+            condition |= Q(owner__first_name__icontains=search) | Q(owner__last_name__icontains=search)
+            if search.isdigit():
+                condition |= Q(pk=int(search))
+            qs = qs.filter(condition)
+        active = params.get('is_active')
+        if active in ('true', 'false'):
+            qs = qs.filter(is_active=active == 'true')
+        if params.get('compact') == 'true':
+            qs = qs.select_related(None).only('id', 'name', 'is_active')
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response.data['summary'] = Tenant.objects.aggregate(
+            total_count=Count('pk'), active_count=Count('pk', filter=Q(is_active=True)),
+            inactive_count=Count('pk', filter=Q(is_active=False)),
+        )
+        return response
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

@@ -12,6 +12,7 @@ from apps.accounts.services.permission_service import PermissionService
 from apps.core.spreadsheets import MAX_EXPORT_ROWS, XLSX_MIME, excel_response
 from apps.inventory.models import Stock
 from apps.sales.models import Counterparty
+from apps.sales.services.counterparty_queries import filtered_counterparties
 
 
 class SelectedRowsSerializer(serializers.Serializer):
@@ -82,6 +83,16 @@ class CounterpartyExportView(SelectedExportView):
     @extend_schema(request=SelectedRowsSerializer, responses={(200, XLSX_MIME): OpenApiTypes.BINARY})
     def post(self, request):
         entries = self.selected(request, Counterparty.objects.filter(tenant=self.tenant))
+        return self.export_rows(entries)
+
+    @extend_schema(responses={(200, XLSX_MIME): OpenApiTypes.BINARY})
+    def get(self, request):
+        entries = filtered_counterparties(self.tenant, request.query_params)
+        if entries.count() > MAX_EXPORT_ROWS:
+            raise ValidationError("Eksport hajmi oshdi. Filtrni toraytiring.")
+        return self.export_rows(entries)
+
+    def export_rows(self, entries):
         rows = [
             [c.name, c.phone_number, c.debt_balance_uzs, c.debt_balance_usd, c.note]
             for c in entries.order_by("name", "pk")

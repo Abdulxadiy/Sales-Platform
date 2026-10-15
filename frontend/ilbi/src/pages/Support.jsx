@@ -692,11 +692,11 @@ function SupportCenter({ user, authenticated, operator }) {
                           <span className="support-message-reply-author">{message.reply_to.author_name}</span>
                           <span className="support-message-reply-text">
                             {message.reply_to.sticker
-                              ? `✨ Stiker: ${STICKER_DICT[message.reply_to.sticker]?.label || 'Stiker'}`
+                              ? `Stiker: ${STICKER_DICT[message.reply_to.sticker]?.label || 'Stiker'}`
                               : message.reply_to.has_voice
-                              ? `🎤 Ovozli xabar (${message.reply_to.voice_duration}s)`
+                              ? `Ovozli xabar (${message.reply_to.voice_duration}s)`
                               : message.reply_to.has_image
-                              ? '🖼️ Rasm'
+                              ? 'Rasm'
                               : message.reply_to.text}
                           </span>
                         </div>
@@ -742,11 +742,11 @@ function SupportCenter({ user, authenticated, operator }) {
                         </span>
                         <span className="support-reply-banner-text">
                           {replyingTo.sticker
-                            ? `✨ Stiker: ${STICKER_DICT[replyingTo.sticker]?.label || 'Stiker'}`
+                            ? `Stiker: ${STICKER_DICT[replyingTo.sticker]?.label || 'Stiker'}`
                             : replyingTo.has_voice
-                            ? `🎤 Ovozli xabar (${replyingTo.voice_duration}s)`
+                            ? `Ovozli xabar (${replyingTo.voice_duration}s)`
                             : replyingTo.has_image
-                            ? '🖼️ Rasm'
+                            ? 'Rasm'
                             : replyingTo.text}
                         </span>
                       </div>

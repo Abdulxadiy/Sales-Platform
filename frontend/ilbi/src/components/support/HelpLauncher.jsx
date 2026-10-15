@@ -568,11 +568,11 @@ export default function HelpLauncher() {
                               <span className="support-message-reply-author">{msg.reply_to.author_name}</span>
                               <span className="support-message-reply-text">
                                 {msg.reply_to.sticker
-                                  ? `✨ Stiker: ${STICKER_DICT[msg.reply_to.sticker]?.label || 'Stiker'}`
+                                  ? `Stiker: ${STICKER_DICT[msg.reply_to.sticker]?.label || 'Stiker'}`
                                   : msg.reply_to.has_voice
-                                  ? `🎤 Ovozli xabar (${msg.reply_to.voice_duration}s)`
+                                  ? `Ovozli xabar (${msg.reply_to.voice_duration}s)`
                                   : msg.reply_to.has_image
-                                  ? '🖼️ Rasm'
+                                  ? 'Rasm'
                                   : msg.reply_to.text}
                               </span>
                             </div>
@@ -621,11 +621,11 @@ export default function HelpLauncher() {
                     </span>
                     <span className="support-reply-banner-text">
                       {replyingTo.sticker
-                        ? `✨ Stiker: ${STICKER_DICT[replyingTo.sticker]?.label || 'Stiker'}`
+                        ? `Stiker: ${STICKER_DICT[replyingTo.sticker]?.label || 'Stiker'}`
                         : replyingTo.has_voice
-                        ? `🎤 Ovozli xabar (${replyingTo.voice_duration}s)`
+                        ? `Ovozli xabar (${replyingTo.voice_duration}s)`
                         : replyingTo.has_image
-                        ? '🖼️ Rasm'
+                        ? 'Rasm'
                         : replyingTo.text}
                     </span>
                   </div>

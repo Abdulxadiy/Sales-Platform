@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createVisiblePoller } from '../../utils/visiblePolling';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Clock, Shield, Menu, Store } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
@@ -28,32 +29,15 @@ export default function Header({
     return () => clearInterval(timer);
   }, []);
 
-  const fetchShift = useCallback(() => {
-    if (isAdmin || !canViewCashbox || !activeTenant?.id) return;
-    cashboxApi
-      .getCurrentShift(activeTenant?.id)
-      .then((data) => { if (tenantIdRef.current === activeTenant?.id) setShift(data); })
-      .catch(() => { if (tenantIdRef.current === activeTenant?.id) setShift(null); });
-  }, [isAdmin, activeTenant?.id, canViewCashbox]);
-
   useEffect(() => {
     setShift(null);
-    fetchShift();
-
-    const handleShiftEvent = () => fetchShift();
-    window.addEventListener('shift_status_changed', handleShiftEvent);
-    window.addEventListener('refresh_notifications', handleShiftEvent);
-    window.addEventListener('tenant_changed', handleShiftEvent);
-
-    const interval = setInterval(fetchShift, 10000);
-
-    return () => {
-      window.removeEventListener('shift_status_changed', handleShiftEvent);
-      window.removeEventListener('refresh_notifications', handleShiftEvent);
-      window.removeEventListener('tenant_changed', handleShiftEvent);
-      clearInterval(interval);
-    };
-  }, [fetchShift]);
+    if (isAdmin || !canViewCashbox || !activeTenant?.id) return;
+    const poller = createVisiblePoller(async signal => {
+      const data = await cashboxApi.getCurrentShift({ compact: true }, { signal });
+      if (!signal.aborted) setShift(data);
+    }, { events: ['shift_status_changed', 'refresh_notifications', 'tenant_changed'] });
+    return () => poller.stop();
+  }, [isAdmin, activeTenant?.id, canViewCashbox]);
 
   const isShiftOpen = Boolean(shift?.is_open ?? (shift?.status === 'OPEN'));
 

@@ -107,7 +107,7 @@ class CashboxService:
                                        opening_cash_uzs=opening_cash_uzs, opening_cash_usd=opening_cash_usd)
 
     @classmethod
-    def get_current_shift_status(cls, tenant) -> dict:
+    def get_current_shift_status(cls, tenant, *, include_entries=True) -> dict:
         shift = CashShift.objects.filter(tenant=tenant, closed_at__isnull=True).first()
         values = {name: Decimal("0.00") for name in (
             "total_sale_cash_uzs", "total_sale_cash_usd", "total_sale_card_uzs", "total_sale_card_usd",
@@ -121,8 +121,8 @@ class CashboxService:
             sales = Sale.objects.filter(tenant=tenant).filter(
                 Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)
             )
-            for sale in sales:
-                values[f"total_sale_{sale.payment_type}_{sale.currency.lower()}"] += sale.total_amount
+            for row in sales.values("payment_type", "currency").annotate(amount=Sum("total_amount")):
+                values[f"total_sale_{row['payment_type']}_{row['currency'].lower()}"] += row["amount"]
             incomes = CashIncome.objects.filter(tenant=tenant, shift_report__isnull=True).filter(
                 Q(shift=shift) | Q(shift__isnull=True, created_at__gte=shift.opened_at)
             )
@@ -149,12 +149,14 @@ class CashboxService:
                 - values[f"total_expenses_{suffix}"] - values[f"refund_cash_{suffix}"]
             )
         last_report = DailyCashReport.objects.filter(tenant=tenant).first() if shift is None else None
-        return {**values, "suggested_opening_cash_uzs": last_report.actual_cash_uzs if last_report else Decimal("0"),
+        result = {**values, "suggested_opening_cash_uzs": last_report.actual_cash_uzs if last_report else Decimal("0"),
                 "suggested_opening_cash_usd": last_report.actual_cash_usd if last_report else Decimal("0"), "shift_id": shift.pk if shift else None,
                 "is_open": shift is not None, "status": "OPEN" if shift else "CLOSED",
-                "shift_start": timezone.localtime(shift.opened_at).isoformat() if shift else None,
-                "incomes": [{"source": row.source, "amount": str(row.amount), "currency": row.currency, "note": row.note} for row in incomes],
-                "expenses": [{"category": row.category, "amount": str(row.amount), "currency": row.currency, "note": row.note} for row in expenses]}
+                "shift_start": timezone.localtime(shift.opened_at).isoformat() if shift else None}
+        if include_entries:
+            result["incomes"] = [{"source": row.source, "amount": str(row.amount), "currency": row.currency, "note": row.note} for row in incomes]
+            result["expenses"] = [{"category": row.category, "amount": str(row.amount), "currency": row.currency, "note": row.note} for row in expenses]
+        return result
 
     @classmethod
     def close_shift(

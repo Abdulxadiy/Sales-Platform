@@ -112,6 +112,14 @@ class DailyCashReportSerializer(serializers.ModelSerializer):
         return " ".join(p for p in name_parts if p).strip() or obj.closed_by.username or obj.closed_by.phone_number
 
 
+class DailyCashReportListSerializer(DailyCashReportSerializer):
+    class Meta(DailyCashReportSerializer.Meta):
+        fields = [field for field in DailyCashReportSerializer.Meta.fields if field not in ('incomes', 'expenses')]
+
+    incomes = None
+    expenses = None
+
+
 class ShiftOpenSerializer(serializers.Serializer):
     opening_cash_uzs = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False)
     opening_cash_usd = serializers.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal('0'), required=False)

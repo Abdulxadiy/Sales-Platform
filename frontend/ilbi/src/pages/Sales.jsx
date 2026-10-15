@@ -25,6 +25,7 @@ import Pagination from '../components/common/Pagination';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import { useTenant } from '../context/TenantContext';
 
 const DEFAULT_SALES_FILTERS = {
@@ -43,10 +44,6 @@ export default function Sales() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [salesList, setSalesList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [salesPage, setSalesPage] = useState(1);
-  const [totalSalesCount, setTotalSalesCount] = useState(0);
   const [salesFilters, setSalesFilters, resetSalesFilters] = usePersistedState(
     `ilbi_sales_filters_v2:${activeTenant?.id || 'pending'}`,
     DEFAULT_SALES_FILTERS
@@ -122,34 +119,15 @@ export default function Sales() {
     };
   }, [salesFilters]);
 
-  // Load Sales Data
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await salesApi.getSales({ ...getSalesFilters(), page: salesPage });
-      if (res && res.results) {
-        setSalesList(res.results);
-        setTotalSalesCount(typeof res.count === 'number' ? res.count : res.results.length);
-      } else {
-        const list = Array.isArray(res) ? res : [];
-        setSalesList(list);
-        setTotalSalesCount(list.length);
-      }
-    } catch {
-      toast.error('Ma’lumotlarni yuklashda xatolik yuz berdi');
-    } finally {
-      setLoading(false);
-    }
-  }, [salesPage, getSalesFilters, toast]);
-
+  const debouncedSearch = useDebouncedValue(salesFilters.search.trim());
+  const { items: salesList, total: totalSalesCount, page: salesPage, setPage: setSalesPage,
+    loading, refresh: loadData, error: listError } = usePaginatedList(
+    salesApi.getSales, { ...getSalesFilters(), search: debouncedSearch },
+    { tenantId: activeTenant?.id },
+  );
   useEffect(() => {
-    loadData();
-  }, [loadData, activeTenant?.id]);
-
-  // Reset pagination to page 1 when search changes
-  useEffect(() => {
-    setSalesPage(1);
-  }, [salesFilters]);
+    if (listError) toast.error(listError.message || 'Savdolarni yuklab bo‘lmadi.');
+  }, [listError, toast]);
 
   // Open Sale Detail
   const handleOpenDetail = async (sale) => {

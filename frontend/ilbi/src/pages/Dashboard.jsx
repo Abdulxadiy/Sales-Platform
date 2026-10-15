@@ -1,3 +1,5 @@
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
+import Pagination from '../components/common/Pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -25,6 +27,7 @@ import {
 import { analyticsApi, tenantApi, authApi, auditApi } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../hooks/useAuth';
 import Modal from '../components/common/Modal';
 import RevenueCostAnalyticsChart from '../components/dashboard/RevenueCostAnalyticsChart';
@@ -36,11 +39,12 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
-  const { isAdmin, isOwner, user } = useAuth();
-  const userPerms = user?.permissions || [];
+  const { isAdmin, user } = useAuth();
+  const { activeTenant } = useTenant();
+  const userPerms = activeTenant?.permissions || [];
   const canViewDashboard =
     isAdmin ||
-    isOwner ||
+    activeTenant?.is_owner ||
     userPerms.includes('*') ||
     userPerms.includes('analytics.view_dashboard');
 
@@ -49,9 +53,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   // Platform admin tenant management state
-  const [tenants, setTenants] = useState([]);
-  const [tenantsLoaded, setTenantsLoaded] = useState(false);
-  const [tenantError, setTenantError] = useState('');
   const [tenantSearch, setTenantSearch] = useState('');
   const [toggleLoadingId, setToggleLoadingId] = useState(null);
   const [unbanUserId, setUnbanUserId] = useState('');
@@ -70,25 +71,12 @@ export default function Dashboard() {
     description: '',
   });
 
-  // Load tenants list for platform admin
-  const loadTenants = useCallback(async () => {
-    if (!isAdmin) return;
-    setTenantsLoaded(false);
-    setTenantError('');
-    try {
-      setTenants(await tenantApi.getAllTenants());
-    } catch (err) {
-      setTenantError('Do‘konlar ro‘yxatini yuklab bo‘lmadi: ' + err.message);
-    } finally {
-      setTenantsLoaded(true);
-    }
-  }, [isAdmin]);
-
-  useEffect(() => {
-    if (isAdmin) {
-      loadTenants();
-    }
-  }, [isAdmin, loadTenants]);
+  const settledTenantSearch = useDebouncedValue(tenantSearch.trim());
+  const tenantList = usePaginatedList(tenantApi.getTenants, { search: settledTenantSearch }, { enabled: isAdmin });
+  const tenants = tenantList.items;
+  const tenantsLoaded = !tenantList.loading;
+  const tenantError = tenantList.error?.message || '';
+  const loadTenants = tenantList.refresh;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -206,17 +194,7 @@ export default function Dashboard() {
     }
   };
 
-  const filteredTenants = useMemo(() => {
-    if (!tenantSearch.trim()) return tenants;
-    const q = tenantSearch.toLowerCase();
-    return tenants.filter(
-      (t) =>
-        t.name?.toLowerCase().includes(q) ||
-        t.owner_details?.phone_number?.includes(q) ||
-        t.owner_details?.first_name?.toLowerCase().includes(q) ||
-        t.owner_details?.last_name?.toLowerCase().includes(q)
-    );
-  }, [tenants, tenantSearch]);
+  const filteredTenants = tenants;
 
   const paymentMethodsList = useMemo(() => {
     if (data?.payment_methods_list) return data.payment_methods_list;
@@ -230,8 +208,8 @@ export default function Dashboard() {
     }));
   }, [data]);
 
-  const activeCount = tenants.filter((t) => t.is_active).length;
-  const inactiveCount = tenants.length - activeCount;
+  const activeCount = tenantList.summary?.active_count || 0;
+  const inactiveCount = tenantList.summary?.inactive_count || 0;
 
   const formatUZS = (val) =>
     Number(val || 0).toLocaleString('uz-UZ') + ' UZS';
@@ -319,7 +297,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-primary)' }}>
-              {tenantsLoaded && !tenantError ? `${tenants.length} ta` : '—'}
+              {tenantsLoaded && !tenantError ? `${tenantList.summary?.total_count || 0} ta` : '—'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
               {tenantsLoaded && !tenantError ? <><span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>{activeCount} ta faol</span> · {inactiveCount} ta to‘xtatilgan</> : 'Ro‘yxat yuklanmoqda yoki xatolik yuz berdi'}
@@ -551,6 +529,7 @@ export default function Dashboard() {
           )}
         </div>
 
+        <Pagination currentPage={tenantList.page} totalItems={tenantList.total} onPageChange={tenantList.setPage} />
         {/* Settings & Administrative Controls Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
           {/* Panel A: Security Unban Tool */}

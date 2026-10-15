@@ -1,3 +1,5 @@
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
+import Pagination from '../components/common/Pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   CreditCard,
@@ -30,8 +32,6 @@ export default function Debts() {
   const canManageCp = activeTenant?.is_owner || activeTenant?.permissions?.includes("sales.manage_counterparty");
   const [editingCp, setEditingCp] = useState(null);
 
-  const [counterparties, setCounterparties] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [counterpartyFilter, setCounterpartyFilter] = useState('all'); // 'all' | 'debtors' | 'credit' | 'settled'
   const [counterpartySearch, setCounterpartySearch] = useState('');
 
@@ -68,38 +68,32 @@ export default function Debts() {
   const [cpDetailModalOpen, setCpDetailModalOpen] = useState(false);
   const [selectedCpDetail, setSelectedCpDetail] = useState(null);
   const [cpDetailTab, setCpDetailTab] = useState('debt_sales'); // 'debt_sales' | 'all_sales' | 'payments'
-  const [cpDetailSales, setCpDetailSales] = useState([]);
-  const [cpDetailPayments, setCpDetailPayments] = useState([]);
-  const [loadingCpDetailSales, setLoadingCpDetailSales] = useState(false);
-  const [loadingCpDetailPayments, setLoadingCpDetailPayments] = useState(false);
-  const [cpSalesSummary, setCpSalesSummary] = useState({
-    total_sales_count: 0,
-    debt_sales_count: 0,
-    total_spent_uzs: 0,
-    total_spent_usd: 0,
-  });
-
   // Invoice A4 Modal
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [selectedInvoiceSale, setSelectedInvoiceSale] = useState(null);
 
-  // Load Counterparties
-  const loadCounterparties = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await salesApi.getCounterparties();
-      const list = res.results || res;
-      setCounterparties(Array.isArray(list) ? list : []);
-    } catch {
-      toast.error('Kontragentlar ma’lumotlarini yuklashda xatolik yuz berdi');
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
+  const search = useDebouncedValue(counterpartySearch.trim());
+  const listParams = { search, balance_status: counterpartyFilter };
+  const list = usePaginatedList(salesApi.getCounterparties, listParams, { tenantId: activeTenant?.id });
+  const counterparties = list.items;
+  const loading = list.loading;
+  const loadCounterparties = list.refresh;
+  const fetchDetailSales = useCallback((params, options) => salesApi.getCounterpartySales(selectedCpDetail?.id, params, options), [selectedCpDetail?.id]);
+  const fetchDetailPayments = useCallback((params, options) => salesApi.getCounterpartyPayments(selectedCpDetail?.id, params, options), [selectedCpDetail?.id]);
+  const detailSales = usePaginatedList(fetchDetailSales,
+    { counterparty_id: selectedCpDetail?.id, payment_type: cpDetailTab === 'debt_sales' ? 'debt' : '' },
+    { tenantId: activeTenant?.id, enabled: cpDetailModalOpen && Boolean(selectedCpDetail) });
+  const detailPayments = usePaginatedList(fetchDetailPayments, { counterparty_id: selectedCpDetail?.id },
+    { tenantId: activeTenant?.id, enabled: cpDetailModalOpen && cpDetailTab === 'payments' && Boolean(selectedCpDetail) });
+  const cpDetailSales = detailSales.items;
+  const cpDetailPayments = detailPayments.items;
+  const loadingCpDetailSales = detailSales.loading;
+  const loadingCpDetailPayments = detailPayments.loading;
+  const cpSalesSummary = detailSales.summary || {};
   useEffect(() => {
-    loadCounterparties();
-  }, [loadCounterparties, activeTenant?.id]);
+    const error = list.error || detailSales.error || detailPayments.error;
+    if (error) toast.error(error.message);
+  }, [list.error, detailSales.error, detailPayments.error, toast]);
 
   // Create Counterparty
   const handleCreateCounterparty = async (e) => {
@@ -134,39 +128,12 @@ export default function Debts() {
   };
 
   // Open Counterparty Purchases & Debts Detail Modal
-  const handleOpenCounterpartyPurchases = async (cp, initialTab = 'debt_sales') => {
+  const handleOpenCounterpartyPurchases = (cp, initialTab = 'debt_sales') => {
     setSelectedCpDetail(cp);
     setCpDetailTab(initialTab);
     setCpDetailModalOpen(true);
-    setLoadingCpDetailSales(true);
-    setLoadingCpDetailPayments(true);
-
-    try {
-      const salesRes = await salesApi.getCounterpartySales(cp.id);
-      const salesData = Array.isArray(salesRes) ? salesRes : (salesRes.sales || salesRes.results || []);
-      setCpDetailSales(salesData);
-      const summary = salesRes.summary || {
-        total_sales_count: salesRes.total_sales_count ?? salesData.length,
-        debt_sales_count: salesRes.debt_sales_count ?? salesData.filter((s) => s.payment_type === 'debt').length,
-        total_spent_uzs: salesData.filter((s) => s.currency === 'UZS').reduce((acc, s) => acc + Number(s.net_amount ?? s.total_amount ?? 0), 0),
-        total_spent_usd: salesData.filter((s) => s.currency === 'USD').reduce((acc, s) => acc + Number(s.net_amount ?? s.total_amount ?? 0), 0),
-      };
-      setCpSalesSummary(summary);
-    } catch {
-      toast.error('Mijoz xaridlari tarixini yuklab bo‘lmadi');
-    } finally {
-      setLoadingCpDetailSales(false);
-    }
-
-    try {
-      const paymentsRes = await salesApi.getCounterpartyPayments(cp.id);
-      const paymentsData = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.results || []);
-      setCpDetailPayments(paymentsData);
-    } catch {
-      toast.error('Mijoz to‘lovlari tarixini yuklab bo‘lmadi');
-    } finally {
-      setLoadingCpDetailPayments(false);
-    }
+    detailSales.refresh();
+    detailPayments.refresh();
   };
 
   // Record Debt Payment
@@ -272,54 +239,14 @@ export default function Debts() {
     setInvoiceModalOpen(true);
   };
 
-  // KPI calculations
-  const totalDebtUzs = useMemo(
-    () => counterparties.reduce((sum, cp) => sum + Math.max(0, Number(cp.debt_balance_uzs || 0)), 0),
-    [counterparties]
-  );
-  const totalDebtUsd = useMemo(
-    () => counterparties.reduce((sum, cp) => sum + Math.max(0, Number(cp.debt_balance_usd || 0)), 0),
-    [counterparties]
-  );
-  const totalCreditUzs = useMemo(
-    () => counterparties.reduce((sum, cp) => sum + Math.max(0, -Number(cp.debt_balance_uzs || 0)), 0),
-    [counterparties]
-  );
-  const debtorsCount = useMemo(
-    () => counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) > 0 || Number(cp.debt_balance_usd || 0) > 0).length,
-    [counterparties]
-  );
-  const creditCount = useMemo(
-    () => counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) < 0 || Number(cp.debt_balance_usd || 0) < 0).length,
-    [counterparties]
-  );
-  const settledCount = useMemo(
-    () => counterparties.filter((cp) => Number(cp.debt_balance_uzs || 0) === 0 && Number(cp.debt_balance_usd || 0) === 0).length,
-    [counterparties]
-  );
-
-  // Filtered Counterparties
-  const filteredCounterparties = useMemo(() => {
-    let list = counterparties;
-    if (counterpartyFilter === 'debtors') {
-      list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) > 0 || Number(cp.debt_balance_usd || 0) > 0);
-    } else if (counterpartyFilter === 'credit') {
-      list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) < 0 || Number(cp.debt_balance_usd || 0) < 0);
-    } else if (counterpartyFilter === 'settled') {
-      list = list.filter((cp) => Number(cp.debt_balance_uzs || 0) === 0 && Number(cp.debt_balance_usd || 0) === 0);
-    }
-
-    if (counterpartySearch.trim()) {
-      const q = counterpartySearch.toLowerCase().trim();
-      list = list.filter(
-        (cp) =>
-          (cp.name && cp.name.toLowerCase().includes(q)) ||
-          (cp.phone_number && cp.phone_number.includes(q)) ||
-          (cp.note && cp.note.toLowerCase().includes(q))
-      );
-    }
-    return list;
-  }, [counterparties, counterpartyFilter, counterpartySearch]);
+  const summary = list.summary || {};
+  const totalDebtUzs = Number(summary.total_debt_uzs || 0);
+  const totalDebtUsd = Number(summary.total_debt_usd || 0);
+  const totalCreditUzs = Number(summary.total_credit_uzs || 0);
+  const debtorsCount = summary.debtors_count || 0;
+  const creditCount = summary.credit_count || 0;
+  const settledCount = summary.settled_count || 0;
+  const filteredCounterparties = counterparties;
 
   // Branch Options for Select
   const branchOptions = useMemo(() => {
@@ -343,10 +270,10 @@ export default function Debts() {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Jami Nasiya (UZS)
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: totalDebtUzs > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-primary)', marginTop: 4 }}>
             {totalDebtUzs.toLocaleString()} UZS
           </div>
-          <div style={{ fontSize: 12, color: 'var(--accent-amber)', marginTop: 4, fontWeight: 600 }}>
+          <div style={{ fontSize: 12, color: totalDebtUzs > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--accent-amber)', marginTop: 4, fontWeight: 600 }}>
             {debtorsCount} nafar qarzdor mijoz
           </div>
         </div>
@@ -416,7 +343,7 @@ export default function Debts() {
               cursor: 'pointer',
             }}
           >
-            Barchasi ({counterparties.length})
+            Barchasi ({summary.total_count || 0})
           </button>
           <button
             type="button"
@@ -499,7 +426,7 @@ export default function Debts() {
             />
           </div>
 
-          <ExcelExportButton endpoint="/sales/counterparties/export/" ids={filteredCounterparties.map(row => row.id)} filename="ilbi-qarzlar.xlsx" disabled={loading} />
+          <ExcelExportButton endpoint="/sales/counterparties/export/" params={listParams} filename="ilbi-qarzlar.xlsx" disabled={loading} />
           <button
             type="button"
             onClick={() => { setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpCode(''); setNewCpModalOpen(true); }}
@@ -592,8 +519,9 @@ export default function Debts() {
                                 fontWeight: 700,
                                 padding: '2px 7px',
                                 borderRadius: 4,
-                                background: 'rgba(245, 158, 11, 0.15)',
-                                color: 'var(--accent-amber)',
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                color: 'var(--accent-rose, #ef4444)',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
                               }}
                             >
                               Qarzdor
@@ -666,10 +594,10 @@ export default function Debts() {
                       <td style={{ padding: '14px 16px' }}>
                         {debtUzs > 0 ? (
                           <div>
-                            <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-rose, #ef4444)', fontSize: 13.5 }}>
                               {debtUzs.toLocaleString()} UZS
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Mijoz qarzi</div>
+                            <div style={{ fontSize: 10, color: 'var(--accent-rose, #ef4444)', opacity: 0.85, fontWeight: 600 }}>Mijoz qarzi</div>
                           </div>
                         ) : debtUzs < 0 ? (
                           <div>
@@ -687,10 +615,10 @@ export default function Debts() {
                       <td style={{ padding: '14px 16px' }}>
                         {debtUsd > 0 ? (
                           <div>
-                            <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-rose, #ef4444)', fontSize: 13.5 }}>
                               ${debtUsd.toFixed(2)}
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Mijoz qarzi</div>
+                            <div style={{ fontSize: 10, color: 'var(--accent-rose, #ef4444)', opacity: 0.85, fontWeight: 600 }}>Mijoz qarzi</div>
                           </div>
                         ) : debtUsd < 0 ? (
                           <div>
@@ -761,7 +689,28 @@ export default function Debts() {
                             <span>Xaridlar</span>
                           </button>
 
-                          {hasCredit ? (
+                          {hasDebt ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDebtPayment(cp)}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: 'var(--radius-xs)',
+                                border: 'none',
+                                background: 'var(--primary)',
+                                color: 'var(--primary-foreground)',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              <CreditCard size={13} />
+                              <span>Qarz To‘lash</span>
+                            </button>
+                          ) : hasCredit ? (
                             <button
                               type="button"
                               onClick={() => handleOpenRefundCredit(cp)}
@@ -783,28 +732,7 @@ export default function Debts() {
                               <RotateCcw size={13} />
                               <span>Haqni Qaytarish</span>
                             </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDebtPayment(cp)}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: 'var(--radius-xs)',
-                                border: 'none',
-                                background: 'var(--primary)',
-                                color: 'var(--primary-foreground)',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              <CreditCard size={13} />
-                              <span>Qarz To‘lash</span>
-                            </button>
-                          )}
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -823,6 +751,7 @@ export default function Debts() {
       </div>
 
       {/* Modal 1: Create Counterparty */}
+      <Pagination currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} />
       <Modal isOpen={newCpModalOpen} onClose={() => setNewCpModalOpen(false)} title={editingCp ? "Kontragentni tahrirlash" : "Yangi Mijoz / Kontragent Qo‘shish"}>
         <form onSubmit={handleCreateCounterparty} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
@@ -1003,8 +932,8 @@ export default function Debts() {
                 value={paymentType}
                 onChange={setPaymentType}
                 options={[
-                  { value: 'cash', label: '💵 Naqd pul' },
-                  { value: 'card', label: '💳 Bank karta' },
+                  { value: 'cash', label: 'Naqd pul' },
+                  { value: 'card', label: 'Bank karta' },
                 ]}
                 fullWidth
               />
@@ -1022,6 +951,34 @@ export default function Debts() {
               />
             </div>
           </div>
+
+          {paymentCurrency === 'USD' && (
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-xs)',
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                fontSize: 12.5,
+                color: 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
+              }}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span>💱</span>
+                <span>
+                  Do‘kon kursi (1 USD = <strong>{Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS</strong>)
+                </span>
+              </span>
+              <span style={{ fontWeight: 800, color: 'var(--accent-rose, #ef4444)' }}>
+                ~{((parseFloat(paymentAmount) || 0) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayiriladi
+              </span>
+            </div>
+          )}
 
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
@@ -1124,8 +1081,8 @@ export default function Debts() {
                 value={refundType}
                 onChange={setRefundType}
                 options={[
-                  { value: 'cash', label: '💵 Naqd pul' },
-                  { value: 'card', label: '💳 Bank karta' },
+                  { value: 'cash', label: 'Naqd pul' },
+                  { value: 'card', label: 'Bank karta' },
                 ]}
                 fullWidth
               />
@@ -1215,14 +1172,14 @@ export default function Debts() {
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
                 {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz Haqqi (UZS)' : 'Nasiya Qarzi (UZS)'}
               </div>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 800,
-                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--text-primary)' : Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
+                  color: Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose, #ef4444)' : Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
                   marginTop: 3,
                 }}
               >
@@ -1230,20 +1187,20 @@ export default function Debts() {
                   ? `+${Math.abs(Number(selectedCpDetail?.debt_balance_uzs || 0)).toLocaleString()} UZS`
                   : `${Number(selectedCpDetail?.debt_balance_uzs || 0).toLocaleString()} UZS`}
               </div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 600 : 400 }}>
-                {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : 'Joriy so‘m balansi'}
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_uzs || 0) !== 0 ? 600 : 400 }}>
+                {Number(selectedCpDetail?.debt_balance_uzs || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : Number(selectedCpDetail?.debt_balance_uzs || 0) > 0 ? 'Mijoz qarzi' : 'Joriy so‘m balansi'}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
                 {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz Haqqi (USD)' : 'Nasiya Qarzi (USD)'}
               </div>
               <div
                 style={{
                   fontSize: 16,
                   fontWeight: 800,
-                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--text-primary)' : Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
+                  color: Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose, #ef4444)' : Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-secondary)',
                   marginTop: 3,
                 }}
               >
@@ -1251,8 +1208,8 @@ export default function Debts() {
                   ? `+$${Math.abs(Number(selectedCpDetail?.debt_balance_usd || 0)).toFixed(2)}`
                   : `$${Number(selectedCpDetail?.debt_balance_usd || 0).toFixed(2)}`}
               </div>
-              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 600 : 400 }}>
-                {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : 'Joriy dollar balansi'}
+              <div style={{ fontSize: 11, color: Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? '#10b981' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'var(--accent-rose, #ef4444)' : 'var(--text-muted)', marginTop: 2, fontWeight: Number(selectedCpDetail?.debt_balance_usd || 0) !== 0 ? 600 : 400 }}>
+                {Number(selectedCpDetail?.debt_balance_usd || 0) < 0 ? 'Mijoz haqqi (ortiqcha to‘lov)' : Number(selectedCpDetail?.debt_balance_usd || 0) > 0 ? 'Mijoz qarzi' : 'Joriy dollar balansi'}
               </div>
             </div>
 
@@ -1431,7 +1388,7 @@ export default function Debts() {
                   fontSize: 11,
                 }}
               >
-                {cpDetailPayments.length}
+                {cpSalesSummary.payments_count ?? detailPayments.total}
               </span>
             </button>
           </div>
@@ -1444,7 +1401,7 @@ export default function Debts() {
               ) : cpDetailSales.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '52vh', overflowY: 'auto' }}>
                   {cpDetailSales
-                    .filter((s) => (cpDetailTab === 'debt_sales' ? s.payment_type === 'debt' : true))
+                    
                     .map((sale) => (
                       <div
                         key={sale.id}
@@ -1542,6 +1499,8 @@ export default function Debts() {
             </div>
           )}
 
+          {(cpDetailTab === 'debt_sales' || cpDetailTab === 'all_sales') && <Pagination currentPage={detailSales.page} totalItems={detailSales.total} onPageChange={detailSales.setPage} />}
+          {cpDetailTab === 'payments' && <Pagination currentPage={detailPayments.page} totalItems={detailPayments.total} onPageChange={detailPayments.setPage} />}
           {/* Tab 3: Debt Payments History */}
           {cpDetailTab === 'payments' && (
             <div>

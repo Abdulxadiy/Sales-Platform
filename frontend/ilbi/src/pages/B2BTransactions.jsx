@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
+import Pagination from '../components/common/Pagination';
+import React, { useState, useEffect, } from 'react';
 import {
   Building2,
   CheckCircle,
@@ -29,9 +31,6 @@ export default function B2BTransactions() {
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('inbox'); // 'inbox' | 'outgoing'
-  const [b2bInbox, setB2BInbox] = useState([]);
-  const [outgoingB2B, setOutgoingB2B] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Invoice A4 Modal
@@ -65,28 +64,15 @@ export default function B2BTransactions() {
   const [b2bDiscrepancyIdempotencyKey, setB2BDiscrepancyIdempotencyKey] = useState('');
   const [submittingB2BDiscrepancy, setSubmittingB2BDiscrepancy] = useState(false);
 
-  // Load Data
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch B2B Inbox
-      const inboxRes = await salesApi.getB2BInbox();
-      const inboxList = Array.isArray(inboxRes) ? inboxRes : (inboxRes?.results || []);
-      setB2BInbox(inboxList);
-
-      // 2. Fetch Sales to find outgoing B2B transfers and return pending sales
-      const salesRes = await salesApi.getSales({ b2b_only: true });
-      setOutgoingB2B(Array.isArray(salesRes) ? salesRes : (salesRes?.results || []));
-    } catch {
-      toast.error('B2B ma’lumotlarini yuklashda xatolik yuz berdi');
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData, activeTenant?.id]);
+  const search = useDebouncedValue(searchQuery.trim());
+  const inbox = usePaginatedList(salesApi.getB2BInbox, { search }, { tenantId: activeTenant?.id });
+  const outgoing = usePaginatedList(salesApi.getSales, { b2b_only: true, search }, { tenantId: activeTenant?.id });
+  const b2bInbox = inbox.items;
+  const outgoingB2B = outgoing.items;
+  const loading = activeTab === 'inbox' ? inbox.loading : outgoing.loading;
+  const activeList = activeTab === 'inbox' ? inbox : outgoing;
+  const loadData = () => { inbox.refresh(); outgoing.refresh(); };
+  useEffect(() => { const error = inbox.error || outgoing.error; if (error) toast.error(error.message); }, [inbox.error, outgoing.error, toast]);
 
   // Open A4 Invoice Modal
   const handleOpenInvoice = async (sale) => {
@@ -107,25 +93,19 @@ export default function B2BTransactions() {
   // Open Accept B2B
   const handleAcceptB2B = async (sale) => {
     try {
-      const response = await catalogApi.getCategories();
-      const allCategories = Array.isArray(response) ? response : (response?.results || []);
-      const list = allCategories.filter((category) => !category.currency || category.currency === sale.currency);
-
-      const variantResults = await Promise.all(
-        (sale.items || []).map(async (item) => {
-          if (!item.product_barcode) return [item.id, null];
-          try {
-            const variantsResponse = await catalogApi.getVariants({ barcode: item.product_barcode });
-            const variants = Array.isArray(variantsResponse) ? variantsResponse : (variantsResponse?.results || []);
-            const exact = variants.filter(
-              (variant) => variant.barcode === item.product_barcode && variant.currency === sale.currency && variant.unit === item.unit
-            );
-            return [item.id, exact.length === 1 ? exact[0] : null];
-          } catch {
-            return [item.id, null];
-          }
-        })
-      );
+      const barcodes = [...new Set((sale.items || []).map(item => item.product_barcode).filter(Boolean))];
+      const [response, variantResponse] = await Promise.all([
+        catalogApi.getCategories(),
+        barcodes.length ? catalogApi.getVariants({ barcodes: barcodes.join(',') }) : Promise.resolve([]),
+      ]);
+      const allCategories = response.results || response;
+      const list = allCategories.filter(category => !category.currency || category.currency === sale.currency);
+      const variants = variantResponse.results || variantResponse;
+      const variantResults = (sale.items || []).map(item => {
+        const exact = variants.filter(variant => item.product_barcode && variant.barcode === item.product_barcode
+          && variant.currency === sale.currency && variant.unit === item.unit);
+        return [item.id, exact.length === 1 ? exact[0] : null];
+      });
 
       const mappedItemIds = new Set(variantResults.filter(([, variant]) => variant).map(([itemId]) => itemId));
       const needsCategory = (sale.items || []).some(
@@ -311,26 +291,8 @@ export default function B2BTransactions() {
     }
   };
 
-  // Filtered lists
-  const filteredInbox = useMemo(() => {
-    if (!searchQuery.trim()) return b2bInbox;
-    const q = searchQuery.toLowerCase();
-    return b2bInbox.filter(
-      (b) =>
-        String(b.receipt_number || b.id).toLowerCase().includes(q) ||
-        (b.source_tenant_name || '').toLowerCase().includes(q)
-    );
-  }, [b2bInbox, searchQuery]);
-
-  const filteredOutgoing = useMemo(() => {
-    if (!searchQuery.trim()) return outgoingB2B;
-    const q = searchQuery.toLowerCase();
-    return outgoingB2B.filter(
-      (b) =>
-        String(b.receipt_number || b.id).toLowerCase().includes(q) ||
-        (b.b2b_target_tenant_name || b.counterparty_name || '').toLowerCase().includes(q)
-    );
-  }, [outgoingB2B, searchQuery]);
+  const filteredInbox = b2bInbox;
+  const filteredOutgoing = outgoingB2B;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -371,7 +333,7 @@ export default function B2BTransactions() {
               Kiruvchi B2B Fakturalar
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-              {b2bInbox.length} ta kutilmoqda
+              {inbox.total} ta kutilmoqda
             </div>
           </div>
         </div>
@@ -405,7 +367,7 @@ export default function B2BTransactions() {
               Jo‘natilgan B2B Tranzaksiyalar
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-              {outgoingB2B.length} ta faktura
+              {outgoing.summary?.total_count ?? outgoing.total} ta faktura
             </div>
           </div>
         </div>
@@ -439,7 +401,7 @@ export default function B2BTransactions() {
               Qaytish Kutilayotgan
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
-              {outgoingB2B.filter((s) => (s.status || '').toLowerCase() === 'b2b_return_pending').length} ta tovar
+              {outgoing.summary?.return_pending_count || 0} ta tovar
             </div>
           </div>
         </div>
@@ -489,7 +451,7 @@ export default function B2BTransactions() {
                   color: '#fff',
                 }}
               >
-                {b2bInbox.length}
+                {inbox.total}
               </span>
             )}
           </button>
@@ -525,7 +487,7 @@ export default function B2BTransactions() {
                   color: activeTab === 'outgoing' ? '#fff' : 'var(--text-secondary)',
                 }}
               >
-                {outgoingB2B.length}
+                {outgoing.summary?.total_count ?? outgoing.total}
               </span>
             )}
           </button>
@@ -904,6 +866,7 @@ export default function B2BTransactions() {
       )}
 
       {/* B2B Accept / Category Mapping Modal */}
+      <Pagination currentPage={activeList.page} totalItems={activeList.total} onPageChange={activeList.setPage} />
       <Modal
         isOpen={Boolean(b2bAcceptSale)}
         onClose={() => !submittingB2BAccept && setB2BAcceptSale(null)}

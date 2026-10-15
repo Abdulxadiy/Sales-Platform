@@ -1,3 +1,4 @@
+import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useEffect, useState } from 'react';
 import { Search, UserPlus, UserX, Users, Mail, Pencil, Ban, ShieldCheck, Trash2, RotateCcw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -35,10 +36,7 @@ export default function Employees() {
   const confirm = useConfirm();
 
   const [permissionChoices, setPermissionChoices] = useState([]);
-  const [tenants, setTenants] = useState([]);
-  const [adminTenantId, setAdminTenantId] = useState(null);
-  const [tenantLoading, setTenantLoading] = useState(isAdmin);
-  const [tenantError, setTenantError] = useState('');
+  const [adminTenantId, setAdminTenantId] = useState(requestedTenantId > 0 ? requestedTenantId : null);
   const selectedTenantId = isAdmin ? adminTenantId : (activeTenant?.id ?? null);
   const [employees, setEmployees] = useState([]);
   const [total, setTotal] = useState(0);
@@ -71,42 +69,6 @@ export default function Employees() {
   const [hireForm, setHireForm] = useState({
     phone_number: '', email: '', position: 'Kassir', first_name: '', last_name: '', permission_ids: [],
   });
-
-  useEffect(() => {
-    if (!isAdmin) return undefined;
-    let cancelled = false;
-    async function loadTenants() {
-      setTenantLoading(true);
-      setTenantError('');
-      try {
-        const all = [];
-        let pageNumber = 1;
-        // The API is paginated; the first page alone hides later stores.
-        while (true) {
-          const response = await tenantApi.getTenants({ page: pageNumber, page_size: 100 });
-          const rows = Array.isArray(response) ? response : response.results || [];
-          all.push(...rows);
-          if (Array.isArray(response) || !response.next) break;
-          pageNumber += 1;
-        }
-        if (cancelled) return;
-        setTenants(all);
-        setAdminTenantId((previous) => {
-          if (Number.isInteger(requestedTenantId) && requestedTenantId > 0
-              && all.some((tenant) => tenant.id === requestedTenantId)) {
-            return requestedTenantId;
-          }
-          return all.some((tenant) => tenant.id === previous) ? previous : (all[0]?.id ?? null);
-        });
-      } catch (error) {
-        if (!cancelled) setTenantError(error.message || 'Do‘konlarni yuklab bo‘lmadi.');
-      } finally {
-        if (!cancelled) setTenantLoading(false);
-      }
-    }
-    loadTenants();
-    return () => { cancelled = true; };
-  }, [isAdmin, requestedTenantId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -297,14 +259,8 @@ export default function Employees() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           {isAdmin && (
-            <CustomSelect
-              value={adminTenantId || ''}
-              onChange={(value) => { setAdminTenantId(Number(value)); setPage(1); }}
-              options={tenants.map((tenant) => ({ value: tenant.id, label: tenant.name + ' (#' + tenant.id + ')' }))}
-              placeholder={tenantLoading ? 'Do‘konlar yuklanmoqda...' : 'Do‘kon tanlang'}
-              size="md"
-              style={{ minWidth: 220 }}
-            />
+            <RemoteTenantSelect autoSelect value={adminTenantId || ''}
+              onChange={value => { setAdminTenantId(Number(value)); setPage(1); }} />
           )}
           <button className="btn btn-primary" onClick={() => setHireModalOpen(true)} disabled={!selectedTenantId}>
             <UserPlus size={16} /> Xodim qo‘shish
@@ -312,7 +268,6 @@ export default function Employees() {
         </div>
       </div>
 
-      {tenantError && <div role="alert" className="glass-card" style={{ padding: 16, color: 'var(--accent-rose)' }}>{tenantError}</div>}
 
       <div className="glass-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <Users size={22} color="var(--primary)" />

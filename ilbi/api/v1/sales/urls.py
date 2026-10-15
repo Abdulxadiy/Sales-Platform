@@ -19,6 +19,7 @@ from api.v1.sales.views.notification_views import (
     NotificationDetailView,
     NotificationListView,
     NotificationReadView,
+    NotificationReadAllView,
 )
 from api.v1.sales.views.sale_views import (
     PublicReceiptDetailView,
@@ -68,6 +69,7 @@ urlpatterns = [
         name="b2b-return-discrepancy-close",
     ),
     # Notifications
+    path("notifications/read-all/", NotificationReadAllView.as_view(), name="notification-read-all"),
     path("notifications/", NotificationListView.as_view(), name="notification-list"),
     path("notifications/<int:pk>/", NotificationDetailView.as_view(), name="notification-detail"),
     path("notifications/<int:pk>/read/", NotificationReadView.as_view(), name="notification-read"),

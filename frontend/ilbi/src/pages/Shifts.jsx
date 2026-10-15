@@ -1,3 +1,5 @@
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
+import Pagination from '../components/common/Pagination';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -59,10 +61,14 @@ export default function Shifts() {
   const [openingShift, setOpeningShift] = useState(false);
   const [activeTab, setActiveTab] = useState('reports'); // 'reports' | 'expenses' | 'income'
   const [shiftStatus, setShiftStatus] = useState(null);
-  const [reports, setReports] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [incomes, setIncomes] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const settledSearch = useDebouncedValue(search.trim());
+  const fetchPage = { reports: cashboxApi.getReports, expenses: cashboxApi.getExpenses, income: cashboxApi.getIncome }[activeTab];
+  const list = usePaginatedList(fetchPage, { search: settledSearch, tab: activeTab }, { tenantId: activeTenant?.id });
+  const reports = activeTab === 'reports' ? list.items : [];
+  const expenses = activeTab === 'expenses' ? list.items : [];
+  const incomes = activeTab === 'income' ? list.items : [];
+  const loading = list.loading;
 
   // Modals
   const [closeShiftModalOpen, setCloseShiftModalOpen] = useState(false);
@@ -160,35 +166,13 @@ export default function Shifts() {
     }
   };
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const statusRes = await cashboxApi.getCurrentShift(activeTenant?.id).catch(() => null);
-      setShiftStatus(statusRes);
-
-      if (activeTab === 'reports') {
-        const res = await cashboxApi.getReports(1, activeTenant?.id);
-        const list = res.results || res;
-        setReports(Array.isArray(list) ? list : []);
-      } else if (activeTab === 'expenses') {
-        const res = await cashboxApi.getExpenses(activeTenant?.id);
-        const list = res.results || res;
-        setExpenses(Array.isArray(list) ? list : []);
-      } else if (activeTab === 'income') {
-        const res = await cashboxApi.getIncome(activeTenant?.id);
-        const list = res.results || res;
-        setIncomes(Array.isArray(list) ? list : []);
-      }
-    } catch {
-      toast.error('Kassa ma’lumotlarini yuklashda xatolik yuz berdi');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, activeTenant?.id, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const loadShift = useCallback(async () => {
+    try { setShiftStatus(await cashboxApi.getCurrentShift()); }
+    catch (error) { toast.error(error.message || 'Smena holatini yuklab bo‘lmadi.'); }
+  }, [toast]);
+  const loadData = () => { list.refresh(); return loadShift(); };
+  useEffect(() => { loadShift(); }, [loadShift, activeTenant?.id]);
+  useEffect(() => { if (list.error) toast.error(list.error.message); }, [list.error, toast]);
 
   const handleOpenShift = async (event) => {
     event.preventDefault();
@@ -604,6 +588,7 @@ export default function Shifts() {
         </button>
       </div>
 
+      <input className="input-field" aria-label="Kassa tarixidan qidirish" placeholder="Kassa tarixidan qidirish..." value={search} onChange={e => setSearch(e.target.value)} />
       {/* Main Table Views */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">
@@ -790,6 +775,7 @@ export default function Shifts() {
         </div>
       </div>
 
+      <Pagination currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} />
       {/* Modal 1: Shift Close (Z-Report confirmation) */}
       <Modal isOpen={openShiftModal} onClose={() => setOpenShiftModal(false)} title="Smenani ochish">
         <form onSubmit={handleOpenShift} style={{ display: 'grid', gap: 14 }}>
@@ -1323,7 +1309,7 @@ export default function Shifts() {
                       cursor: 'pointer',
                     }}
                   >
-                    ← 📊 Hisobot ko‘rinishiga qaytish
+                    ← Hisobot ko‘rinishiga qaytish
                   </button>
                 </div>
                 <ShiftReportSlip report={selectedReportDetail} id="printable-z-report-preview" paperWidth={receiptPaperWidth} />

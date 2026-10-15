@@ -12,6 +12,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { authApi, resolveAvatarUrl } from '../api/client';
@@ -531,8 +532,9 @@ export default function Profile() {
                 cursor: 'not-allowed',
               }}
             />
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-              🔒 O‘zgarmas identifikator (2FA kodlari shu raqamga keladi)
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Lock size={11} style={{ opacity: 0.7 }} />
+              <span>O‘zgarmas identifikator (2FA kodlari shu raqamga keladi)</span>
             </span>
           </div>
 
@@ -945,7 +947,7 @@ export default function Profile() {
                 gap: 10,
               }}
             >
-              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+              <AlertTriangle size={16} color="var(--accent-amber)" style={{ flexShrink: 0, marginTop: 2 }} />
               <div>
                 <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>
                   Pochtani tekshiring

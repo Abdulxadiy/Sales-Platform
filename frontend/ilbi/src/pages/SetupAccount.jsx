@@ -157,7 +157,7 @@ export default function SetupAccount() {
       case 'new_employee':
         return {
           icon: UserCheck,
-          title: 'Jamoaga Xush Kelibsiz! 👋',
+          title: 'Jamoaga Xush Kelibsiz!',
           subtitle: tenantName
             ? `"${tenantName}" jamoasiga qo‘shilish uchun shaxsiy parolingizni belgilang`
             : 'ILBI jamoasiga qo‘shilish uchun shaxsiy parolingizni belgilang',

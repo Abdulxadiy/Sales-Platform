@@ -3,7 +3,7 @@ import Modal from './Modal';
 import { catalogApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { labelDocument, printLabelDocument } from '../../utils/productLabels';
-import { Printer, Barcode, Sparkles, CheckSquare, Square } from 'lucide-react';
+import { Printer, Barcode, Sparkles, CheckSquare, Square, Info } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
 export default function ProductLabelsModal({ variant: initialVariant, canGenerate, onClose, onChanged }) {
@@ -258,8 +258,9 @@ export default function ProductLabelsModal({ variant: initialVariant, canGenerat
           )}
         </div>
 
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-          💡 Chop etish dialogida masshtabni 100% qiling va brauzerning sahifa sarlavhasi hamda pastki yozuvlarini o‘chirib qo‘ying.
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Info size={13} style={{ flexShrink: 0, opacity: 0.7 }} />
+          <span>Chop etish dialogida masshtabni 100% qiling va brauzerning sahifa sarlavhasi hamda pastki yozuvlarini o‘chirib qo‘ying.</span>
         </div>
 
         {/* Action Buttons */}

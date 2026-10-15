@@ -1,3 +1,5 @@
+import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
+import Pagination from '../components/common/Pagination';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Store,
@@ -23,9 +25,6 @@ import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 export default function Tenants() {
   const toast = useToast();
   const confirm = useConfirm();
-  const [tenants, setTenants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [listError, setListError] = useState('');
   const [search, setSearch] = useState('');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -52,22 +51,12 @@ export default function Tenants() {
     description: '',
   });
 
-  const loadTenants = useCallback(async () => {
-    setLoading(true);
-    setListError('');
-    try {
-      setTenants(await tenantApi.getAllTenants());
-    } catch (err) {
-      setTenants([]);
-      setListError('Do‘konlar ro‘yxatini yuklab bo‘lmadi: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadTenants();
-  }, [loadTenants]);
+  const settledSearch = useDebouncedValue(search.trim());
+  const list = usePaginatedList(tenantApi.getTenants, { search: settledSearch });
+  const tenants = list.items;
+  const loading = list.loading;
+  const listError = list.error?.message || '';
+  const loadTenants = list.refresh;
 
   const handleCreateTenant = async (e) => {
     e.preventDefault();
@@ -203,18 +192,9 @@ export default function Tenants() {
     }
   };
 
-  const filteredTenants = tenants.filter((t) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      t.name?.toLowerCase().includes(q) ||
-      t.description?.toLowerCase().includes(q) ||
-      String(t.id).includes(q)
-    );
-  });
-
-  const activeCount = tenants.filter((t) => t.is_active).length;
-  const inactiveCount = tenants.length - activeCount;
+  const filteredTenants = tenants;
+  const activeCount = list.summary?.active_count || 0;
+  const inactiveCount = list.summary?.inactive_count || 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -255,7 +235,7 @@ export default function Tenants() {
             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Jami Do‘konlar</span>
             <Store size={18} color="var(--primary)" />
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{loading || listError ? '—' : `${tenants.length} ta`}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)' }}>{loading || listError ? '—' : `${list.summary?.total_count || 0} ta`}</div>
         </div>
 
         <div className="glass-card" style={{ padding: '18px 20px' }}>
@@ -524,6 +504,7 @@ export default function Tenants() {
       </div>
 
       {/* Create Tenant Modal */}
+      <Pagination currentPage={list.page} totalItems={list.total} onPageChange={list.setPage} />
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}

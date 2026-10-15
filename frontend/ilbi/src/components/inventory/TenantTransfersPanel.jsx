@@ -1,7 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowRightLeft, Check, Plus, RotateCcw, Send, Store, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { inventoryApi } from '../../api/client';
+import RemoteVariantSelect from '../common/RemoteVariantSelect';
+import { inventoryApi, catalogApi } from '../../api/client';
 import CustomSelect from '../common/CustomSelect';
 
 const statusLabels = {
@@ -17,7 +18,8 @@ function sameCatalogProduct(sourceLine, variant) {
     && String(variant.name || variant.variant_name || '').toLocaleLowerCase() === String(sourceLine.source_variant_name || '').toLocaleLowerCase();
 }
 
-export default function TenantTransfersPanel({ activeTenant, isOwner, transfers, targets, variants, categories, loading, reload, toast, confirm }) {
+export default function TenantTransfersPanel({ activeTenant, isOwner, transfers, targets, categories, loading, reload, toast, confirm }) {
+  const [variants, setVariants] = useState([]);
   const [destinationId, setDestinationId] = useState('');
   const [draftRows, setDraftRows] = useState([{ source_variant_id: '', quantity: '1', destination_category_id: '' }]);
   const [busyId, setBusyId] = useState(null);
@@ -71,7 +73,14 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
   const receive = async (transfer) => {
     const payload = [];
     for (const item of transfer.items) {
-      const sourceVariant = variants.find((variant) => sameCatalogProduct(item, variant));
+      let sourceVariant = variants.find((variant) => sameCatalogProduct(item, variant));
+      if (!sourceVariant) {
+        try {
+          const result = await catalogApi.getVariants({ product_name: item.source_product_name,
+            variant_name: item.source_variant_name, page: 1, page_size: 1 });
+          sourceVariant = result.results[0];
+        } catch (error) { toast.error(error.message); return; }
+      }
       const received = window.prompt(item.source_product_name + ' / ' + item.source_variant_name + ': real qabul qilingan miqdor (yuborildi ' + item.quantity_sent + ')', String(item.quantity_sent));
       if (received === null) return;
       const quantity = Number(received);
@@ -253,19 +262,10 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
                   alignItems: 'center',
                 }}
               >
-                <CustomSelect
-                  value={row.source_variant_id}
-                  onChange={(val) => updateDraft(index, 'source_variant_id', val)}
-                  options={[
-                    { value: '', label: 'Manba mahsulot/varianti' },
-                    ...variants.map((item) => ({
-                      value: String(item.id),
-                      label: `${item.product_name} / ${item.name || item.variant_name}`,
-                    })),
-                  ]}
-                  size="md"
-                  fullWidth
-                />
+                <RemoteVariantSelect value={row.source_variant_id}
+                  onChange={val => updateDraft(index, 'source_variant_id', val)}
+                  onVariant={variant => { if (variant) setVariants(prev => [...prev.filter(v => v.id !== variant.id), variant]); }}
+                  placeholder="Manba mahsulot/varianti" fullWidth />
                 <input
                   type="number"
                   min="0.001"

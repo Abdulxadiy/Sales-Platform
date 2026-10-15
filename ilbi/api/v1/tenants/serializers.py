@@ -302,3 +302,10 @@ class TenantChangeOwnerSerializer(serializers.Serializer):
                 {"new_owner_email": "Bu hisobga boshqa email biriktirilgan. Mavjud egani tekshiring."}
             )
         return attrs
+
+
+class TenantCompactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tenant
+        fields = ['id', 'name', 'is_active']
+        read_only_fields = fields

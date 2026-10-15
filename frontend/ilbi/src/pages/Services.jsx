@@ -1,3 +1,4 @@
+import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sliders,
@@ -28,7 +29,6 @@ export default function Services() {
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('currency'); // 'currency' | 'telegram' | 'receipt' | 'automation'
-  const [tenants, setTenants] = useState([]);
   const [selectedTenantId, setSelectedTenantId] = useState(user?.tenant_id || null);
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,19 +65,6 @@ export default function Services() {
     receipt_footer: '',
     receipt_phone: '',
   });
-
-  // Load tenant list for platform_admin
-  useEffect(() => {
-    if (isAdmin) {
-      tenantApi
-        .getAllTenants()
-        .then((list) => {
-          setTenants(list);
-          setSelectedTenantId((current) => current || list[0]?.id || null);
-        })
-        .catch((err) => toast.error('Do‘konlar ro‘yxatini yuklab bo‘lmadi: ' + err.message));
-    }
-  }, [isAdmin, toast]);
 
   // Load current tenant settings
   const loadTenantData = useCallback(async () => {
@@ -236,9 +223,8 @@ export default function Services() {
     return (
       <div className="glass-card" role={loadError ? 'alert' : undefined} style={{ padding: 28, color: loadError ? 'var(--accent-rose)' : 'var(--text-muted)' }}>
         {loadError || (isAdmin ? 'Sozlamalarni ko‘rish uchun do‘kon tanlang.' : 'Do‘kon sozlamalari topilmadi.')}
-        {isAdmin && tenants.length > 0 && (
-          <CustomSelect value={selectedTenantId || ''} onChange={(value) => setSelectedTenantId(Number(value))}
-            options={tenants.map((item) => ({ value: item.id, label: `${item.name} (#${item.id})` }))} style={{ marginTop: 12, minWidth: 240 }} />
+        {isAdmin && (
+          <RemoteTenantSelect autoSelect value={selectedTenantId || ''} onChange={value => setSelectedTenantId(Number(value))} />
         )}
         {selectedTenantId && <button type="button" className="btn btn-secondary" onClick={loadTenantData} style={{ marginTop: 12 }}>Qayta urinish</button>}
       </div>
@@ -290,16 +276,7 @@ export default function Services() {
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
               Do‘kon:
             </span>
-            <CustomSelect
-              value={selectedTenantId || ''}
-              onChange={(val) => setSelectedTenantId(Number(val))}
-              options={tenants.map((t) => ({
-                value: t.id,
-                label: `${t.name} (ID: ${t.id})`,
-              }))}
-              size="sm"
-              style={{ minWidth: 200 }}
-            />
+            <RemoteTenantSelect value={selectedTenantId || ''} onChange={value => setSelectedTenantId(Number(value))} />
           </div>
         ) : (
           <div

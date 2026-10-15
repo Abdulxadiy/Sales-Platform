@@ -2,7 +2,8 @@ from decimal import Decimal
 from datetime import datetime, time, timedelta
 from collections import defaultdict
 from django.utils import timezone
-from django.db.models import Sum, Q, F
+from django.db.models import Sum, Q, F, Case, When
+from django.db.models.functions import Coalesce
 
 from apps.sales.models import Sale, SaleItem, Counterparty, DebtPayment
 from apps.sales.quantities import effective_quantity, effective_quantity_expression
@@ -358,23 +359,25 @@ class AnalyticsService:
         total_customers_count = debt_qs.count()
 
         # Store Overview: Warehouse Inventory Valuation
-        stock_qs = Stock.objects.filter(tenant=tenant, quantity__gt=0).select_related("product_variant")
-        inventory_cost_value_uzs = Decimal("0.00")
-        inventory_retail_value_uzs = Decimal("0.00")
-        inventory_cost_value_usd = Decimal("0.00")
-        inventory_retail_value_usd = Decimal("0.00")
-        inventory_total_qty = Decimal("0.00")
-        for st in stock_qs:
-            qty = st.quantity
-            inventory_total_qty += qty
-            c_p = st.last_cost_price if st.last_cost_price is not None else Decimal("0.00")
-            r_p = st.product_variant.price_recommended if (st.product_variant.price_recommended and st.product_variant.price_recommended > 0) else (st.product_variant.price_min or Decimal("0.00"))
-            if st.product_variant.currency == "UZS":
-                inventory_cost_value_uzs += qty * c_p
-                inventory_retail_value_uzs += qty * r_p
-            else:
-                inventory_cost_value_usd += qty * c_p
-                inventory_retail_value_usd += qty * r_p
+        stock_qs = Stock.objects.filter(tenant=tenant, quantity__gt=0)
+        retail_price = Case(
+            When(product_variant__price_recommended__gt=0, then=F("product_variant__price_recommended")),
+            default=F("product_variant__price_min"),
+        )
+        totals = stock_qs.aggregate(
+            total_quantity=Sum("quantity"),
+            cost_uzs=Sum(F("quantity") * Coalesce("last_cost_price", Decimal("0")),
+                         filter=Q(product_variant__product__category__currency="UZS")),
+            cost_usd=Sum(F("quantity") * Coalesce("last_cost_price", Decimal("0")),
+                         filter=Q(product_variant__product__category__currency="USD")),
+            retail_uzs=Sum(F("quantity") * retail_price, filter=Q(product_variant__product__category__currency="UZS")),
+            retail_usd=Sum(F("quantity") * retail_price, filter=Q(product_variant__product__category__currency="USD")),
+        )
+        inventory_total_qty = totals["total_quantity"] or Decimal("0")
+        inventory_cost_value_uzs = totals["cost_uzs"] or Decimal("0")
+        inventory_cost_value_usd = totals["cost_usd"] or Decimal("0")
+        inventory_retail_value_uzs = totals["retail_uzs"] or Decimal("0")
+        inventory_retail_value_usd = totals["retail_usd"] or Decimal("0")
         inventory_variants_count = ProductVariant.objects.filter(tenant=tenant, is_active=True).count()
 
         # Store Overview: All-time Cumulative Turnover & Net Profit

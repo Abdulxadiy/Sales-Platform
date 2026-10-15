@@ -18,6 +18,9 @@ import {
   Package,
   ChevronRight,
   ArrowLeft,
+  DollarSign,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { catalogApi, salesApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
@@ -749,10 +752,10 @@ export default function POS() {
                   <button
                     type="button"
                     onClick={() => setUsdCalculatorOpen(false)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}
                     title="Yopish"
                   >
-                    ✕
+                    <X size={15} />
                   </button>
                 </div>
               </div>
@@ -1218,12 +1221,12 @@ export default function POS() {
                 // In wholesale mode, minimal retail price warnings are NOT needed
                 // Only warn if the cashier enters a price strictly below the wholesale price itself:
                 if (partnerPrice > 0 && numPrice > 0 && numPrice < partnerPrice) {
-                  priceWarning = `⚠️ Ulgurji narxdan past (${formatPrice(partnerPrice, item.variant.currency)})`;
+                  priceWarning = `Ulgurji narxdan past (${formatPrice(partnerPrice, item.variant.currency)})`;
                 }
               } else {
                 // In retail mode, warn if entered price is strictly below the retail minimum price
                 if (minPrice > 0 && numPrice > 0 && numPrice < minPrice) {
-                  priceWarning = `⚠️ Minimal narxdan past (${formatPrice(minPrice, item.variant.currency)})`;
+                  priceWarning = `Minimal narxdan past (${formatPrice(minPrice, item.variant.currency)})`;
                 }
               }
               const isBelowMin = !!priceWarning;
@@ -1264,12 +1267,14 @@ export default function POS() {
                         )}
                         <span>Tavsiya: {formatPrice(item.variant.price_recommended, item.variant.currency)}</span>
                         {isOutOfStock ? (
-                          <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>
-                            ⚠️ Omborda tugagan (0 ta)
+                          <span style={{ color: 'var(--accent-rose)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <AlertTriangle size={11} />
+                            <span>Omborda tugagan (0 ta)</span>
                           </span>
                         ) : isOverStock ? (
-                          <span style={{ color: 'var(--accent-rose)', fontWeight: 700 }}>
-                            ⚠️ Omborda faqat {availableStock} ta
+                          <span style={{ color: 'var(--accent-rose)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <AlertTriangle size={11} />
+                            <span>Omborda faqat {availableStock} ta</span>
                           </span>
                         ) : null}
                       </div>
@@ -1454,7 +1459,8 @@ export default function POS() {
                 gap: 6,
               }}
             >
-              ⚠️ Savatda omborda qolmagan yoki yetarli bo‘lmagan tovarlar bor!
+              <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+              <span>Savatda omborda qolmagan yoki yetarli bo‘lmagan tovarlar bor!</span>
             </div>
           )}
 
@@ -1634,7 +1640,8 @@ export default function POS() {
                       gap: 6,
                     }}
                   >
-                    <span>💵</span> USD Tovarlar ({cartUSD.length})
+                    <DollarSign size={15} />
+                    <span>USD Tovarlar ({cartUSD.length})</span>
                   </span>
                   <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent-emerald)' }}>
                     ${cartTotalUSD.toLocaleString()}
@@ -1764,7 +1771,8 @@ export default function POS() {
                       gap: 6,
                     }}
                   >
-                    <span>🇺🇿</span> UZS Tovarlar ({cartUZS.length})
+                    <Banknote size={15} />
+                    <span>UZS Tovarlar ({cartUZS.length})</span>
                   </span>
                   <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)' }}>
                     {cartTotalUZS.toLocaleString()} UZS

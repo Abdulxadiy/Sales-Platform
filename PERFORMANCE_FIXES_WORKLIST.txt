@@ -1,0 +1,24 @@
+ILBI — ketma-ket ishlash va tekshirish ro‘yxati
+Qoida: keyingi raqamga faqat joriy vazifa tuzatilgan va tekshiruvdan o‘tganidan keyin o‘tiladi.
+Yakun: umumiy tekshiruv, qisqa hisobot, ushbu vaqtinchalik faylni o‘chirish.
+
+1. [BAJARILDI — Chrome: eski javob rad etildi, filtr sahifalari [1]] Savdolar qidiruvi: debounce, eski javobni bekor qilish, filtr o‘zgarganda faqat 1-sahifa so‘rovi.
+   Qabul: Chrome’da sekin eski javob yangi natijani bosmaydi; filtr uchun bitta sahifa so‘rovi.
+2. [BAJARILDI — Chrome: ruxsatli a’zolik ochildi, ruxsatsiz a’zolik rad etildi] Dashboard: tanlangan do‘kon a’zoligi ruxsatini tekshirish.
+   Qabul: umumiy permissions bo‘sh bo‘lsa ham faol a’zolik ruxsati ishlaydi; ruxsatsiz a’zolik rad etiladi.
+3. [BAJARILDI — 6 PostgreSQL testi va frontend build o‘tdi] Kassa: kirim/xarajat/Z-hisobot uchun haqiqiy pagination, filtrlar va bog‘liq ma’lumotlarni optimallashtirish.
+   Qabul: sahifalar to‘liq ko‘riladi; SQL soni qatorlar soniga mutanosib oshmaydi; ro‘yxat tafsilotlarni ortiqcha yuklamaydi.
+4. [BAJARILDI — 6 test: SQL doimiy, qiymat/miqdor va mavjud analytics tekshiruvlari o‘tdi] Dashboard SQL: qoldiq mahsuloti va kategoriyasi uchun takroriy so‘rovlarni yo‘qotish.
+   Qabul: 20 qoldiq qo‘shilganda SQL soni 40 taga oshmaydi; hisoblar o‘zgarmaydi.
+5. [BAJARILDI — 27 test: 1/20 qator SQL soni teng, savdo regressiyalari o‘tdi] Savdolar SQL: tenant ma’lumotini oldindan olish.
+   Qabul: 1 va 20 savdo ro‘yxati uchun so‘rovlar soni bir xil; API javobi saqlanadi.
+6. [BAJARILDI — 37 test va frontend build: to‘lov limiti 1, sahifalar/xulosalar/eksport o‘tdi] Nasiya: oxirgi to‘lovni chegaralab olish, kontragent/savdo/to‘lov tarixini sahifalash, xulosalarni serverda hisoblash.
+   Qabul: oxirgi to‘lov uchun barcha tarix olinmaydi; sahifalar va filtrlar ishlaydi; jami summalar barcha mos yozuvlar bo‘yicha.
+7. [BAJARILDI — 22 test va build: B2B sahifalari va barcode to‘plami ishladi] B2B: ro‘yxatlarni sahifalash va shtrix-kodlarni bitta so‘rov bilan qidirish.
+   Qabul: inbox/chiqim sahifalari va qidiruv ishlaydi; N pozitsiya uchun N HTTP ketmaydi.
+8. [BAJARILDI — Chrome: seed/scan/draft ishladi; 19 API testi va build o‘tdi] Tovar kirimi: butun katalogni yuklash o‘rniga serverdan qidirish va kerakli variantlarni olish.
+   Qabul: katta katalog to‘liq yuklanmaydi; shtrix-kod, draft, oldindan tanlangan variant va ombor amallari ishlaydi.
+9. [BAJARILDI — polling testi, 30 API testi va build o‘tdi] Fon so‘rovlari: tab yashirilganda to‘xtatish, ustma-ust so‘rovlarni oldini olish, yengil kassa va bildirishnoma javoblari.
+   Qabul: yashirin tabda HTTP yo‘q; parallel takror yo‘q; tab qaytganda yangilanadi; bildirishnomalar tarixi saqlanadi.
+10. [JARAYONDA] Admin do‘konlar: barcha sahifalarni ketma-ket yig‘ish o‘rniga server pagination/qidiruv va ixcham tanlash.
+    Qabul: dashboard/do‘konlar/xodimlar/audit/sozlamalar zarur sahifani oladi; keyingi do‘konlar qidiruv bilan topiladi; jami ko‘rsatkichlar to‘g‘ri.

@@ -572,7 +572,7 @@ export default function ZReportModernView({
                 cursor: 'pointer',
               }}
             >
-              {activeView === 'modern' ? "🧾 Kassa cheki ko'rinishi" : "📊 Hisobot ko'rinishi"}
+              {activeView === 'modern' ? "Kassa cheki ko'rinishi" : "Hisobot ko'rinishi"}
             </button>
           )}
         </div>

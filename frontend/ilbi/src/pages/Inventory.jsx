@@ -1,3 +1,4 @@
+import RemoteVariantSelect from '../components/common/RemoteVariantSelect';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -15,6 +16,7 @@ import {
   CalendarDays,
   AlertTriangle,
   Store,
+  CheckCircle2,
 } from 'lucide-react';
 import { inventoryApi, catalogApi, tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
@@ -52,7 +54,6 @@ export default function Inventory() {
   const [deficitsList, setDeficitsList] = useState([]);
   const [deficitCount, setDeficitCount] = useState(0);
   const [deficitSearch, setDeficitSearch] = useState('');
-  const [variants, setVariants] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loadingOther, setLoading] = useState(false);
   const STOCK_PAGE_SIZE = 25;
@@ -171,18 +172,6 @@ export default function Inventory() {
     }).catch(() => {});
     return () => { active = false; };
   }, [activeTenant?.id, refreshDeficitCount]);
-
-  // Full option lists are needed only when an inventory operation is opened.
-  const needsVariantOptions = intakeModalOpen || adjustModalOpen || customerReturnModalOpen
-    || supplierReturnModalOpen || writeOffModalOpen || activeTab === 'transfers';
-  useEffect(() => {
-    if (!needsVariantOptions) return;
-    let active = true;
-    catalogApi.getVariants().then(res => {
-      if (active) setVariants(res.results || res);
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [needsVariantOptions, activeTenant?.id]);
 
   // Adjust stock (Qoldiqni to‘g‘rilash)
   const handleAdjustSubmit = async (e) => {
@@ -312,11 +301,6 @@ export default function Inventory() {
       return `${Math.round(num)}`;
     }
     return `${parseFloat(num.toFixed(3))}`;
-  };
-
-  const getVariantOptionLabel = (v) => {
-    const qtyStr = formatQuantity(v.stock_quantity ?? v.quantity, v.unit);
-    return `${v.product_name || v.name} — ${qtyStr} ${v.unit || 'dona'}`;
   };
 
   const filteredStock = stockList;
@@ -1047,7 +1031,6 @@ export default function Inventory() {
             isOwner={isOwner}
             transfers={transfers}
             targets={transferTargets}
-            variants={variants}
             categories={categories}
             loading={loading}
             reload={loadData}
@@ -1179,7 +1162,7 @@ export default function Inventory() {
                 <tr>
                   <td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 28 }}>✅</span>
+                      <CheckCircle2 size={32} color="var(--accent-emerald)" />
                       <strong style={{ color: 'var(--text-primary)', fontSize: 15 }}>
                         {deficitSearch ? 'Qidiruv bo‘yicha kamchilik tovarlar topilmadi' : 'Ayni damda kamayib qolgan tovarlar mavjud emas!'}
                       </strong>
@@ -1294,7 +1277,6 @@ export default function Inventory() {
           loadData();
           refreshDeficitCount();
         }}
-        variants={variants}
         categories={categories}
         preselectedVariantId={selectedVariantForIntake}
       />
@@ -1307,14 +1289,12 @@ export default function Inventory() {
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Tovar Varianti *
             </label>
-            <CustomSelect
+            <RemoteVariantSelect
+              enabled={adjustModalOpen}
               value={selectedVariantId}
               onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
-              options={variants.map((v) => ({
-                value: v.id,
-                label: getVariantOptionLabel(v),
-              }))}
+              
               fullWidth
             />
           </div>
@@ -1400,14 +1380,12 @@ export default function Inventory() {
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Qaytarilgan Variant *
             </label>
-            <CustomSelect
+            <RemoteVariantSelect
+              enabled={customerReturnModalOpen}
               value={selectedVariantId}
               onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
-              options={variants.map((v) => ({
-                value: v.id,
-                label: getVariantOptionLabel(v),
-              }))}
+              
               fullWidth
             />
           </div>
@@ -1468,14 +1446,12 @@ export default function Inventory() {
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Qaytariladigan Variant *
             </label>
-            <CustomSelect
+            <RemoteVariantSelect
+              enabled={supplierReturnModalOpen}
               value={selectedVariantId}
               onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
-              options={variants.map((v) => ({
-                value: v.id,
-                label: getVariantOptionLabel(v),
-              }))}
+              
               fullWidth
             />
           </div>
@@ -1540,14 +1516,12 @@ export default function Inventory() {
             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
               Hisobdan chiqariladigan Variant *
             </label>
-            <CustomSelect
+            <RemoteVariantSelect
+              enabled={writeOffModalOpen}
               value={selectedVariantId}
               onChange={(val) => { setSelectedVariantId(val); setSelectedBatch(''); }}
               placeholder="Tovarni tanlang..."
-              options={variants.map((v) => ({
-                value: v.id,
-                label: getVariantOptionLabel(v),
-              }))}
+              
               fullWidth
             />
           </div>

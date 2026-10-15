@@ -881,7 +881,7 @@ export default function Login() {
                     gap: 10,
                   }}
                 >
-                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                  <AlertCircle size={16} color="var(--accent-amber)" style={{ flexShrink: 0, marginTop: 2 }} />
                   <div>
                     <strong>Muhim eslatma:</strong> Agar xat asosiy pochtangizda ko‘rinmasa, iltimos, <strong>"Spam"</strong> yoki <strong>"Promotions"</strong> papkasini ham tekshiring. Havola 24 soat davomida amal qiladi.
                   </div>

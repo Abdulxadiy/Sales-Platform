@@ -153,7 +153,8 @@ async def contact_handler(message: types.Message):
             if conflict_code == "telegram_chat_already_linked":
                 await message.answer(
                     "Bu Telegram akkaunti boshqa telefon raqamiga ulangan. "
-                    "Avvalgi login bilan davom eting yoki raqamni yangilash uchun platforma administratoriga murojaat qiling. "
+                    "Avvalgi login bilan davom eting yoki raqamni yangilash uchun "
+                    "platforma administratoriga murojaat qiling. "
                     "Administrator «Hisoblar & Kirish → Login va Telegram» orqali egalikni tekshirib yangilaydi."
                 )
                 return

@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q, F
+from django.db.models import F, Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -185,9 +185,13 @@ class PlatformSupportUnreadView(APIView):
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
-        unread = Message.objects.filter(sender="visitor", id__gt=F("conversation__operator_read_id")).exclude(
-            conversation__status="closed",
-        ).count()
+        unread = (
+            Message.objects.filter(sender="visitor", id__gt=F("conversation__operator_read_id"))
+            .exclude(
+                conversation__status="closed",
+            )
+            .count()
+        )
         return Response({"unread": unread})
 
 

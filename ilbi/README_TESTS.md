@@ -39,6 +39,16 @@ Joriy butun sonli version, yangilangan access token bilan APIga kirish, inactive
 
 ## Telegram 2FA shaxsiy chat himoyasi
 
+Platforma adminining yangi ish muhiti:
+
+```bash
+uv run pytest apps/accounts/tests/test_platform_admin_workspace.py apps/accounts/tests/test_employee_management_api.py apps/support/tests apps/tg_bot/tests -q
+```
+
+Role isolation, admin paroli/egalik tasdig‘i, stale version, band telefon/chat, eski JWT/reset bekori, umumiy hisob blok/unblock, platforma auditining tenantga tushmasligi va sahifalangan qidiruv query chegarasi tekshiriladi. Support personal/group/both, o‘chirilgan tanlovning ENV fallbackni to‘xtatishi, post-commit enqueue va o‘qilmagan xabar counti ham sinovda. Parallel registrationda aynan bitta chat saqlanib, ikkinchi so‘rov nazoratli 400 bo‘lishi kerak.
+
+Repo frontend katalogidan `node tests/platformAdmin.browser.mjs` haqiqiy Chrome’da yangi UI/formalarni sun’iy API bilan tekshiradi. Rasmlar `/tmp/ilbi-admin-*.png`ga yoziladi; maxfiy haqiqiy ma’lumot ishlatilmaydi. 390px mobile va light/dark tokenlari tekshiriladi. Bu sinov yangi migratsiyalarni haqiqiy serverga qo‘llamaydi va Telegram xabari yubormaydi.
+
 ```bash
 uv run pytest apps/tg_bot/tests apps/accounts/tests/test_admin_login_views.py apps/accounts/tests/test_createsuperuser.py apps/accounts/tests/test_password_reset.py apps/accounts/tests/test_demo_mode.py apps/accounts/tests/test_branding.py apps/cashbox/tests/test_tasks.py apps/tenants/tests/test_tenant_services_api.py -q
 ```

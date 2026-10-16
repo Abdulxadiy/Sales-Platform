@@ -9,8 +9,8 @@ export default function PlatformDashboard() {
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
-    let cancelled = false; setError('');
-    platformApi.overview().then(value => { if (!cancelled) setData(value); }).catch(err => { if (!cancelled) setError(err.message); });
+    let cancelled = false;
+    platformApi.overview().then(value => { if (!cancelled) { setData(value); setError(''); } }).catch(err => { if (!cancelled) setError(err.message); });
     return () => { cancelled = true; };
   }, [refresh]);
   const cards = [

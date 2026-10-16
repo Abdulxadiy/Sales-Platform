@@ -1,6 +1,15 @@
 import { request } from './client';
 
-const call = (path, options = {}) => request(path, { ...options, skipTenant: true });
+const call = async (path, options = {}) => {
+  try { return await request(path, { ...options, skipTenant: true }); }
+  catch (error) {
+    if (error.data && typeof error.data === 'object' && !error.data.detail) {
+      const messages = Object.values(error.data).flat().filter(value => typeof value === 'string');
+      if (messages.length) error.message = messages.join(' ');
+    }
+    throw error;
+  }
+};
 export const platformApi = {
   overview: () => call('/platform/overview/'),
   supportUnread: signal => call('/platform/support-unread/', { signal }),

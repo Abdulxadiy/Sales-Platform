@@ -241,8 +241,8 @@ export default function Layout({ children }) {
         };
       case '/tenants':
         return {
-          title: 'Do‘konlar (Tenants) Boshqaruvi',
-          subtitle: 'SaaS platformasidagi barcha do‘konlar va ularning faolligi',
+          title: 'Do‘konlar boshqaruvi',
+          subtitle: 'Platformadagi barcha do‘konlar va ularning faolligi',
         };
       case '/employees':
         return {

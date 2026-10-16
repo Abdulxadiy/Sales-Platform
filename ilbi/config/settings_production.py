@@ -40,6 +40,30 @@ if not valid_url:
 if public_url.hostname not in ALLOWED_HOSTS:
     raise ImproperlyConfigured("The FRONTEND_URL hostname must be explicitly listed in ALLOWED_HOSTS.")
 
+# DRF's default cache must be shared by all Gunicorn workers and replicas.
+# Require an explicit URL: production must never fall back to process-local counters.
+try:
+    redis_url = urlsplit(base.REDIS_URL or "")
+    valid_redis_url = (
+        redis_url.scheme in ("redis", "rediss")
+        and redis_url.hostname
+        and (redis_url.port is None or 1 <= redis_url.port <= 65535)
+    )
+except ValueError:
+    valid_redis_url = False
+if not valid_redis_url:
+    raise ImproperlyConfigured("Production requires REDIS_URL with a redis:// or rediss:// server URL.")
+
+CACHES = {
+    **base.CACHES,
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": base.REDIS_URL,
+        "KEY_PREFIX": f"ilbi:{public_url.hostname}:production",
+        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+    },
+}
+
 SECURE_SSL_REDIRECT = True
 SECURE_SSL_HOST = public_url.netloc
 # Only the private Docker network can reach Django. The TLS edge overwrites this header.

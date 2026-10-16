@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "compose_project": "ilbi-platform",
+  "postgres_container": "ilbi-platform-postgres-1",
+  "database": "ilbi_db",
+  "database_user": "ilbi_admin",
+  "media_container": "ilbi-platform-ilbi-1",
+  "media_path": "/app/media",
+  "docs_directory": "/srv/ilbi/docs",
+  "storage": "local"
+}

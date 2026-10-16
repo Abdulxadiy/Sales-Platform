@@ -1,6 +1,7 @@
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
+
 from apps.accounts.models import User
 from apps.tg_bot.models import TelegramContact
 
@@ -46,6 +47,18 @@ def test_custom_createsuperuser_requires_bot_identity_before_creating_user(setti
             chat_id="987654321", interactive=False,
         )
     assert not User.objects.filter(username="missingbot").exists()
+
+
+@pytest.mark.parametrize("chat_id", ["-123456", "0", "invalid"])
+def test_custom_createsuperuser_rejects_non_private_chat_before_creating_user(chat_id, monkeypatch):
+    monkeypatch.setenv("DJANGO_SUPERUSER_PASSWORD", "SuperPass123!")
+    with pytest.raises(CommandError, match="shaxsiy Telegram chat ID"):
+        call_command(
+            "createsuperuser", phone_number="+998901110008", username="invalidchat",
+            chat_id=chat_id, interactive=False,
+        )
+    assert not User.objects.filter(username="invalidchat").exists()
+    assert not TelegramContact.objects.filter(phone_number="+998901110008").exists()
 
 
 def test_custom_createsuperuser_missing_chat_id_raises_error(monkeypatch):

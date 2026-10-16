@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T113112-f6447dab",
+  "queue_id": "20261016T114627-b8b8754d",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "f6447dab4c427ea617c259dfb9dfee45c4f59b9e",
-  "source_tree": "daef3ded576677edefa45783e0cc6ed3fde8471c",
-  "created_at": "2026-10-16T11:31:12.815401+05:00",
+  "snapshot_sha": "b8b8754d438b79408f008807e730dba7d22fd4d9",
+  "source_tree": "4b9a45233f6f64e6a2977efa358a77451aecddeb",
+  "created_at": "2026-10-16T11:46:27.064805+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -18,8 +18,18 @@
       "id": "account-api",
       "message": "fix(accounts-api): expose revocable sessions secure profiles and validated recovery routes",
       "paths": [
+        "ilbi/api/v1/accounts/views/misc.py",
         "ilbi/api/v1/accounts/views/profile_views.py",
         "ilbi/api/v1/accounts/views/token_refresh.py"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "shops-and-sellers",
+      "message": "feat(tenants): add seller verification shop invitations and Telegram identity binding",
+      "paths": [
+        "ilbi/api/v1/tg_bot/serializers.py",
+        "ilbi/apps/tg_bot/identity.py"
       ],
       "atomic_unit": "application"
     },
@@ -62,6 +72,14 @@
       "atomic_unit": "application"
     },
     {
+      "id": "backend-regressions",
+      "message": "test(backend): cover tenant permissions transfers refunds imports and authentication regressions",
+      "paths": [
+        "ilbi/apps/accounts/tests/test_admin_login_views.py"
+      ],
+      "atomic_unit": "application"
+    },
+    {
       "id": "deployment-configuration",
       "message": "chore(deploy): build static production frontend and configure backend media and service settings",
       "paths": [
@@ -70,7 +88,8 @@
         "frontend/ilbi/nginx.prod.conf",
         "ilbi/api/v1/urls.py",
         "ilbi/config/settings.py",
-        "ilbi/config/urls.py"
+        "ilbi/config/urls.py",
+        "telegram_bot_sms/main.py"
       ],
       "atomic_unit": "application"
     },
@@ -88,8 +107,10 @@
         "frontend/ilbi/tests/catalogFiscal.browser.mjs",
         "ilbi/README_TESTS.md",
         "ilbi/apps/accounts/authentication.py",
+        "ilbi/apps/accounts/management/commands/createsuperuser.py",
         "ilbi/apps/accounts/services/avatar_service.py",
         "ilbi/apps/accounts/tests/test_avatar_storage.py",
+        "ilbi/apps/accounts/tests/test_createsuperuser.py",
         "ilbi/apps/accounts/tests/test_terms_and_docs_views.py",
         "ilbi/apps/accounts/tests/test_token_version_validation.py",
         "ilbi/apps/accounts/token_validation.py",
@@ -104,9 +125,11 @@
         "ilbi/apps/sales/migrations/0016_saleitem_product_snapshot.py",
         "ilbi/apps/sales/receipt_items.py",
         "ilbi/apps/sales/tests/test_product_snapshots.py",
+        "ilbi/apps/tg_bot/tests/test_private_2fa.py",
         "ilbi/config/settings_production.py",
         "ilbi/gunicorn.conf.py",
-        "ilbi/healthcheck.py"
+        "ilbi/healthcheck.py",
+        "telegram_bot_sms/tests/test_contact_handler.py"
       ],
       "atomic_unit": "application"
     },

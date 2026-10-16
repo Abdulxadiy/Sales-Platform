@@ -1,11 +1,11 @@
-# Standalone production layout. Configure real .env files before starting.
-# Domain and TLS termination are intentionally configured at deployment time.
+# Standalone production layout; TLS terminates at the frontend Nginx edge.
+# docker compose --env-file .env.production -f docker-compose.prod.yml ...
 name: ${COMPOSE_PROJECT_NAME:-ilbi-platform}
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    env_file: ./.env
+    env_file: ./.env.production
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
@@ -25,10 +25,15 @@ services:
   ilbi:
     build: ./ilbi
     restart: unless-stopped
-    env_file: ./ilbi/.env
+    env_file: ./ilbi/.env.production
     environment: &backend_environment
+      DJANGO_SETTINGS_MODULE: config.settings_production
       DJANGO_DEBUG: 'False'
       LOCAL_DEMO_LOGIN_ENABLED: 'False'
+      GUNICORN_RELOAD: 'False'
+      ALLOWED_HOSTS: '${PUBLIC_HOST:?Set PUBLIC_HOST in .env.production},ilbi'
+      FRONTEND_URL: 'https://${PUBLIC_HOST:?Set PUBLIC_HOST in .env.production}'
+      SECURE_HSTS_SECONDS: '${SECURE_HSTS_SECONDS:-3600}'
       POSTGRES_HOST: postgres
       POSTGRES_PORT: '5432'
       DB_HOST: postgres
@@ -47,28 +52,39 @@ services:
     build: ./ilbi
     restart: unless-stopped
     command: celery -A config worker -l info
-    env_file: ./ilbi/.env
+    env_file: ./ilbi/.env.production
     environment: *backend_environment
     depends_on: [ilbi]
   celery_beat:
     build: ./ilbi
     restart: unless-stopped
     command: celery -A config beat -l info
-    env_file: ./ilbi/.env
+    env_file: ./ilbi/.env.production
     environment: *backend_environment
     depends_on: [ilbi]
   bot:
     build: ./telegram_bot_sms
     restart: unless-stopped
-    env_file: ./telegram_bot_sms/.env
+    env_file: ./telegram_bot_sms/.env.production
     depends_on: [ilbi]
   frontend:
     build:
       context: ./frontend/ilbi
       target: production
     restart: unless-stopped
-    ports: ['80:80']
-    volumes: [static_data:/var/www/static:ro]
+    environment:
+      PUBLIC_HOST: '${PUBLIC_HOST:?Set PUBLIC_HOST in .env.production}'
+      SECURE_HSTS_SECONDS: '${SECURE_HSTS_SECONDS:-3600}'
+      NGINX_ENVSUBST_FILTER: '^(PUBLIC_HOST|SECURE_HSTS_SECONDS)$'
+    ports: ['80:80', '443:443']
+    volumes:
+      - static_data:/var/www/static:ro
+      - type: bind
+        source: '${TLS_CERT_DIR:?Set TLS_CERT_DIR to the directory containing fullchain.pem and privkey.pem}'
+        target: /etc/nginx/tls
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on: [ilbi]
   minio:
     image: cgr.dev/chainguard/minio:latest

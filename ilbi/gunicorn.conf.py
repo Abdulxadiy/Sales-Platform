@@ -37,6 +37,7 @@ if worker_class == "gevent":
 
 proc_name = "ilbi_gunicorn"
 
-# Auto-reload workers when code changes (crucial for local dev / Docker volume mounts)
-reload = os.environ.get("GUNICORN_RELOAD", "true").lower() in ("true", "1")
+# Reload is a local-development option and cannot be enabled in production.
+is_production = os.environ.get("DJANGO_SETTINGS_MODULE") == "config.settings_production"
+reload = False if is_production else os.environ.get("GUNICORN_RELOAD", "true").lower() in ("true", "1")
 reload_extra_files = []

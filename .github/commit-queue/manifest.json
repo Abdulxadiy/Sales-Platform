@@ -1,16 +1,31 @@
 {
   "version": 1,
-  "queue_id": "20261016T083330-446465f2",
+  "queue_id": "20261016T091609-d871f55d",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "446465f22d5dcc15a3fd62640a8fde5c200aa422",
-  "source_tree": "345392184e51e64566875e8dcd3e65e1549d43ea",
-  "created_at": "2026-10-16T08:33:30.146072+05:00",
+  "snapshot_sha": "d871f55da0e239fd9bbe2ca08bde6de71c45ab86",
+  "source_tree": "acf27d5d2be56f5ca7e5d7b9eb69f4b4e464489b",
+  "created_at": "2026-10-16T09:16:09.032711+05:00",
   "groups": [
+    {
+      "id": "deployment-configuration",
+      "message": "chore(deploy): build static production frontend and configure backend media and service settings",
+      "paths": [
+        "docker-compose.prod.yml",
+        "frontend/ilbi/Dockerfile",
+        "frontend/ilbi/nginx.prod.conf",
+        "ilbi/config/settings.py"
+      ],
+      "atomic_unit": "application"
+    },
     {
       "id": "ilbi-rebranding",
       "message": "feat(branding): apply ILBI identity and preserve existing sessions and deployment resources",
       "paths": [
-        "Architectures/shop-yol-xaritasi.md"
+        ".gitignore",
+        "Architectures/shop-yol-xaritasi.md",
+        "ilbi/apps/core/tests/test_production_settings.py",
+        "ilbi/config/settings_production.py",
+        "ilbi/gunicorn.conf.py"
       ],
       "atomic_unit": "application"
     },
@@ -262,7 +277,8 @@
         "branding/ilbi-motion-studio/qa/night-theme/support-widget-light.png",
         "branding/ilbi-motion-studio/qa/night-theme/terms-dark-accept-terms.png",
         "branding/profile_pic.png",
-        "docs/NIGHT_MODE_AUDIT_UZ.md"
+        "docs/NIGHT_MODE_AUDIT_UZ.md",
+        "tests/deployment/test_https_edge.py"
       ]
     }
   ]

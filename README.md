@@ -51,6 +51,8 @@ docker compose up --build
 - **API Documentation (Swagger)**: http://localhost/api/docs/
 - **API Documentation (Redoc)**: http://localhost/api/redoc/
 
+The frontend root `/` is ILBI's public presentation page. Sign-in stays at `/login`; authenticated work starts at `/dashboard`. The presentation follows native scrolling in both directions, including a four-stage sales story. Reduced-motion preferences and short windows retain the complete, unpinned presentation.
+
 ### Bare-Metal Development (Manual)
 
 #### Backend:
@@ -89,6 +91,16 @@ Run frontend linting:
 cd frontend/ilbi
 npm run lint
 ```
+
+To check the built public page, its reversible scroll effects, mobile layouts and sign-in routing in Chrome:
+
+```bash
+cd frontend/ilbi
+npm run build
+npm run test:landing
+```
+
+These browser checks use synthetic API responses and never sign in to or write to a real backend. Screenshots and the JSON report are saved under `branding/ilbi-motion-studio/qa/landing/`; set `ILBI_LANDING_QA_DIR` to choose another output directory.
 
 ---
 

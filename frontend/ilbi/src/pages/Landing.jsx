@@ -40,7 +40,9 @@ import { paths } from "../components/common/ilbi/logo";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
 import { docsApi } from "../api/client";
+import { useLandingMotion } from "../hooks/useLandingMotion";
 import "./Landing.css";
+import "./LandingMotion.css";
 
 const MarkdownViewer = lazy(() => import("../components/docs/MarkdownViewer"));
 // Real UI captures from isolated night-theme QA; all displayed account and
@@ -145,81 +147,6 @@ const faqs = [
     "Hisobingiz bo‘lsa, “Tizimga kirish” tugmasidan foydalaning. Hali hisobingiz bo‘lmasa, qo‘llab-quvvatlash sahifasida murojaat qoldiring — ulanish tartibini aniqlashtirib olasiz.",
   ],
 ];
-
-function usePresentationMotion(root) {
-  useEffect(() => {
-    const node = root.current;
-    if (!node) return;
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let observer;
-    let animationObserver;
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      node.style.setProperty(
-        "--lp-progress",
-        max > 0 ? String(window.scrollY / max) : "0",
-      );
-    };
-    const scroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    const setup = () => {
-      observer?.disconnect();
-      node.classList.toggle("lp-motion", !media.matches);
-      if (!media.matches && "IntersectionObserver" in window) {
-        observer = new IntersectionObserver(
-          (entries) =>
-            entries.forEach((entry) => {
-              if (entry.isIntersecting) {
-                entry.target.classList.add("lp-visible");
-                observer.unobserve(entry.target);
-              }
-            }),
-          { threshold: 0.08 },
-        );
-        node
-          .querySelectorAll("[data-reveal]")
-          .forEach((el) => observer.observe(el));
-      } else
-        node
-          .querySelectorAll("[data-reveal]")
-          .forEach((el) => el.classList.add("lp-visible"));
-    };
-    setup();
-    update();
-    if ("IntersectionObserver" in window) {
-      animationObserver = new IntersectionObserver((entries) =>
-        entries.forEach((entry) =>
-          entry.target.classList.toggle(
-            "lp-out-of-view",
-            !entry.isIntersecting,
-          ),
-        ),
-      );
-      node
-        .querySelectorAll(".lp-scene, .lp-branch-map")
-        .forEach((el) => animationObserver.observe(el));
-    }
-    const visibility = () =>
-      node.classList.toggle("lp-animation-paused", document.hidden);
-    visibility();
-    document.addEventListener("visibilitychange", visibility);
-    media.addEventListener("change", setup);
-    window.addEventListener("scroll", scroll, { passive: true });
-    window.addEventListener("resize", scroll, { passive: true });
-    return () => {
-      observer?.disconnect();
-      animationObserver?.disconnect();
-      cancelAnimationFrame(frame);
-      document.removeEventListener("visibilitychange", visibility);
-      media.removeEventListener("change", setup);
-      window.removeEventListener("scroll", scroll);
-      window.removeEventListener("resize", scroll);
-    };
-  }, [root]);
-}
 
 function BrandSculpture() {
   const id = `sculpture-${useId().replace(/:/g, "")}`;
@@ -663,7 +590,7 @@ export default function Landing() {
   const [tour, setTour] = useState(false);
   const [legal, setLegal] = useState(null);
   const [year] = useState(() => new Date().getFullYear());
-  usePresentationMotion(root);
+  const jumpToStoryStep = useLandingMotion(root, setStep);
   useEffect(() => {
     if (hash) {
       const el = document.getElementById(hash.slice(1));
@@ -936,8 +863,11 @@ export default function Landing() {
           </p>
         </section>
 
-        <section id="jarayon" className="lp-workflow-section">
-          <div className="lp-container lp-section">
+        <section id="jarayon" className="lp-workflow-section" data-scroll-story>
+          <div
+            className="lp-container lp-section lp-story-stage"
+            data-story-stage
+          >
             <div className="lp-section-heading" data-reveal>
               <div>
                 <span className="lp-eyebrow">02 / HAMMASI BOG‘LANGAN</span>
@@ -962,13 +892,20 @@ export default function Landing() {
                     type="button"
                     className={`lp-step ${step === i ? "is-active" : ""}`}
                     key={item.title}
-                    onClick={() => setStep(i)}
+                    onClick={() => {
+                      setStep(i);
+                      jumpToStoryStep(i);
+                    }}
                     aria-pressed={step === i}
+                    aria-label={`${i + 1}. ${["Savdo", "Ombor", "Mijoz", "Hisobot"][i]} — ${item.title}`}
                     aria-controls="lp-step-result"
                   >
                     <span className="lp-step-number">0{i + 1}</span>
                     <span>
                       <strong>{item.title}</strong>
+                      <span className="lp-step-short" aria-hidden="true">
+                        {["Savdo", "Ombor", "Mijoz", "Hisobot"][i]}
+                      </span>
                       <span>{item.text}</span>
                     </span>
                     <ArrowUpRight size={19} />
@@ -999,8 +936,21 @@ export default function Landing() {
                   <Check size={15} />
                   {steps[step].detail}
                 </div>
+                <p className="lp-result-explanation">{steps[step].text}</p>
                 <small>Jarayonni tushuntiruvchi namuna</small>
               </div>
+            </div>
+            <div className="lp-story-meter" aria-hidden="true">
+              {[0, 1, 2, 3].map((index) => (
+                <span key={index} style={{ "--lp-segment": index }}>
+                  <i />
+                </span>
+              ))}
+            </div>
+            <div className="lp-story-hint" aria-hidden="true">
+              <ArrowDown size={12} />
+              <span>DAVOM ETISH UCHUN SKROLL QILING</span>
+              <span>0{step + 1} / 04</span>
             </div>
           </div>
         </section>
@@ -1013,7 +963,7 @@ export default function Landing() {
           <div className="lp-section-heading" data-reveal>
             <div>
               <span className="lp-eyebrow">03 / KUNDALIK NAZORAT</span>
-              <h2>
+              <h2 id="lp-features-title">
                 Do‘koningiz katta bo‘lsin.
                 <br />
                 <span>Tashvishlar emas.</span>

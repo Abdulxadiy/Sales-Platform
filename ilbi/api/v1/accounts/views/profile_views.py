@@ -11,11 +11,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.schema import AvatarUploadInputSerializer, PasswordChangeInputSerializer
-from apps.core.utils.image_optimizer import optimize_image
 from api.v1.accounts.serializers import (
     UserProfileSerializer,
     UserProfileUpdateSerializer,
 )
+from apps.accounts.services.avatar_service import set_user_avatar
+from apps.core.utils.image_optimizer import optimize_image
 
 
 class UserProfileView(APIView):
@@ -82,31 +83,14 @@ class UserAvatarUploadView(APIView):
             avatar_file = optimize_image(serializer.validated_data['avatar'], max_dimension=640)
         except ValidationError as exc:
             return Response({'avatar': exc.messages}, status=400)
-        user = request.user
-
-        # Delete old avatar if present
-        if user.avatar:
-            try:
-                user.avatar.delete(save=False)
-            except Exception:
-                pass
-
-        user.avatar = avatar_file
-        user.save(update_fields=["avatar"])
+        user = set_user_avatar(user_id=request.user.pk, image=avatar_file)
 
         out = UserProfileSerializer(user, context={'request': request})
         return Response(out.data, status=status.HTTP_200_OK)
 
     @extend_schema(request=None, responses={200: UserProfileSerializer})
     def delete(self, request):
-        user = request.user
-        if user.avatar:
-            try:
-                user.avatar.delete(save=False)
-            except Exception:
-                pass
-            user.avatar = None
-            user.save(update_fields=["avatar"])
+        user = set_user_avatar(user_id=request.user.pk, image=None)
 
         out = UserProfileSerializer(user, context={'request': request})
         return Response(out.data, status=status.HTTP_200_OK)

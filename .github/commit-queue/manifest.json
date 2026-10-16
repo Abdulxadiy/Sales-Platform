@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T111632-ea6c0188",
+  "queue_id": "20261016T113112-f6447dab",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "ea6c0188d7c9167cb904d27a6eb36f2138af81cb",
-  "source_tree": "fd65af83d0f0a190e5d04b7d770c987eeac31996",
-  "created_at": "2026-10-16T11:16:32.381400+05:00",
+  "snapshot_sha": "f6447dab4c427ea617c259dfb9dfee45c4f59b9e",
+  "source_tree": "daef3ded576677edefa45783e0cc6ed3fde8471c",
+  "created_at": "2026-10-16T11:31:12.815401+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -18,6 +18,7 @@
       "id": "account-api",
       "message": "fix(accounts-api): expose revocable sessions secure profiles and validated recovery routes",
       "paths": [
+        "ilbi/api/v1/accounts/views/profile_views.py",
         "ilbi/api/v1/accounts/views/token_refresh.py"
       ],
       "atomic_unit": "application"
@@ -87,6 +88,8 @@
         "frontend/ilbi/tests/catalogFiscal.browser.mjs",
         "ilbi/README_TESTS.md",
         "ilbi/apps/accounts/authentication.py",
+        "ilbi/apps/accounts/services/avatar_service.py",
+        "ilbi/apps/accounts/tests/test_avatar_storage.py",
         "ilbi/apps/accounts/tests/test_terms_and_docs_views.py",
         "ilbi/apps/accounts/tests/test_token_version_validation.py",
         "ilbi/apps/accounts/token_validation.py",

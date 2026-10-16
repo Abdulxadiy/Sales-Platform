@@ -37,6 +37,18 @@ Testlar sun’iy user va test kaliti bilan haqiqiy imzolangan JWTlarni haqiqiy A
 
 Joriy butun sonli version, yangilangan access token bilan APIga kirish, inactive/deleted user rad etilishi va haqiqiy parol almashtirishdan keyingi bekor qilish tekshiriladi. Parol almashtirilgach eski access/refresh va versionsiz tokenlar rad etiladi, yangi chiqarilgan tokenlar ishlaydi. Faqat ajratilgan test DB ishlatiladi; haqiqiy user sessiyalari yoki bazasi o‘zgartirilmaydi.
 
+## Profil rasmini xavfsiz saqlash
+
+```bash
+uv run pytest apps/accounts/tests/test_avatar_storage.py apps/accounts/tests/test_profile_views.py apps/core/tests/test_audit_regressions.py::test_avatar_rejects_html_and_reencodes_valid_images -q
+```
+
+Avatar sinovlari haqiqiy commit/rollback uchun transactional test DB va har testga alohida vaqtinchalik `FileSystemStorage` ishlatadi; model maydonining storage’i ham fixture orqali almashtiriladi. Haqiqiy media/MinIO ishlatilmaydi. Yangi fayl nomi avvalgi rasmni qayta yozmasligi uchun overwrite rejimi ham tekshiriladi.
+
+Storage yozishidan oldingi/keyingi xato, DB yozuvi/commit xatosi, commit bajarilib javobi yo‘qolishi, commitdan keyingi cleanup xatosi, boshqa user bilan umumiy eski fayl, eskirgan request user va haqiqiy ikki PostgreSQL ulanishidagi parallel POST/POST hamda POST/DELETE tekshiriladi. Noto‘g‘ri fayl rad etilishi, WEBP/640px oqimi va takroriy DELETE ham saqlanadi. Eski fayl faqat commitdan keyin va DBda hech kimga bog‘lanmagan bo‘lsa o‘chiriladi.
+
+DB va storage bitta atomar tizim emas: cleanup ishlamasa umumiy xabar logga yoziladi va ortiqcha fayl qolishi mumkin. Jarayon to‘xtashi yoki tashqi transaction rollbacki uchun avtomatik orphan tozalash/ishga qayta urinish vositasi bu qadamga kirmaydi.
+
 ## Production so‘rov cheklovlari
 
 ```bash
@@ -57,7 +69,13 @@ uv run pytest apps/core/tests/test_api_docs_production.py apps/core/tests/test_p
 
 Yangi tekshiruvlar alohida jarayonlarda soxta maxfiy kalit bilan ishlaydi; dotenv o‘qish hamda DB/Redis ulanishlari bloklanadi. Productionda schema/Swagger/Redoc va slashsiz URLlar `404`, development/testda UI `200` qaytarishi tekshiriladi. Production sozlamasida `spectacular` command orqali OpenAPI yaratish va validatsiya ham tekshiriladi. Asosiy API, mahsulot qo‘llanmasi, support va readiness route’lari mavjudligi tekshiriladi.
 
-Mavjud `apps/core/tests/test_docs.py` sxema va UI javoblarini test muhitida tekshiradi. Mahsulot qo‘llanmasining rol/ruxsat testlari `apps/accounts/tests/test_terms_and_docs_views.py`da. Bu fayldagi eski `test_docs_edit_only_platform_admin` vaqtincha repodagi haqiqiy hujjatga yozadi; faqat o‘qish regressiyasida uni `-k 'not test_docs_edit_only_platform_admin'` bilan tashlab ketish kerak. Uning fayl izolatsiyasini tuzatish bu production URL o‘zgarishiga kirmaydi.
+Mavjud `apps/core/tests/test_docs.py` sxema va UI javoblarini test muhitida tekshiradi. Mahsulot qo‘llanmasining rol/ruxsat testlari `apps/accounts/tests/test_terms_and_docs_views.py`da. Ushbu modul har test uchun `tmp_path/docs`da sun’iy Markdownlar yaratadi va `monkeypatch` orqali faqat shu testdagi docs rootni almashtiradi. GET/PUT haqiqiy API orqali ishlaydi; yozish vaqtinchalik faylda tekshiriladi. Asl qo‘llanmani o‘zgartirish va keyin qaytarish amali olib tashlangan, tahrirlash testini tashlab ketish kerak emas.
+
+```bash
+uv run pytest apps/accounts/tests/test_terms_and_docs_views.py apps/core/tests/test_docs.py apps/support/tests/test_support.py::test_public_guides_exclude_private_manuals_and_images_are_real -q
+```
+
+Bu to‘plam ruxsat/tahrir sinovi bilan birga boshqa moduldagi ommaviy qo‘llanma va rasm o‘qilishini ham tekshiradi; testdagi docs root almashtirilishi keyingi modullarga tarqalmaydi. Test DB tranzaksiyasi haqiqiy disk faylini qaytarmaydi, shuning uchun ajratish aynan test fixture’ida bajarilgan. Ilovaning normal docs root qidiruvi o‘zgartirilmagan.
 
 ## Ilovaning tayyorligi
 

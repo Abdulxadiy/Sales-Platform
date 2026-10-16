@@ -1,7 +1,7 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman), 3-qadamining lokal backup/tiklash tayyorgarligi, 4-qadamining umumiy so‘rov hisoblagichlari, 5-qadamining tayyorlik tekshiruvi, 7-qadamining production API hujjatlarini yopishi va 8-qadamining majburiy token version tekshiruvi bajarildi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam foydalanuvchi qarori bilan keyinga qoldirildi. Navbatdagi 9-qadam — hujjat tahrirlash testini asl fayldan ajratish (AUD-26 qisman) — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
+**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman), 3-qadamining lokal backup/tiklash tayyorgarligi, 4-qadamining umumiy so‘rov hisoblagichlari, 5-qadamining tayyorlik tekshiruvi, 7-qadamining production API hujjatlarini yopishi, 8-qadamining majburiy token version tekshiruvi, 9-qadamining hujjat testini ajratishi va 10-qadamining avatar faylini xavfsiz almashtirishi bajarildi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan. Navbatdagi 11-qadam — Telegram 2FA ulanishi va kod yuborishni shaxsiy chat bilan cheklash (AUD-32 qisman) — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
 **Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
 
 ## 1. Tahlil chegarasi va mavjud holat
@@ -58,13 +58,13 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 | AUD-23 | Auditning to‘liqligi, tenant va IP aniqligi | 3/5 | P2 | Muhokama kutilmoqda |
 | AUD-24 | Xodimni ishga olish va akkauntni faollashtirish | 3/5 | P1 | Muhokama kutilmoqda |
 | AUD-25 | Katta frontend sahifalarini qismlarga ajratish | 3/5 | P3 | Muhokama kutilmoqda |
-| AUD-26 | CI va regressiya tekshiruvlarini kuchaytirish | 2/5 | P1 | 9-qadam: hujjat testi izolatsiyasi taklifi tayyor |
-| AUD-27 | Avatar yuklashni haqiqiy rasm bilan cheklash | 2/5 | P0 | Muhokama kutilmoqda |
+| AUD-26 | CI va regressiya tekshiruvlarini kuchaytirish | 2/5 | P1 | Qisman bajarildi: 9-qadam hujjat testi izolatsiyasi |
+| AUD-27 | Avatar tekshiruvi va faylni xavfsiz almashtirish | 2/5 | P1 | Qisman bajarildi: 10-qadam fayl/DB tartibi va parallel so‘rovlar |
 | AUD-28 | Saqlanadigan state hookidagi render sikli | 2/5 | P0 | Muhokama kutilmoqda |
 | AUD-29 | Tashqi ta’sirlarni transactiondan keyin bajarish | 2/5 | P1 | Muhokama kutilmoqda |
 | AUD-30 | Davriy hisobot va Telegram retry | 2/5 | P2 | Muhokama kutilmoqda |
 | AUD-31 | JWT bekor qilish va frontend sessiya tiklanishi | 2/5 | P1 | Qisman bajarildi: 8-qadam token version tekshiruvi |
-| AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | Muhokama kutilmoqda |
+| AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | Qayta tekshirildi; shaxsiy chat bo‘yicha 11-qadam taklifi tayyor |
 | AUD-33 | Brauzer xotirasidagi parolni olib tashlash | 1/5 | P0 | Muhokama kutilmoqda |
 | AUD-34 | Kassa yopishda aniqlanmagan owner o‘zgaruvchisi | 1/5 | P1 | Muhokama kutilmoqda |
 | AUD-35 | Egasi o‘chirilgan do‘konini qayta yoqa olishi | 1/5 | P2 | Muhokama kutilmoqda |
@@ -649,9 +649,9 @@ CI pytest envda `DJANGO_SECRET_KEY` yo‘q. Test settings asosiy settingsni impo
 
 **Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
 
-#### 2026-10-16 — 9-qadam uchun taklif: hujjat tahrirlash testini asl fayldan ajratish
+#### 2026-10-16 — 9-qadam: hujjat tahrirlash testini asl fayldan ajratish
 
-**Holat:** faqat tahlil; implementatsiya tasdiqlanmagan.
+**Holat:** foydalanuvchi **“Ha, 9-qadamni bajar”** deb tasdiqladi. Ushbu lokal tuzatish va tegishli tekshiruvlar **BAJARILDI**. Quyidagi dalil tuzatishdan oldingi holatga tegishli; AUD-26ning umumiy CI/test doirasi hali qisman ochiq.
 
 **Dalil:** `apps/accounts/tests/test_terms_and_docs_views.py::test_docs_edit_only_platform_admin` haqiqiy `/api/v1/docs/`ga PUT yuborib, staff qo‘llanmasiga `updated_test_tag` qo‘shadi va faqat oxirgi qatorda qaytaradi. `docs_views._get_docs_root()` hostda repodagi `docs/`ni tanlaydi. Django test DB transactioni diskdagi Markdownni rollback qilmaydi. O‘rtadagi assertion yoki jarayon to‘xtashi asl qo‘llanmani test matni bilan qoldirishi mumkin. Shu sabab 7-qadamning o‘qish regressiyasida bu test alohida tashlangan edi.
 
@@ -659,7 +659,13 @@ CI pytest envda `DJANGO_SECRET_KEY` yo‘q. Test settings asosiy settingsni impo
 
 **Qabul mezoni:** tahrirlash testi yana to‘liq ishga tushadi; diskka yozish faqat vaqtinchalik test katalogida bo‘ladi; repodagi asl hujjatlar hashlari testdan oldin/keyin bir xil qoladi; test jarayonidagi xato asl faylni tiklashga bog‘liq bo‘lmaydi. Amalga oshirish alohida foydalanuvchi tasdig‘idan keyin.
 
-### AUD-27 — Avatar yuklashni haqiqiy rasm bilan cheklash
+**Bajarildi:** `apps/accounts/tests/test_terms_and_docs_views.py`ga har test uchun `tmp_path/docs`da sun’iy hujjatlar yaratadigan fixture qo‘shildi. `monkeypatch` faqat shu testda `docs_views._get_docs_root`ni vaqtinchalik rootga yo‘naltiradi, keyin asl funksiyani qaytaradi. Tahrirlash testining yakuniy “asl faylni qaytarish” PUT amali olib tashlandi; GET/PUT haqiqiy view orqali bajariladi, yangi matn API javobida va vaqtinchalik disk faylida tekshiriladi. Staff/owner `403` va admin tahriri saqlandi. Ilova runtime fayllari va haqiqiy qo‘llanmalar o‘zgartirilmadi.
+
+**Tekshiruv:** hujjat/rozilik moduli to‘liq, texnik schema/UI moduli va boshqa moduldagi ommaviy qo‘llanma/rasmlar testi birga **9 passed, 40.21 s**. Tahrirlash testi tashlanmadi. Testdan oldin va keyin repodagi **20 ta Markdown faylning SHA-256** qiymatlari bir xil chiqdi. Boshqa moduldagi haqiqiy ommaviy qo‘llanma/rasm o‘qilishi fixture override’i tarqalmaganini ham tekshirdi. Ruff format/check o‘tdi. Faqat ajratilgan test DB/Redis ishlatildi; 8 ta avvaldan mavjud Django email deprecation ogohlantirishi bor.
+
+**O‘zgargan qismlar:** mavjud test moduli, `ilbi/README_TESTS.md` va ushbu audit. Yangi test funksiyasi qo‘shilmadi; mavjud sinov izolyatsiyasi tuzatildi. Serverga o‘rnatish yoki product runtime o‘zgarishi talab qilinmadi. Pytestning vaqtinchalik fayllari faqat sun’iy test matnini saqlaydi; asl hujjatni tiklashga tayanilmaydi.
+
+### AUD-27 — Avatar tekshiruvi va faylni xavfsiz almashtirish
 
 **2/5 · P0 · Validatsiya bo‘shlig‘i kodda aniq; brauzer ta’siri deployga bog‘liq.**
 
@@ -672,6 +678,26 @@ Upload to‘g‘ridan-to‘g‘ri `request.FILES['avatar']`ni modelga yozadi; se
 **Bajarildi mezoni:** HTML/SVG/rasm bo‘lmagan va katta fayl rad etiladi; muvaffaqiyatsiz uploadda eski avatar saqlanadi. Bog‘liq: T9.7/image hardening.
 
 **Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
+
+#### 2026-10-16 — 10-qadam uchun taklif: avatar xatosida eski faylni yo‘qotmaslik
+
+**Holat:** foydalanuvchi **“Ha, 10-qadamni bajar”** deb tasdiqladi. Ushbu lokal tuzatish va tegishli tekshiruvlar **BAJARILDI**; serverga deploy qilinmadi. Quyidagi dalil tuzatishdan oldingi holatga tegishli. **Turi:** storage/DB xatosiga bog‘liq ma’lumot yo‘qotish xavfi.
+
+**Amaldagi holat qayta tekshirildi:** yuqoridagi dastlabki “ImageField/formati tekshirilmaydi” qaydi hozirgi kodga mos emas: POST `AvatarUploadInputSerializer` va `optimize_image`dan foydalanadi; mavjud regression HTMLni rad etish va rasmni qayta kodlashni tekshiradi. Qolgan aniq muammo — fayl/DB o‘zgarishlari tartibi. Jadvaldagi joriy xavf shu qolgan masala uchun P1 qilib aniqlashtirildi; dastlabki P0 dalili tarixiy holatdir.
+
+**Dalil:** `UserAvatarUploadView.post()` tekshirilgan yangi rasmni userga saqlashdan oldin `user.avatar.delete(save=False)` qiladi. Keyingi storage yoki `user.save(update_fields=["avatar"])` xatosida DB eski nomni saqlashi, eski fayl esa allaqachon yo‘qolgan bo‘lishi mumkin. DELETE ham faylni avval o‘chirib, DBdagi `avatar=None`ni keyin saqlaydi. Bu safar haqiqiy user rasmi, storage yoki serverda sinov qilinmadi; dalil joriy kod tartibidir.
+
+**Taklif doirasi:** almashtirish/o‘chirishda DB va fayl holatini muvofiqlashtirish; DB tasdiqlangandan keyin eski faylni o‘chirish; muvaffaqiyatsiz yangi saqlashda eski fayl va DB nomini saqlash, yangi vaqtinchalik/orphan faylni imkon qadar tozalash; bir userdagi parallel o‘zgarishlarni muvofiqlashtirish. Mavjud rasm tekshiruvi va o‘lcham/format oqimi saqlanadi. Product/rasm uploadlarining boshqa modullari va real MinIOga ulanish bu kichik qadamga kirmaydi.
+
+**Qabul mezoni:** yangi storage yoki DB yozuvi xatosida eski avatar saqlanadi; muvaffaqiyatda yangi rasm ko‘rinadi va eski fayl faqat commitdan keyin tozalanadi; DELETE xatosi ham mavjud rasmni yo‘qotmaydi. Sinovlar faqat sun’iy user, alohida test DB va vaqtinchalik/fake storage’da; haqiqiy serverga deploy alohida. Fayl storage va DB uchun umumiy atomar transaction kafolati berilmaydi; commitdan keyingi cleanup xatosi alohida boshqariladi.
+
+**Bajarildi:** `apps/accounts/services/avatar_service.py::set_user_avatar` bir userning avatarini transaction va `select_for_update()` bilan yangilaydi. Eski nom autentifikatsiyada yuklangan instance’dan emas, lock ostida qayta o‘qilgan DB yozuvidan olinadi. Yangi WEBP UUID nom bilan saqlanadi; hatto overwrite storage’da ham eski fayl nomi qayta ishlatilmaydi. DB yozuvi tasdiqlangach `on_commit()` eski faylni faqat boshqa userga ham bog‘lanmagan bo‘lsa o‘chiradi. DELETE avval DB yozuvini tozalaydi, keyin shu callbackdan foydalanadi. Saqlash/commit xatosida yangi fayl imkon qadar tozalanadi; commit javobi noaniq bo‘lsa DBdagi joriy bog‘lanish tekshirilib, ishlatilayotgan yangi fayl o‘chirilmaydi. Cleanup xatosi saqlangan o‘zgarishni `500`ga aylantirmaydi; tafsilotsiz warning yoziladi.
+
+**O‘zgargan qismlar:** yangi avatar service, `api/v1/accounts/views/profile_views.py`dagi avatar POST/DELETE, yangi `apps/accounts/tests/test_avatar_storage.py`, test yo‘riqnomasi va ushbu audit. Mavjud serializer, autentifikatsiya, image validatsiyasi va `optimize_image(..., max_dimension=640)` saqlandi. Model/migratsiya va boshqa upload oqimlari o‘zgarmadi.
+
+**Tekshiruv:** yangi **19 ta test** haqiqiy commit/rollback, storage’ning yozishdan oldin/keyin xatosi, DB yozuvi va commit xatosi, commit bajarilib javob yo‘qolishi, cleanup xatosi, umumiy eski fayl, stale user va ikki alohida PostgreSQL ulanishidagi POST/POST hamda POST/DELETEni qopladi. Birinchi to‘plam **19 passed, 4.02 s**; profil/JWT/parol almashtirish hamda mavjud HTML/WEBP regressiyasi bilan **63 passed, 4.16 s**. Faqat 5433-portdagi ajratilgan test DB va vaqtinchalik lokal storage ishlatildi; test konfiguratsiyasi Redisni ham 6380-port bilan chekladi. Yangi fayllarning Ruff check/format tekshiruvi va Django system check o‘tdi. Profil viewdagi avvaldan mavjud parol-audit `except: pass` uchun `S110` shu qadamdan tashqarida qoldi; boshqa lint tekshiruvlari o‘tdi. 8 ta avvaldan mavjud Django email deprecation ogohlantirishi bor.
+
+**Chegara:** DB va storage o‘rtasida umumiy transaction yo‘q. Storage o‘chirish ishlamasa, DB tekshirilmasa, jarayon uzilsa yoki kelajakdagi tashqi transaction keyin rollback qilinsa, ortiqcha yangi/eski fayl qolishi mumkin. Avtomatik orphan sweep/retry yoki real MinIO uzilish testi qo‘shilmadi. Tozalashda saqlanayotgan rasmni yo‘qotmaslik ustun qo‘yildi; logda manual cleanup kerakligi ko‘rinadi. Haqiqiy foydalanuvchi/rasm/MinIO va serverga tegilmadi. AUD-27ning kengroq media xizmatini himoyalash doirasi alohida ochiq.
 
 ### AUD-28 — Saqlanadigan state hookidagi render sikli
 
@@ -762,6 +788,18 @@ Kontakt egasi senderga mosligi tekshiriladi — bu foydali himoya. Biroq handler
 **Bajarildi mezoni:** guruh orqali OTP yo‘nalishi o‘zgarmaydi; telefon almashtirish 500 bermaydi; boshqa bot foydalanuvchilari backend javobini kutib qolmaydi. Bog‘liq: T7.8.
 
 **Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
+
+#### 2026-10-16 — 11-qadam uchun taklif: 2FA faqat shaxsiy chatda
+
+**Holat:** faqat tahlil; bot/backend implementatsiyasi alohida tasdiqni kutadi. **Turi:** kodda himoya yo‘qligi aniq, haqiqiy guruhga kod ketishi dinamik tekshirilmagan shartli xavf.
+
+**Amaldagi holat:** `telegram_bot_sms/main.py::contact_handler` kontakt egasini sender bilan solishtiradi, ammo `message.chat.type`ni tekshirmaydi va `message.chat.id`ni backendga yuboradi. Ichki `TelegramContactSerializer.chat_id` oddiy `CharField`; `misc.get_current_telegram_contact()` telefon va joriy bot IDni tekshiradi, chat turini/IDni cheklamaydi. Demak, botga yetib kelgan guruhdagi tegishli kontakt ro‘yxatdan o‘tsa, keyingi OTP o‘sha guruh manziliga yo‘nalishi mumkin. Bu OTP parolning o‘rnini bosishi yoki haqiqiy kod oshkor bo‘lganining isboti emas.
+
+**Dalil:** DB ulanishi bloklangan test sozlamasida faqat sun’iy telefon va `chat_id=-100000000001` bilan serializer `is_valid()` natijasi `True` bo‘ldi. Modelga yozilmadi, Telegram/APIga hech narsa yuborilmadi. [Telegram Bot API](https://core.telegram.org/bots/api#keyboardbutton) bo‘yicha `request_contact` tugmasi shaxsiy chatda ishlaydi; bu cheklov har qanday kelgan `message.contact`ni qabul qilayotgan handlerning o‘rnini bosmaydi. Guruhdan kontakt kelish ehtimoli bot huquqlari/Telegram yetkazishiga bog‘liq; mavjud ma’lumotda bunday yozuv borligi tekshirilmadi.
+
+**Taklif doirasi:** kontakt ulashni botda faqat private chat, mavjud sender va o‘z kontaktiga ruxsat berish; ichki ro‘yxatga olish APIida shaxsiy chatga mos IDni tekshirish; OTP/status lookupda eski noto‘g‘ri/guruh manzilini bog‘langan kontakt deb qabul qilmaslik. Oddiy xabar/hisobot yuboruvchi umumiy Telegram senderini cheklamaslik: do‘kon guruh hisobotlari saqlanadi. Guruhga bog‘langan eski kontakt topilsa, shaxsiy chatda qayta ulash talab qilinadi; real kontaktlarni ommaviy o‘zgartirish/o‘chirish qilinmaydi.
+
+**Qabul mezoni:** group/supergroup/channel yoki senderi yo‘q kontakt backendga ulanish so‘rovini yubormaydi; begona kontakt rad etiladi; valid private ulanish va OTP ishlaydi; eski guruh manziliga OTP yuborish chaqiruvi yo‘q; do‘konning oddiy guruh hisobotlari buzilmaydi. Barchasi sun’iy message/user/contact va mock Telegram yuborish bilan tekshiriladi. Telefon/chat qayta bog‘lashdagi unique konflikt, async HTTP, qo‘shimcha audit/bildirish va botni productionda qayta ishga tushirish keyingi alohida doira.
 
 ### AUD-33 — Brauzer xotirasidagi parolni olib tashlash
 
@@ -873,6 +911,10 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-31 | Keyingi 8-qadam uchun access tokenning yo‘q version claimini qabul qilishi qayta tekshirildi; haqiqiy imzo va sun’iy user bilan tasdiqlandi. Refreshdagi mavjud yaxshilanish ham qayd etildi. | Faqat tahlil. Access/refresh claim tekshiruvini bir xil qat’iylashtirish alohida tasdiqni kutadi. |
 | 2026-10-16 | AUD-31 | Foydalanuvchi 8-qadamni tasdiqladi. Access va refresh uchun majburiy, aynan integer va joriy token_version qoidasi bitta helperga yig‘ildi. | LOKAL BAJARILDI: 30 yangi API testi, tegishli auth/parol/login regressiyalari bilan jami 136 test o‘tdi. Haqiqiy sessiyalar o‘zgartirilmadi va serverga deploy qilinmadi. |
 | 2026-10-16 | AUD-26 | 9-qadam uchun qo‘llanma tahrirlash testi tekshirildi: hozir asl Markdownni o‘zgartirib, oxirida qaytaradi. Vaqtinchalik test katalogi bilan ajratish taklifi yozildi. | Faqat tahlil. Kod o‘zgartirilmagan; alohida tasdiq kutiladi. |
+| 2026-10-16 | AUD-26 | Foydalanuvchi 9-qadamni tasdiqladi. Hujjat testi har safar sun’iy vaqtinchalik fayllarga yo‘naltirildi; asl faylni oxirida qaytarish amali olib tashlandi. | BAJARILDI: tegishli 9 test o‘tdi, 20 ta asl Markdown hashi o‘zgarmadi. Faqat test va hujjat fayllari o‘zgardi. |
+| 2026-10-16 | AUD-27 | Keyingi 10-qadam uchun avatar oqimi qayta o‘qildi: validatsiya mavjud, lekin POST/DELETE eski faylni DB yozuvidan oldin o‘chiradi. | Faqat tahlil. Eski avatarni xatoda saqlash taklifi alohida tasdiqni kutadi. |
+| 2026-10-16 | AUD-27 | Foydalanuvchi 10-qadamni tasdiqladi. Avatar lock ostida yangilanadi, yangi fayl alohida nomlanadi va eski fayl faqat commitdan keyin tozalanadi; xatoda ishlatilayotgan fayl saqlanadi. | LOKAL BAJARILDI: 19 yangi test, tegishli profil/JWT regressiyalari bilan jami 63 test o‘tdi. Haqiqiy media/MinIO yoki serverga tegilmadi. |
+| 2026-10-16 | AUD-32 | Keyingi 11-qadam uchun bot contact handler, registration serializer va OTP contact lookup qayta o‘qildi. Guruh chat IDsi sun’iy validatsiyadan o‘tdi. | Faqat tahlil. 2FAni shaxsiy chatga cheklash taklifi alohida tasdiqni kutadi; haqiqiy xabar/OTP yuborilmadi. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
@@ -895,4 +937,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** 1 va 2.1, 3-qadamning lokal backup/tiklash tayyorgarligi, 4-qadamning umumiy cache hisoblagichlari, 5-qadamning tayyorlik tekshiruvi, 7-qadamning production API hujjatlarini yopishi va 8-qadamning qat’iy token_version tekshiruvi bajarilgan. 8-qadamda tegishli 136 test o‘tdi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan, production POS cheklovi saqlanadi. 9-qadamning hujjat tahrirlash testini asl fayldan ajratish taklifi alohida tasdiqni kutadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.
+**Joriy natija — 2026-10-16:** 1 va 2.1, 3-qadamning lokal backup/tiklash tayyorgarligi, 4-qadamning umumiy cache hisoblagichlari, 5-qadamning tayyorlik tekshiruvi, 7-qadamning production API hujjatlarini yopishi, 8-qadamning qat’iy token_version tekshiruvi, 9-qadamning hujjat testi izolatsiyasi va 10-qadamning avatar faylini xavfsiz almashtirishi bajarilgan. 10-qadamda 19 yangi test, tegishli profil/JWT regressiyalari bilan jami 63 test o‘tdi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan, production POS cheklovi saqlanadi. 11-qadamning Telegram 2FAni shaxsiy chatga cheklash taklifi alohida tasdiqni kutadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.

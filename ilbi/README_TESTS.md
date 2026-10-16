@@ -37,6 +37,24 @@ Testlar sun’iy user va test kaliti bilan haqiqiy imzolangan JWTlarni haqiqiy A
 
 Joriy butun sonli version, yangilangan access token bilan APIga kirish, inactive/deleted user rad etilishi va haqiqiy parol almashtirishdan keyingi bekor qilish tekshiriladi. Parol almashtirilgach eski access/refresh va versionsiz tokenlar rad etiladi, yangi chiqarilgan tokenlar ishlaydi. Faqat ajratilgan test DB ishlatiladi; haqiqiy user sessiyalari yoki bazasi o‘zgartirilmaydi.
 
+## Telegram 2FA shaxsiy chat himoyasi
+
+```bash
+uv run pytest apps/tg_bot/tests apps/accounts/tests/test_admin_login_views.py apps/accounts/tests/test_createsuperuser.py apps/accounts/tests/test_password_reset.py apps/accounts/tests/test_demo_mode.py apps/accounts/tests/test_branding.py apps/cashbox/tests/test_tasks.py apps/tenants/tests/test_tenant_services_api.py -q
+```
+
+`apps/tg_bot/tests/test_private_2fa.py` ichki HTTP ro‘yxatga olish, eski guruh/noto‘g‘ri kontakt uchun login/status/OTP, shaxsiy chatga qayta ulashdan keyingi haqiqiy OTP→JWT va OTP yuborish helperining yakuniy himoyasini tekshiradi. 32 bitdan katta shaxsiy IDlar ishlaydi; guruh/kanal, nol, noto‘g‘ri format va 52 bit chegarasidan tashqaridagi qiymatlar rad etiladi. Administrator yaratish buyrug‘i ham noto‘g‘ri chat uchun akkaunt yaratmaydi.
+
+Faqat ajratilgan test PostgreSQL/Redis va sun’iy kontakt/ticket ishlatiladi; yangi test fixture’i o‘z OTP/ticket kalitlarini tozalaydi. Telegram yuborish va tashqi HTTP mock qilinadi, email xotiradagi backendda qoladi. Oddiy guruh hisobotlari umumiy Telegram senderi va mavjud kassa/sozlama testlarida ishlashda davom etishi tekshiriladi.
+
+Bot handler testlari alohida Python 3.14/aiogram muhitida ishlaydi. Repo ildizidan:
+
+```bash
+telegram_bot_sms/.venv/bin/python -m unittest discover -s telegram_bot_sms/tests -p 'test_contact_handler.py' -v
+```
+
+Ular group/supergroup/channel, sender yo‘qligi, chat/sender mos kelmasligi, begona kontakt va valid shaxsiy ulanishni sinaydi. HTTP hamda Telegram javobi mock, tokenlar sun’iy; haqiqiy `.env` o‘qilmaydi va bot polling boshlanmaydi. Testlar ichida modulning in-memory flood holati har safar tozalanadi. [Telegram dialog IDlari](https://core.telegram.org/api/bots/ids) foydalanuvchi va guruh/kanal manzillari farqini tushuntiradi.
+
 ## Profil rasmini xavfsiz saqlash
 
 ```bash

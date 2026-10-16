@@ -287,6 +287,8 @@ The current implementation uses a **5-second request timeout** and handles `requ
 
 Because this service is involved in authentication-related workflows, security should be treated as a primary concern.
 
+Contact linking accepts only the sender's own contact in a private chat. The backend also rejects group/channel IDs for 2FA registration and OTP delivery. Existing group-linked contacts must reconnect in the bot's private chat. Store report delivery to Telegram groups is separate and remains supported.
+
 ### Recommended Practices
 
 - 🔒 Never hard-code secrets in source code.
@@ -354,9 +356,19 @@ For a small authentication integration service, the current implementation remai
 
 ---
 
+## Tests
+
+From the repository root, using the bot's Python environment:
+
+```bash
+telegram_bot_sms/.venv/bin/python -m unittest discover -s telegram_bot_sms/tests -p "test_contact_handler.py" -v
+```
+
+These tests use synthetic messages, credentials and mocked requests; they never contact Telegram or the backend. Backend registration, legacy contact and OTP tests are documented in `ilbi/README_TESTS.md`.
+
 ## 🧪 Future Improvements
 
-- [ ] Add automated unit tests
+- [x] Add private-chat contact-handler unit tests (mocked outbound HTTP)
 - [ ] Add integration tests
 - [ ] Replace `requests` with an async HTTP client
 - [ ] Add structured logging

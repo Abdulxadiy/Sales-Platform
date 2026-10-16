@@ -3,10 +3,11 @@ import logging
 import os
 import re
 import time
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart, Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+
 import requests
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command, CommandStart
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 # Environment Variables
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
@@ -91,6 +92,14 @@ async def contact_handler(message: types.Message):
     chat_id = message.chat.id
     from_user = message.from_user
 
+    if message.chat.type != "private":
+        await message.answer("🔐 Raqamni ulash uchun bot bilan shaxsiy chatni oching va /start bosing.")
+        return
+
+    if from_user is None or from_user.is_bot or from_user.id <= 0 or chat_id != from_user.id:
+        await message.answer("❌ Kontaktni o‘zingizning shaxsiy Telegram chatingizdan yuboring.")
+        return
+
     # 1. Anti-flood / Rate limit check
     if is_rate_limited(chat_id):
         await message.answer("⚠️ Iltimos, bir oz kuting va qayta urinib ko‘ring.")
@@ -129,7 +138,8 @@ async def contact_handler(message: types.Message):
 
     # 4. Register contact directly in ILBI
     try:
-        response = requests.post(
+        response = await asyncio.to_thread(
+            requests.post,
             ILBI_INTERNAL_URL,
             json={"phone_number": phone_number, "chat_id": str(chat_id)},
             headers={"Authorization": f"Internal {INTERNAL_SERVICE_TOKEN}"},

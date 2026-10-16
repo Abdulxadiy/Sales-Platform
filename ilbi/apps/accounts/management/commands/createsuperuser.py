@@ -1,10 +1,12 @@
 import os
 import sys
+
 from django.contrib.auth.management.commands import createsuperuser
 from django.core.management.base import CommandError
 from django.db import transaction
+
+from apps.tg_bot.identity import current_bot_id, is_private_chat_id
 from apps.tg_bot.models import TelegramContact
-from apps.tg_bot.identity import current_bot_id
 
 
 class Command(createsuperuser.Command):
@@ -38,13 +40,19 @@ class Command(createsuperuser.Command):
                     if val:
                         chat_id = val
                     else:
-                        self.stderr.write("Error: Platform Admin 2FA uchun Telegram Chat ID bo'sh bo'lishi mumkin emas.")
+                        self.stderr.write(
+                            "Error: Platform Admin 2FA uchun Telegram Chat ID bo'sh bo'lishi mumkin emas."
+                        )
                 except KeyboardInterrupt:
                     self.stderr.write("\nBekor qilindi.")
                     sys.exit(1)
 
         if not chat_id and not options.get("interactive", True):
             raise CommandError("You must provide --chat_id or DJANGO_SUPERUSER_CHAT_ID with --noinput.")
+
+        chat_id = str(chat_id).strip()
+        if not is_private_chat_id(chat_id):
+            raise CommandError("2FA uchun shaxsiy Telegram chat IDsi talab qilinadi.")
 
         bot_id = current_bot_id()
         if not bot_id:

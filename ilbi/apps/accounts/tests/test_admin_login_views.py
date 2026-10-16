@@ -181,7 +181,7 @@ class TestAdminLoginOTPStep:
         assert api_client.post(TELEGRAM_STATUS_URL, {"login_ticket": ticket}).data["telegram_linked"] is False
         serializer = TelegramContactSerializer(data={
             "phone_number": staff_with_credentials.phone_number,
-            "chat_id": "new-chat-123",
+            "chat_id": "987654321",
         })
         assert serializer.is_valid()
         serializer.save()

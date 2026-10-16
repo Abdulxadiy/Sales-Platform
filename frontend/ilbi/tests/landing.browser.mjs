@@ -534,6 +534,216 @@ try {
       );
     },
   );
+  await check(
+    "Reversible scroll restores identical text, UI depth and hero frames",
+    async () => {
+      await browser.call("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+      });
+      await browser.resize(1440, 1000);
+      await open();
+      const sample = (selector) =>
+        browser.evaluate(
+          `(()=>{const e=document.querySelector(${JSON.stringify(selector)}),s=getComputedStyle(e);return {enter:Number(s.getPropertyValue('--lp-enter')),lift:Number.parseFloat(s.getPropertyValue('--lp-lift')),opacity:Number(s.opacity),transform:s.transform}})()`,
+        );
+      const point = async (y) => {
+        await browser.evaluate(
+          `window.scrollTo({top:${y},behavior:'instant'})`,
+        );
+        await delay(130);
+      };
+      report.motionSamples = [];
+      for (const selector of [
+        ".lp-section-heading[data-reveal]",
+        ".lp-showcase",
+        ".lp-branches",
+        ".lp-telegram-feature",
+      ]) {
+        const y = await browser.evaluate(
+          `(()=>{const e=document.querySelector(${JSON.stringify(selector)}),s=getComputedStyle(e);return e.getBoundingClientRect().top+scrollY-(parseFloat(s.getPropertyValue('--lp-lift'))||0)-innerHeight*.84})()`,
+        );
+        await point(y);
+        const first = await sample(selector);
+        assert.ok(
+          first.enter > 0 && first.enter < 1,
+          selector + ": an actual intermediate frame",
+        );
+        await point(y + 240);
+        const forward = await sample(selector);
+        assert.ok(
+          forward.enter > first.enter,
+          selector + ": opens as you scroll",
+        );
+        await point(y);
+        const backward = await sample(selector);
+        for (const prop of ["enter", "lift", "opacity"])
+          assert.ok(
+            Math.abs(first[prop] - backward[prop]) < 0.002,
+            `${selector}: ${prop} must rewind exactly`,
+          );
+        assert.equal(first.transform, backward.transform);
+        report.motionSamples.push({ selector, y, first, forward, backward });
+      }
+      await point(180);
+      const heroFirst = await browser.evaluate(
+        "getComputedStyle(document.querySelector('.lp-scene')).transform",
+      );
+      await point(400);
+      assert.notEqual(
+        await browser.evaluate(
+          "getComputedStyle(document.querySelector('.lp-scene')).transform",
+        ),
+        heroFirst,
+      );
+      await point(180);
+      assert.equal(
+        await browser.evaluate(
+          "getComputedStyle(document.querySelector('.lp-scene')).transform",
+        ),
+        heroFirst,
+      );
+    },
+  );
+  await check(
+    "Pinned story advances 0→1→2→3 and rewinds 3→2→1→0 on desktop, laptop, tablet and mobile",
+    async () => {
+      for (const theme of ["light", "dark"]) {
+        if (
+          (await browser.evaluate("document.documentElement.dataset.theme")) !==
+          theme
+        )
+          await click(".lp-header-actions button");
+        for (const [width, height] of [
+          [1440, 1000],
+          [1366, 768],
+          [1024, 700],
+          [768, 1000],
+          [390, 844],
+          [320, 740],
+        ]) {
+          await browser.resize(width, height);
+          await delay(100);
+          const position = await browser.evaluate(
+            `(()=>{const s=document.querySelector('[data-scroll-story]'),a=s.querySelector('[data-story-stage]'),h=document.querySelector('.lp-header').offsetHeight;return {start:s.getBoundingClientRect().top+scrollY-h,travel:s.offsetHeight-a.offsetHeight,enabled:s.classList.contains('lp-story-enabled')}})()`,
+          );
+          assert.equal(
+            position.enabled,
+            true,
+            `${width}x${height}: story enabled`,
+          );
+          for (const [index, progress] of [
+            0.08, 0.38, 0.63, 0.9, 0.63, 0.38, 0.08,
+          ].entries()) {
+            await browser.evaluate(
+              `window.scrollTo({top:${position.start + position.travel * progress},behavior:'instant'})`,
+            );
+            // Measure settled text, separately from the scrub-frame checks.
+            await delay(450);
+            const phase = Math.min(3, Math.floor(progress * 4));
+            assert.equal(
+              await browser.evaluate(
+                "document.querySelector('[data-scroll-story]').dataset.storyPhase",
+              ),
+              String(phase),
+            );
+            assert.ok(
+              (
+                await browser.evaluate(
+                  "document.querySelector('.lp-result-top').textContent",
+                )
+              ).includes(`0${phase + 1} / 04`),
+            );
+            const bounds = await browser.evaluate(
+              `(()=>{const h=document.querySelector('.lp-header').getBoundingClientRect(),s=document.querySelector('[data-story-stage]').getBoundingClientRect(),t=document.querySelector('.lp-story-stage .lp-section-heading').getBoundingClientRect(),b=document.querySelector('.lp-story-hint').getBoundingClientRect();return {header:h.bottom,stage:s.top,title:t.top,bottom:b.bottom}})()`,
+            );
+            assert.ok(
+              Math.abs(bounds.stage - bounds.header) < 2,
+              `${width}x${height}: stable sticky position`,
+            );
+            assert.ok(
+              bounds.title >= bounds.header,
+              `${width}x${height}: title under the header`,
+            );
+            assert.ok(
+              bounds.bottom <= height,
+              `${width}x${height}: story UI fits the viewport (${bounds.bottom})`,
+            );
+            await audit(
+              `scrub-${theme}-${width}x${height}-${index}-phase${phase}`,
+            );
+            if (
+              (width === 1440 || width === 390) &&
+              (index === 1 || index === 3)
+            )
+              await screenshot(`scroll-${theme}-${width}-phase${phase}`);
+          }
+        }
+      }
+      await browser.resize(1440, 1000);
+      await delay(100);
+      await click(".lp-step:nth-child(3)");
+      await wait(
+        "document.querySelector('[data-scroll-story]').dataset.storyPhase==='2'",
+      );
+      await delay(600);
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelectorAll('.lp-step')[2].getAttribute('aria-pressed')",
+        ),
+        "true",
+      );
+    },
+  );
+  await check(
+    "Short windows and reduced motion keep the full unpinned explanation and usable controls",
+    async () => {
+      await browser.resize(390, 600);
+      await delay(100);
+      assert.equal(
+        await browser.evaluate(
+          "Boolean(document.querySelector('.lp-story-enabled'))",
+        ),
+        false,
+      );
+      assert.notEqual(
+        await browser.evaluate(
+          "getComputedStyle(document.querySelector('.lp-step strong')).display",
+        ),
+        "none",
+      );
+      assert.equal(
+        await browser.evaluate(
+          "getComputedStyle(document.querySelector('.lp-step-short')).display",
+        ),
+        "none",
+      );
+      await browser.resize(390, 844);
+      await delay(100);
+      await browser.call("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+      });
+      await delay(100);
+      assert.equal(
+        await browser.evaluate(
+          "Boolean(document.querySelector('.lp-story-enabled'))",
+        ),
+        false,
+      );
+      assert.deepEqual(
+        await browser.evaluate(
+          "document.getAnimations().filter(a=>a.playState==='running').map(a=>a.animationName)",
+        ),
+        [],
+      );
+      await click(".lp-step:nth-child(4)");
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelectorAll('.lp-step')[3].getAttribute('aria-pressed')",
+        ),
+        "true",
+      );
+    },
+  );
   await check("Theme choice persists after reload", async () => {
     await click(".lp-header-actions button");
     const selected = await browser.evaluate(

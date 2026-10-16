@@ -332,14 +332,19 @@ try {
               2,
             );
             const bounds = await browser.evaluate(
-              "(()=>{const r=document.querySelector('.pc-slide.is-active').getBoundingClientRect();return {left:r.left,right:r.right}})()",
+              "(()=>{const slide=document.querySelector('.pc-slide.is-active'),r=slide.getBoundingClientRect(),img=slide.querySelector('img'),image=img.getBoundingClientRect();return {left:r.left,right:r.right,imageWidth:image.width,imageHeight:image.height,layoutWidth:img.clientWidth,layoutHeight:img.clientHeight}})()",
             );
             assert.ok(
               bounds.left > 0 && bounds.right < width,
               `${width}: complete active frame with side previews`,
             );
+            assert.ok(
+              Math.abs(bounds.imageWidth - bounds.layoutWidth) < 1 &&
+                Math.abs(bounds.imageHeight - bounds.layoutHeight) < 1,
+              `${width}/${view}: the selected screenshot must not be enlarged again by perspective after rasterization`,
+            );
             await audit(`carousel-${theme}-${width}-${view}`);
-            if (view === "pos" || view === "checkout")
+            if (view === "pos" || view === "checkout" || view === "team")
               await screenshot(`carousel-${theme}-${width}-${view}`);
           }
           assert.equal(

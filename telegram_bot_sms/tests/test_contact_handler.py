@@ -204,6 +204,16 @@ class ContactHandlerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Server bilan bog‘lanishda xatolik", message.answer.call_args.args[0])
         self.assertNotIn("synthetic HTTP failure", message.answer.call_args.args[0])
 
+    async def test_link_conflict_explains_the_admin_recovery_path(self):
+        self.post.return_value.status_code = 400
+        self.post.return_value.json.return_value = {"code": "telegram_chat_already_linked"}
+        message = self.message()
+        await self.bot_module.contact_handler(message)
+        self.post.assert_called_once()
+        self.post.return_value.raise_for_status.assert_not_called()
+        self.assertIn("platforma administratoriga", message.answer.call_args.args[0])
+        self.assertIn("Hisoblar & Kirish", message.answer.call_args.args[0])
+
 
 if __name__ == "__main__":
     unittest.main()

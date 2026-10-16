@@ -1,8 +1,10 @@
-.admin-page{display:grid;gap:20px;max-width:1150px;margin:0 auto;padding-bottom:32px;min-width:0}
+.admin-page{display:grid;gap:20px;width:100%;box-sizing:border-box;max-width:1150px;margin:0 auto;padding-bottom:32px;min-width:0}
 .admin-card{padding:22px;min-width:0}
 .admin-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .admin-heading h2,.admin-heading h3{margin:0;color:var(--text-primary);font-size:19px}
 .admin-heading h3{font-size:16px}
+.admin-heading>div{min-width:0;flex:1}
+.admin-note>div,.admin-note>span{min-width:0;overflow-wrap:anywhere}
 .admin-muted{font-size:12px;color:var(--text-muted);line-height:1.6}
 .admin-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;flex-shrink:0;background:var(--primary-light);color:var(--primary)}
 .admin-toolbar,.admin-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}

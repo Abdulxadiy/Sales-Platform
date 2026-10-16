@@ -79,7 +79,7 @@ export default function Sidebar({
       ? [
           {
             to: '/',
-            label: 'Dashboard',
+            label: isAdmin ? 'Boshqaruv paneli' : 'Dashboard',
             icon: LayoutDashboard,
           },
         ]
@@ -89,7 +89,7 @@ export default function Sidebar({
           { to: '/accounts', label: 'Hisoblar & Kirish', icon: Users },
           {
             to: '/tenants',
-            label: 'Do‘konlar (Tenants)',
+            label: 'Do‘konlar',
             icon: Store,
           },
           {

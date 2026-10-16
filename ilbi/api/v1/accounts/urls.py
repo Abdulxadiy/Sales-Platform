@@ -22,6 +22,7 @@ from api.v1.accounts.views.token_refresh import RevocableTokenRefreshView
 
 from .views.docs_views import documentation_image
 from .views.platform_views import (
+    PlatformSupportUnreadView,
     PlatformAccountStatusView,
     PlatformAccountsView,
     PlatformIdentityView,
@@ -29,6 +30,7 @@ from .views.platform_views import (
 )
 
 urlpatterns = [
+    path('platform/support-unread/', PlatformSupportUnreadView.as_view()),
     path('platform/overview/', PlatformOverviewView.as_view()),
     path('platform/accounts/', PlatformAccountsView.as_view()),
     path('platform/accounts/<int:pk>/identity/', PlatformIdentityView.as_view()),

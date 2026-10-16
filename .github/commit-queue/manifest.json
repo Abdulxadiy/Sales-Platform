@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T121917-3db7984e",
+  "queue_id": "20261016T123107-4488b643",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "3db7984e9301d6e2dc3fd9ae8dac11c9b12988de",
-  "source_tree": "863d244239926f14595ed15b7ef375a67876e339",
-  "created_at": "2026-10-16T12:19:17.290452+05:00",
+  "snapshot_sha": "4488b64384bef27773eb2da4a2d54fd8fb5d9dab",
+  "source_tree": "bd5cf11e5560fad23e7f149f6399dfca2bbaabf4",
+  "created_at": "2026-10-16T12:31:07.486523+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -56,10 +56,19 @@
       "atomic_unit": "application"
     },
     {
+      "id": "core-exports-analytics",
+      "message": "feat(core): add permission-aware Excel exports immutable audit events and media proxying",
+      "paths": [
+        "ilbi/apps/core/models.py"
+      ],
+      "atomic_unit": "application"
+    },
+    {
       "id": "frontend-tenant-navigation",
       "message": "feat(ui): replace branch navigation with scoped shop context and secure sign-in flows",
       "paths": [
         "frontend/ilbi/src/App.jsx",
+        "frontend/ilbi/src/components/layout/Layout.jsx",
         "frontend/ilbi/src/components/layout/Sidebar.jsx"
       ],
       "atomic_unit": "application"
@@ -85,6 +94,7 @@
       "id": "frontend-management",
       "message": "feat(management-ui): expose owner employee shift seller review and audit controls",
       "paths": [
+        "frontend/ilbi/src/pages/Audit.jsx",
         "frontend/ilbi/src/pages/Dashboard.jsx",
         "frontend/ilbi/src/pages/Employees.jsx",
         "frontend/ilbi/src/pages/Services.jsx"
@@ -130,7 +140,9 @@
         "frontend/ilbi/src/pages/PlatformAccounts.jsx",
         "frontend/ilbi/src/pages/PlatformDashboard.jsx",
         "frontend/ilbi/tests/browser/catalogFiscal.html",
+        "frontend/ilbi/tests/browser/platformAdmin.html",
         "frontend/ilbi/tests/catalogFiscal.browser.mjs",
+        "frontend/ilbi/tests/platformAdmin.browser.mjs",
         "ilbi/README_TESTS.md",
         "ilbi/api/v1/accounts/views/platform_views.py",
         "ilbi/api/v1/support/settings_views.py",
@@ -148,6 +160,7 @@
         "ilbi/apps/catalog/fiscal_metadata.py",
         "ilbi/apps/catalog/migrations/0006_productvariant_mxik_productvariant_package_code.py",
         "ilbi/apps/catalog/tests/test_fiscal_metadata.py",
+        "ilbi/apps/core/migrations/0013_alter_auditlog_action.py",
         "ilbi/apps/core/readiness.py",
         "ilbi/apps/core/tests/test_api_docs_production.py",
         "ilbi/apps/core/tests/test_production_settings.py",

@@ -86,6 +86,7 @@ export default function Sidebar({
       : []),
     ...(isAdmin
       ? [
+          { to: '/accounts', label: 'Hisoblar & Kirish', icon: Users },
           {
             to: '/tenants',
             label: 'Do‘konlar (Tenants)',

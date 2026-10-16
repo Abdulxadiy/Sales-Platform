@@ -506,7 +506,6 @@ export default function ReceiptSlip({
                 <span>Sana:</span>
                 <span>{formatDate(sale?.created_at)}</span>
               </div>
-              {config.receipt_header && <div style={{ fontSize: 10, marginBottom: 5, whiteSpace: 'pre-wrap', textAlign: 'center' }}>{config.receipt_header}</div>}
               {config.receipt_show_cashier !== false && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span>Kassir:</span>
                 <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '65%' }}>

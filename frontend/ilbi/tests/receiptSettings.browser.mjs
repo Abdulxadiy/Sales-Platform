@@ -18,8 +18,11 @@ try {
   const text = () => browser.evaluate('document.querySelector("#receipt-settings-preview").innerText.replace(/\u00a0|\u202f/g," ")');
   assert.match(await text(), /STIR.*123456789/);
   assert.match(await text(), /JAMI:\s*100[\s,]?000 UZS/);
-  assert.match(await text(), /Test sarlavha/);
-  assert.match(await text(), /Test yakun/);
+  assert.doesNotMatch(await text(), /Test sarlavha/);
+  assert.match(await text(), /XARIDINGIZ UCHUN RAHMAT!/);
+  assert.match(await text(), /Iltimos, chekni saqlab qo‘ying/);
+  assert.match(await text(), /Savdo nusxasi — fiskal chek emas/);
+  assert.match(await text(), /ilbi\.uz/);
   // Change the real price-mode selector and confirm the printable preview updates.
   await browser.evaluate(`(()=>{const select=[...document.querySelectorAll('select')].find(e=>e.value==='included');select.value='excluded';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
   await wait('taxQA.value.price_includes_vat===false');

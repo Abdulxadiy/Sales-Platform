@@ -1,6 +1,9 @@
 name: Publish reviewed changes
 
 on:
+  schedule:
+    # Lightweight hourly check; the release itself runs once per local day.
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -16,8 +19,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  plan:
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      due: ${{ steps.gate.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check today's release time and real queued work
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL_RELEASE: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          arguments=()
+          if [ "$MANUAL_RELEASE" = "true" ]; then arguments+=(--manual); fi
+          python3 scripts/commit_queue.py gate "${arguments[@]}" > /tmp/release-gate.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = json.loads(Path('/tmp/release-gate.json').read_text())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f"due={str(result['due']).lower()}\n")
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write(f"{result['day']} {result['local_time']} {result['timezone']}: {result['reason']}\n")
+          print(json.dumps(result))
+          PY
+  publish:
+    needs: plan
+    if: needs.plan.outputs.due == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:

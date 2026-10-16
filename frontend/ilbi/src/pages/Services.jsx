@@ -108,8 +108,10 @@ export default function Services() {
         notify_web_low_stock: data.notify_web_low_stock !== undefined ? Boolean(data.notify_web_low_stock) : true,
         notify_on_sale: Boolean(data.notify_on_sale),
         notify_on_debt: Boolean(data.notify_on_debt),
-        receipt_header: data.receipt_header || 'Xaridingiz uchun rahmat!',
-        receipt_footer: data.receipt_footer || '',
+        receipt_header: '',
+        receipt_footer: (data.receipt_footer !== undefined && data.receipt_footer !== null && data.receipt_footer !== '')
+          ? data.receipt_footer
+          : "Iltimos, chekni saqlab qo‘ying.\nSavdo nusxasi — fiskal chek emas",
         receipt_phone: data.receipt_phone || '',
       });
 

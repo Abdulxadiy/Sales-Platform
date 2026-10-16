@@ -8,6 +8,7 @@ working files are never reset, stashed, committed, rebased or force-pushed.
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import fcntl
 import hashlib
@@ -18,9 +19,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime
+import tomllib
+from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
 from zoneinfo import ZoneInfo
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ".github/commit-queue/manifest.json"
@@ -66,10 +69,9 @@ def config(root=ROOT):
         raise QueueError("Remote must match the configured GitHub repository.")
     for key in ("default_branch", "backup_branch", "queue_branch", "state_branch"):
         run(["git", "check-ref-format", f"refs/heads/{settings[key]}"])
-    if "minimum_batch" in settings or "target_per_day" in settings:
-        raise QueueError(
-            "Daily commit quotas are retired; publish completed reviewed work instead."
-        )
+    daily = settings.get("daily", {})
+    if daily and not (1 <= daily["minimum"] <= daily["target_min"] <= daily["target_max"] < daily["maximum"]):
+        raise QueueError("Invalid daily release range.")
     ZoneInfo(settings["timezone"])
     return settings
 
@@ -288,7 +290,10 @@ def validate_groups(groups, changed):
             raise QueueError(f"A file is assigned more than once: {identifier}")
         if paths:
             assigned.update(paths)
-            result.append({"id": identifier, "message": message, "paths": paths})
+            item = {"id": identifier, "message": message, "paths": paths}
+            if group.get("atomic_unit"):
+                item["atomic_unit"] = group["atomic_unit"]
+            result.append(item)
     missing = changed - assigned
     if missing:
         raise QueueError("Unassigned changed files: " + ", ".join(sorted(missing)))
@@ -315,7 +320,148 @@ def remote_clone(settings):
         yield repo
 
 
-def enqueue(root, settings):
+def project_version(repo):
+    for folder in ("ilbi", "inventra"):
+        path = repo / folder / "pyproject.toml"
+        if path.exists():
+            return tomllib.loads(path.read_text())["project"]["version"]
+    return None
+
+
+def set_project_version(repo, version):
+    """Only project metadata changes; dependency versions and application text do not."""
+    changed = []
+    for folder in ("ilbi", "inventra"):
+        path = repo / folder / "pyproject.toml"
+        if not path.exists():
+            continue
+        text = path.read_text()
+        project = tomllib.loads(text)["project"]
+        updated = re.sub(r'(?m)^(version\s*=\s*")[^"]+("\s*)$', lambda m: m[1] + version + m[2], text, count=1)
+        if updated != text:
+            path.write_text(updated)
+            changed.append(str(path.relative_to(repo)))
+        lock = path.parent / "uv.lock"
+        if lock.exists():
+            text = lock.read_text()
+            pattern = r'(\[\[package\]\]\nname = "' + re.escape(project["name"]) + r'"\nversion = ")[^"]+("\n)'
+            updated = re.sub(pattern, lambda m: m[1] + version + m[2], text, count=1)
+            if updated != text:
+                lock.write_text(updated)
+                changed.append(str(lock.relative_to(repo)))
+    for folder in ("frontend/ilbi", "frontend/inventra"):
+        for filename in ("package.json", "package-lock.json"):
+            path = repo / folder / filename
+            if not path.exists():
+                continue
+            text = path.read_text()
+            data = json.loads(text)
+            data["version"] = version
+            if filename == "package-lock.json" and "" in data.get("packages", {}):
+                data["packages"][""]["version"] = version
+            updated = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+            if updated != text:
+                path.write_text(updated)
+                changed.append(str(path.relative_to(repo)))
+    return changed
+
+
+def release_level(groups):
+    rank = 0
+    for group in groups:
+        # Documentation, tests, artwork and publisher maintenance do not version the app.
+        runtime = any(
+            (path.startswith(("ilbi/", "inventra/", "frontend/ilbi/src/", "frontend/inventra/src/"))
+             and not any(part in path for part in ("/tests/", "/migrations/"))
+             and not path.endswith((".md", ".png", ".svg", ".jpg")))
+            for path in group["paths"]
+        )
+        if runtime:
+            subject = group["message"].split(":", 1)[0]
+            rank = max(rank, 3 if "!" in subject else 2 if subject.startswith("feat") else 1)
+    return rank
+
+
+def bump_version(version, level):
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        raise QueueError("App version must use major.minor.patch.")
+    major, minor, patch = map(int, version.split("."))
+    return f"{major + 1}.0.0" if level == 3 else f"{major}.{minor + 1}.0" if level == 2 else f"{major}.{minor}.{patch + 1}"
+
+
+def daily_slot(settings, day):
+    """One varying local hour per day, repeatable across retries; never fake Git dates."""
+    date = datetime.fromisoformat(day).date()
+    week = date - timedelta(days=date.weekday())
+    seed = hashlib.sha256((settings.get("repository", "local") + str(week)).encode()).digest()
+    # Different weekday remainders ensure adjacent days use different hours.
+    hour = date.weekday() + 7 * (seed[date.weekday()] % 3)
+    return hour, 17
+
+
+def choose_groups(remaining, settings, day):
+    daily = settings.get("daily")
+    if not daily:
+        return remaining
+    seed = int.from_bytes(hashlib.sha256(day.encode()).digest()[:4], "big")
+    target = daily["target_min"] + seed % (daily["target_max"] - daily["target_min"] + 1)
+    # Leave room for one release metadata commit.
+    maximum = daily["maximum"] - 1
+    units = []
+    seen = set()
+    for group in remaining:
+        unit = group.get("atomic_unit")
+        if unit and units and units[-1][0].get("atomic_unit") == unit:
+            units[-1].append(group)
+        else:
+            if unit in seen:
+                raise QueueError("Atomic release groups must be contiguous.")
+            if unit:
+                seen.add(unit)
+            units.append([group])
+    selected = []
+    for unit in units:
+        if len(selected) + len(unit) > maximum:
+            if not selected:
+                raise QueueError("An atomic change set exceeds the daily maximum; review its release plan.")
+            break
+        if len(selected) >= target:
+            break
+        selected.extend(unit)
+    # Finish a small tail when the whole delivery still fits the limit.
+    if 0 < len(remaining) - len(selected) < daily["minimum"] and len(remaining) <= maximum:
+        selected = remaining
+    if len(selected) < daily["minimum"]:
+        print(f"Waiting for real work: {len(selected)} ready groups; minimum {daily['minimum']}. No empty commits created.")
+        return []
+    return selected
+
+
+def reviewed_groups(plan, changed):
+    """Keep feature groups; all coupled application/rename groups ship atomically."""
+    groups = [dict(g, paths=list(g["paths"])) for g in plan["groups"]]
+    assigned = {p for g in groups for p in g["paths"]}
+    missing = changed - assigned
+    if missing and not plan.get("auto_classify"):
+        return validate_groups(groups, changed)
+    runtime = next((g for g in groups if g["id"] == "ilbi-rebranding"), None)
+    extras = []
+    for path in sorted(missing):
+        if runtime is not None and path.startswith(("ilbi/", "inventra/", "frontend/", "nginx/", "telegram_bot_sms/")):
+            runtime["paths"].append(path)
+        else:
+            extras.append(path)
+    if extras:
+        groups.append({"id": "supporting-tools", "message": "chore(tooling): update supporting project tools and resources", "paths": extras})
+    atomic = set(plan.get("atomic_groups", []))
+    for group in groups:
+        if group["id"] in atomic:
+            group["atomic_unit"] = "application"
+    groups.sort(key=lambda g: 0 if g.get("atomic_unit") == "application" else 1)
+    return validate_groups(groups, changed)
+
+
+def enqueue(root, settings, refresh=False):
     with remote_clone(settings) as repo:
         snapshot = ref(repo, settings["backup_branch"])
         if not snapshot:
@@ -328,22 +474,38 @@ def enqueue(root, settings):
             if state.get("queue_id") != old["queue_id"] or set(
                 state.get("completed", [])
             ) != {g["id"] for g in old["groups"]}:
-                raise QueueError(
+                if not refresh:
+                    raise QueueError(
                     "Current queue is still active. Its frozen snapshot remains safe; finish it before replacing the queue."
                 )
         base = ref(repo, settings["default_branch"])
+        source_tree = output(repo, "rev-parse", f"{snapshot}^{{tree}}")
+        if previous and old.get("source_tree") == source_tree and state.get("last_main_sha") == base:
+            print("Queue already covers this source snapshot.")
+            return
+        if previous and state.get("last_main_sha") and state["last_main_sha"] != base:
+            raise QueueError("Main advanced outside this queue. Review before refreshing it.")
+        git(repo, "checkout", "--detach", "--quiet", base)
+        current_version = project_version(repo)
+        git(repo, "checkout", "--detach", "--quiet", snapshot)
+        if current_version:
+            set_project_version(repo, current_version)
+        git(repo, "add", "--all")
+        tree = output(repo, "write-tree")
+        effective = tree_commit(repo, tree, [snapshot, base], "queue: normalize managed release metadata", settings, bot=True)
         changed = set(
             p.decode()
             for p in git(
-                repo, "diff", "--name-only", "-z", base, snapshot
+                repo, "diff", "--name-only", "-z", base, effective
             ).stdout.split(b"\0")
             if p
         )
         changed.discard(MANIFEST)
         plan = json.loads((root / "automation/queue-plan.json").read_text())
-        groups = validate_groups(plan["groups"], changed)
+        groups = reviewed_groups(plan, changed)
         if not groups:
-            raise QueueError("No changes to queue.")
+            print("No new source changes to queue.")
+            return
         manifest = {
             "version": 1,
             "queue_id": datetime.now(ZoneInfo(settings["timezone"])).strftime(
@@ -353,16 +515,11 @@ def enqueue(root, settings):
             + snapshot[:8],
             "base_sha": base,
             "snapshot_sha": snapshot,
+            "source_tree": source_tree,
             "created_at": datetime.now(ZoneInfo(settings["timezone"])).isoformat(),
             "groups": groups,
         }
-        git(repo, "checkout", "--detach", "--quiet", snapshot)
-        if git(
-            repo, "merge-base", "--is-ancestor", base, snapshot, check=False
-        ).returncode:
-            raise QueueError(
-                "Backup predates main. Refresh the backup before creating the queue."
-            )
+        git(repo, "checkout", "--detach", "--quiet", effective)
         (repo / MANIFEST).parent.mkdir(parents=True, exist_ok=True)
         (repo / MANIFEST).write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
@@ -378,11 +535,25 @@ def enqueue(root, settings):
             bot=True,
         )
         git(repo, "update-ref", "refs/heads/upload-queue", sha)
+        # Preserve daily accounting and the superseded snapshot in Git history.
+        progress = {
+            "version": 1, "queue_id": manifest["queue_id"], "completed": [],
+            "last_main_sha": base, "days": state.get("days", {}) if previous else {},
+            "superseded_queue": previous,
+        }
+        git(repo, "read-tree", "--empty")
+        git(repo, "clean", "-ffdx")
+        (repo / STATE).write_text(json.dumps(progress, indent=2) + "\n")
+        git(repo, "add", "--force", STATE)
+        progress_commit = tree_commit(repo, output(repo, "write-tree"), [progress_sha], "queue: record refreshed snapshot", settings, bot=True)
+        git(repo, "update-ref", "refs/heads/upload-progress", progress_commit)
         git(
             repo,
             "push",
+            "--atomic",
             "origin",
             f"refs/heads/upload-queue:refs/heads/{settings['queue_branch']}",
+            f"refs/heads/upload-progress:refs/heads/{settings['state_branch']}",
         )
         print(f"Queue pushed: {manifest['queue_id']} ({len(groups)} genuine commits)")
 
@@ -411,12 +582,22 @@ def prepare_batch(repo, settings, manifest, progress, *, today=None):
         raise QueueError("Queue progress is not a valid prefix.")
     day = today or datetime.now(ZoneInfo(settings["timezone"])).date().isoformat()
     remaining = groups[len(completed) :]
-    count = len(remaining)
-    if not count:
+    if not remaining:
         print("Queue finished. Add completed real changes before another publication.")
         return None
-    selected = remaining[:count]
+    daily = settings.get("daily")
+    used = progress.get("days", {}).get(day, 0)
+    if daily and used >= daily["minimum"]:
+        print(f"Today's release is already complete ({used} commits).")
+        return None
+    budget = dict(settings)
+    if daily:
+        budget["daily"] = {**daily, "maximum": daily["maximum"] - used}
+    selected = choose_groups(remaining, budget, day)
+    if not selected:
+        return None
     git(repo, "checkout", "--detach", "--quiet", main)
+    before_version = project_version(repo)
     queue = ref(repo, settings["queue_branch"])
     for group in selected:
         file = repo.parent / "paths"
@@ -449,18 +630,34 @@ def prepare_batch(repo, settings, manifest, progress, *, today=None):
             env=commit_environment(settings),
         )
         print(f"Prepared: {group['message']}")
+    level = release_level(selected)
+    release_tag = None
+    if level and before_version:
+        staged = project_version(repo) or before_version
+        current = max((before_version, staged), key=lambda value: tuple(map(int, value.split("."))))
+        version = bump_version(current, level)
+        paths = set_project_version(repo, version)
+        if paths:
+            git(repo, "add", "--", *paths)
+            git(repo, "-c", "core.hooksPath=/dev/null", "commit", "--quiet", "-m", f"chore(release): v{version}", env=commit_environment(settings))
+            release_tag = f"v{version}"
     result = dict(progress)
     result["completed"] = completed + [g["id"] for g in selected]
     result["last_main_sha"] = output(repo, "rev-parse", "HEAD")
     result["days"] = dict(progress.get("days", {}))
-    result["days"][day] = result["days"].get(day, 0) + count
+    result["days"][day] = used + len(selected) + int(release_tag is not None)
+    result["release_tag"] = release_tag
     result["updated_at"] = datetime.now(ZoneInfo(settings["timezone"])).isoformat()
     return result
 
 
 def validate_delivery(repo, settings):
     for check in settings["validation"]:
-        cwd = (repo / check["cwd"]).resolve()
+        relative = check["cwd"]
+        # Transitional queues may still use the pre-rebrand directory names.
+        if not (repo / relative).exists():
+            relative = relative.replace("ilbi", "inventra")
+        cwd = (repo / relative).resolve()
         if not cwd.is_relative_to(repo.resolve()):
             raise QueueError("Validation path must remain in the temporary clone.")
         print("Checking: " + " ".join(check["argv"]), flush=True)
@@ -519,17 +716,58 @@ def publish(settings, dry_run=False):
             bot=True,
         )
         git(repo, "update-ref", "refs/heads/progress", state_sha)
+        refs = [
+            f"refs/heads/delivery:refs/heads/{settings['default_branch']}",
+            f"refs/heads/progress:refs/heads/{settings['state_branch']}",
+        ]
+        if prepared.get("release_tag"):
+            tag = prepared["release_tag"]
+            git(repo, "tag", "-a", tag, delivery, "-m", f"ILBI {tag}", env=commit_environment(settings))
+            refs.append(f"refs/tags/{tag}:refs/tags/{tag}")
         git(
             repo,
             "push",
             "--atomic",
             "origin",
-            f"refs/heads/delivery:refs/heads/{settings['default_branch']}",
-            f"refs/heads/progress:refs/heads/{settings['state_branch']}",
+            *refs,
         )
         print(
             f"Published safely: {delivery}. Completed {len(prepared['completed'])}/{len(manifest['groups'])}."
         )
+
+
+def github_json(settings, branch, path):
+    endpoint = f"repos/{settings['repository']}/contents/{path}?ref={quote(branch, safe='')}"
+    response = run(["gh", "api", endpoint], check=False)
+    if response.returncode:
+        if b"404" in response.stderr:
+            return {}
+        raise QueueError("Unable to read the remote release state.")
+    return json.loads(base64.b64decode(json.loads(response.stdout)["content"]))
+
+
+def release_gate(settings, *, manual=False, now=None):
+    now = now or datetime.now(ZoneInfo(settings["timezone"]))
+    now = now.astimezone(ZoneInfo(settings["timezone"]))
+    day = now.date().isoformat()
+    hour, minute = daily_slot(settings, day)
+    result = {"due": False, "day": day, "local_time": f"{hour:02}:{minute:02}", "timezone": settings["timezone"]}
+    if settings["paused"]:
+        return {**result, "reason": "Publishing is paused"}
+    manifest = github_json(settings, settings["queue_branch"], MANIFEST)
+    progress = github_json(settings, settings["state_branch"], STATE)
+    pending = len(manifest.get("groups", []))
+    if progress.get("queue_id") == manifest.get("queue_id"):
+        pending -= len(progress.get("completed", []))
+    result["pending"] = pending
+    daily = settings.get("daily", {"minimum": 1})
+    if progress.get("days", {}).get(day, 0) >= daily["minimum"]:
+        return {**result, "reason": "Today's release is already complete"}
+    if pending < daily["minimum"]:
+        return {**result, "reason": f"Waiting for at least {daily['minimum']} real change groups"}
+    if not manual and (now.hour, now.minute) < (hour, minute):
+        return {**result, "reason": "Today's varying release time has not arrived"}
+    return {**result, "due": True, "reason": "Real queued changes are ready for today's release"}
 
 
 def status(settings):
@@ -554,9 +792,11 @@ def status(settings):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["backup", "enqueue", "publish", "status"])
+    parser.add_argument("command", choices=["backup", "enqueue", "publish", "status", "gate"])
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--manual", action="store_true")
     args = parser.parse_args()
     root = args.root.resolve()
     settings = config(root)
@@ -570,10 +810,14 @@ def main():
                 print("Another backup is running.")
                 return 0
             backup(root, settings)
+        if settings.get("auto_enqueue"):
+            enqueue(root, settings, refresh=True)
     elif args.command == "enqueue":
-        enqueue(root, settings)
+        enqueue(root, settings, refresh=args.refresh)
     elif args.command == "publish":
         publish(settings, args.dry_run)
+    elif args.command == "gate":
+        print(json.dumps(release_gate(settings, manual=args.manual)))
     else:
         status(settings)
     return 0

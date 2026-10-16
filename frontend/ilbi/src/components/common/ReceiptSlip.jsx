@@ -680,10 +680,12 @@ export default function ReceiptSlip({
               )}
 
               <div style={{ textAlign: 'center', marginTop: 8, fontSize: 9, color: '#000000', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                <div style={{ fontWeight: 700 }}>XARIDINGIZ UCHUN RAHMAT!</div>
-                <div>Iltimos, chekni saqlab qo‘ying.</div>
-                {config.receipt_footer && <div style={{ whiteSpace: 'pre-wrap' }}>{config.receipt_footer}</div>}
-                <div style={{ fontSize: 8 }}>Savdo nusxasi — fiskal chek emas</div>
+                <div style={{ fontWeight: 700, fontSize: is58mm ? 9.5 : 10.5 }}>XARIDINGIZ UCHUN RAHMAT!</div>
+                {config.receipt_footer && (
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4, margin: '2px 0', fontSize: is58mm ? 8.5 : 9.5 }}>
+                    {config.receipt_footer}
+                  </div>
+                )}
                 <div style={{ marginTop: 2, fontSize: 8.5, color: '#000000' }}>ilbi.uz</div>
               </div>
             </div>

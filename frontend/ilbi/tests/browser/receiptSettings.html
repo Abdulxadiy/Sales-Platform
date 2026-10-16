@@ -7,7 +7,7 @@ import {receiptDefaults} from '/src/utils/receiptTax.js';
 const tenant={name:'Test do‘koni',receipt_settings:{version:1,seller_name:'Test MChJ',seller_tax_identifier:'123456789'}};
 window.taxQA={saved:0};
 function App(){
- const [value,setValue]=useState({...receiptDefaults,address:'Test manzil',receipt_header:'Test sarlavha',receipt_footer:'Test yakun',receipt_phone:'+998901234567',tax_regime:'general',is_vat_payer:true});
+ const [value,setValue]=useState({...receiptDefaults,address:'Test manzil',receipt_phone:'+998901234567',tax_regime:'general',is_vat_payer:true});
  taxQA.value=value;taxQA.set=setValue;
  return React.createElement(AuthContext.Provider,{value:{user:{username:'QA'}}},React.createElement(Panel,{tenant,value,onChange:setValue,onSave(){taxQA.saved++;taxQA.lastSaved=value;},saving:false,previewDate:new Date('2026-10-16T08:00:00Z')}));
 }

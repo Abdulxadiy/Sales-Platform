@@ -1414,5 +1414,29 @@
         "tests/automation/test_commit_queue.py"
       ]
     }
+  ],
+  "auto_classify": true,
+  "atomic_groups": [
+    "dependencies",
+    "account-memberships",
+    "tenant-permissions",
+    "account-authentication",
+    "employee-directory",
+    "account-api",
+    "shops-and-sellers",
+    "cashbox-ledger",
+    "catalog-import-labels",
+    "inventory-batches-transfers",
+    "sales-debts-returns",
+    "core-exports-analytics",
+    "frontend-tenant-navigation",
+    "frontend-catalog-tools",
+    "frontend-inventory",
+    "frontend-sales",
+    "frontend-management",
+    "backend-regressions",
+    "deployment-configuration",
+    "ci-and-client-regressions",
+    "ilbi-rebranding"
   ]
 }

@@ -42,10 +42,22 @@ const labelStyle = {
   color: 'var(--text-secondary, #475569)',
 };
 
+export const DEFAULT_RECEIPT_FOOTER = "Iltimos, chekni saqlab qo‘ying.\nSavdo nusxasi — fiskal chek emas";
+
 export default function ReceiptSettingsPanel({ tenant, value, onChange, onSave, saving, previewDate }) {
   const set = (field, val) => onChange(previous => ({ ...previous, [field]: val }));
   const vatAllowed = ['general', 'other'].includes(value.tax_regime);
-  const snapshot = { ...tenant.receipt_settings, ...value, store_name: tenant.name, store_address: value.address };
+  const effectiveFooter = value.receipt_footer !== undefined
+    ? value.receipt_footer
+    : (tenant?.receipt_settings?.receipt_footer !== undefined ? tenant.receipt_settings.receipt_footer : DEFAULT_RECEIPT_FOOTER);
+  const snapshot = {
+    ...tenant.receipt_settings,
+    ...value,
+    receipt_header: '',
+    receipt_footer: effectiveFooter,
+    store_name: tenant.name,
+    store_address: value.address,
+  };
   const amounts = calculateTaxLine(1, 100000, snapshot);
   const preview = {
     id: 'settings-preview', receipt_number: 'NAMUNA', created_at: previewDate.toISOString(), currency: 'UZS',
@@ -261,19 +273,6 @@ export default function ReceiptSettingsPanel({ tenant, value, onChange, onSave, 
           />
         </label>
 
-        {/* Receipt Header Text */}
-        <label style={labelStyle}>
-          Chek yuqori qismidagi matn (Header)
-          <textarea
-            style={{ ...fieldStyle, resize: 'vertical', minHeight: 64, lineHeight: 1.5 }}
-            rows={2}
-            spellCheck={false}
-            placeholder="Masalan: Xaridingiz uchun rahmat!"
-            value={value.receipt_header || ''}
-            onChange={e => set('receipt_header', e.target.value)}
-          />
-        </label>
-
         {/* Receipt Footer Text */}
         <label style={labelStyle}>
           Chek pastki qismidagi matn (Footer)
@@ -281,10 +280,13 @@ export default function ReceiptSettingsPanel({ tenant, value, onChange, onSave, 
             style={{ ...fieldStyle, resize: 'vertical', minHeight: 74, lineHeight: 1.5 }}
             rows={3}
             spellCheck={false}
-            placeholder="Masalan: Xarid qilingan tovarlar 14 kun ichida chek bilan qaytariladi."
-            value={value.receipt_footer || ''}
+            placeholder={`Iltimos, chekni saqlab qo‘ying.\nSavdo nusxasi — fiskal chek emas`}
+            value={value.receipt_footer !== undefined ? value.receipt_footer : DEFAULT_RECEIPT_FOOTER}
             onChange={e => set('receipt_footer', e.target.value)}
           />
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 400, marginTop: -2 }}>
+            «XARIDINGIZ UCHUN RAHMAT!» va «ilbi.uz» o‘rtasida chiqadi. Istalgancha o‘zgartirishingiz yoki o‘chirishingiz mumkin.
+          </span>
         </label>
 
         {/* Contact Phone */}

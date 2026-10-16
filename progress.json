@@ -1,53 +1,11 @@
 {
   "version": 1,
-  "queue_id": "20261013T221826-830f9a60",
-  "completed": [
-    "dependencies",
-    "account-memberships",
-    "tenant-permissions",
-    "account-authentication",
-    "employee-directory",
-    "account-api",
-    "shops-and-sellers",
-    "cashbox-ledger",
-    "catalog-import-labels",
-    "inventory-batches-transfers",
-    "sales-debts-returns",
-    "core-exports-analytics",
-    "frontend-tenant-navigation",
-    "frontend-catalog-tools",
-    "frontend-inventory",
-    "frontend-sales",
-    "frontend-management",
-    "backend-regressions",
-    "deployment-configuration",
-    "ci-and-client-regressions"
-  ],
+  "queue_id": "20261016T070939-ba24b6c5",
+  "completed": [],
   "last_main_sha": "17e2c173b6c1e375d8adf5b1285d1420eb0cdae7",
   "days": {
     "2026-10-13": 22,
     "2026-10-16": 1
   },
-  "updated_at": "2026-10-13T23:12:09.899902+05:00",
-  "manual_fixes": [
-    {
-      "sha": "8cb25d8426385083e8dfdcc9a9afe13dc16f91e7",
-      "date": "2026-10-13",
-      "message": "fix(backup): use a valid systemd working directory and cover service generation"
-    },
-    {
-      "sha": "ee881d51836d8178994a64b31c82804af0ea7042",
-      "date": "2026-10-13",
-      "message": "fix(automation): publish reviewed work without daily commit quotas"
-    },
-    {
-      "sha": "17e2c173b6c1e375d8adf5b1285d1420eb0cdae7",
-      "date": "2026-10-16",
-      "message": "Enable verified daily releases and per-package semantic versions"
-    }
-  ],
-  "history_cleanup": {
-    "removed_log_only_commits": 80,
-    "preserved_real_main_commits": 227
-  }
+  "superseded_queue": "46b81613b5735c6a624825ec520bcfeb13f69f43"
 }

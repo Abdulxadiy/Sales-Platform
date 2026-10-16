@@ -498,7 +498,7 @@ def enqueue(root, settings, refresh=False):
         changed = set(
             p.decode()
             for p in git(
-                repo, "diff", "--name-only", "-z", base, effective
+                repo, "diff", "--no-renames", "--name-only", "-z", base, effective
             ).stdout.split(b"\0")
             if p
         )

@@ -145,7 +145,6 @@
     opacity 0.65s,
     border-color 0.4s;
   pointer-events: none;
-  transform-style: preserve-3d;
 }
 .pc-slide[data-distance="1"] {
   opacity: 0.5;
@@ -154,8 +153,9 @@
 .pc-slide.is-active {
   opacity: 1;
   pointer-events: auto;
-  will-change: transform;
-  transform: translate3d(calc(-50% + var(--pc-drag)), -50%, 45px);
+  /* Keep the selected screenshot on the display plane. Perspective depth and
+     a permanent compositor layer re-scale its text after it is rasterized. */
+  transform: translate(calc(-50% + var(--pc-drag)), -50%);
 }
 .pc-viewport.is-dragging .pc-slide {
   transition: none;
@@ -529,11 +529,19 @@
   border: 0;
 }
 .pc-viewer.lp-dialog {
+  --lp-ink: #f0efeb;
+  --lp-secondary: #c7c5c5;
+  --lp-line: transparent;
+  --lp-pill: #ffffff1f;
+  --lp-blue: #76b5ff;
   width: min(1440px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   padding: 0;
   overflow: hidden;
-  border-radius: 13px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .pc-viewer-header,
 .pc-viewer-footer {
@@ -542,7 +550,7 @@
   align-items: center;
   gap: 20px;
   padding: 20px 25px;
-  background: var(--lp-bg);
+  background: transparent;
 }
 .pc-viewer-header {
   border-bottom: 1px solid var(--lp-line);
@@ -576,7 +584,7 @@
   height: min(68dvh, 850px);
   overflow: auto;
   overscroll-behavior: contain;
-  background: #0b0909;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -762,9 +770,6 @@
       rotateY(calc(var(--pc-offset) * -10deg))
       scale(calc(1 - var(--pc-distance) * 0.09));
   }
-  .pc-slide.is-active {
-    transform: translate3d(calc(-50% + var(--pc-drag)), -50%, 0);
-  }
   .pc-slide[data-distance="1"] {
     opacity: 0.38;
   }
@@ -899,7 +904,6 @@
   .pc-viewer.lp-dialog {
     width: calc(100vw - 20px);
     max-height: calc(100dvh - 24px);
-    border-radius: 9px;
   }
   .pc-viewer-header {
     padding: 14px;

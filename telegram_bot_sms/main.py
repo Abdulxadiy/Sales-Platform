@@ -10,7 +10,7 @@ import requests
 
 # Environment Variables
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
-INVENTRA_INTERNAL_URL = os.environ['INVENTRA_INTERNAL_URL']
+ILBI_INTERNAL_URL = os.getenv('ILBI_INTERNAL_URL') or os.environ['INVENTRA_INTERNAL_URL']
 INTERNAL_SERVICE_TOKEN = os.environ['INTERNAL_SERVICE_TOKEN']
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -44,13 +44,13 @@ def get_contact_keyboard() -> ReplyKeyboardMarkup:
 @dp.message(CommandStart())
 async def start_handler(message: types.Message):
     """
-    /start handler specifically for Inventra PRO.
+    /start handler specifically for ILBI.
     No deep-link parameter required. Simply welcoming the user and requesting contact.
     """
     first_name = message.from_user.first_name if message.from_user else "Foydalanuvchi"
     text = (
         f"Assalomu alaykum, *{first_name}*!\n\n"
-        "🔐 *INVENTRA PRO* platformasining rasmiy 2-bosqichli xavfsizlik (2FA) boti.\n\n"
+        "🔐 *ILBI* platformasining rasmiy 2-bosqichli xavfsizlik (2FA) boti.\n\n"
         "Platformaga xavfsiz kirish va tasdiqlash kodlarini (OTP) qabul qilish uchun "
         "pastdagi *«📱 Telefon raqamni ulashish»* tugmasini bosing."
     )
@@ -60,13 +60,13 @@ async def start_handler(message: types.Message):
 @dp.message(Command("help"))
 async def help_handler(message: types.Message):
     text = (
-        "ℹ️ *INVENTRA PRO Xavfsizlik Boti*\n\n"
-        "Ushbu bot Inventra savdo platformasida xodimlar va do‘kon egalarining hisoblarini "
+        "ℹ️ *ILBI Xavfsizlik Boti*\n\n"
+        "Ushbu bot ILBI savdo platformasida xodimlar va do‘kon egalarining hisoblarini "
         "2-bosqichli tasdiqlash (2FA) orqali himoya qilish uchun xizmat qiladi.\n\n"
         "🔹 *Qanday ishlatiladi?*\n"
         "1. /start buyrug‘ini yuboring.\n"
         "2. *«📱 Telefon raqamni ulashish»* tugmasi orqali hisobingizni ulang.\n"
-        "3. Inventra tizimiga kirishda bir martalik tasdiqlash kodlari ushbu botga keladi.\n\n"
+        "3. ILBI tizimiga kirishda bir martalik tasdiqlash kodlari ushbu botga keladi.\n\n"
         "🔒 _Xavfsizlik eslatmasi: Kodlarni hech qachon begonalarga bermang!_"
     )
     await message.answer(text, parse_mode="Markdown")
@@ -76,7 +76,7 @@ async def help_handler(message: types.Message):
 async def status_handler(message: types.Message):
     user_id = message.from_user.id if message.from_user else "Noma'lum"
     text = (
-        "📊 *Bot holati:* Faol va Inventra PRO tizimiga ulangan ✅\n\n"
+        "📊 *Bot holati:* Faol va ILBI tizimiga ulangan ✅\n\n"
         f"👤 Sizning Telegram ID: `{user_id}`\n\n"
         "Agar raqamingizni qayta ulamoqchi bo‘lsangiz, /start buyrug‘ini bosing."
     )
@@ -127,27 +127,27 @@ async def contact_handler(message: types.Message):
         await message.answer("❌ Telefon raqami formati noto‘g‘ri. Iltimos, qaytadan urinib ko‘ring.")
         return
 
-    # 4. Register contact directly in Inventra
+    # 4. Register contact directly in ILBI
     try:
         response = requests.post(
-            INVENTRA_INTERNAL_URL,
+            ILBI_INTERNAL_URL,
             json={"phone_number": phone_number, "chat_id": str(chat_id)},
             headers={"Authorization": f"Internal {INTERNAL_SERVICE_TOKEN}"},
             timeout=5,
         )
         response.raise_for_status()
 
-        logger.info(f"Successfully linked phone {phone_number} to chat_id {chat_id} in Inventra")
+        logger.info(f"Successfully linked phone {phone_number} to chat_id {chat_id} in ILBI")
         await message.answer(
             "✅ *Raqamingiz muvaffaqiyatli ulandi!*\n\n"
             f"📱 Raqam: `{phone_number}`\n"
-            "🔐 Endi Inventra login sahifasida bemalol davom etishingiz mumkin. "
+            "🔐 Endi ILBI login sahifasida bemalol davom etishingiz mumkin. "
             "Tasdiqlash kodlari (OTP) ushbu bot orqali yuboriladi.",
             parse_mode="Markdown",
             reply_markup=ReplyKeyboardRemove(),
         )
     except requests.RequestException as e:
-        logger.error(f"Failed to register contact in Inventra for chat_id {chat_id}: {e}")
+        logger.error(f"Failed to register contact in ILBI for chat_id {chat_id}: {e}")
         await message.answer(
             "❌ Server bilan bog‘lanishda xatolik yuz berdi. Iltimos, bir ozdan so‘ng qayta urinib ko‘ring.",
             reply_markup=get_contact_keyboard(),
@@ -160,7 +160,7 @@ async def fallback_handler(message: types.Message):
     Helpful guidance for any text message.
     """
     await message.answer(
-        "👋 Inventra platformasida tasdiqlash kodlarini olish uchun telefon raqamingizni ulashingiz kerak.\n\n"
+        "👋 ILBI platformasida tasdiqlash kodlarini olish uchun telefon raqamingizni ulashingiz kerak.\n\n"
         "Buning uchun pastdagi *«📱 Telefon raqamni ulashish»* tugmasini bosing yoki /start buyrug‘idan foydalaning.",
         parse_mode="Markdown",
         reply_markup=get_contact_keyboard(),
@@ -168,7 +168,7 @@ async def fallback_handler(message: types.Message):
 
 
 async def main():
-    logger.info("Inventra 2FA Telegram Bot starting...")
+    logger.info("ILBI 2FA Telegram Bot starting...")
     await dp.start_polling(bot)
 
 

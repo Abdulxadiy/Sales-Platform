@@ -1,15 +1,19 @@
-# Sales-Platform/docker-compose.yml
+# ILBI development services. Local .env pins the existing resource mapping.
+name: ${COMPOSE_PROJECT_NAME:-ilbi-platform}
 
 networks:
-  inventra_net:
-    driver: bridge
+  ilbi_net:
+    name: ${ILBI_NETWORK_NAME:-${COMPOSE_PROJECT_NAME:-ilbi-platform}_ilbi_net}
+    external: ${ILBI_NETWORK_EXTERNAL:-false}
 
 volumes:
   redis_data:
   postgres_data:
   minio_data:
   static_data:
-  inventra_venv:
+  ilbi_venv:
+    name: ${ILBI_VENV_VOLUME:-${COMPOSE_PROJECT_NAME:-ilbi-platform}_ilbi_venv}
+    external: ${ILBI_VENV_EXTERNAL:-false}
   bot_venv:
   frontend_node_modules:
 
@@ -31,7 +35,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     networks:
-      - inventra_net
+      - ilbi_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -48,7 +52,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - inventra_net
+      - ilbi_net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -63,7 +67,7 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-inventra_minio}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-ilbi_minio}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_secret_2026}
     volumes:
       - minio_data:/data
@@ -71,51 +75,55 @@ services:
       - "9000:9000"
       - "9001:9001"
     networks:
-      - inventra_net
+      - ilbi_net
 
   # -------------------------------------------------------------------
-  # INVENTRA — Django/DRF asosiy backend
+  # ILBI — Django/DRF asosiy backend
   # -------------------------------------------------------------------
-  inventra:
+  ilbi:
     build:
-      context: ./inventra
+      context: ./ilbi
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - ./inventra/.env
+      - ./ilbi/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,inventra,nginx"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,0.0.0.0,ilbi,inventra,nginx,ilbi.uz,www.ilbi.uz"
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
     volumes:
-      - ./inventra:/app
+      - ./ilbi:/app
       - ./docs:/app/docs
       - ./docs:/docs
-      - inventra_venv:/app/.venv
+      - ilbi_venv:/app/.venv
       - static_data:/app/staticfiles
     expose:
       - "8000"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
-      - inventra_net
+      ilbi_net:
+        aliases: [inventra]
 
   # -------------------------------------------------------------------
   # CELERY WORKER — fonga olingan vazifalar ijrochisi
   # -------------------------------------------------------------------
   celery_worker:
     build:
-      context: ./inventra
+      context: ./ilbi
       dockerfile: Dockerfile
     restart: unless-stopped
     command: celery -A config worker -l info
     env_file:
-      - ./inventra/.env
+      - ./ilbi/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -127,25 +135,28 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      inventra:
+      ilbi:
         condition: service_started
     volumes:
-      - ./inventra:/app
-      - inventra_venv:/app/.venv
+      - ./ilbi:/app
+      - ilbi_venv:/app/.venv
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
-      - inventra_net
+      - ilbi_net
 
   # -------------------------------------------------------------------
   # CELERY BEAT — davriy rejali vazifalar (Cron)
   # -------------------------------------------------------------------
   celery_beat:
     build:
-      context: ./inventra
+      context: ./ilbi
       dockerfile: Dockerfile
     restart: unless-stopped
     command: celery -A config beat -l info
     env_file:
-      - ./inventra/.env
+      - ./ilbi/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -157,13 +168,16 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-      inventra:
+      ilbi:
         condition: service_started
     volumes:
-      - ./inventra:/app
-      - inventra_venv:/app/.venv
+      - ./ilbi:/app
+      - ilbi_venv:/app/.venv
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
-      - inventra_net
+      - ilbi_net
 
   # -------------------------------------------------------------------
   # BOT — aiogram orqali Telegram bilan ishlaydigan servis
@@ -176,12 +190,15 @@ services:
     env_file:
       - ./telegram_bot_sms/.env
     depends_on:
-      - inventra
+      - ilbi
     volumes:
       - ./telegram_bot_sms:/app
       - bot_venv:/app/.venv
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
-      - inventra_net
+      - ilbi_net
 
   # -------------------------------------------------------------------
   # NGINX — Teskari proksi (Reverse Proxy) & Static/Media server
@@ -194,30 +211,30 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static_data:/var/www/static:ro
-      - ./inventra/media:/var/www/media:ro
+      - ./ilbi/media:/var/www/media:ro
     depends_on:
-      - inventra
+      - ilbi
     networks:
-      - inventra_net
+      - ilbi_net
 
   # -------------------------------------------------------------------
   # FRONTEND — React (Vite) ilovasi (Dev rejimida)
   # -------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend/inventra
+      context: ./frontend/ilbi
       dockerfile: Dockerfile
       target: development
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT:-5173}:5173"
     environment:
       - VITE_API_TARGET=http://nginx:80
     volumes:
-      - ./frontend/inventra:/app
+      - ./frontend/ilbi:/app
       - frontend_node_modules:/app/node_modules
     depends_on:
       - nginx
     networks:
-      - inventra_net
+      - ilbi_net
 

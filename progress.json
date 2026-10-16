@@ -1,18 +1,11 @@
 {
   "version": 1,
-  "queue_id": "20261016T071719-7d55420d",
+  "queue_id": "20261016T073130-292e6f28",
   "completed": [],
   "last_main_sha": "fcadc6f3e9ace0cd7aec723f73ebaca53c42a8fd",
   "days": {
     "2026-10-13": 22,
     "2026-10-16": 24
   },
-  "superseded_queue": "7e4dd9dfd77f878afc9acf45ec401aa1a2b37cb6",
-  "manual_fixes": [
-    {
-      "sha": "fcadc6f3e9ace0cd7aec723f73ebaca53c42a8fd",
-      "date": "2026-10-16",
-      "message": "Fix rename detection; no source files deleted"
-    }
-  ]
+  "superseded_queue": "c05fab8c106d8cece038be55d8a1a1f97ae7ee80"
 }

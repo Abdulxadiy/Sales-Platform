@@ -23,9 +23,10 @@
     "deployment-configuration",
     "ci-and-client-regressions"
   ],
-  "last_main_sha": "ee881d51836d8178994a64b31c82804af0ea7042",
+  "last_main_sha": "17e2c173b6c1e375d8adf5b1285d1420eb0cdae7",
   "days": {
-    "2026-10-13": 22
+    "2026-10-13": 22,
+    "2026-10-16": 1
   },
   "updated_at": "2026-10-13T23:12:09.899902+05:00",
   "manual_fixes": [
@@ -38,6 +39,11 @@
       "sha": "ee881d51836d8178994a64b31c82804af0ea7042",
       "date": "2026-10-13",
       "message": "fix(automation): publish reviewed work without daily commit quotas"
+    },
+    {
+      "sha": "17e2c173b6c1e375d8adf5b1285d1420eb0cdae7",
+      "date": "2026-10-16",
+      "message": "Enable verified daily releases and per-package semantic versions"
     }
   ],
   "history_cleanup": {

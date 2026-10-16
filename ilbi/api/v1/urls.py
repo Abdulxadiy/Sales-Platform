@@ -1,6 +1,8 @@
+from apps.core.readiness import readiness
 from django.urls import include, path
 
 urlpatterns = [
+    path('internal/health/ready/', readiness, name='internal-readiness'),
     path('support/', include('api.v1.support.urls')),
     path('', include('api.v1.accounts.urls')),
     path('', include('api.v1.tg_bot.urls')),

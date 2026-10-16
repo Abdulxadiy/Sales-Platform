@@ -180,6 +180,9 @@ except importlib.metadata.PackageNotFoundError:
     except Exception:
         APP_VERSION = "0.13.1"
 
+# Technical API documentation stays available in development/test.
+API_DOCS_ENABLED = True
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'ILBI Platform API',
     'DESCRIPTION': (

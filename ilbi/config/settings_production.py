@@ -14,6 +14,9 @@ if base.DEBUG or base.LOCAL_DEMO_LOGIN_ENABLED:
 
 DEBUG = False
 LOCAL_DEMO_LOGIN_ENABLED = False
+# Keep technical schema/UI routes out of the production URL configuration.
+# Offline schema generation still uses REST_FRAMEWORK/DRF spectacular normally.
+API_DOCS_ENABLED = False
 ALLOWED_HOSTS = base.ALLOWED_HOSTS
 if any(host == "*" or host.startswith(".") for host in ALLOWED_HOSTS):
     raise ImproperlyConfigured("Production ALLOWED_HOSTS must contain exact hostnames, without wildcards.")

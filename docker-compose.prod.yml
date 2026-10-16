@@ -45,6 +45,12 @@ services:
       - static_data:/app/staticfiles
       - media_data:/app/media
       - ./docs:/app/docs
+    healthcheck:
+      test: [CMD, python, -B, healthcheck.py]
+      interval: 15s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
@@ -54,19 +60,22 @@ services:
     command: celery -A config worker -l info
     env_file: ./ilbi/.env.production
     environment: *backend_environment
-    depends_on: [ilbi]
+    depends_on:
+      ilbi: {condition: service_healthy}
   celery_beat:
     build: ./ilbi
     restart: unless-stopped
     command: celery -A config beat -l info
     env_file: ./ilbi/.env.production
     environment: *backend_environment
-    depends_on: [ilbi]
+    depends_on:
+      ilbi: {condition: service_healthy}
   bot:
     build: ./telegram_bot_sms
     restart: unless-stopped
     env_file: ./telegram_bot_sms/.env.production
-    depends_on: [ilbi]
+    depends_on:
+      ilbi: {condition: service_healthy}
   frontend:
     build:
       context: ./frontend/ilbi
@@ -85,7 +94,8 @@ services:
         read_only: true
         bind:
           create_host_path: false
-    depends_on: [ilbi]
+    depends_on:
+      ilbi: {condition: service_healthy}
   minio:
     image: cgr.dev/chainguard/minio:latest
     profiles: [minio]

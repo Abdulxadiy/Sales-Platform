@@ -55,6 +55,10 @@ telegram_bot_sms/.venv/bin/python -m unittest discover -s telegram_bot_sms/tests
 
 Ular group/supergroup/channel, sender yo‘qligi, chat/sender mos kelmasligi, begona kontakt va valid shaxsiy ulanishni sinaydi. HTTP hamda Telegram javobi mock, tokenlar sun’iy; haqiqiy `.env` o‘qilmaydi va bot polling boshlanmaydi. Testlar ichida modulning in-memory flood holati har safar tozalanadi. [Telegram dialog IDlari](https://core.telegram.org/api/bots/ids) foydalanuvchi va guruh/kanal manzillari farqini tushuntiradi.
 
+12-qadamdan boshlab shu moduldagi 12 test sekin HTTP kutishida boshqa haqiqiy bot handleri va boshqa kontakt ishlashini ham tekshiradi. `threading.Event` bilan sun’iy HTTP ushlab turiladi; boshqa handler javobi birinchi so‘rov tugashidan oldin tekshiriladi. Shu chatning takroriy so‘rovi cheklanadi. Connect/read timeout, ulanish va HTTP xatolarida umumiy xabar ham tekshiriladi. HTTP chaqiruvi `asyncio.to_thread` orqali bajariladi, mavjud `timeout=5` saqlanadi.
+
+Cheklangan sinov muhitida asyncio’ning threadlar orasidagi mahalliy socket orqali uyg‘otishiga ruxsat kerak. Socket `send()`i taqiqlansa test qotib qolishi mumkin; HTTP mock bo‘lsa ham bu runtime talabi saqlanadi. Bu appning tashqi Telegram yoki DBga ulanishini talab qilmaydi.
+
 ## Profil rasmini xavfsiz saqlash
 
 ```bash

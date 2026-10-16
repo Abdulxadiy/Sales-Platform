@@ -13,6 +13,7 @@ import {
 import { salesApi } from '../api/client';
 import IlbiLogo from '../components/common/IlbiLogo';
 import ReceiptTaxSummary from '../components/common/ReceiptTaxSummary';
+import ReceiptItemCodes from '../components/common/ReceiptItemCodes';
 
 export default function PublicReceiptView() {
   const { token } = useParams();
@@ -325,6 +326,7 @@ export default function PublicReceiptView() {
                       {formatMoney(lineTotal, cur)}
                     </strong>
                   </div>
+                  <ReceiptItemCodes item={it} />
                   {config.is_vat_payer && config.receipt_show_item_tax !== false && it.tax_rate != null && <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>QQS {Number(it.tax_rate)}%: {formatMoney(it.tax_amount, cur)}</div>}
                 </div>
               );

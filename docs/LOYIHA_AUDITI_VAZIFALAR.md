@@ -1,8 +1,8 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
-**Sana:** 2026-10-12.  
-**Holat:** dastlabki tahlil tugadi; quyidagi 38 ta vazifaning implementatsiyasi boshlanmagan.  
-**Joriy ko‘rsatma:** kodni o‘zgartirmaslik; topilmalarni yozish, muhokamalarni tegishli vazifaga qo‘shish va keyinchalik bajarilgan ishni dalili bilan belgilash.
+**Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
+**Holat:** dastlabki audit quyida tarixiy topilmalar sifatida saqlangan. Production tayyorgarligining 1-qadami (AUD-21 qisman) va 2.1-qadami — katalog fiskal rekvizitlari va yangi chekdagi o‘zgarmas mahsulot nusxasi — bajarildi (AUD-01 qisman). Haqiqiy provayder integratsiyasi ochiq.  
+**Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
 
 ## 1. Tahlil chegarasi va mavjud holat
 
@@ -33,7 +33,7 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 
 | ID | Vazifa | Qiyinlik | Xavf | Holat |
 |---|---|---:|---|---|
-| AUD-01 | Fiskal savdo va sotuvchi tekshiruvini yakunlash | 5/5 | P0 | Muhokamada |
+| AUD-01 | Fiskal savdo va sotuvchi tekshiruvini yakunlash | 5/5 | P0 | Qisman bajarildi; integratsiya ochiq |
 | AUD-02 | Smena va kassa hisobini yaxlit qilish | 5/5 | P0 | Muhokama kutilmoqda |
 | AUD-03 | Savdo bekori, qaytarish va asl chek summasini ajratish | 5/5 | P1 | Muhokama kutilmoqda |
 | AUD-04 | Parallel amallarda yagona lock tartibi | 5/5 | P1 | Muhokama kutilmoqda |
@@ -53,7 +53,7 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 | AUD-18 | Pul summalarini bir xil yaxlitlash | 3/5 | P1 | Muhokama kutilmoqda |
 | AUD-19 | Paginatsiya, filtrlar va query validatsiyasi | 3/5 | P2 | Muhokama kutilmoqda |
 | AUD-20 | Media va MinIO ulanishini yakunlash | 3/5 | P1 | Muhokama kutilmoqda |
-| AUD-21 | Production deploy, TLS va ekspluatatsiya | 3/5 | P1 | Muhokama kutilmoqda |
+| AUD-21 | Production deploy, TLS va ekspluatatsiya | 3/5 | P1 | Qisman bajarildi |
 | AUD-22 | Hujjat versiyalari va rozilik dalili | 3/5 | P2 | Muhokama kutilmoqda |
 | AUD-23 | Auditning to‘liqligi, tenant va IP aniqligi | 3/5 | P2 | Muhokama kutilmoqda |
 | AUD-24 | Xodimni ishga olish va akkauntni faollashtirish | 3/5 | P1 | Muhokama kutilmoqda |
@@ -112,6 +112,80 @@ Sotuvchi profili va muddati tekshiriladi, `DEBUG=False` bo‘lsa savdo ataylab r
 - LexUZning umumiy 943-son sahifasida kelajakdagi 2026-10-22 tahriri ham ko‘rinadi. 2026-10-12 sanasi bilan alohida ochish muvaffaqiyatli bo‘lmadi; kelajakdagi o‘zgarish hozir amalda deb qabul qilinmadi.
 
 **Ochiq muhokama:** do‘konlarda hozir ishlatilayotgan kassa/provayder bor-yo‘qligi; tanlanadigan yechimning rasmiy API shartnomasi va integratsiya maqomi. Taxminiy API endpoint yoki provayder kafolati yozilmadi.
+
+#### 2026-10-16 — production tayyorgarligining 2-qadami: fiskal ulanish talablari
+
+**Tasdiqlangan doira:** mavjud kod va rasmiy provayder talablarini tekshirish, ulanish yo‘lini tayyorlash. Foydalanuvchi **hali provayder tanlamaganini** bildirdi. Ushbu qism tayyor; fiskal integratsiya bajarildi deb belgilanmaydi. Ilova kodi, DB va haqiqiy konfiguratsiya o‘zgartirilmadi; provayderga chek yoki murojaat yuborilmadi.
+
+**Joriy kod bilan tasdiqlangan bo‘shliqlar:**
+
+| Qism | Hozirgi holat va kerakli o‘zgarish |
+|---|---|
+| Sotuvchi va do‘kon | `SellerProfile.fiscal_provider` oddiy matn. Har bir do‘konga tegishli kassa/muhit/credential referensi va ulanish tekshiruvi kerak. Seller review va `tenants.manage_settings` mavjudligi fiskal ulanish tayyorligini anglatmaydi. |
+| Mahsulot rekvizitlari | `ProductVariant`da MXIK/IKPU va qadoq kodi yo‘q. `sku`, do‘konning mahsulot `code`i va shtrix-kod bu rekvizitlarning o‘rnini bosmaydi. Markirovka talab qilinadigan mahsulotlar uchun har bir sotilayotgan birlik kodlarini yig‘ish oqimi ham alohida kerak. |
+| O‘zgarmas chek ma’lumoti | `Sale.receipt_snapshot` do‘kon/sotuvchi/soliq sozlamalarini saqlaydi. `SaleItem`da mahsulot nomi, birlik va fiskal rekvizitlar nusxasi yo‘q; serializer nom va birlikni hozirgi katalogdan oladi. Katalog tahriri o‘tgan savdodagi mahsulot ta’rifini o‘zgartirmasligi kerak. |
+| QQS | Do‘kon darajasida soliq sozlamalari va satr summalari bor. Mahsulotga xos stavka/imtiyoz va provayder qabul qiladigan soliq kodlari hali moslanmagan. AOS va foyda solig‘i QQS maydoniga yuborilmaydi. |
+| Nasiya | `DebtPayment` kontragentga bog‘langan, asl `Sale`larga taqsimot yo‘q. Keyingi to‘lov, qaytarish va boshqa do‘konda undirilgan qarzni tegishli asl hujjatlarga bog‘lash kerak; eski umumiy qarzga taxminiy chek bog‘lanmaydi. |
+| Qaytarish | `SaleRefund` va `SaleVoidLog` mavjud, ammo tashqi fiskal operatsiya va asl provayder cheki bilan aloqa yo‘q. Qaytarilgan satrlar, soliq, real to‘lov turi va takroriy urinish bitta o‘zgarmas refund operatsiyasiga bog‘lanishi kerak. |
+| Tashqi so‘rov | Fiskal adapter, yuborish navbati va natijani qayta tekshirish jarayoni yo‘q. `create_sale()` DB transaction ichida stock/qarzni darhol o‘zgartiradi; unga tarmoq chaqiruvini shunchaki qo‘shish mumkin emas. |
+| Production cheklovi | `create_sale()` yangi savdoni `DEBUG=False`da rad etadi. `DebtService` va `VoidService` bu gate orqali o‘tmaydi; ularning fiskalga tegishli amallari ham ulanish holatini tekshirishi kerak. Eski savdo nusxalari avtomatik fiskal chek deb belgilanmaydi. |
+
+**Ko‘rib chiqilgan ikki nomzod — yakuniy tanlov emas:**
+
+| Nomzod | Rasmiy manbada ko‘rinadigan imkoniyat | Tanlashdan oldin ochiq masala |
+|---|---|---|
+| Uzum Fiscalization | Ochiq API, test muhiti, savdo/qaytarish va operation ID orqali chek havolasini olish bor. | Mustaqil ILBI kassalari, turli STIRlar va tashqi terminal to‘lovlari uchun shartlar; takroriy so‘rov kafolati; nasiya va qisman refund tartibi. [Rasmiy hujjat](https://developer.uzumbank.uz/en/fiscalization/). |
+| E-POS Communicator | Provayder REST API, chek holati va asl chek bo‘yicha qisman/to‘liq qaytarishni taklif qiladi. | To‘liq API hujjati integrator loginini talab qildi; sandbox, idempotency, autentifikatsiya va ko‘p do‘konli ulanish shartnomasi olinishi kerak. Ochiq marketing misoli asosida adapter yozilmaydi. [Mahsulot tavsifi](https://epos.uz/uz/products/api), [integrator hujjatlari](https://docs.epos.uz/). |
+
+Uzum hujjatida API kaliti, tiyindagi butun summalar, MXIK va qadoq kodi ko‘rsatilgan. Bo‘nak/nasiya rejimlari alohida kelishiladi; HTTP 202 yakuniy fiskal tasdiq deb qabul qilinmaydi. Test va production kalitlari ajratilgan. Bu imkoniyatlar har qanday ILBI sotuvchisi avtomatik ulanadi degani emas. [Uzum rasmiy API hujjati](https://developer.uzumbank.uz/en/fiscalization/).
+
+**Spetsifikatsiyada aniqlashtiriladigan farqlar:** rasmiy [OpenAPI 0.0.2](https://developer.uzumbank.uz/en/redocusaurus/en_fiscalization.yaml) o‘qildi: unda `servers` yo‘q; endpointlarning hostini hujjatdagi test/production yo‘riqnomasidan olish kerak. Schema GET yo‘lini `/v2/receipt/{operation_id}/receipt_url` deb beradi, testing matnida boshqa tartib yozilgan. Matnda markirovka `labels`i talab qilinadi, lekin tekshirilgan `ReceiptDataItem` schemasida bu maydon yo‘q. Qaysi shartnoma amaldaligi provayder bilan tasdiqlanadi. Ayniqsa timeoutdan keyingi 404 qayta POST qilish xavfsizligini o‘zi kafolatlamaydi.
+
+**Reyestr maqomi:** Soliq qo‘mitasining [2026-04-28 xabari](https://gov.uz/oz/soliq/news/view/159141) amaldagi reyestrni tekshirishni tavsiya qiladi. Uning OFD virtual kassa reyestriga havolasi bu tekshiruvda ham ochilmadi. Muayyan yechimning joriy reyestr maqomi yoki ILBI uchun ruxsat tasdiqlandi deb yozilmaydi; tanlangan provayderdan kassa nomi/versiyasi, reyestr dalili va ILBI bilan ishlash tartibi olinadi.
+
+**Provayder bilan aniqlashtirish uchun tayyor savollar:**
+
+1. ILBI orqali ko‘p egali, turli STIRli do‘konlarga ulanish mumkinmi? Har do‘kon/kassa qanday ro‘yxatdan o‘tadi, kimning nomida chek chiqadi va TXKM kim bo‘ladi?
+2. Naqd hamda mavjud tashqi Uzcard/Humo terminali to‘lovlari alohida qo‘llanadimi? To‘lov va fiskalizatsiya APIlari qanday ajratilgan?
+3. Amaldagi OpenAPI, sandbox va hisob ochish shartlari qanday? Sinovdan productionga o‘tish uchun qaysi tasdiqlar kerak?
+4. Bir operation ID bilan takroriy so‘rov, boshqa payload, timeout, 202 va vaqtinchalik 404 qanday boshqariladi? Holatni so‘rash muddati, webhook imzosi va qayta urinish chegaralari qanday?
+5. Nasiya savdosi, keyingi qarz to‘lovi va qisman/to‘liq refund asl hujjatga qanday bog‘lanadi? Offline rejim mavjud bo‘lsa rasmiy tartibi qanday?
+6. MXIK/qadoq, kasr miqdor, QQS/imtiyoz, markirovka va naqd cheklangan tovarlar uchun tekshirish qoidalari qanday? API cheklovlari, yaxlitlash va chekdagi fiskal rekvizitlar tarkibi qanday?
+7. Har kassa/chek uchun tarif, ulash xarajati, xizmat uzilishi va yordam shartlari qanday? ILBI interfeysi orqali ishlashning rasmiy maqomi qanday tasdiqlanadi?
+
+Bu savollar hech kimga yuborilmadi; ular provayderdan olinadigan texnik/tashkiliy javoblar ro‘yxati.
+
+**2.1 uchun dastlabki taklif (bajarilish natijasi quyida):** mahsulot variantiga ixtiyoriy MXIK va qadoq rekvizitlari; katalog API/formasida tahrirlash; yangi savdo satrida mahsulot nomi, birlik va shu rekvizitlarning o‘zgarmas nusxasi. O‘tgan savdolarga hozirgi katalog ma’lumotidan sun’iy tarix yozilmaydi; eski satrlar mavjud ko‘rinishi bilan o‘qiladi. Bu bosqich provayder chaqiruvi yoki production savdosini ochishni o‘z ichiga olmaydi.
+
+- **Tegiladigan qismlar:** `apps/catalog/models/product_variant_model.py`, katalog serializer/service/formalari; `apps/sales/models/sale_item_model.py`, `sale_service.py`, savdo/public chek serializerlari; nullable maydonlar uchun migratsiyalar va tegishli testlar.
+- **Qabul mezoni:** rekvizit kiritish/o‘qish va tenant ruxsati ishlaydi; katalog tahrirlanganda yangi savdoning saqlangan tavsifi o‘zgarmaydi; eski cheklar ochiladi; summa/QQS/refund xulqi saqlanadi; production gate testi o‘tadi.
+- **So‘nggi alohida qismlar:** do‘kon fiskal ulanishi va ruxsatlar; mahsulot soliq/markirovka qoidalari; provayder shartnomasiga mos operatsiya/rezerv/yuborish/natijani tekshirish; nasiya/refund taqsimoti; adapter va sandbox sinovlari; yozma tashqi tasdiqdan so‘ng bitta do‘kon pilot. Har birining aniq doirasi bajarishdan oldin kelishiladi.
+
+**Tekshiruv natijasi:** tegishli model/service/serializerlar statik o‘qildi, rasmiy sahifalar va ochiq OpenAPI tekshirildi. API kaliti, sandboxga haqiqiy so‘rov yoki yangi dastur kodi bo‘lmagani uchun integratsiya testi bajarilmadi. Ushbu yangilanish faqat audit hujjatiga tegishli.
+
+#### 2026-10-16 — 2.1-qadam bajarildi: katalog rekvizitlari va chek mahsulot nusxasi
+
+**Qaror:** foydalanuvchi 2.1 haqidagi savolga tanlovni agentga topshirdi; taklif etilgan 2.1 bajarildi. Provayder tanlash, haqiqiy fiskal so‘rov va production savdosini ochishga bu qaror tatbiq etilmadi.
+
+- `ProductVariant.mxik` va `package_code` nullable/ixtiyoriy maydonlar. MXIK formati, qadoq kodi uzunligi va boshqaruv belgilari tekshiriladi. Kodlar matn ko‘rinishida saqlanadi; sonli JSON qiymati rad etiladi va boshidagi nollar saqlanadi. Bu format tekshiruvi kodning rasmiy katalogda mavjudligini tasdiqlamaydi.
+- Mahsulot yaratish, birinchi/qo‘shimcha variant va mahsulot/variant PATCH APIlari yangi rekvizitlarni qabul qiladi. PATCHda yuborilmagan maydon saqlanadi, bo‘sh/null yuborilsa tozalanadi. Mavjud katalog ruxsatlari va tenant chegarasi qo‘llanadi.
+- Katalogning yaratish/tahrirlash formalariga umumiy `FiscalMetadataFields` qo‘shildi; JSON va rasm bilan multipart yuborish ishlaydi. Oldin saqlangan, yangi maydonlari yo‘q qoralamalar ham ochiladi.
+- Yangi `SaleItem.product_snapshot` savdo vaqtida mahsulot nomi, variant nomi, birlik, SKU, kod, shtrix-kod va fiskal rekvizitlarni saqlaydi. Savdo tafsiloti, public chek va B2B kirim serializerlari shu nusxadan o‘qiydi. Takroriy checkout oldingi nusxani qaytaradi; qaytarish uni yangilamaydi.
+- Legacy satrda snapshot `NULL` qoladi: avvalgi nom/birlik ko‘rinishi saqlanadi, yangi MXIK/qadoq qiymatlari tarixga to‘qib yozilmaydi. Yangi savdoda bo‘sh qolgan rekvizit keyinchalik katalogdan to‘ldirib olinmaydi.
+- `ReceiptItemCodes` saqlangan rekvizitlarni 58/80 mm va public chek nusxasida mavjud bo‘lsa ko‘rsatadi. Amaldagi soliq hisoblash, summa va production gate saqlandi.
+
+**Migratsiyalar:** `catalog/0006_productvariant_mxik_productvariant_package_code.py`, `sales/0016_saleitem_product_snapshot.py`. Ajratilgan test bazasi va tekshirilgan lokal development Compose backendida qo‘llandi. Lokal bazadagi oldingi `ProductVariant`, `SaleItem` va `Sale` yozuvlarining yangi maydonlardan tashqari qiymatlari hamda soni oldin/keyin hash bilan bir xil chiqdi. Mavjud mahsulotlarga kod va eski savdo satrlariga snapshot yozilmadi. Production serverga deploy qilinmadi.
+
+**Tekshiruvlar:**
+
+- To‘liq ajratilgan backend pytest: **628 passed**, shu jumladan **17 yangi test**. Avvalgi Django email sozlamalari bo‘yicha deprecation ogohlantirishlari mavjud.
+- `npm test`, frontend lint va production build muvaffaqiyatli. Lintdagi avvalgi ogohlantirishlar alohida ochiq; yangi komponentlar va yangi browser test lint tekshiruvi o‘tdi.
+- `npm run test:catalog-fiscal`: haqiqiy React formalarida JSON/multipart yaratish/tahrirlash, boshidagi nollar, tozalash, eski qoralama, validatsiya va mobil maydonlar; 58/80 mm hamda public chekda saqlangan/legacy rekvizit ko‘rinishi tekshirildi. Haqiqiy bazaga test mahsuloti yoki savdo yozilmadi.
+- `npm run test:receipts`: QQS rejimlari, AOS/foyda solig‘i, qog‘oz eni va chek sozlamalari regressiyasi o‘tdi.
+- Django `check`, `makemigrations --check --dry-run`, OpenAPI `spectacular --validate --fail-on-warn` hamda yangi Python fayllari uchun Ruff tekshiruvi o‘tdi.
+- Migratsiyadan so‘ng lokal API orqali **7 ta faol do‘kon katalogi** va mavjud legacy public chek GET bilan tekshirildi; barchasi ochildi, test mahsuloti/savdosi yaratilmagan.
+
+**Keyingi taklif — 2.2, hali tasdiqlanmagan:** har do‘kon uchun fiskal ulanishning alohida yozuvi va **Xizmatlar & Sozlamalar**da sozlash oynasi; uni boshqarish uchun `tenants.manage_fiscal_connection` ruxsati. Bu bosqichda sotuvchi/provayder, test yoki production muhiti, ro‘yxatdan o‘tgan kassa rekviziti va tekshiruv holati boshqariladi. Ruxsat sotuvchi profilini rasmiy tasdiqlash yoki production savdosini ochish vakolatini bermaydi. Ulanish rekvizitlari o‘zgarsa tekshiruv yangilanadi; foydalanuvchi `tayyor/tasdiqlangan` holatini qo‘lda yoqa olmaydi. Haqiqiy adapter va tashqi tasdiq keyingi alohida ishda bo‘ladi; API siri public chek yoki oddiy do‘kon sozlamasi javobiga qo‘shilmaydi.
 
 ### AUD-02 — Smena va kassa hisobini yaxlit qilish
 
@@ -401,7 +475,7 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 - Production Nginx 80→443 yo‘naltiradi, noma’lum Host/SNI’ni rad etadi, TLS sertifikatlarini read-only mount qiladi va mijoz yuborgan proxy headerlarini qayta yozadi. Regex location ichki API blokini chetlab o‘tmasligi uchun `^~ /api/v1/internal/` ishlatiladi.
 - Django’da HTTPS proxy ishonchi, secure session/CSRF cookie’lari va canonical HTTPS redirect qo‘shildi. Ichki tokenli Docker HTTP ulanishi saqlandi. Production’da Gunicorn reload yoqilmaydi.
 - HSTS canonical domen uchun dastlab 3600 soniya. Barcha subdomenlar tekshirilmaguncha `includeSubDomains` va browser preload yoqilmadi; `check --deploy`dagi shu ikki maslahat ogohlantirishi yashirilmagan.
-- To‘liq backend tekshiruvi: **611 passed**. TLS/proxy va Compose uchun alohida regressiya tekshiruvlari `tests/deployment/`da. Haqiqiy domen sertifikati, DNS va sertifikat yangilashni serverda tekshirish deploy bosqichida qoladi.
+- To‘liq backend tekshiruvi: **611 passed**; Compose va vaqtinchalik haqiqiy Nginx TLS/proxy tekshiruvlari: **9 passed**. Regressiya tekshiruvlari `tests/deployment/`da. Haqiqiy domen sertifikati, DNS va sertifikat yangilashni serverda tekshirish deploy bosqichida qoladi.
 - Qolgan AUD-21 ishlari (deterministik image, startup/migratsiya ajratilishi, readiness, backup/restore va monitoring) bu tasdiqqa kirmaydi; keyingi alohida qarorlarni kutadi.
 
 ### AUD-22 — Hujjat versiyalari va rozilik dalili
@@ -649,12 +723,15 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-12 | Barcha AUD vazifalari | Foydalanuvchi butun loyihani tahlil qilish, kamchiliklarni qiyinidan osoniga tartiblash va qulay faylda saqlashni so‘radi. Hozir kodni o‘zgartirmaslikni aniq aytdi. Keyingi muhokamalar tegishli vazifalarga qo‘shiladi; ishlar keyinchalik birma-bir bajarilgach belgilab boriladi. | Audit va ushbu fayl tayyorlandi. Implementatsiya uchun joriy ko‘rsatma: kutish. |
 | 2026-10-12 | AUD-12, AUD-38 | Auditning oxirida fayl hashlarini solishtirish tashqi o‘zgarishlarni ko‘rsatdi: tenants `0008` migratsiyasi, yangi `0011` migratsiyasi va ikkala `.env.example`. Ular ushbu audit tomonidan o‘zgartirilmadi; qayta o‘qilib tegishli topilmalar yangilandi. | Oldingi topilma tuzatilgan jihatlar qayd etildi. Migratsiya runtime tekshiruvi va qolgan README/data vazifalari ochiq. |
 | 2026-10-12 | AUD-01 | Foydalanuvchi birinchi, eng qiyin vazifa uchun hozirgi holatga mos yechim tavsiyasini so‘radi. Provayder integratsiyasi, seller review, tenant fiskal ulanishi, idempotent operatsiya/rezerv, noaniq javobni aniqlash va refund bo‘yicha taklif tegishli bo‘limga qo‘shildi. Rasmiy Soliq manbalari qayta o‘qildi. | MUHOKAMADA. Taklif hali foydalanuvchi qarori emas; ilova kodi o‘zgartirilmadi. |
+| 2026-10-16 | AUD-21 | Production tayyorgarligining 1-qadami alohida tasdiqlandi: HTTPS/proxy, secure cookie, Gunicorn reload va production env ajratilishi. Tafsilot va tekshiruvlar AUD-21da. | QISMAN BAJARILDI. 611 backend va 9 deployment testi o‘tdi; serverga deploy qilinmadi. |
+| 2026-10-16 | AUD-01 | Production tayyorgarligining 2-qadami sifatida provayder/API talablarini aniqlash va ulanish yo‘lini tayyorlash tasdiqlandi. Foydalanuvchi hali provayder tanlamagan. Kod bo‘shliqlari, ikki nomzod, ochiq savollar va 2.1 taklifi yozildi. | Tayyorgarlik tayyor; integratsiya ochiq. Ushbu qadamda faqat hujjat yangilandi. 2.1 implementatsiyasi hali tasdiqlanmagan. |
+| 2026-10-16 | AUD-01 | 2.1 bo‘yicha foydalanuvchi tanlovni agentga topshirdi. Katalog MXIK/qadoq rekvizitlari va yangi savdo satrida o‘zgarmas mahsulot nusxasi bajarildi; lokal nullable migratsiyalar qo‘llandi. | 2.1 BAJARILDI, AUD-01 QISMAN BAJARILDI. 628 backend testi, frontend unit/build/lint, ikki browser tekshiruvi va OpenAPI tekshiruvi o‘tdi. 2.2 taklifi alohida tasdiqni kutadi. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
 1. Muhokama tegishli `AUD-xx` bo‘limining **Muhokama/qaror** qismiga sana bilan yoziladi. Global jurnalga qisqa qaror va task ID qo‘shiladi.
 2. Oldingi kelishilgan master plan/walkthrough qarori mavjud bo‘lsa unga havola beriladi; taxmin yangi tasdiq deb yozilmaydi. Ziddiyat muhokamada ochiq qayd etiladi.
-3. Muhokama yakunida aniq yechim, tegiladigan fayllar, dependency va bajarildi mezoni yoziladi. Hozirgi “kodni o‘zgartirmaslik” ko‘rsatmasi davomida implementatsiya boshlanmaydi.
+3. Muhokama yakunida aniq yechim, tegiladigan fayllar, dependency va bajarildi mezoni yoziladi. Kod faqat o‘sha ish foydalanuvchi tomonidan alohida tasdiqlangach o‘zgartiriladi.
 4. Bajarish so‘ralgach vazifa **BAJARILMOQDA** qilinadi; faqat ish va kelishilgan tekshiruvlar yakunlangach **BAJARILDI** bo‘ladi. Kod tayyor, tashqi provayder tasdig‘i qolgan vazifa **QISMAN BAJARILDI** bo‘ladi.
 5. Bajarilgan task ostiga o‘zgargan fayllar, bajarilgan tekshiruv va natija, commit bo‘lsa uning identifikatori, qolgan cheklovlar yoziladi. Hali tekshirilmagan ish “bajarildi” qilinmaydi.
 
@@ -671,4 +748,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Hozir bajarilgan ish:** loyiha tahlili va topilmalarni ushbu faylga saqlash. **AUD-01–AUD-38 bo‘yicha kod tuzatishlari bajarilmagan.**
+**Joriy natija — 2026-10-16:** dastlabki audit saqlangan; production tayyorgarligining 1-qadami (AUD-21 qisman), fiskal ulanish rejasi va 2.1-qadami (AUD-01 qisman) bajarilgan. Haqiqiy fiskal integratsiya va production savdosi ochiq vazifa bo‘lib qoladi. Qolgan vazifalar jadvalidagi tarixiy holat ularning keyingi bajarilishini tasdiqlamaydi; har biri boshlanishida amaldagi kod bilan qayta solishtiriladi.

@@ -105,7 +105,7 @@ cp telegram_bot_sms/.env.production.example telegram_bot_sms/.env.production
 ```
 
 2. Set `PUBLIC_HOST` to the canonical domain in `.env.production`. Use unique production secrets, matching database credentials in the root/backend files, and matching bot/internal tokens in the backend/bot files. Set the real SMTP credentials in the backend file. Production does not load the local development `.env`.
-3. Obtain a trusted TLS certificate for `PUBLIC_HOST`. Put the certificate chain in `fullchain.pem` and its private key in `privkey.pem` under the absolute directory specified by `TLS_CERT_DIR`. Mount the actual files, or a directory containing every symlink target. The directory is mounted read-only; a missing directory or certificate makes startup fail. Keep the private key outside the repository. Renew the certificate before expiry and reload the frontend Nginx after renewal.
+3. Obtain a trusted TLS certificate for `PUBLIC_HOST`. Put the resolved certificate chain in `fullchain.pem` and its private key in `privkey.pem` under the absolute directory specified by `TLS_CERT_DIR`. Do not use symlinks pointing outside that directory. The directory is mounted read-only; a missing directory or certificate makes startup fail. Keep the private key outside the repository. After renewal, update these resolved files, validate with `docker compose --env-file .env.production -f docker-compose.prod.yml exec frontend nginx -t`, and reload with the same command ending in `nginx -s reload`.
 4. Validate the deployment configuration and production settings before launching:
 
 ```bash

@@ -4,6 +4,29 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.catalog.models import Category, Product, ProductImage, ProductVariant
+from apps.catalog.fiscal_metadata import validate_mxik, validate_package_code
+
+
+class FiscalCodeField(serializers.CharField):
+    """Keep leading zeroes and reject numeric JSON before it can lose precision."""
+
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            self.fail("invalid")
+        return super().to_internal_value(data)
+
+    def run_validation(self, data=serializers.empty):
+        value = super().run_validation(data)
+        return value or None
+
+
+class FiscalMetadataInputSerializer(serializers.Serializer):
+    mxik = FiscalCodeField(
+        max_length=17, required=False, allow_null=True, allow_blank=True, validators=[validate_mxik]
+    )
+    package_code = FiscalCodeField(
+        max_length=20, required=False, allow_null=True, allow_blank=True, validators=[validate_package_code]
+    )
 
 
 class CategoryOutputSerializer(serializers.ModelSerializer):
@@ -78,6 +101,7 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
         fields = [
             "id", "product", "product_name", "category_id", "category_name",
             "name", "sku", "code", "barcode", "image", "images", "gallery_images", "unit",
+            "mxik", "package_code",
             "currency", "price_partner", "price_min", "price_recommended",
             "stock_quantity", "expired_batches", "is_active",
         ]
@@ -132,7 +156,7 @@ class ProductVariantOutputSerializer(serializers.ModelSerializer):
 
 
 
-class ProductVariantCreateSerializer(serializers.Serializer):
+class ProductVariantCreateSerializer(FiscalMetadataInputSerializer):
     """Validates input for adding a variant to an existing Product."""
 
     name = serializers.CharField(max_length=150)
@@ -145,7 +169,7 @@ class ProductVariantCreateSerializer(serializers.Serializer):
     price_recommended = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
 
 
-class ProductVariantUpdateSerializer(serializers.Serializer):
+class ProductVariantUpdateSerializer(FiscalMetadataInputSerializer):
     """Validates input for editing an existing variant -- everything
     optional, a PATCH may touch any subset. `code` is included here on
     purpose: it's freely editable, including its price segment (see
@@ -177,7 +201,7 @@ class ProductOutputSerializer(serializers.ModelSerializer):
         return _clean_media_url(obj.image.url, self.context.get("request"))
 
 
-class ProductCreateSerializer(serializers.Serializer):
+class ProductCreateSerializer(FiscalMetadataInputSerializer):
     """Validates input for creating a Product together with its
     mandatory first ProductVariant (see ProductService.create())."""
 
@@ -207,7 +231,7 @@ class ProductCreateSerializer(serializers.Serializer):
     batch_code = serializers.CharField(max_length=80, required=False, allow_blank=True, default="")
 
 
-class ProductUpdateSerializer(serializers.Serializer):
+class ProductUpdateSerializer(FiscalMetadataInputSerializer):
     """Validates input for editing a Product and optionally its variant fields."""
 
     name = serializers.CharField(max_length=200, required=False)

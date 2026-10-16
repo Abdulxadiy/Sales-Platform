@@ -1,7 +1,7 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** dastlabki audit quyida tarixiy topilmalar sifatida saqlangan. Production tayyorgarligining 1-qadami (AUD-21 qisman) va 2.1-qadami — katalog fiskal rekvizitlari va yangi chekdagi o‘zgarmas mahsulot nusxasi — bajarildi (AUD-01 qisman). Haqiqiy provayder integratsiyasi ochiq.  
+**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman) va 2.1-qadami (AUD-01 qisman) bajarildi. Foydalanuvchi qolgan fiskal ishlarni, jumladan ma’qullangan, ammo boshlanmagan 2.2ni keyinga qoldirdi; batafsil qo‘llanma saqlandi. Navbatdagi 3-qadam — DB/media zaxiralash va tiklash — tahlil qilindi, implementatsiya alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
 **Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
 
 ## 1. Tahlil chegarasi va mavjud holat
@@ -33,7 +33,7 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 
 | ID | Vazifa | Qiyinlik | Xavf | Holat |
 |---|---|---:|---|---|
-| AUD-01 | Fiskal savdo va sotuvchi tekshiruvini yakunlash | 5/5 | P0 | Qisman bajarildi; integratsiya ochiq |
+| AUD-01 | Fiskal savdo va sotuvchi tekshiruvini yakunlash | 5/5 | P0 | Qisman bajarildi; qolgan qismi keyinga qoldirildi |
 | AUD-02 | Smena va kassa hisobini yaxlit qilish | 5/5 | P0 | Muhokama kutilmoqda |
 | AUD-03 | Savdo bekori, qaytarish va asl chek summasini ajratish | 5/5 | P1 | Muhokama kutilmoqda |
 | AUD-04 | Parallel amallarda yagona lock tartibi | 5/5 | P1 | Muhokama kutilmoqda |
@@ -185,7 +185,13 @@ Bu savollar hech kimga yuborilmadi; ular provayderdan olinadigan texnik/tashkili
 - Django `check`, `makemigrations --check --dry-run`, OpenAPI `spectacular --validate --fail-on-warn` hamda yangi Python fayllari uchun Ruff tekshiruvi o‘tdi.
 - Migratsiyadan so‘ng lokal API orqali **7 ta faol do‘kon katalogi** va mavjud legacy public chek GET bilan tekshirildi; barchasi ochildi, test mahsuloti/savdosi yaratilmagan.
 
-**Keyingi taklif — 2.2, hali tasdiqlanmagan:** har do‘kon uchun fiskal ulanishning alohida yozuvi va **Xizmatlar & Sozlamalar**da sozlash oynasi; uni boshqarish uchun `tenants.manage_fiscal_connection` ruxsati. Bu bosqichda sotuvchi/provayder, test yoki production muhiti, ro‘yxatdan o‘tgan kassa rekviziti va tekshiruv holati boshqariladi. Ruxsat sotuvchi profilini rasmiy tasdiqlash yoki production savdosini ochish vakolatini bermaydi. Ulanish rekvizitlari o‘zgarsa tekshiruv yangilanadi; foydalanuvchi `tayyor/tasdiqlangan` holatini qo‘lda yoqa olmaydi. Haqiqiy adapter va tashqi tasdiq keyingi alohida ishda bo‘ladi; API siri public chek yoki oddiy do‘kon sozlamasi javobiga qo‘shilmaydi.
+**2.2 taklifi — ma’qullangan, keyingi qaror bilan keyinga qoldirilgan:** har do‘kon uchun fiskal ulanishning alohida yozuvi va **Xizmatlar & Sozlamalar**da sozlash oynasi; uni boshqarish uchun `tenants.manage_fiscal_connection` ruxsati. Bu bosqichda sotuvchi/provayder, test yoki production muhiti, ro‘yxatdan o‘tgan kassa rekviziti va tekshiruv holati boshqariladi. Ruxsat sotuvchi profilini rasmiy tasdiqlash yoki production savdosini ochish vakolatini bermaydi. Ulanish rekvizitlari o‘zgarsa tekshiruv yangilanadi; foydalanuvchi `tayyor/tasdiqlangan` holatini qo‘lda yoqa olmaydi. Haqiqiy adapter va tashqi tasdiq keyingi alohida ishda bo‘ladi; API siri public chek yoki oddiy do‘kon sozlamasi javobiga qo‘shilmaydi.
+
+#### 2026-10-16 — fiskal ishlar keyinga qoldirildi
+
+Foydalanuvchi 2.2ni ma’qullab, avval fiskal provayder, mavjud bank terminali va Uzum orqali ulanishni muhokama qilishni so‘radi. Keyin batafsil Markdown tayyorlash va fiskal yo‘nalishni vaqtincha o‘tkazib, boshqa production vazifalariga o‘tishni buyurdi. **Hali boshlanmagan 2.2 va haqiqiy integratsiya endi bajarilmay turadi; 2.1 natijasi saqlanadi.** Ishni davom ettirish alohida so‘raladi.
+
+[Fiskal xizmat va Uzum qo‘llanmasi](FISKAL_UZUM_QOLLANMA_UZ.md) yaratildi: joriy holat, tushunchalar, murojaat matni, shartnoma oldi savollari, do‘kon rekvizitlari, rasmiy API haqida tekshirilgan qaydlar, qolgan texnik ishlar va qaytadan boshlash ro‘yxati bor. Uzum bilan shartnoma, API kaliti yoki reyestr tasdig‘i olingan deb belgilanmadi. Production POS cheklovi o‘zgartirilmadi; boshqa production tayyorgarligi davom etadi.
 
 ### AUD-02 — Smena va kassa hisobini yaxlit qilish
 
@@ -478,6 +484,26 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 - To‘liq backend tekshiruvi: **611 passed**; Compose va vaqtinchalik haqiqiy Nginx TLS/proxy tekshiruvlari: **9 passed**. Regressiya tekshiruvlari `tests/deployment/`da. Haqiqiy domen sertifikati, DNS va sertifikat yangilashni serverda tekshirish deploy bosqichida qoladi.
 - Qolgan AUD-21 ishlari (deterministik image, startup/migratsiya ajratilishi, readiness, backup/restore va monitoring) bu tasdiqqa kirmaydi; keyingi alohida qarorlarni kutadi.
 
+#### 2026-10-16 — production tayyorgarligining 3-qadami uchun taklif: ma’lumot zaxirasi va tiklash
+
+**Holat:** tahlil va aniq taklif tayyor; implementatsiya tasdiqlanmagan. Foydalanuvchi ishlarni birma-bir tasdiqlash tartibi bo‘yicha keyingi qarorni beradi.
+
+**Aniq dalillar:** `automation/README.md` va `scripts/install_backup_timer.py` faqat kodni GitHubga zaxiralashni tavsiflaydi. `scripts/commit_queue.py` media, maxfiy env/kalit va bazaga tegishli fayllarni chiqarib tashlaydi. Repoda production DB/media uchun `pg_dump`/tiklash skripti va tiklash sinovi topilmadi. Serverda tashqi backup tizimi bor-yo‘qligi bu tahlilda tekshirilmagan.
+
+`docker-compose.prod.yml`da PostgreSQL 16, `postgres_data`, mahalliy `media_data`, ixtiyoriy `minio_data` va qayta tiklanadigan `static_data` bor. Support rasm/ovozlari DBning `BinaryField`larida saqlanadi; katalog/akkaunt rasmlari media storage’da. Administrator tahrirlaydigan Markdownlar bind-mounted `docs/` ichida. Shuning uchun DB nusxasining o‘zi barcha yuklangan fayl va o‘zgargan hujjatni qoplamaydi.
+
+**Taklif etilgan 3-qadam doirasi:**
+
+1. Asosiy PostgreSQL bazasini `pg_dump` bilan olish va alohida bazaga `pg_restore` qilish vositalari. Qo‘shimcha real ishlatilayotgan bazalar alohida aniqlanadi; `init-db.sql`dagi legacy `shop_db`ni o‘chirish bu doiraga kirmaydi. PostgreSQL hujjati dumpning DB ichidagi mos nusxani olish usulini tushuntiradi; bu media bilan avtomatik umumiy snapshot emas. [PostgreSQL 16 backup hujjati](https://www.postgresql.org/docs/16/backup-dump.html).
+2. DB, mahalliy media va o‘zgaruvchan Markdownlar uchun bitta backup manifesti: vaqt, loyiha/release, tarkib, checksum va bajarilish holati. DB/media yozuvlarini muvofiqlashtirish sharti hujjatlashtiriladi. MinIO yoqilgan bo‘lsa mahalliy media nusxasi yetarli deb sukutda muvaffaqiyat qaytarilmaydi; bucket zaxirasi ham hal qilinishi kerak.
+3. Arxivni cheklangan kirish bilan repo tashqarisida saqlash, shifrlash va maxfiy konfiguratsiyani alohida tiklash tartibi. Haqiqiy env va kalit GitHubga yuborilmaydi. Shifrdan ochish kaliti backupning yagona nusxasi yonida yagona joyda qoldirilmaydi.
+4. Xato/qisman yozilgan nusxani tayyor deb e’lon qilmaslik; parallel ishga tushishni cheklash, tekshirilgan nusxalar uchun saqlash qoidasi va aniq restore yo‘riqnomasi. Jadval/retention va boshqa serverdagi saqlash manzili deployment sharoitiga ko‘ra kelishiladi.
+5. Faqat sun’iy, ajratilgan test DB/media bilan nusxa olish → yangi ajratilgan joyga tiklash → ma’lumot va faylni solishtirish sinovi. Production bazasini ustidan tiklash, haqiqiy ma’lumotni tashqi xizmatga yuborish yoki production taymerini faollashtirish bu dastlabki tasdiqqa kirmaydi.
+
+**Tegilishi rejalashtirilgan qismlar:** `scripts/`da DB/media backup/restore vositalari; `tests/deployment/`da ajratilgan tiklash sinovi; production runbook va sir qiymatlarisiz sozlash namunasi. Zarur bo‘lsa backup uchun alohida Compose servis/profile tayyorlanadi. Mavjud source-backup/commit-queue oqimi o‘zgartirilmaydi.
+
+**Bajarildi mezoni:** yangi ajratilgan DB/media nusxasidan sintetik ma’lumot va fayllar to‘g‘ri tiklanadi; checksum va xato holatlari tekshiriladi; noto‘g‘ri production nishoniga tasodifiy restore rad etiladi; maxfiy qiymatlar logga chiqmaydi; serverdagi faollashtirish va boshqa joydagi nusxa bo‘yicha qolgan tashqi ishlar aniq ko‘rsatiladi. Haqiqiy server/offsite restore sinovisiz to‘liq production tiklash kafolati berilmaydi.
+
 ### AUD-22 — Hujjat versiyalari va rozilik dalili
 
 **3/5 · P2 · Kodda aniq va ochiq reja.**
@@ -726,6 +752,8 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-21 | Production tayyorgarligining 1-qadami alohida tasdiqlandi: HTTPS/proxy, secure cookie, Gunicorn reload va production env ajratilishi. Tafsilot va tekshiruvlar AUD-21da. | QISMAN BAJARILDI. 611 backend va 9 deployment testi o‘tdi; serverga deploy qilinmadi. |
 | 2026-10-16 | AUD-01 | Production tayyorgarligining 2-qadami sifatida provayder/API talablarini aniqlash va ulanish yo‘lini tayyorlash tasdiqlandi. Foydalanuvchi hali provayder tanlamagan. Kod bo‘shliqlari, ikki nomzod, ochiq savollar va 2.1 taklifi yozildi. | Tayyorgarlik tayyor; integratsiya ochiq. Ushbu qadamda faqat hujjat yangilandi. 2.1 implementatsiyasi hali tasdiqlanmagan. |
 | 2026-10-16 | AUD-01 | 2.1 bo‘yicha foydalanuvchi tanlovni agentga topshirdi. Katalog MXIK/qadoq rekvizitlari va yangi savdo satrida o‘zgarmas mahsulot nusxasi bajarildi; lokal nullable migratsiyalar qo‘llandi. | 2.1 BAJARILDI, AUD-01 QISMAN BAJARILDI. 628 backend testi, frontend unit/build/lint, ikki browser tekshiruvi va OpenAPI tekshiruvi o‘tdi. 2.2 taklifi alohida tasdiqni kutadi. |
+| 2026-10-16 | AUD-01 | Foydalanuvchi 2.2ni ma’qullab, avval provayder va Uzum ulanishini muhokama qilishni so‘radi; so‘ng fiskal ishni vaqtincha keyinga qoldirib, batafsil MD va boshqa production bosqichiga o‘tishni buyurdi. | Fiskal qo‘llanma yaratildi. 2.2 va haqiqiy integratsiya boshlanmagan, keyinga qoldirildi; 2.1 saqlandi va production POS gate o‘zgarmadi. |
+| 2026-10-16 | AUD-21 | Navbatdagi 3-qadam uchun repodagi backup oqimi tekshirildi: mavjud zaxira faqat source kodga tegishli; DB/media tiklash vositalari topilmadi. Aniq doira, fayllar va qabul mezoni yozildi. | Tahlil tayyor, backup implementatsiyasi alohida tasdiqni kutadi. Serverdagi tashqi backup holati tekshirilmagan. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
@@ -748,4 +776,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** dastlabki audit saqlangan; production tayyorgarligining 1-qadami (AUD-21 qisman), fiskal ulanish rejasi va 2.1-qadami (AUD-01 qisman) bajarilgan. Haqiqiy fiskal integratsiya va production savdosi ochiq vazifa bo‘lib qoladi. Qolgan vazifalar jadvalidagi tarixiy holat ularning keyingi bajarilishini tasdiqlamaydi; har biri boshlanishida amaldagi kod bilan qayta solishtiriladi.
+**Joriy natija — 2026-10-16:** 1 va 2.1 bajarilgan. Qolgan fiskal ishlar foydalanuvchi qarori bilan keyinga qoldirilgan, batafsil qo‘llanma saqlangan. Production tayyorgarligining navbatdagi 3-qadami — DB/media zaxiralash va tiklash — aniq taklif bilan alohida tasdiqni kutadi. Production POS cheklovi saqlanadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.

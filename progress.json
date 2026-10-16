@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "queue_id": "20261016T111632-ea6c0188",
+  "queue_id": "20261016T113112-f6447dab",
   "completed": [],
   "last_main_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
   "days": {
     "2026-10-13": 22,
     "2026-10-16": 25
   },
-  "superseded_queue": "fb4e20c00409f437be6a6494f0307f37ff57cd20"
+  "superseded_queue": "ef9f5d3071a0881eb96850399e24d86e40158bae"
 }

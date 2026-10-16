@@ -15,15 +15,9 @@ const OTP_EXPIRY_SECONDS = 180; // 3 daqiqa
 
 export default function Login() {
   const navigate = useNavigate();
-  const { loginStep1, loginStep2, loading, isAuthenticated } = useAuth();
+  const { loginStep1, loginStep2, loading } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const toast = useToast();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
 
   const [showIntro, setShowIntro] = useState(true);
   const [step, setStep] = useState(1); // 1 = credentials, 2 = Telegram binding, 3 = OTP

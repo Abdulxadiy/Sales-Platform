@@ -38,11 +38,11 @@ import {
 import IlbiLogo from "../components/common/IlbiLogo";
 import { paths } from "../components/common/ilbi/logo";
 import { useTheme } from "../context/ThemeContext";
-import { useAuth } from "../hooks/useAuth";
 import { docsApi } from "../api/client";
 import { useLandingMotion } from "../hooks/useLandingMotion";
 import "./Landing.css";
 import "./LandingMotion.css";
+import ProductCarousel from "../components/landing/ProductCarousel";
 
 const MarkdownViewer = lazy(() => import("../components/docs/MarkdownViewer"));
 // Real UI captures from isolated night-theme QA; all displayed account and
@@ -580,11 +580,9 @@ function LegalDialog({ documentKey, onClose }) {
 
 export default function Landing() {
   const { isDark, toggleTheme } = useTheme();
-  const { isAuthenticated } = useAuth();
   const { hash } = useLocation();
   const root = useRef(null);
   const [menu, setMenu] = useState(false);
-  const [tab, setTab] = useState(0);
   const [step, setStep] = useState(0);
   const [role, setRole] = useState(0);
   const [tour, setTour] = useState(false);
@@ -615,9 +613,8 @@ export default function Landing() {
       document.removeEventListener("pointerdown", outside);
     };
   }, [menu]);
-  const destination = isAuthenticated ? "/dashboard" : "/login";
-  const entry = isAuthenticated ? "Boshqaruv paneli" : "Tizimga kirish";
-  const view = views[tab];
+  const destination = "/login";
+  const entry = "Tizimga kirish";
   const StageIcon = steps[step].icon;
   const nav = [
     ["#platforma", "Platforma"],
@@ -768,95 +765,7 @@ export default function Landing() {
               boshlanadi.
             </p>
           </div>
-          <div className="lp-showcase" data-reveal>
-            <div className="lp-showcase-bar">
-              <div
-                className="lp-tabs"
-                role="tablist"
-                aria-label="Platforma bo‘limlari"
-              >
-                {views.map((item, i) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="tab"
-                    id={`lp-tab-${item.id}`}
-                    aria-selected={tab === i}
-                    aria-controls="lp-product-panel"
-                    tabIndex={tab === i ? 0 : -1}
-                    onClick={() => setTab(i)}
-                    onKeyDown={(e) => {
-                      let next;
-                      if (e.key === "ArrowRight") next = (i + 1) % 3;
-                      else if (e.key === "ArrowLeft") next = (i + 2) % 3;
-                      else if (e.key === "Home") next = 0;
-                      else if (e.key === "End") next = 2;
-                      if (next !== undefined) {
-                        e.preventDefault();
-                        setTab(next);
-                        document
-                          .getElementById(`lp-tab-${views[next].id}`)
-                          ?.focus();
-                      }
-                    }}
-                  >
-                    <item.icon size={16} />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-              <span className="lp-showcase-indicator">
-                <i /> HAQIQIY INTERFEYS
-              </span>
-            </div>
-            <div
-              id="lp-product-panel"
-              role="tabpanel"
-              aria-labelledby={`lp-tab-${view.id}`}
-              tabIndex={0}
-            >
-              <div className="lp-browser-frame" key={view.id}>
-                <div className="lp-browser-top">
-                  <span className="lp-window-dots">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
-                  <span>
-                    <ShieldCheck size={11} /> ilbi.uz /{" "}
-                    {view.id === "dashboard"
-                      ? "dashboard"
-                      : view.id === "team"
-                        ? "employees"
-                        : "pos"}
-                  </span>
-                  <span className="lp-browser-label">NAMUNA</span>
-                </div>
-                <img
-                  src={view.image}
-                  alt={view.alt}
-                  width="1440"
-                  height="1100"
-                  loading="lazy"
-                  decoding="async"
-                />
-              </div>
-              <div className="lp-showcase-caption">
-                <div>
-                  <h3>{view.title}</h3>
-                  <p>{view.text}</p>
-                </div>
-                <ul>
-                  {view.tags.map((tag) => (
-                    <li key={tag}>
-                      <Check size={14} />
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
+          <ProductCarousel />
           <p className="lp-sample-note">
             Tasvirlarda sinov ma’lumotlari ko‘rsatilgan. Jonli hisobingizdagi
             ma’lumotlar va imkoniyatlar ruxsatlaringizga bog‘liq.

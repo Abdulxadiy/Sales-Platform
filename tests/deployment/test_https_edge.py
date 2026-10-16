@@ -61,6 +61,9 @@ class ProductionComposeTests(unittest.TestCase):
                 self.assertTrue(services[name]["env_file"][0]["path"].endswith("/ilbi/.env.production"))
         for name in ("ilbi", "celery_worker", "celery_beat", "postgres", "redis", "bot"):
             self.assertNotIn("ports", services[name])
+        self.assertEqual(services["ilbi"]["healthcheck"]["test"], ["CMD", "python", "-B", "healthcheck.py"])
+        for name in ("celery_worker", "celery_beat", "bot", "frontend"):
+            self.assertEqual(services[name]["depends_on"]["ilbi"]["condition"], "service_healthy")
         edge = services["frontend"]
         self.assertEqual({port["target"] for port in edge["ports"]}, {80, 443})
         # Compose escapes literal dollars in its exported model for round-tripping.
@@ -265,6 +268,8 @@ HTTPServer(('0.0.0.0',8000),Handler).serve_forever()
         for path in (
             "/api/v1/internal",
             "/api/v1/internal/telegram/register/",
+            "/api/v1/internal/health/ready/",
+            "/api/v1/internal%2Fhealth/ready/",
             "/api/v1/internal%2Fshop/tenants/1/products/",
         ):
             with self.subTest(path=path):

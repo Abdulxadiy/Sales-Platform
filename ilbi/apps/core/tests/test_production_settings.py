@@ -91,6 +91,7 @@ def test_production_security_and_no_local_dotenv_fallback():
         ({"REDIS_URL": "redis:///0"}, "REDIS_URL"),
         ({"REDIS_URL": "redis://redis:wrong/0"}, "REDIS_URL"),
         ({"REDIS_URL": "redis://redis:0/0"}, "REDIS_URL"),
+        ({"REDIS_URL": "redis://synthetic-user:synthetic-private-value@redis:wrong/0"}, "REDIS_URL"),
     ],
 )
 def test_invalid_production_configuration_fails_before_startup(overrides, field):
@@ -98,6 +99,7 @@ def test_invalid_production_configuration_fails_before_startup(overrides, field)
     assert result.returncode != 0
     assert "ImproperlyConfigured" in result.stderr
     assert field in result.stderr
+    assert "synthetic-private-value" not in result.stderr
 
 
 def test_https_is_not_redirected_and_private_internal_http_remains_usable():

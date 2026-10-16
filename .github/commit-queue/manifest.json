@@ -1,16 +1,24 @@
 {
   "version": 1,
-  "queue_id": "20261016T103116-5f2e52e6",
+  "queue_id": "20261016T111632-ea6c0188",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "5f2e52e6604b2e164f3f6381f07a5f997eebca59",
-  "source_tree": "a73557297b5bfb7d189a6f92b28cce3b02c4ff34",
-  "created_at": "2026-10-16T10:31:16.897042+05:00",
+  "snapshot_sha": "ea6c0188d7c9167cb904d27a6eb36f2138af81cb",
+  "source_tree": "fd65af83d0f0a190e5d04b7d770c987eeac31996",
+  "created_at": "2026-10-16T11:16:32.381400+05:00",
   "groups": [
     {
       "id": "dependencies",
       "message": "chore(deps): install spreadsheet and barcode libraries and update environment examples",
       "paths": [
         "frontend/ilbi/package.json"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "account-api",
+      "message": "fix(accounts-api): expose revocable sessions secure profiles and validated recovery routes",
+      "paths": [
+        "ilbi/api/v1/accounts/views/token_refresh.py"
       ],
       "atomic_unit": "application"
     },
@@ -59,7 +67,9 @@
         "docker-compose.prod.yml",
         "frontend/ilbi/Dockerfile",
         "frontend/ilbi/nginx.prod.conf",
-        "ilbi/config/settings.py"
+        "ilbi/api/v1/urls.py",
+        "ilbi/config/settings.py",
+        "ilbi/config/urls.py"
       ],
       "atomic_unit": "application"
     },
@@ -75,15 +85,25 @@
         "frontend/ilbi/src/components/common/ReceiptItemCodes.jsx",
         "frontend/ilbi/tests/browser/catalogFiscal.html",
         "frontend/ilbi/tests/catalogFiscal.browser.mjs",
+        "ilbi/README_TESTS.md",
+        "ilbi/apps/accounts/authentication.py",
+        "ilbi/apps/accounts/tests/test_terms_and_docs_views.py",
+        "ilbi/apps/accounts/tests/test_token_version_validation.py",
+        "ilbi/apps/accounts/token_validation.py",
         "ilbi/apps/catalog/fiscal_metadata.py",
         "ilbi/apps/catalog/migrations/0006_productvariant_mxik_productvariant_package_code.py",
         "ilbi/apps/catalog/tests/test_fiscal_metadata.py",
+        "ilbi/apps/core/readiness.py",
+        "ilbi/apps/core/tests/test_api_docs_production.py",
         "ilbi/apps/core/tests/test_production_settings.py",
+        "ilbi/apps/core/tests/test_readiness.py",
+        "ilbi/apps/core/tests/test_shared_throttles.py",
         "ilbi/apps/sales/migrations/0016_saleitem_product_snapshot.py",
         "ilbi/apps/sales/receipt_items.py",
         "ilbi/apps/sales/tests/test_product_snapshots.py",
         "ilbi/config/settings_production.py",
-        "ilbi/gunicorn.conf.py"
+        "ilbi/gunicorn.conf.py",
+        "ilbi/healthcheck.py"
       ],
       "atomic_unit": "application"
     },

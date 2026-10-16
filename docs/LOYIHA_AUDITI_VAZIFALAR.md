@@ -1,7 +1,7 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman) va 3-qadamining lokal tayyorgarligi bajarildi. Shifrlangan DB/media/hujjat zaxirasi va ajratilgan tiklash vositasi sun’iy ma’lumotlarda tekshirildi; haqiqiy serverda faollashtirilmadi. Foydalanuvchi qolgan fiskal ishlarni, jumladan ma’qullangan, ammo boshlanmagan 2.2ni keyinga qoldirdi; batafsil qo‘llanma saqlandi. Navbatdagi 4-qadam taklifi — mavjud so‘rov limitlarini umumiy hisoblash — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
+**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman), 3-qadamining lokal backup/tiklash tayyorgarligi, 4-qadamining umumiy so‘rov hisoblagichlari, 5-qadamining tayyorlik tekshiruvi, 7-qadamining production API hujjatlarini yopishi va 8-qadamining majburiy token version tekshiruvi bajarildi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam foydalanuvchi qarori bilan keyinga qoldirildi. Navbatdagi 9-qadam — hujjat tahrirlash testini asl fayldan ajratish (AUD-26 qisman) — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
 **Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
 
 ## 1. Tahlil chegarasi va mavjud holat
@@ -58,12 +58,12 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 | AUD-23 | Auditning to‘liqligi, tenant va IP aniqligi | 3/5 | P2 | Muhokama kutilmoqda |
 | AUD-24 | Xodimni ishga olish va akkauntni faollashtirish | 3/5 | P1 | Muhokama kutilmoqda |
 | AUD-25 | Katta frontend sahifalarini qismlarga ajratish | 3/5 | P3 | Muhokama kutilmoqda |
-| AUD-26 | CI va regressiya tekshiruvlarini kuchaytirish | 2/5 | P1 | Muhokama kutilmoqda |
+| AUD-26 | CI va regressiya tekshiruvlarini kuchaytirish | 2/5 | P1 | 9-qadam: hujjat testi izolatsiyasi taklifi tayyor |
 | AUD-27 | Avatar yuklashni haqiqiy rasm bilan cheklash | 2/5 | P0 | Muhokama kutilmoqda |
 | AUD-28 | Saqlanadigan state hookidagi render sikli | 2/5 | P0 | Muhokama kutilmoqda |
 | AUD-29 | Tashqi ta’sirlarni transactiondan keyin bajarish | 2/5 | P1 | Muhokama kutilmoqda |
 | AUD-30 | Davriy hisobot va Telegram retry | 2/5 | P2 | Muhokama kutilmoqda |
-| AUD-31 | JWT bekor qilish va frontend sessiya tiklanishi | 2/5 | P1 | Muhokama kutilmoqda |
+| AUD-31 | JWT bekor qilish va frontend sessiya tiklanishi | 2/5 | P1 | Qisman bajarildi: 8-qadam token version tekshiruvi |
 | AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | Muhokama kutilmoqda |
 | AUD-33 | Brauzer xotirasidagi parolni olib tashlash | 1/5 | P0 | Muhokama kutilmoqda |
 | AUD-34 | Kassa yopishda aniqlanmagan owner o‘zgaruvchisi | 1/5 | P1 | Muhokama kutilmoqda |
@@ -515,15 +515,69 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 
 **Qolgan ishlar:** serverdagi real sozlamalar va xizmat oynasi; kalitning alohida nusxasi; boshqa serverga shifrlangan arxiv ko‘chirish va qayta yuklab tiklash; jadval, monitoring va retention; real ilova versiyasi bilan tiklash mashqi. `.env`, TLS kaliti, global DB rollari/qo‘shimcha bazalar va Redis/Celery navbati avtomatik arxivga kirmaydi. MinIO uchun alohida adapter kerak. Shu sabab AUD-21 umumiy holati hali **QISMAN BAJARILDI**.
 
-#### 2026-10-16 — 4-qadam uchun taklif: mavjud so‘rov limitlarini umumiy hisoblash
+#### 2026-10-16 — 4-qadam: mavjud so‘rov limitlarini umumiy hisoblash
 
-**Holat:** amaldagi kod qayta tekshirildi; taklif tayyor, implementatsiya tasdiqlanmagan.
+**Holat:** foydalanuvchi **“Ha, 4-qadamni bajar”** deb tasdiqladi. Lokal implementatsiya va tegishli tekshiruvlar **BAJARILDI**; serverga deploy qilinmadi. Quyidagi dalil o‘zgarishdan oldingi holatni ifodalaydi.
 
 **Dalil:** `ilbi/config/settings.py`da default cache `LocMemCache`; production sozlamasi uni almashtirmaydi. `PublicReceiptRateThrottle` ochiq chek uchun `60/minute`, `MyTenantsView` yangi do‘kon uchun `5/day` cheklovini DRF cache orqali hisoblaydi. Bir necha Gunicorn jarayoni yoki instance bilan hisoblagichlar alohida qoladi. Support throttle va loginning o‘z Redis mexanizmi bor; ular bilan bir xil muammo deb ko‘rsatilmaydi.
 
 **Taklif doirasi:** production default cacheni mavjud Redisga alohida prefiks bilan ulash; mavjud limitlarning qiymati va tegishli API xatti-harakatini saqlash; ikki alohida jarayondan bitta hisob ko‘rinishini ajratilgan Redisda tekshirish. Haqiqiy serverga deploy alohida. Bu keskin parallel so‘rovlar uchun atomar throttle yoki to‘liq DDoS himoyasi kafolati emas; bunday kengayish alohida baholanadi.
 
 **Qabul mezoni:** productionda ochiq chek va do‘kon yaratish urinishlari workerlar orasida umumiy ko‘rinadi; kutilgan `429` tekshiriladi; support, login va development/test muhitining ajratilishi buzilmaydi. Ilova kodi foydalanuvchi roziligidan keyin o‘zgartiriladi.
+
+**Bajarildi:** `ilbi/config/settings_production.py`da default cache explicit `REDIS_URL` orqali `RedisCache`ga o‘tkazildi; canonical domen asosidagi production prefiksi support va login kalitlarini ajratadi. Redis ulanish/o‘qish timeoutlari 2 soniya. Bo‘sh, boshqa protokolli yoki noto‘g‘ri portli URL startda rad etiladi; xato xabarida credential qiymati ko‘rsatilmaydi. Redis ishlamasa lokal hisoblagichga yashirin qaytilmaydi. Base/development/test cache sozlamalari va support aliasi o‘zgarmadi. Mavjud `60/minute` va `5/day` limit qiymatlari saqlandi.
+
+**O‘zgargan qismlar:** production settings; `ilbi/.env.production.example` izohi; kengaytirilgan `apps/core/tests/test_production_settings.py`; yangi `apps/core/tests/test_shared_throttles.py`; README va test yo‘riqnomasi. Haqiqiy `.env`, ilova DBsi, savdo/fiskal oqimi, frontend va server konfiguratsiyasi ishga tushirish orqali o‘zgartirilmadi.
+
+**Tekshiruv:** production sozlamasini yuklaydigan mustaqil Python jarayonlari yangi vaqtinchalik Redisga ulandi. Chekda 60 va ownerda 5 urinishdan keyin boshqa yangi jarayonda ham `429`, `throttled`, `Retry-After` tasdiqlandi. Boshqa IP/ownerga ruxsat, vaqt oynasi tugashi, limit to‘lgan ownerning GET ro‘yxati, default/support/login kalitlari mustaqilligi, development/test lokal cache’i va Redis uzilishida fallback yo‘qligi tekshirildi. Bu integration testlarda DB ulanishi taqiqlangan, biznes handler va membership stub qilingan; ularning haqiqiy oqimi normal API regressiyalarida tekshirildi. Production settings/shared cache, tenants, sales API/receipt tax, support va admin login testlari birga: **116 passed, 22.94 s**. Ruff format/check o‘tdi. 8 ta avvaldan mavjud Django email sozlamalari deprecation ogohlantirishi bor.
+
+**Chegara:** bu DRFning mavjud, atomar bo‘lmagan throttle algoritmini almashtirmaydi; keskin parallel so‘rovlarda nominal limitdan ortish ehtimoli qoladi. [DRF rasmiy hujjati](https://www.django-rest-framework.org/api-guide/throttling/) bu farqni tushuntiradi. Redis mavjudligi productionning ishlash sharti; domen/prefix va Redis manzili barcha worker/replicalarda bir xil bo‘lishi kerak. Haqiqiy serverga ulash alohida kelishiladi.
+
+#### 2026-10-16 — 5-qadam: ilova tayyorligini tekshirish
+
+**Holat:** foydalanuvchi **“Ha, 5-qadamni bajar”** deb tasdiqladi. Uzilishdan keyin **“continue”** bilan davom ettirishni so‘radi. Lokal implementatsiya va tegishli tekshiruvlar **BAJARILDI**; serverga deploy qilinmadi. Quyidagi dalil o‘zgarishdan oldingi holatga tegishli.
+
+**Dalil:** `docker-compose.prod.yml`da PostgreSQL va Redis healthcheck bor, backend ilovada healthcheck yo‘q. Worker/beat/bot/frontend faqat `depends_on: [ilbi]` bilan konteynerning boshlanishini kutadi; ilovaning haqiqatan tayyorligini kutmaydi. `ilbi/entrypoint.sh` Gunicorndan oldin dependency sync, migratsiya, bucket va static tayyorgarligini bajaradi. URLlar va core manbalarida ilova DB/Redis tayyorligini tekshiradigan endpoint topilmadi.
+
+**Taklif doirasi:** tashqariga ichki tafsilot bermaydigan tayyorlik tekshiruvi; PostgreSQL va Redis bilan ishlay olishini tekshirish; production backend healthcheck va bog‘liq xizmatlarni dastlabki startda `service_healthy` orqali kutdirish. Private tekshiruvning public edge orqali ochilmasligi saqlanadi. Alohida PostgreSQL/Redis uzilishi va qayta tayyor bo‘lishi sun’iy muhitda tekshiriladi. Migratsiyani alohida release-jobga ko‘chirish, avtomatik restart, tashqi monitoring/xabar yuborish va serverga deploy bu taklifga kirmaydi.
+
+**Qabul mezoni:** tayyor bo‘lsa muvaffaqiyat, DB/Redis ishlamasa tayyor emas holati; xato javobida sirlar va traceback yo‘q; production bog‘liq xizmatlari backend tayyorligini kutadi. Docker health holati nosozlikni ko‘rsatadi, o‘zi ishlayotgan xizmatlarni avtomatik to‘xtatish/restart qilish kafolati berilmaydi.
+
+**Bajarildi:** `ilbi/apps/core/readiness.py` va `api/v1/urls.py` orqali `GET/HEAD /api/v1/internal/health/ready/` qo‘shildi. Faqat haqiqiy loopback socket peer qabul qilinadi; soxta proxy headeri bunga ta’sir qilmaydi. Alohida, har safar yopiladigan PostgreSQL ulanishida `SELECT 1`, Redisga timeout va retry’siz `PING` yuboriladi. Tayyorlikda `200 {"status":"ready"}`, bog‘liqlik ishlamasa `503 {"status":"not_ready"}`; xato tafsiloti, credential yoki traceback qaytarilmaydi va logga yozilmaydi. Javob cache qilinmaydi. Tekshiruv ma’lumot yozmaydi.
+
+`ilbi/healthcheck.py` standart Python orqali lokal HTTP endpointni tekshiradi: proxy va redirect ishlatmaydi, kichik kutilgan JSONni tekshiradi, faqat `ready`/`not ready` va exit 0/1 chiqaradi. Production Compose’da backend healthcheck: 15 soniya interval, 10 soniya timeout, 120 soniya start grace va 3 retry. Worker, beat, bot va frontend dastlabki Compose startida backend `service_healthy` bo‘lishini kutadi. Mavjud public Nginx bloklari saqlandi; yangi route public sxemaga kiritilmaydi. README va test yo‘riqnomasi yangilandi.
+
+**Tekshiruv:** yangi `apps/core/tests/test_readiness.py`dagi **11 test, 7.52 s** o‘tdi. Alohida production WSGI jarayoni faqat yangi sun’iy PostgreSQL/Redisga ulanib, har bir xizmatni navbat bilan to‘xtatish/qayta yoqishda `200 → 503 → 200` va HTTP probe natijasini tasdiqladi. DBda ilova jadvali va Redisda kalit yaratilmagani tekshirildi. Peer/soxta header rad etilishi, GET/HEAD, POSTni rad etish, yopiq error/log, no-store, noto‘g‘ri JSON/redirect/katta javob sinovdan o‘tdi. Kengaytirilgan haqiqiy Nginx/TLS/Compose tekshiruvida **9 test, 2.629 s** o‘tdi: public readiness URL va kodlangan prefiks ham yopiq; dependency shartlari to‘g‘ri. Production settingsning 27 testi ham o‘tdi. Ruff format/check, Django system check va OpenAPI `--validate --fail-on-warn` o‘tdi; schema’da readiness yo‘q.
+
+**Chegara:** health faqat DB/Redis tayyorligini bildiradi; to‘liq savdo, fiskal provayder, SMTP va barcha release shartlari sinovi emas. Ishlayotgan xizmatlar keyingi nosozlikda avtomatik to‘xtatilmaydi/restart qilinmaydi, tashqi xabar yuborilmaydi. [Compose rasmiy startup tartibi](https://docs.docker.com/compose/how-tos/startup-order/) dastlabki startdagi kutish shartini tushuntiradi. Migratsiya release-jobi va production serverda faollashtirish keyin alohida kelishiladi. Haqiqiy DB/env/xizmatlarga tegilmadi; sinov resurslari tozalandi. AUD-21 umumiy holati hali **QISMAN BAJARILDI**.
+
+#### 2026-10-16 — 6-qadam uchun taklif: production paketlarini buildda tayyorlash
+
+**Holat:** foydalanuvchi **“Hozircha o‘zgartirma”** deb javob berdi. Taklif **KEYINGA QOLDIRILDI**; ushbu ish uchun Dockerfile, entrypoint, paketlar, lock va Compose o‘zgartirilmadi. Qayta boshlash uchun yangi aniq tasdiq kerak.
+
+**Dalil:** `ilbi/Dockerfile`da `uv sync --frozen --no-install-project || uv sync --no-install-project` bor: birinchi buyruq xatosida lockni o‘zgartira oladigan fallbackga o‘tiladi. Oxirgi `uv sync --frozen` dev paketlarini ham qo‘shadi. `ilbi/entrypoint.sh` Gunicorn har boshlanganida `uv sync --frozen --no-dev`ni yana bajaradi; paket tekshirish/o‘rnatish release buildidan runtimega ko‘chgan. Production Compose shu backend image’dan uch xizmatda foydalanadi. Development esa kod va alohida `.venv` volumeni mount qiladi, uni ehtiyotsiz umumiy o‘zgartirish buzishi mumkin.
+
+**Taklif doirasi:** backend uchun alohida production build target; lock mos kelmasa aniq xato, versiyani qayta yechadigan fallback yo‘q; runtime’da faqat zarur production paketlari; production startupda `uv sync`ni bajarmaslik. Production Compose backend/worker/beat shu targetni ishlatadi. Developmentning mounted venv oqimi saqlanadi. Migratsiya va media/static tayyorlashni ajratish, dependency versiyalarini keng yangilash, image digestlarini pin qilish va serverga deploy bu qadamga kirmaydi.
+
+**Qabul mezoni:** production image buildida faqat lockdagi kerakli paketlar o‘rnatiladi; har startda paket o‘rnatilmaydi; Gunicorn, Celery va healthcheck image ichida ishlaydi; buzilgan lock yashirin fallbackga olib kelmaydi; development oqimi saqlanadi. Faqat foydalanuvchi roziligidan keyin kod o‘zgartiriladi.
+
+#### 2026-10-16 — 7-qadam: productionda ommaviy texnik API hujjatlarini yopish
+
+**Holat:** foydalanuvchi **“Ha, 7-qadamni bajar”** deb tasdiqladi. Lokal implementatsiya va tegishli tekshiruvlar **BAJARILDI**; serverga deploy qilinmadi. **Turi:** production siyosatini aniqlashtirish/yaxshilash. Quyidagi dalil o‘zgarishdan oldingi holatga tegishli.
+
+**Dalil:** `ilbi/config/urls.py` `/api/schema/`, `/api/docs/`, `/api/redoc/`ni barcha muhitlarda ro‘yxatdan o‘tkazadi. `SPECTACULAR_SETTINGS` serve permissionni almashtirmaydi; o‘rnatilgan drf-spectacular’da `SERVE_PERMISSIONS` defaulti `AllowAny`, `SERVE_PUBLIC=True`. Production edge bu yo‘llarni backendga uzatadi. Shu konfiguratsiya productionda ham dasturchilar uchun API sxemasi va sinov oynalariga login qilmasdan kirish imkonini beradi. Bu safar haqiqiy serverga so‘rov yuborilmadi; xulosa joriy kod va o‘rnatilgan kutubxona sozlamalari bo‘yicha.
+
+**Taklif doirasi:** productionda ushbu uch texnik URLni o‘chirish; development va CLI orqali OpenAPI yaratishni saqlash. Ilovaning foydalanuvchi qo‘llanmalari `/docs`, support va biznes APIlari o‘z faoliyatini davom ettiradi. API amallari mavjud ruxsat tekshiruvlariga tayanadi; taklif texnik hujjatning ommaviy ko‘rinishiga tegishli. Ommaviy API integratsiyasi rejalashtirilsa, hujjatni kim ko‘rishi alohida belgilanadi.
+
+**Qabul mezoni:** productionda uch texnik URL `404`; development/test muhiti va CLI schema validatsiyasi ishlaydi; mahsulot qo‘llanmasi va asosiy API route’lari saqlanadi. Foydalanuvchi tasdig‘idan keyin kod va tegishli testlar yoziladi; serverga deploy alohida.
+
+**Bajarildi:** base settingsda `API_DOCS_ENABLED=True`, production settingsda qat’iy `False` belgilandi. Root URL konfiguratsiyasi schema/Swagger/Redoc route’larini faqat shu belgi yoqilganda qo‘shadi. Productionda UI import/route registratsiyasi bajarilmaydi; drf-spectacular runtime annotatsiyalari va CLI generatori saqlanadi. Foydalanuvchi `/docs` qo‘llanmasi va `/api/v1/docs/`, support, readiness va biznes API route’lari saqlandi. 6-qadamdagi paket/Dockerfile/entrypoint ishlariga tegilmadi.
+
+**O‘zgargan fayllar:** `ilbi/config/settings.py`, `settings_production.py`, `urls.py`; yangi `ilbi/apps/core/tests/test_api_docs_production.py`; README, test yo‘riqnomasi va audit.
+
+**Tekshiruv:** productionda uchta asosiy texnik URL, slashsiz ko‘rinishlar va schema format querysi `404`; development/testda Swagger/Redoc `200` va schema route’i mavjud. Production sozlamasi bilan CLI OpenAPI yaratish, validatsiya va fail-on-warn o‘tdi. Yangi subprocess testlarida dotenv o‘qish, DB/Redis ulanishlari taqiqlangan; kalit faqat sun’iy. Mavjud schema/UI hamda mahsulot qo‘llanmasi rol/ruxsat regressiyalari ajratilgan test DBda tekshirildi. **38 passed, 1 deselected, 11.94 s**; 8 ta avvaldan mavjud Django email deprecation ogohlantirishi bor. Deselected — repodagi haqiqiy Markdownni vaqtincha o‘zgartiradigan eski `test_docs_edit_only_platform_admin`; ushbu qadam uning fayl izolatsiyasini o‘zgartirmaydi. Yangi/tegishli kod uchun Ruff, base settings uchun CI sintaksis/undefined-name tekshiruvi o‘tdi.
+
+**Chegara:** production sozlamasi ishlatilganda route’lar yopiladi; bu serverga avtomatik deploy emas. Keyinchalik tashqi integratsiya hujjati kerak bo‘lsa alohida kirish siyosati belgilanadi. Export qilingan schema fayli HTTP route yoqmasdan operator tomonidan yaratilishi mumkin.
 
 ### AUD-22 — Hujjat versiyalari va rozilik dalili
 
@@ -595,6 +649,16 @@ CI pytest envda `DJANGO_SECRET_KEY` yo‘q. Test settings asosiy settingsni impo
 
 **Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
 
+#### 2026-10-16 — 9-qadam uchun taklif: hujjat tahrirlash testini asl fayldan ajratish
+
+**Holat:** faqat tahlil; implementatsiya tasdiqlanmagan.
+
+**Dalil:** `apps/accounts/tests/test_terms_and_docs_views.py::test_docs_edit_only_platform_admin` haqiqiy `/api/v1/docs/`ga PUT yuborib, staff qo‘llanmasiga `updated_test_tag` qo‘shadi va faqat oxirgi qatorda qaytaradi. `docs_views._get_docs_root()` hostda repodagi `docs/`ni tanlaydi. Django test DB transactioni diskdagi Markdownni rollback qilmaydi. O‘rtadagi assertion yoki jarayon to‘xtashi asl qo‘llanmani test matni bilan qoldirishi mumkin. Shu sabab 7-qadamning o‘qish regressiyasida bu test alohida tashlangan edi.
+
+**Taklif doirasi:** hujjat testlarini vaqtinchalik katalogdagi nusxa/sun’iy hujjatlar bilan ishlatish; faqat test ichida docs rootni almashtirish; staff/owner rad etilishi, admin tahriri va keyingi GET natijasi kabi mavjud ruxsat sinovlarini saqlash. Product runtime, real qo‘llanmalar, API huquqlari va serverda deploy o‘zgartirilmaydi.
+
+**Qabul mezoni:** tahrirlash testi yana to‘liq ishga tushadi; diskka yozish faqat vaqtinchalik test katalogida bo‘ladi; repodagi asl hujjatlar hashlari testdan oldin/keyin bir xil qoladi; test jarayonidagi xato asl faylni tiklashga bog‘liq bo‘lmaydi. Amalga oshirish alohida foydalanuvchi tasdig‘idan keyin.
+
 ### AUD-27 — Avatar yuklashni haqiqiy rasm bilan cheklash
 
 **2/5 · P0 · Validatsiya bo‘shlig‘i kodda aniq; brauzer ta’siri deployga bog‘liq.**
@@ -663,7 +727,27 @@ Daily report 5 daqiqada tekshiriladi, `abs(minute-report_minute)<=5` bir hisobot
 
 **Bajarildi mezoni:** versionsiz/revoked token rad etiladi; valid refresh bilan page reload sessiyani tiklaydi; revoked sessiya foydalanuvchiga aniq chiqishni beradi. Bog‘liq: T7.5/T7.9.
 
-**Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
+**Muhokama/qaror — 2026-10-16:** foydalanuvchi 8-qadamning token version tekshiruvini tasdiqladi. Ushbu qismi bajarildi; qolgan sessiya siyosati alohida baholanadi. Pastdagi dastlabki dalillar va eski kod qaydlari tarixiy holatni ifodalaydi.
+
+#### 2026-10-16 — 8-qadam: token xavfsizlik versiyasini majburiy tekshirish
+
+**Holat:** foydalanuvchi **“Ha, 8-qadamni bajar”** deb tasdiqladi. Lokal implementatsiya va tegishli tekshiruvlar **BAJARILDI**; serverga deploy qilinmadi. Quyidagi tahlil/dalil tuzatishdan oldingi holatga tegishli.
+
+**Amaldagi kod qayta tekshirildi:** `issue_tokens()` access va refreshga `token_version` yozadi; hozirgi refresh endpoint `RevocableTokenRefreshView` bo‘lib, faol user va version mosligini tekshiradi. Dastlabki auditdagi “refresh standart view” qaydi endi amaldagi holatni ifodalamaydi. Access autentifikatsiyasida esa `if token_version is not None and ...` saqlangan: claim yo‘q yoki null bo‘lsa version tekshiruvi bajarilmaydi.
+
+**Dalil:** haqiqiy imzo tekshiruvidan o‘tadigan, faqat sun’iy SECRET_KEY bilan yaratilgan access tokenlar va DB o‘rniga berilgan sun’iy user bilan qayta tekshirildi. User versioni 1 dan 2 ga oshirilgach, claimi yo‘q token `accepted`, version=1 token `rejected` bo‘ldi. Haqiqiy DB, user yoki token ishlatilmadi. Ushbu holat haqiqiy imzolangan, eski formatdagi tokenlarga tegishli. Hozirgi login orqali beriladigan versionli tokenlarda mavjud bekor qilish ishlaydi.
+
+**Taklif doirasi:** access va refresh uchun version claimi mavjud, to‘g‘ri butun son va userning joriy versioniga teng bo‘lishini bir xil tekshirish. Yo‘q, null, noto‘g‘ri tur yoki eski version rad etiladi; odatdagi yangi tokenlar ishlaydi. Bunday eski sessiyada qaytadan login talab qilinadi. Logout siyosati, refresh rotation/blacklist, frontend sessiya tiklashini keng o‘zgartirish, real user versiyalarini ommaviy oshirish va serverga deploy bu qadamga kirmaydi.
+
+**Qabul mezoni:** parol/token_version o‘zgarishidan keyin eski va versionsiz access/refresh rad etiladi, joriy versionli tokenlar ishlaydi; malformed claimlar rad etiladi; haqiqiy API oqimi faqat ajratilgan test DBda tekshiriladi. Bu bajarilsa ham AUD-31ning qolgan sessiya siyosati masalalari alohida qayta baholanadi.
+
+**Bajarildi:** yangi `apps/accounts/token_validation.py::has_current_token_version` access autentifikatsiyasi va refresh serializerida bir xil qoida sifatida ishlatiladi. `type(version) is int` va userdagi joriy version bilan tenglik talab qilinadi. Yo‘q/null, boolean, float, string, list/object va mos kelmagan versionlar rad etiladi; JSON boolean/floatning Python integerga teng chiqishi endi tekshiruvni chetlab o‘tmaydi. Model ruxsat bergan joriy integer `0` ham saqlandi. Faol user, imzo va muddat tekshiruvlari mavjud SimpleJWT oqimida qoladi.
+
+**O‘zgargan fayllar:** yangi `apps/accounts/token_validation.py`; `apps/accounts/authentication.py`; `api/v1/accounts/views/token_refresh.py`; yangi `apps/accounts/tests/test_token_version_validation.py`; README, test yo‘riqnomasi va audit. Real user versionlari oshirilmadi, model/migratsiya, logout/rotation yoki frontend o‘zgartirilmadi.
+
+**Tekshiruv:** yangi **30 ta API testi** haqiqiy test imzosi bilan malformed/missing/mismatched access/refreshni, joriy 0/1/5 versionlarni, inactive/deleted userni, haqiqiy parol almashtirish va yangi token bilan qayta ishlashni qopladi. Birinchi JWT to‘plami 35/35 o‘tdi. Login, OTP, parol tiklash/profil, employee management, ban/unban, demo va revoked-refresh regressiyasi bilan birga **136 passed, 8.57 s**. Faqat ajratilgan test PostgreSQL/Redis va sun’iy kalit/user/token ishlatildi. Ruff format/check o‘tdi. 8 ta avvaldan mavjud Django email deprecation ogohlantirishi bor.
+
+**Chegara:** serverda ushbu kod ishga tushirilgach, versionsiz/noto‘g‘ri formatli eski sessiyalarda qayta login talab qilinadi. Odatdagi joriy versionli tokenlar ishlaydi. Amaldagi frontendda startup refresh yo‘li allaqachon mavjudligi qayta o‘qishda ko‘rindi; dastlabki auditdagi frontend haqidagi barcha da’volar hozirgi kodga avtomatik ko‘chirilmaydi. Unga dinamik browser tekshiruvi bu qadamda bajarilmadi. AUD-31 umumiy sessiya/rotation/logout siyosati doirasi hali alohida baholashni talab qiladi.
 
 ### AUD-32 — Telegram 2FA kontaktini xavfsiz qayta bog‘lash
 
@@ -779,6 +863,16 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-21 | Navbatdagi 3-qadam uchun repodagi backup oqimi tekshirildi: mavjud zaxira faqat source kodga tegishli; DB/media tiklash vositalari topilmadi. Aniq doira, fayllar va qabul mezoni yozildi. | Tahlil tayyor, backup implementatsiyasi alohida tasdiqni kutadi. Serverdagi tashqi backup holati tekshirilmagan. |
 | 2026-10-16 | AUD-21 | Foydalanuvchi 3-qadamni “Ha, tayyorla” deb tasdiqladi. Shifrlangan DB/media/docs nusxasi, faqat yangi ajratilgan resursga restore, sozlama namunasi va yo‘riqnoma yaratildi. | 3-qadamning LOKAL TAYYORGARLIGI BAJARILDI: 11 yangi backup + 9 HTTPS/deployment testi, jami 20/20 o‘tdi. Haqiqiy server/timer/offsite yoqilmadi. |
 | 2026-10-16 | AUD-21 | Keyingi 4-qadam taklifi: ochiq chek va yangi do‘konning cache hisoblagichlari production workerlarida umumiy Redisga o‘tkazilishi. Dalil va tekshiruv mezoni AUD-21da. | Faqat tahlil. Implementatsiya alohida tasdiqni kutadi. |
+| 2026-10-16 | AUD-21 | Foydalanuvchi 4-qadamni tasdiqladi. Production default cache umumiy Redis va alohida production/domen prefiksiga o‘tkazildi; limitlar saqlandi. | LOKAL BAJARILDI. Mustaqil jarayonlar va vaqtinchalik Redis bilan HTTP cheklovlari, shu jumladan tegishli API regressiyalari: 116 test o‘tdi. Serverga deploy qilinmadi. |
+| 2026-10-16 | AUD-21 | Keyingi 5-qadam uchun backend tayyorlik tekshiruvi va dependent xizmatlarning start shartlari tahlil qilindi. | Taklif tayyor, implementatsiya uchun alohida tasdiq kutiladi. |
+| 2026-10-16 | AUD-21 | Foydalanuvchi 5-qadamni tasdiqladi va uzilishdan keyin davom ettirishni buyurdi. Loopback readiness endpoint, lokal HTTP probe va production health dependency shartlari qo‘shildi. | LOKAL BAJARILDI: 11 yangi readiness, 9 HTTPS/Compose va 27 production settings testi; Ruff, system check va OpenAPI tekshiruvi o‘tdi. Haqiqiy serverga tegilmadi. |
+| 2026-10-16 | AUD-21 | 6-qadam uchun production build/dependency oqimi tekshirildi: unfrozen fallback, dev paketlari va runtime sync topildi. Productionni developmentdan ajratib tuzatish doirasi yozildi. | Taklif tayyor, implementatsiya uchun alohida tasdiq kutiladi. |
+| 2026-10-16 | AUD-21 | Foydalanuvchi 6-qadamga “Hozircha o‘zgartirma” deb javob berdi. | KEYINGA QOLDIRILDI. Ushbu qadam kodi o‘zgartirilmadi; qayta boshlash uchun yangi tasdiq kerak. |
+| 2026-10-16 | AUD-21 | Keyingi masala sifatida productionda texnik API schema/Swagger/Redoc ochiqligi kod va kutubxona defaultlari bo‘yicha tekshirildi. | 7-qadam taklifi yozildi. Faqat audit hujjati o‘zgardi; implementatsiya uchun alohida tasdiq kutiladi. |
+| 2026-10-16 | AUD-21 | Foydalanuvchi 7-qadamni tasdiqladi. Productionda uch texnik API hujjat route’i yopildi; development/test va offline OpenAPI saqlandi. | LOKAL BAJARILDI: 38 test o‘tdi, haqiqiy Markdownni yozadigan 1 ta eski test tashlandi. Serverga deploy qilinmadi; 6-qadam keyinga qoldirilgan holatda. |
+| 2026-10-16 | AUD-31 | Keyingi 8-qadam uchun access tokenning yo‘q version claimini qabul qilishi qayta tekshirildi; haqiqiy imzo va sun’iy user bilan tasdiqlandi. Refreshdagi mavjud yaxshilanish ham qayd etildi. | Faqat tahlil. Access/refresh claim tekshiruvini bir xil qat’iylashtirish alohida tasdiqni kutadi. |
+| 2026-10-16 | AUD-31 | Foydalanuvchi 8-qadamni tasdiqladi. Access va refresh uchun majburiy, aynan integer va joriy token_version qoidasi bitta helperga yig‘ildi. | LOKAL BAJARILDI: 30 yangi API testi, tegishli auth/parol/login regressiyalari bilan jami 136 test o‘tdi. Haqiqiy sessiyalar o‘zgartirilmadi va serverga deploy qilinmadi. |
+| 2026-10-16 | AUD-26 | 9-qadam uchun qo‘llanma tahrirlash testi tekshirildi: hozir asl Markdownni o‘zgartirib, oxirida qaytaradi. Vaqtinchalik test katalogi bilan ajratish taklifi yozildi. | Faqat tahlil. Kod o‘zgartirilmagan; alohida tasdiq kutiladi. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
@@ -801,4 +895,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** 1 va 2.1, shuningdek 3-qadamning lokal backup/tiklash tayyorgarligi bajarilgan. Jami 20 deployment testi o‘tdi; haqiqiy serverda zaxiralash faollashtirilmadi. Qolgan fiskal ishlar foydalanuvchi qarori bilan keyinga qoldirilgan. 4-qadamning umumiy so‘rov hisoblagichi taklifi alohida tasdiqni kutadi. Production POS cheklovi saqlanadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.
+**Joriy natija — 2026-10-16:** 1 va 2.1, 3-qadamning lokal backup/tiklash tayyorgarligi, 4-qadamning umumiy cache hisoblagichlari, 5-qadamning tayyorlik tekshiruvi, 7-qadamning production API hujjatlarini yopishi va 8-qadamning qat’iy token_version tekshiruvi bajarilgan. 8-qadamda tegishli 136 test o‘tdi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan, production POS cheklovi saqlanadi. 9-qadamning hujjat tahrirlash testini asl fayldan ajratish taklifi alohida tasdiqni kutadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.

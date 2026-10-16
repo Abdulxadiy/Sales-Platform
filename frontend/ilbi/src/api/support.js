@@ -1,10 +1,19 @@
-import { localStore } from '../utils/brandStorage.js';
+import { localStore, sessionStore } from '../utils/brandStorage.js';
 import { request } from './client';
 
+const newGuestKey = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, '0')).join('');
+let loginGuestKey = sessionStore.getItem('ilbi_login_support_guest');
+
+export function beginLoginSupportSession() {
+  loginGuestKey = newGuestKey();
+  sessionStore.setItem('ilbi_login_support_guest', loginGuestKey);
+}
+
 export function guestSupportKey() {
+  if (/^[a-f0-9]{64}$/.test(loginGuestKey || '')) return loginGuestKey;
   let key = localStore.getItem('ilbi_support_guest');
   if (!/^[a-f0-9]{64}$/.test(key || '')) {
-    key = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    key = newGuestKey();
     localStore.setItem('ilbi_support_guest', key);
   }
   return key;
@@ -29,10 +38,11 @@ export async function publicSupportRequest(path, options = {}) {
 }
 
 export function supportApi(authenticated, operator = false) {
-  const root = `/support/${operator ? 'inbox' : authenticated ? 'conversations' : 'guest'}/`;
+  const root = `/support/${authenticated && operator ? 'inbox' : authenticated ? 'conversations' : 'guest'}/`;
+  const guestToken = authenticated ? null : guestSupportKey();
   const call = (path = '', options = {}) => authenticated
     ? request(root + path, { ...options, skipTenant: true })
-    : publicSupportRequest(root + path, { ...options, headers: { 'X-Support-Token': guestSupportKey() } });
+    : publicSupportRequest(root + path, { ...options, headers: { 'X-Support-Token': guestToken } });
   return {
     list: (query = '') => call(query),
     create: (body, tenantId) => call('', { method: 'POST', body, headers: tenantId ? { 'X-Tenant-ID': String(tenantId) } : {} }),

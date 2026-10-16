@@ -4,6 +4,9 @@ import { localStore, sessionStore, markAuthenticationCurrent } from '../utils/br
  */
 
 const BASE_URL = '/api/v1';
+let authenticationGeneration = 0;
+export const getAuthenticationGeneration = () => authenticationGeneration;
+export const invalidateAuthenticationRequests = () => { authenticationGeneration += 1; };
 
 const queryString = (params = {}) => new URLSearchParams(Object.entries(params).filter(
   ([, value]) => value !== undefined && value !== null && value !== '',
@@ -22,7 +25,8 @@ export const getRefreshToken = () =>
   localStore.getItem('ilbi_refresh_token') ||
   sessionStore.getItem('ilbi_refresh_token');
 
-export const setTokens = (access, refresh, remember = null) => {
+export const setTokens = (access, refresh, remember = null, preserveSession = false) => {
+  if (!preserveSession) invalidateAuthenticationRequests();
   const shouldRemember = remember !== null
     ? remember
     : (Boolean(localStore.getItem('ilbi_access_token') || localStore.getItem('ilbi_refresh_token')) || isRememberMeActive());
@@ -41,6 +45,7 @@ export const setTokens = (access, refresh, remember = null) => {
 };
 
 export const clearTokens = () => {
+  invalidateAuthenticationRequests();
   localStore.removeItem('ilbi_access_token');
   localStore.removeItem('ilbi_refresh_token');
   localStore.removeItem('ilbi_user');
@@ -139,12 +144,14 @@ async function handleResponse(response, responseType) {
   return data;
 }
 
-let refreshPromise = null;
+let refreshOperation = null;
 
 export function refreshAccessToken() {
-  if (refreshPromise) return refreshPromise;
   const refresh = getRefreshToken();
-  refreshPromise = (async () => {
+  const generation = getAuthenticationGeneration();
+  if (refreshOperation?.refresh === refresh && refreshOperation.generation === generation) return refreshOperation.promise;
+  const operation = { refresh, generation };
+  operation.promise = (async () => {
     if (!refresh || isTokenExpired(refresh)) {
       const error = new Error('Sessiya muddati tugadi. Qaytadan kiring.');
       error.status = 401;
@@ -155,21 +162,26 @@ export function refreshAccessToken() {
       body: JSON.stringify({ refresh }),
     });
     const data = await handleResponse(response);
-    if (getRefreshToken() !== refresh) throw new Error('Sessiya o‘zgargan.');
-    setTokens(data.access, data.refresh || refresh);
+    if (getAuthenticationGeneration() !== generation || getRefreshToken() !== refresh) throw new Error('Sessiya o‘zgargan.');
+    setTokens(data.access, data.refresh || refresh, null, true);
     window.dispatchEvent(new CustomEvent('auth:token', { detail: data.access }));
     return data.access;
   })().catch((error) => {
-    if (getRefreshToken() === refresh && (error.status === 401 || !refresh || isTokenExpired(refresh))) {
+    if (getAuthenticationGeneration() === generation && getRefreshToken() === refresh && (error.status === 401 || !refresh || isTokenExpired(refresh))) {
       clearTokens();
       window.dispatchEvent(new Event('auth:logout'));
     }
     throw error;
-  }).finally(() => { refreshPromise = null; });
-  return refreshPromise;
+  }).finally(() => { if (refreshOperation === operation) refreshOperation = null; });
+  refreshOperation = operation;
+  return operation.promise;
 }
 
 export async function request(endpoint, options = {}) {
+  const generation = getAuthenticationGeneration();
+  const assertCurrentSession = () => {
+    if (getAuthenticationGeneration() !== generation) throw new Error('Sessiya o‘zgargan. Amalni qayta boshlang.');
+  };
   const url = `${BASE_URL}${endpoint}`;
   let body = options.body;
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
@@ -181,15 +193,7 @@ export async function request(endpoint, options = {}) {
     ...(options.headers || {}),
   };
 
-  let cachedUserId = null;
-  try {
-    const cachedUser = sessionStore.getItem('ilbi_user')
-      || localStore.getItem('ilbi_user');
-    cachedUserId = cachedUser ? JSON.parse(cachedUser)?.id : null;
-  } catch {
-    cachedUserId = null;
-  }
-  const userId = cachedUserId || parseJwt(getAccessToken())?.user_id;
+  const userId = parseJwt(getAccessToken())?.user_id;
   const tenantStorageKey = userId ? `ilbi_active_tenant:${userId}` : null;
   const activeTenantId = tenantStorageKey
     ? sessionStore.getItem(tenantStorageKey) || localStore.getItem(tenantStorageKey)
@@ -212,6 +216,7 @@ export async function request(endpoint, options = {}) {
 
   try {
     let response = await fetch(url, config);
+    assertCurrentSession();
 
     const isAuthRoute = endpoint.startsWith('/auth/admin-login')
       || endpoint.startsWith('/auth/token') || endpoint.startsWith('/auth/password-reset');
@@ -221,15 +226,19 @@ export async function request(endpoint, options = {}) {
       }
       const refreshed = getAccessToken() !== token && !isTokenExpired(getAccessToken())
         ? getAccessToken() : await refreshAccessToken();
+      assertCurrentSession();
       headers.Authorization = `Bearer ${refreshed}`;
       response = await fetch(url, { ...config, headers });
+      assertCurrentSession();
       if (response.status === 401 && getAccessToken() === refreshed) {
         clearTokens();
         window.dispatchEvent(new Event('auth:logout'));
       }
     }
 
-    return handleResponse(response, options.responseType);
+    const result = await handleResponse(response, options.responseType);
+    assertCurrentSession();
+    return result;
   } catch (error) {
     throw error;
   }

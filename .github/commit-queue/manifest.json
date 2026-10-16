@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T194532-e5985ee7",
+  "queue_id": "20261016T211551-a9716770",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "e5985ee77e7553b75da9bf918af809d587138cad",
-  "source_tree": "3810731c65139cb0d0df3ed6cd1c6abf4ef0189f",
-  "created_at": "2026-10-16T19:45:32.024012+05:00",
+  "snapshot_sha": "a9716770eddaf986ce805452a51a5fdf3f40714e",
+  "source_tree": "97041b80cd77a7fee9629f57e99edd4bbe1b06cc",
+  "created_at": "2026-10-16T21:15:51.978752+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -81,6 +81,7 @@
         "frontend/ilbi/src/App.jsx",
         "frontend/ilbi/src/components/layout/Layout.jsx",
         "frontend/ilbi/src/components/layout/Sidebar.jsx",
+        "frontend/ilbi/src/context/AuthContext.jsx",
         "frontend/ilbi/src/pages/Login.jsx",
         "frontend/ilbi/src/pages/SetupAccount.jsx"
       ],
@@ -90,7 +91,17 @@
       "id": "frontend-catalog-tools",
       "message": "feat(catalog-ui): connect imports product tools barcode labels and Excel downloads",
       "paths": [
+        "frontend/ilbi/src/api/client.js",
         "frontend/ilbi/src/pages/Catalog.jsx"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "frontend-inventory",
+      "message": "feat(inventory-ui): show expiry warnings batch selection and tenant transfer workflows",
+      "paths": [
+        "frontend/ilbi/src/components/inventory/RapidStockIntakeModal.jsx",
+        "frontend/ilbi/src/pages/Inventory.jsx"
       ],
       "atomic_unit": "application"
     },
@@ -99,6 +110,7 @@
       "message": "feat(sales-ui): separate debt and B2B pages and retain safe checkout retries",
       "paths": [
         "frontend/ilbi/src/components/common/ReceiptSlip.jsx",
+        "frontend/ilbi/src/pages/POS.jsx",
         "frontend/ilbi/src/pages/PublicReceiptView.jsx"
       ],
       "atomic_unit": "application"
@@ -138,6 +150,14 @@
       "atomic_unit": "application"
     },
     {
+      "id": "ci-and-client-regressions",
+      "message": "ci(validation): test binary downloads barcode layouts and record the reviewed release queue",
+      "paths": [
+        "frontend/ilbi/tests/client.test.js"
+      ],
+      "atomic_unit": "application"
+    },
+    {
       "id": "ilbi-rebranding",
       "message": "feat(branding): apply ILBI identity and preserve existing sessions and deployment resources",
       "paths": [
@@ -147,6 +167,7 @@
         "docs/SUPPORT.md",
         "docs/qollanmalar/owner_amaliy_qollanma.md",
         "docs/qollanmalar/platform_admin_amaliy_qollanma.md",
+        "frontend/ilbi/README.md",
         "frontend/ilbi/index.html",
         "frontend/ilbi/public/landing/checkout-dark.png",
         "frontend/ilbi/public/landing/dashboard-dark.png",
@@ -158,6 +179,8 @@
         "frontend/ilbi/public/landing/team-dark.png",
         "frontend/ilbi/public/robots.txt",
         "frontend/ilbi/src/api/platform.js",
+        "frontend/ilbi/src/api/support.js",
+        "frontend/ilbi/src/components/auth/SessionRecovery.jsx",
         "frontend/ilbi/src/components/common/FiscalMetadataFields.jsx",
         "frontend/ilbi/src/components/common/IdentityRecoveryModal.jsx",
         "frontend/ilbi/src/components/common/ReceiptItemCodes.jsx",
@@ -166,6 +189,9 @@
         "frontend/ilbi/src/components/landing/carouselScenes.js",
         "frontend/ilbi/src/components/platform/PlatformSettings.jsx",
         "frontend/ilbi/src/components/platform/platform-admin.css",
+        "frontend/ilbi/src/components/support/HelpLauncher.jsx",
+        "frontend/ilbi/src/hooks/useAccountDraft.js",
+        "frontend/ilbi/src/hooks/useAccountDraftFile.js",
         "frontend/ilbi/src/hooks/useCarouselPlayback.js",
         "frontend/ilbi/src/hooks/useLandingMotion.js",
         "frontend/ilbi/src/pages/AcceptTerms.jsx",
@@ -174,6 +200,10 @@
         "frontend/ilbi/src/pages/LandingMotion.css",
         "frontend/ilbi/src/pages/PlatformAccounts.jsx",
         "frontend/ilbi/src/pages/PlatformDashboard.jsx",
+        "frontend/ilbi/src/pages/Support.jsx",
+        "frontend/ilbi/src/utils/accountDrafts.js",
+        "frontend/ilbi/src/utils/draftFiles.js",
+        "frontend/ilbi/tests/accountDrafts.test.js",
         "frontend/ilbi/tests/authSession.browser.mjs",
         "frontend/ilbi/tests/browser/authFixture.js",
         "frontend/ilbi/tests/browser/catalogFiscal.html",
@@ -193,6 +223,7 @@
         "ilbi/apps/accounts/tests/test_avatar_storage.py",
         "ilbi/apps/accounts/tests/test_createsuperuser.py",
         "ilbi/apps/accounts/tests/test_demo_production_isolation.py",
+        "ilbi/apps/accounts/tests/test_login_security_boundary.py",
         "ilbi/apps/accounts/tests/test_platform_admin_workspace.py",
         "ilbi/apps/accounts/tests/test_terms_and_docs_views.py",
         "ilbi/apps/accounts/tests/test_token_version_validation.py",
@@ -489,6 +520,18 @@
         "branding/ilbi-motion-studio/qa/carousel/viewer-1440-zoomed.png",
         "branding/ilbi-motion-studio/qa/carousel/viewer-320-zoomed.png",
         "branding/ilbi-motion-studio/qa/carousel/viewer-390-zoomed.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-dark-1440-checkout.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-dark-1440-pos.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-dark-1440-team.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-dark-390-checkout.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-dark-390-pos.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-dark-390-team.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-light-1440-checkout.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-light-1440-pos.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-light-1440-team.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-light-390-checkout.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-light-390-pos.png",
+        "branding/ilbi-motion-studio/qa/landing/carousel-light-390-team.png",
         "branding/ilbi-motion-studio/qa/landing/desktop-dark.png",
         "branding/ilbi-motion-studio/qa/landing/desktop-light.png",
         "branding/ilbi-motion-studio/qa/landing/full-dark.png",
@@ -497,7 +540,18 @@
         "branding/ilbi-motion-studio/qa/landing/mobile-light.png",
         "branding/ilbi-motion-studio/qa/landing/product-dark.png",
         "branding/ilbi-motion-studio/qa/landing/report.json",
+        "branding/ilbi-motion-studio/qa/landing/scroll-dark-1440-phase1.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-dark-1440-phase3.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-dark-390-phase1.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-dark-390-phase3.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-light-1440-phase1.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-light-1440-phase3.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-light-390-phase1.png",
+        "branding/ilbi-motion-studio/qa/landing/scroll-light-390-phase3.png",
         "branding/ilbi-motion-studio/qa/landing/tour-dark.png",
+        "branding/ilbi-motion-studio/qa/landing/viewer-1440-zoomed.png",
+        "branding/ilbi-motion-studio/qa/landing/viewer-320-zoomed.png",
+        "branding/ilbi-motion-studio/qa/landing/viewer-390-zoomed.png",
         "branding/ilbi-motion-studio/qa/login-entry/desktop-dark.png",
         "branding/ilbi-motion-studio/qa/login-entry/desktop-light.png",
         "branding/ilbi-motion-studio/qa/login-entry/full-dark.png",

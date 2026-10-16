@@ -1,7 +1,7 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
-import { refreshAccessToken, request, getAccessToken, getRefreshToken, setTokens, inventoryApi, catalogApi } from '../src/api/client.js';
+import { refreshAccessToken, request, getAccessToken, getRefreshToken, setTokens, clearTokens, inventoryApi, catalogApi } from '../src/api/client.js';
 import { getOrCreateRequestKey } from '../src/utils/requestKey.js';
 
 class Storage {
@@ -121,6 +121,73 @@ test('public login requests omit expired authorization', async () => {
     return json({ login_ticket: 'ticket' });
   };
   assert.deepEqual(await request('/auth/admin-login/', { method: 'POST', body: {} }), { login_ticket: 'ticket' });
+});
+
+test('a private response arriving after logout is discarded', async () => {
+  setTokens(token(), token());
+  let finish;
+  globalThis.fetch = () => new Promise(resolve => { finish = resolve; });
+  const pending = request('/support/conversations/');
+  clearTokens();
+  finish(json({ results: [{ text: 'old private history' }] }));
+  await assert.rejects(pending, /Sessiya o‘zgargan/);
+});
+
+test('logging back into the same user cannot reuse an earlier private response', async () => {
+  setTokens(token(), token());
+  let finish;
+  globalThis.fetch = () => new Promise(resolve => { finish = resolve; });
+  const pending = request('/auth/me/');
+  clearTokens();
+  setTokens(token(), token());
+  finish(json({ id: 1, role: 'platform_admin' }));
+  await assert.rejects(pending, /Sessiya o‘zgargan/);
+});
+
+test('a new login does not join the previous session refresh', async () => {
+  setTokens(token(1, 1), token(1));
+  const completions = [];
+  globalThis.fetch = () => new Promise(resolve => completions.push(resolve));
+  const old = refreshAccessToken();
+  clearTokens();
+  setTokens(token(2, 1), token(2));
+  const current = refreshAccessToken();
+  assert.equal(completions.length, 2);
+  completions[0](json({ access: token(1) }));
+  await assert.rejects(old, /Sessiya o‘zgargan/);
+  completions[1](json({ access: token(2) }));
+  assert.equal(await current, getAccessToken());
+});
+
+test('a late retry rejection cannot clear the next session for the same account', async () => {
+  const valid = token();
+  setTokens(token(1, 1), valid);
+  let finishRetry;
+  let attempt = 0;
+  globalThis.fetch = async url => {
+    if (url.endsWith('/token/refresh/')) return json({ access: valid });
+    if (++attempt === 1) return json({ detail: 'expired' }, 401);
+    return new Promise(resolve => { finishRetry = resolve; });
+  };
+  const pending = request('/auth/me/');
+  while (!finishRetry) await new Promise(resolve => setImmediate(resolve));
+  clearTokens();
+  setTokens(valid, valid);
+  finishRetry(json({ detail: 'revoked old request' }, 401));
+  await assert.rejects(pending, /Sessiya o‘zgargan/);
+  assert.equal(getAccessToken(), valid);
+});
+
+test('tenant selection follows the current token rather than a stale profile cache', async () => {
+  setTokens(token(2), token(2));
+  localStorage.setItem('ilbi_user', JSON.stringify({ id: 1 }));
+  localStorage.setItem('ilbi_active_tenant:1', '111');
+  localStorage.setItem('ilbi_active_tenant:2', '222');
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.headers['X-Tenant-ID'], '222');
+    return json([]);
+  };
+  await request('/sales/');
 });
 
 test('financial request key survives retries and regenerates when the payload changes', () => {

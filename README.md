@@ -96,14 +96,39 @@ npm run lint
 
 Production uses a separate Compose file with a built React bundle served by Nginx. The development Vite server is used only by `docker-compose.yml`.
 
-1. Configure `.env`, `ilbi/.env` and `telegram_bot_sms/.env`, replacing example credentials. Set explicit `ALLOWED_HOSTS` and the actual `FRONTEND_URL`; wildcard hosts are rejected with `DEBUG=False`.
-2. Launch the production layout when deploying:
+1. Prepare separate production environment files on the server:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+cp .env.production.example .env.production
+cp ilbi/.env.production.example ilbi/.env.production
+cp telegram_bot_sms/.env.production.example telegram_bot_sms/.env.production
 ```
 
-The backend entrypoint applies migrations and collects static files. Only the frontend HTTP port is published. Domain selection and HTTPS termination are configured when the deployment address is chosen.
+2. Set `PUBLIC_HOST` to the canonical domain in `.env.production`. Use unique production secrets, matching database credentials in the root/backend files, and matching bot/internal tokens in the backend/bot files. Set the real SMTP credentials in the backend file. Production does not load the local development `.env`.
+3. Obtain a trusted TLS certificate for `PUBLIC_HOST`. Put the certificate chain in `fullchain.pem` and its private key in `privkey.pem` under the absolute directory specified by `TLS_CERT_DIR`. Mount the actual files, or a directory containing every symlink target. The directory is mounted read-only; a missing directory or certificate makes startup fail. Keep the private key outside the repository. Renew the certificate before expiry and reload the frontend Nginx after renewal.
+4. Validate the deployment configuration and production settings before launching:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml config -q
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm --no-deps --entrypoint python ilbi manage.py check --deploy
+```
+
+5. Launch the production layout only after the remaining release requirements are met:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+```
+
+Only frontend ports 80/443 are published. Nginx terminates TLS, redirects HTTP to the configured HTTPS domain, rejects unknown hosts, and overwrites client-supplied proxy headers. Django trusts this private edge, sets secure session/CSRF cookies, and redirects public HTTP requests. Internal authenticated `/api/v1/internal/` calls remain HTTP inside Docker; the public edge blocks this entire prefix. The backend must not be published directly. An additional load balancer or CDN requires its own reviewed proxy configuration; do not forward arbitrary client `X-Forwarded-*` headers through this edge.
+
+Production uses `config.settings_production`, rejects debug/demo mode and wildcard hosts, requires an HTTPS frontend origin matching `ALLOWED_HOSTS`, and disables Gunicorn reload even if its environment flag is enabled. Development continues to use its existing `.env` and `config.settings`.
+
+HSTS initially applies only to the canonical domain for one hour (`SECURE_HSTS_SECONDS=3600`, set in the root production environment). Increase it after verifying HTTPS and certificate renewal. `includeSubDomains` and browser preload are deliberately disabled until every affected domain is ready; Django `check --deploy` therefore reports the corresponding two advisory warnings. Do not enable preload just to remove these warnings.
+
+For local regression checks, run `cd ilbi && uv run pytest apps/core/tests/test_production_settings.py -q`.
+From the repository root, `python -m unittest discover -s tests/deployment -v` checks the rendered Compose configuration and a real isolated Nginx TLS edge. It requires Docker, OpenSSL and already available `nginx:alpine` / `python:3.12-slim` images. It creates temporary test certificates/containers, uses no application database, and removes its resources afterwards.
+
+The existing backend entrypoint still applies migrations and collects static files; restructuring startup is a separate release task.
 
 For optional MinIO storage, set `USE_MINIO=True` in the backend environment, use matching MinIO credentials in both environment files and add `--profile minio` to the Compose command. Startup creates the private media bucket if needed; browser image URLs use `/media/` through the application proxy.
 

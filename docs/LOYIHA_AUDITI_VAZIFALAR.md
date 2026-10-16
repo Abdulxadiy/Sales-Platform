@@ -395,7 +395,14 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 
 **Bajarildi mezoni:** build artefakti Nginx orqali beriladi; HTTPS/host/secret talablari bajarilgan; DB kutishi workerning hamma so‘rovini to‘smasligi tekshirilgan; deployment va restore jarayoni yozilgan. Bog‘liq: T9.1–T9.5.
 
-**Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
+**Yangilanish — 2026-10-16, production tayyorgarligining 1-qadami:** foydalanuvchi faqat production konfiguratsiyasi, HTTPS/proxy, xavfsiz cookie va Gunicorn reload tuzatishini tasdiqladi. **AUD-21 qisman bajarildi; serverga deploy qilinmadi.**
+
+- `config.settings_production` mahalliy `.env`ni o‘qimaydi; production uchun uchta `.env.production.example` tayyorlandi, haqiqiy `.env.production` fayllari Git’dan chiqarildi. Debug/demo, wildcard host va HTTP frontend origin bilan production ishga tushmaydi.
+- Production Nginx 80→443 yo‘naltiradi, noma’lum Host/SNI’ni rad etadi, TLS sertifikatlarini read-only mount qiladi va mijoz yuborgan proxy headerlarini qayta yozadi. Regex location ichki API blokini chetlab o‘tmasligi uchun `^~ /api/v1/internal/` ishlatiladi.
+- Django’da HTTPS proxy ishonchi, secure session/CSRF cookie’lari va canonical HTTPS redirect qo‘shildi. Ichki tokenli Docker HTTP ulanishi saqlandi. Production’da Gunicorn reload yoqilmaydi.
+- HSTS canonical domen uchun dastlab 3600 soniya. Barcha subdomenlar tekshirilmaguncha `includeSubDomains` va browser preload yoqilmadi; `check --deploy`dagi shu ikki maslahat ogohlantirishi yashirilmagan.
+- To‘liq backend tekshiruvi: **611 passed**. TLS/proxy va Compose uchun alohida regressiya tekshiruvlari `tests/deployment/`da. Haqiqiy domen sertifikati, DNS va sertifikat yangilashni serverda tekshirish deploy bosqichida qoladi.
+- Qolgan AUD-21 ishlari (deterministik image, startup/migratsiya ajratilishi, readiness, backup/restore va monitoring) bu tasdiqqa kirmaydi; keyingi alohida qarorlarni kutadi.
 
 ### AUD-22 — Hujjat versiyalari va rozilik dalili
 

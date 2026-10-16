@@ -20,6 +20,7 @@ def production_env(**overrides):
         "DJANGO_SECRET_KEY": TEST_KEY,
         "ALLOWED_HOSTS": "production.example,ilbi",
         "FRONTEND_URL": "https://production.example",
+        "REDIS_URL": "redis://127.0.0.1:1/0",  # Settings-only checks never connect.
         **overrides,
     }
 
@@ -43,7 +44,7 @@ def inspect_settings(**overrides):
         "['DEBUG','LOCAL_DEMO_LOGIN_ENABLED','SECURE_SSL_REDIRECT','SECURE_SSL_HOST',"
         "'SECURE_PROXY_SSL_HEADER','SESSION_COOKIE_SECURE','CSRF_COOKIE_SECURE',"
         "'CSRF_TRUSTED_ORIGINS','SECURE_HSTS_SECONDS','SECURE_HSTS_INCLUDE_SUBDOMAINS',"
-        "'SECURE_HSTS_PRELOAD','EMAIL_HOST_USER','REDIS_URL']}))",
+        "'SECURE_HSTS_PRELOAD','EMAIL_HOST_USER','REDIS_URL','CACHES']}))",
         **overrides,
     )
     assert result.returncode == 0, result.stderr
@@ -62,7 +63,10 @@ def test_production_security_and_no_local_dotenv_fallback():
     assert values["SECURE_HSTS_INCLUDE_SUBDOMAINS"] is values["SECURE_HSTS_PRELOAD"] is False
     # A developer's actual .env must never fill missing production values.
     assert values["EMAIL_HOST_USER"] == ""
-    assert values["REDIS_URL"] is None
+    assert values["REDIS_URL"] == "redis://127.0.0.1:1/0"
+    assert values["CACHES"]["default"]["BACKEND"] == "django.core.cache.backends.redis.RedisCache"
+    assert values["CACHES"]["default"]["LOCATION"] == values["REDIS_URL"]
+    assert values["CACHES"]["default"]["KEY_PREFIX"] != values["CACHES"]["support"]["KEY_PREFIX"]
 
 
 @pytest.mark.parametrize(
@@ -82,6 +86,11 @@ def test_production_security_and_no_local_dotenv_fallback():
         ({"SECURE_HSTS_SECONDS": "invalid"}, "SECURE_HSTS_SECONDS"),
         ({"SECURE_HSTS_SECONDS": "0"}, "SECURE_HSTS_SECONDS"),
         ({"SECURE_HSTS_SECONDS": "-1"}, "SECURE_HSTS_SECONDS"),
+        ({"REDIS_URL": ""}, "REDIS_URL"),
+        ({"REDIS_URL": "http://redis:6379/0"}, "REDIS_URL"),
+        ({"REDIS_URL": "redis:///0"}, "REDIS_URL"),
+        ({"REDIS_URL": "redis://redis:wrong/0"}, "REDIS_URL"),
+        ({"REDIS_URL": "redis://redis:0/0"}, "REDIS_URL"),
     ],
 )
 def test_invalid_production_configuration_fails_before_startup(overrides, field):

@@ -126,7 +126,9 @@ Production uses `config.settings_production`, rejects debug/demo mode and wildca
 HSTS initially applies only to the canonical domain for one hour (`SECURE_HSTS_SECONDS=3600`, set in the root production environment). Increase it after verifying HTTPS and certificate renewal. `includeSubDomains` and browser preload are deliberately disabled until every affected domain is ready; Django `check --deploy` therefore reports the corresponding two advisory warnings. Do not enable preload just to remove these warnings.
 
 For local regression checks, run `cd ilbi && uv run pytest apps/core/tests/test_production_settings.py -q`.
-From the repository root, `python -m unittest discover -s tests/deployment -v` checks the rendered Compose configuration and a real isolated Nginx TLS edge. It requires Docker, OpenSSL and already available `nginx:alpine` / `python:3.12-slim` images. It creates temporary test certificates/containers, uses no application database, and removes its resources afterwards.
+From the repository root, `python -m unittest discover -s tests/deployment -v` checks the rendered Compose configuration, a real isolated Nginx TLS edge, and encrypted backup/recovery against a synthetic PostgreSQL database. It requires Docker, OpenSSL, GnuPG (`gpg` / `gpgconf`) and already available `nginx:alpine`, `python:3.12-slim` and `postgres:16-alpine` images. It creates temporary test certificates/containers, uses no application database, and removes its resources afterwards.
+
+[Encrypted data backup and recovery](docs/DATA_BACKUP_RESTORE_UZ.md) covers the PostgreSQL 16 database, local media and editable docs. The utility requires stopped writers and restores only into new isolated resources. MinIO storage needs a separate backup adapter. Production scheduling, off-server copies and actual server activation remain separate deployment tasks.
 
 The existing backend entrypoint still applies migrations and collects static files; restructuring startup is a separate release task.
 

@@ -1,7 +1,7 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman) va 2.1-qadami (AUD-01 qisman) bajarildi. Foydalanuvchi qolgan fiskal ishlarni, jumladan ma’qullangan, ammo boshlanmagan 2.2ni keyinga qoldirdi; batafsil qo‘llanma saqlandi. Navbatdagi 3-qadam — DB/media zaxiralash va tiklash — tahlil qilindi, implementatsiya alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
+**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman) va 3-qadamining lokal tayyorgarligi bajarildi. Shifrlangan DB/media/hujjat zaxirasi va ajratilgan tiklash vositasi sun’iy ma’lumotlarda tekshirildi; haqiqiy serverda faollashtirilmadi. Foydalanuvchi qolgan fiskal ishlarni, jumladan ma’qullangan, ammo boshlanmagan 2.2ni keyinga qoldirdi; batafsil qo‘llanma saqlandi. Navbatdagi 4-qadam taklifi — mavjud so‘rov limitlarini umumiy hisoblash — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
 **Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
 
 ## 1. Tahlil chegarasi va mavjud holat
@@ -486,7 +486,7 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 
 #### 2026-10-16 — production tayyorgarligining 3-qadami uchun taklif: ma’lumot zaxirasi va tiklash
 
-**Holat:** tahlil va aniq taklif tayyor; implementatsiya tasdiqlanmagan. Foydalanuvchi ishlarni birma-bir tasdiqlash tartibi bo‘yicha keyingi qarorni beradi.
+**Holat:** foydalanuvchi sodda tushuntirishdan keyin **“Ha, tayyorla”** deb tasdiqladi. Quyidagi doiraning lokal implementatsiyasi va sun’iy tiklash sinovi bajarildi. Serverda faollashtirish, avtomatik jadval va tashqi nusxa alohida kelishiladi.
 
 **Aniq dalillar:** `automation/README.md` va `scripts/install_backup_timer.py` faqat kodni GitHubga zaxiralashni tavsiflaydi. `scripts/commit_queue.py` media, maxfiy env/kalit va bazaga tegishli fayllarni chiqarib tashlaydi. Repoda production DB/media uchun `pg_dump`/tiklash skripti va tiklash sinovi topilmadi. Serverda tashqi backup tizimi bor-yo‘qligi bu tahlilda tekshirilmagan.
 
@@ -503,6 +503,27 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 **Tegilishi rejalashtirilgan qismlar:** `scripts/`da DB/media backup/restore vositalari; `tests/deployment/`da ajratilgan tiklash sinovi; production runbook va sir qiymatlarisiz sozlash namunasi. Zarur bo‘lsa backup uchun alohida Compose servis/profile tayyorlanadi. Mavjud source-backup/commit-queue oqimi o‘zgartirilmaydi.
 
 **Bajarildi mezoni:** yangi ajratilgan DB/media nusxasidan sintetik ma’lumot va fayllar to‘g‘ri tiklanadi; checksum va xato holatlari tekshiriladi; noto‘g‘ri production nishoniga tasodifiy restore rad etiladi; maxfiy qiymatlar logga chiqmaydi; serverdagi faollashtirish va boshqa joydagi nusxa bo‘yicha qolgan tashqi ishlar aniq ko‘rsatiladi. Haqiqiy server/offsite restore sinovisiz to‘liq production tiklash kafolati berilmaydi.
+
+**Bajarilgan ish — 2026-10-16:**
+
+- `scripts/data_backup.py`: PostgreSQL 16 custom dump + mahalliy media + hujjatlarni bitta manifestga yig‘ish; GnuPG AES-256 shifrlash; parolni yopiq tashqi fayldan FD orqali uzatish; arxivni qayta ochib checksum tekshirgandan keyin atomar e’lon qilish. Repo ichiga ma’lumot yozish, parallel nusxa olish va oldingi arxiv ustidan yozish rad etiladi.
+- Yozuvchi Compose xizmatlari to‘xtatilgani tekshiriladi; vosita ularni o‘zi to‘xtatmaydi. MinIO aniqlansa mahalliy media bilan to‘liq nusxa deb muvaffaqiyat qaytarmaydi. Tashqi yozuvchilar va hujjat tahririni to‘xtatish operator mas’uliyati.
+- Restore faqat yangi PostgreSQL konteyneri/volume va yangi katalogga bajariladi. Port ochilmaydi, tarmoq ulanmaydi, mavjud DBni nishon qilish parametri yo‘q. GnuPG yaxlitligi, barcha checksumlar va xavfsiz tar tarkibi DB yaratishdan oldin tekshiriladi. Xatoda faqat shu urinishning belgilangan resurslari tozalanadi.
+- Sir qiymatlarisiz `ops/data-backup.example.json`, [operator yo‘riqnomasi](DATA_BACKUP_RESTORE_UZ.md), README havolalari va `.gitignore` himoyasi qo‘shildi. Mavjud commit-queue/source-backup o‘zgartirilmadi. Ilova modeli, real DB va haqiqiy envga tegilmadi.
+
+**Tekshiruv:** yangi **11 backup testi** haqiqiy GnuPG va ajratilgan PostgreSQL 16 bilan o‘tdi. Sun’iy savdo summalari, qarz, binary support fayli, rasm/hujjat, bo‘sh katalog, foreign key va sequence tiklandi; manba o‘zgarmadi. Xato parol, shikastlangan arxiv, checksum, traversal/link, mavjud destination, pg_dump xatosi, parallel run, ishlayotgan writer va MinIO rad etilishi tekshirildi. Barcha deployment testlari birga: **20/20 passed, 15.030 s**; Ruff format/check va yangi hujjat havolalari/JSON tekshiruvi o‘tdi. Sinov resurslari tozalandi.
+
+**Qolgan ishlar:** serverdagi real sozlamalar va xizmat oynasi; kalitning alohida nusxasi; boshqa serverga shifrlangan arxiv ko‘chirish va qayta yuklab tiklash; jadval, monitoring va retention; real ilova versiyasi bilan tiklash mashqi. `.env`, TLS kaliti, global DB rollari/qo‘shimcha bazalar va Redis/Celery navbati avtomatik arxivga kirmaydi. MinIO uchun alohida adapter kerak. Shu sabab AUD-21 umumiy holati hali **QISMAN BAJARILDI**.
+
+#### 2026-10-16 — 4-qadam uchun taklif: mavjud so‘rov limitlarini umumiy hisoblash
+
+**Holat:** amaldagi kod qayta tekshirildi; taklif tayyor, implementatsiya tasdiqlanmagan.
+
+**Dalil:** `ilbi/config/settings.py`da default cache `LocMemCache`; production sozlamasi uni almashtirmaydi. `PublicReceiptRateThrottle` ochiq chek uchun `60/minute`, `MyTenantsView` yangi do‘kon uchun `5/day` cheklovini DRF cache orqali hisoblaydi. Bir necha Gunicorn jarayoni yoki instance bilan hisoblagichlar alohida qoladi. Support throttle va loginning o‘z Redis mexanizmi bor; ular bilan bir xil muammo deb ko‘rsatilmaydi.
+
+**Taklif doirasi:** production default cacheni mavjud Redisga alohida prefiks bilan ulash; mavjud limitlarning qiymati va tegishli API xatti-harakatini saqlash; ikki alohida jarayondan bitta hisob ko‘rinishini ajratilgan Redisda tekshirish. Haqiqiy serverga deploy alohida. Bu keskin parallel so‘rovlar uchun atomar throttle yoki to‘liq DDoS himoyasi kafolati emas; bunday kengayish alohida baholanadi.
+
+**Qabul mezoni:** productionda ochiq chek va do‘kon yaratish urinishlari workerlar orasida umumiy ko‘rinadi; kutilgan `429` tekshiriladi; support, login va development/test muhitining ajratilishi buzilmaydi. Ilova kodi foydalanuvchi roziligidan keyin o‘zgartiriladi.
 
 ### AUD-22 — Hujjat versiyalari va rozilik dalili
 
@@ -742,6 +763,8 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 
 **Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
 
+**Qo‘shimcha dalil — 2026-10-16:** backup yo‘riqnomasi havolalarini tekshirishda asosiy README ichidagi avvaldan mavjud `REBRANDING_AUDIT_ILBI_UZ.md` havolasi nishoni topilmadi. Yangi backup havolalari to‘g‘ri; eski uzilgan havola ushbu 3-qadamda o‘zgartirilmadi.
+
 ## 4. Muhokama va bajarilish jurnali
 
 | Sana | Tegishli vazifa | Muhokama yoki qaror | Natija |
@@ -754,6 +777,8 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-01 | 2.1 bo‘yicha foydalanuvchi tanlovni agentga topshirdi. Katalog MXIK/qadoq rekvizitlari va yangi savdo satrida o‘zgarmas mahsulot nusxasi bajarildi; lokal nullable migratsiyalar qo‘llandi. | 2.1 BAJARILDI, AUD-01 QISMAN BAJARILDI. 628 backend testi, frontend unit/build/lint, ikki browser tekshiruvi va OpenAPI tekshiruvi o‘tdi. 2.2 taklifi alohida tasdiqni kutadi. |
 | 2026-10-16 | AUD-01 | Foydalanuvchi 2.2ni ma’qullab, avval provayder va Uzum ulanishini muhokama qilishni so‘radi; so‘ng fiskal ishni vaqtincha keyinga qoldirib, batafsil MD va boshqa production bosqichiga o‘tishni buyurdi. | Fiskal qo‘llanma yaratildi. 2.2 va haqiqiy integratsiya boshlanmagan, keyinga qoldirildi; 2.1 saqlandi va production POS gate o‘zgarmadi. |
 | 2026-10-16 | AUD-21 | Navbatdagi 3-qadam uchun repodagi backup oqimi tekshirildi: mavjud zaxira faqat source kodga tegishli; DB/media tiklash vositalari topilmadi. Aniq doira, fayllar va qabul mezoni yozildi. | Tahlil tayyor, backup implementatsiyasi alohida tasdiqni kutadi. Serverdagi tashqi backup holati tekshirilmagan. |
+| 2026-10-16 | AUD-21 | Foydalanuvchi 3-qadamni “Ha, tayyorla” deb tasdiqladi. Shifrlangan DB/media/docs nusxasi, faqat yangi ajratilgan resursga restore, sozlama namunasi va yo‘riqnoma yaratildi. | 3-qadamning LOKAL TAYYORGARLIGI BAJARILDI: 11 yangi backup + 9 HTTPS/deployment testi, jami 20/20 o‘tdi. Haqiqiy server/timer/offsite yoqilmadi. |
+| 2026-10-16 | AUD-21 | Keyingi 4-qadam taklifi: ochiq chek va yangi do‘konning cache hisoblagichlari production workerlarida umumiy Redisga o‘tkazilishi. Dalil va tekshiruv mezoni AUD-21da. | Faqat tahlil. Implementatsiya alohida tasdiqni kutadi. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
@@ -776,4 +801,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** 1 va 2.1 bajarilgan. Qolgan fiskal ishlar foydalanuvchi qarori bilan keyinga qoldirilgan, batafsil qo‘llanma saqlangan. Production tayyorgarligining navbatdagi 3-qadami — DB/media zaxiralash va tiklash — aniq taklif bilan alohida tasdiqni kutadi. Production POS cheklovi saqlanadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.
+**Joriy natija — 2026-10-16:** 1 va 2.1, shuningdek 3-qadamning lokal backup/tiklash tayyorgarligi bajarilgan. Jami 20 deployment testi o‘tdi; haqiqiy serverda zaxiralash faollashtirilmadi. Qolgan fiskal ishlar foydalanuvchi qarori bilan keyinga qoldirilgan. 4-qadamning umumiy so‘rov hisoblagichi taklifi alohida tasdiqni kutadi. Production POS cheklovi saqlanadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.

@@ -34,4 +34,6 @@ Yangilangan: **2026-10-16**. Qo‘llanmalar hozirgi kod va interfeysga moslashti
 
 [Fiskal xizmat va Uzum orqali ulanish](FISKAL_UZUM_QOLLANMA_UZ.md) — terminaldan farqi, tashkilotchi va dasturchi vazifalari, rasmiy manbalar, ochiq savollar va keyinchalik ishga tushirish rejasi. Ushbu integratsiya foydalanuvchi qarori bilan hozircha keyinga qoldirilgan.
 
+[Ma’lumotlarni zaxiralash va tiklash](DATA_BACKUP_RESTORE_UZ.md) — DB, mahalliy rasmlar va hujjatlarning shifrlangan nusxasi, xavfsiz tiklash sinovi va serverda keyin kelishiladigan ishlar.
+
 Master Plan, arxitektura rejasi, audit va qonunchilik muhokamasi ish yuritish materiallaridir. Ulardagi reja yoki qarorni tayyor funksiya deb foydalanuvchi qo‘llanmasiga ko‘chirmang. Huquqiy masalalar bo‘yicha mavjud qarorlar [walkthrough](OZBEKISTON_QONUNI_WALKTHROUGH.md)da saqlanadi.

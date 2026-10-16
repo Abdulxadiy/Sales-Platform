@@ -21,7 +21,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -114,7 +114,7 @@ export default function Login() {
       const res = await loginStep1(username.trim(), password, rememberMe);
       if (res.demo_login === true && res.access && res.refresh) {
         toast.success('Sinov akkauntiga kirildi');
-        navigate('/');
+        navigate('/dashboard');
         return;
       }
       if (!res.login_ticket) throw new Error('Kirishni davom ettirib bo‘lmadi. Qayta urinib ko‘ring.');
@@ -195,7 +195,7 @@ export default function Login() {
       }
       await loginStep2(username.trim(), loginTicket, otpCode, rememberMe);
       toast.success('Xush kelibsiz!');
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       if (err.data?.error === 'invalid_or_expired_login_ticket') {
         setLoginTicket('');
@@ -401,7 +401,9 @@ export default function Login() {
         {/* Brand Logo & Heading */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ display: 'inline-flex', justifyContent: 'center', marginBottom: 12 }}>
-            <IlbiLogo size={58} variant="vertical" />
+            <Link to="/" aria-label="ILBI bosh sahifaga qaytish">
+              <IlbiLogo size={58} variant="vertical" />
+            </Link>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '4px 0 0', fontWeight: 500, letterSpacing: '0.04em' }}>
             Savdo Platformasi & POS Tizimi

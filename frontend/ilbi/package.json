@@ -15,7 +15,8 @@
     "test:catalog-fiscal": "node tests/catalogFiscal.browser.mjs",
     "test:theme": "node tests/theme.browser.mjs",
     "build:theme-preview": "node tests/buildThemePreview.mjs",
-    "test:theme-interactions": "node tests/themeInteractions.browser.mjs"
+    "test:theme-interactions": "node tests/themeInteractions.browser.mjs",
+    "test:landing": "node tests/landing.browser.mjs"
   },
   "dependencies": {
     "@zxing/library": "^0.21.3",

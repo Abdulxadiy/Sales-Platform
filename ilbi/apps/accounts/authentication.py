@@ -1,6 +1,7 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 
+from .services.demo_access_service import DemoAccessService
 from .token_validation import has_current_token_version
 
 
@@ -15,7 +16,7 @@ class CustomJWTAuthentication(JWTAuthentication):
     def get_user(self, validated_token):
         user = super().get_user(validated_token)
 
-        if not has_current_token_version(validated_token, user):
+        if DemoAccessService.is_blocked(user) or not has_current_token_version(validated_token, user):
             raise AuthenticationFailed(
                 "Token has been revoked or expired.",
                 code="token_revoked",

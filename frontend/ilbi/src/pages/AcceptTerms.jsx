@@ -38,7 +38,7 @@ export default function AcceptTerms() {
     if (!isAuthenticated) {
       navigate('/login', { replace: true });
     } else if (hasAcceptedTerms) {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, hasAcceptedTerms, navigate]);
 
@@ -67,7 +67,7 @@ export default function AcceptTerms() {
     try {
       await acceptTerms();
       toast.success('Shartlar muvaffaqiyatli qabul qilindi. Xush kelibsiz!');
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       toast.error(err.message || 'Rozilikni qayd etishda xatolik yuz berdi');
     } finally {

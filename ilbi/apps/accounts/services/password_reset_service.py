@@ -7,18 +7,20 @@ import hashlib
 import json
 import logging
 import secrets
+
 import redis
-from django.db.models import Q
-from django.db import IntegrityError, transaction
 from django.conf import settings
-from apps.core.branding import send_branded_email as send_mail
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 
 from apps.accounts.models import Employee
 from apps.accounts.services import login_throttle
+from apps.accounts.services.demo_access_service import DemoAccessService
 from apps.accounts.services.email_utils import mask_email
+from apps.core.branding import send_branded_email as send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,7 @@ def _eligible_user(user) -> bool:
     return bool(
         user
         and user.is_active
+        and not DemoAccessService.is_blocked(user)
         and user.role in ("staff", "owner", "platform_admin")
         and (
             user.role == "platform_admin"
@@ -483,7 +486,7 @@ def _request_password_reset_for_user(
     user = User.objects.select_for_update().get(pk=user.pk)
     if user.role not in ("staff", "owner", "platform_admin"):
         return False, "invalid_user", None
-    if not user.is_active:
+    if not user.is_active or DemoAccessService.is_blocked(user):
         return False, "inactive_user", None
     if user.role != "platform_admin" and not Employee.objects.filter(
         user=user, is_active=True
@@ -609,7 +612,12 @@ def change_password_with_old(login: str, old_password: str, new_password: str) -
         Q(username__iexact=ident) | Q(phone_number=ident) | Q(email__iexact=ident)
     ).first()
 
-    if user is None or not user.is_active or not user.check_password(old_password):
+    if (
+        user is None
+        or not user.is_active
+        or DemoAccessService.is_blocked(user)
+        or not user.check_password(old_password)
+    ):
         return False, "Login yoki eski parol noto‘g‘ri.", None
 
     if user.role not in ("staff", "owner", "platform_admin"):

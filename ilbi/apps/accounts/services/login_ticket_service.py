@@ -8,6 +8,8 @@ import redis
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
+from .demo_access_service import DemoAccessService
+
 TICKET_TTL_SECONDS = 30 * 60
 OTP_TICKET_TTL_SECONDS = 5 * 60
 redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -36,9 +38,7 @@ def create_ticket(
     }
     if invitation_key:
         payload["invitation_key"] = invitation_key
-    ttl = TICKET_TTL_SECONDS if max_ttl_seconds is None else min(
-        TICKET_TTL_SECONDS, max(1, max_ttl_seconds)
-    )
+    ttl = TICKET_TTL_SECONDS if max_ttl_seconds is None else min(TICKET_TTL_SECONDS, max(1, max_ttl_seconds))
     redis_client.set(_ticket_key(ticket), json.dumps(payload), ex=ttl)
     return ticket
 
@@ -58,6 +58,7 @@ def resolve_ticket(ticket: str):
     if (
         user is None
         or not user.is_active
+        or DemoAccessService.is_blocked(user)
         or user.role not in ("staff", "owner", "platform_admin")
         or user.phone_number != payload.get("phone_number")
         or getattr(user, "token_version", 1) != payload.get("token_version")

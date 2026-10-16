@@ -34,6 +34,8 @@ SUPPORT_OPERATOR_PHONES=+998770212149
 
 Working hours have not been configured; the UI states this and does not claim operators are online. Operators are active accounts with role `platform_admin`.
 
+Outside explicitly enabled local demo mode, tagged demo administrators are excluded from Telegram delivery. This applies to saved personal/group preferences, queued test notifications and legacy operator-phone recipients, even if their account remains active in the database.
+
 ## Routes and access
 
 | Route under `/api/v1/support/` | Access |

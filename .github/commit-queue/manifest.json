@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T130106-540c5135",
+  "queue_id": "20261016T144605-27db2890",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "540c513569e865272c028a74bee38dd7ad786ed2",
-  "source_tree": "1b7b14d20895d77a9d88c752edc21dc0aa5da279",
-  "created_at": "2026-10-16T13:01:06.494525+05:00",
+  "snapshot_sha": "27db2890b6415317244e352e8cce8ea3875a8402",
+  "source_tree": "7d51d2deaea80875d0c5dd8990912a55910a97cf",
+  "created_at": "2026-10-16T14:46:05.902235+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -15,10 +15,21 @@
       "atomic_unit": "application"
     },
     {
+      "id": "account-authentication",
+      "message": "fix(auth): harden OTP login tickets password recovery and account throttling",
+      "paths": [
+        "ilbi/apps/accounts/services/demo_access_service.py",
+        "ilbi/apps/accounts/services/login_ticket_service.py",
+        "ilbi/apps/accounts/services/password_reset_service.py"
+      ],
+      "atomic_unit": "application"
+    },
+    {
       "id": "account-api",
       "message": "fix(accounts-api): expose revocable sessions secure profiles and validated recovery routes",
       "paths": [
         "ilbi/api/v1/accounts/urls.py",
+        "ilbi/api/v1/accounts/views/admin_login.py",
         "ilbi/api/v1/accounts/views/misc.py",
         "ilbi/api/v1/accounts/views/profile_views.py",
         "ilbi/api/v1/accounts/views/token_refresh.py"
@@ -69,7 +80,9 @@
       "paths": [
         "frontend/ilbi/src/App.jsx",
         "frontend/ilbi/src/components/layout/Layout.jsx",
-        "frontend/ilbi/src/components/layout/Sidebar.jsx"
+        "frontend/ilbi/src/components/layout/Sidebar.jsx",
+        "frontend/ilbi/src/pages/Login.jsx",
+        "frontend/ilbi/src/pages/SetupAccount.jsx"
       ],
       "atomic_unit": "application"
     },
@@ -105,7 +118,8 @@
       "id": "backend-regressions",
       "message": "test(backend): cover tenant permissions transfers refunds imports and authentication regressions",
       "paths": [
-        "ilbi/apps/accounts/tests/test_admin_login_views.py"
+        "ilbi/apps/accounts/tests/test_admin_login_views.py",
+        "ilbi/apps/accounts/tests/test_demo_mode.py"
       ],
       "atomic_unit": "application"
     },
@@ -130,20 +144,33 @@
         ".gitignore",
         "Architectures/shop-yol-xaritasi.md",
         "docs/README.md",
+        "docs/SUPPORT.md",
         "docs/qollanmalar/owner_amaliy_qollanma.md",
         "docs/qollanmalar/platform_admin_amaliy_qollanma.md",
+        "frontend/ilbi/index.html",
+        "frontend/ilbi/public/landing/dashboard-dark.png",
+        "frontend/ilbi/public/landing/fonts/OFL.txt",
+        "frontend/ilbi/public/landing/fonts/outfit-latin.woff2",
+        "frontend/ilbi/public/landing/pos-dark.png",
+        "frontend/ilbi/public/landing/team-dark.png",
+        "frontend/ilbi/public/robots.txt",
         "frontend/ilbi/src/api/platform.js",
         "frontend/ilbi/src/components/common/FiscalMetadataFields.jsx",
         "frontend/ilbi/src/components/common/IdentityRecoveryModal.jsx",
         "frontend/ilbi/src/components/common/ReceiptItemCodes.jsx",
         "frontend/ilbi/src/components/platform/PlatformSettings.jsx",
         "frontend/ilbi/src/components/platform/platform-admin.css",
+        "frontend/ilbi/src/pages/AcceptTerms.jsx",
+        "frontend/ilbi/src/pages/Landing.css",
+        "frontend/ilbi/src/pages/Landing.jsx",
         "frontend/ilbi/src/pages/PlatformAccounts.jsx",
         "frontend/ilbi/src/pages/PlatformDashboard.jsx",
         "frontend/ilbi/tests/browser/catalogFiscal.html",
         "frontend/ilbi/tests/browser/platformAdmin.html",
         "frontend/ilbi/tests/catalogFiscal.browser.mjs",
+        "frontend/ilbi/tests/landing.browser.mjs",
         "frontend/ilbi/tests/platformAdmin.browser.mjs",
+        "frontend/ilbi/tests/theme.browser.mjs",
         "ilbi/README_TESTS.md",
         "ilbi/api/v1/accounts/views/platform_views.py",
         "ilbi/api/v1/support/settings_views.py",
@@ -154,6 +181,7 @@
         "ilbi/apps/accounts/services/platform_accounts.py",
         "ilbi/apps/accounts/tests/test_avatar_storage.py",
         "ilbi/apps/accounts/tests/test_createsuperuser.py",
+        "ilbi/apps/accounts/tests/test_demo_production_isolation.py",
         "ilbi/apps/accounts/tests/test_platform_admin_workspace.py",
         "ilbi/apps/accounts/tests/test_terms_and_docs_views.py",
         "ilbi/apps/accounts/tests/test_token_version_validation.py",
@@ -377,6 +405,15 @@
       "id": "supporting-tools",
       "message": "chore(tooling): update supporting project tools and resources",
       "paths": [
+        "branding/ilbi-motion-studio/qa/landing/desktop-dark.png",
+        "branding/ilbi-motion-studio/qa/landing/desktop-light.png",
+        "branding/ilbi-motion-studio/qa/landing/full-dark.png",
+        "branding/ilbi-motion-studio/qa/landing/full-light.png",
+        "branding/ilbi-motion-studio/qa/landing/mobile-dark.png",
+        "branding/ilbi-motion-studio/qa/landing/mobile-light.png",
+        "branding/ilbi-motion-studio/qa/landing/product-dark.png",
+        "branding/ilbi-motion-studio/qa/landing/report.json",
+        "branding/ilbi-motion-studio/qa/landing/tour-dark.png",
         "branding/ilbi-motion-studio/qa/night-theme/admin-dark-dashboard.png",
         "branding/ilbi-motion-studio/qa/night-theme/admin-dark-support.png",
         "branding/ilbi-motion-studio/qa/night-theme/calendar-selected-dark.png",
@@ -435,7 +472,8 @@
         "ops/data-backup.example.json",
         "scripts/data_backup.py",
         "tests/deployment/test_data_backup.py",
-        "tests/deployment/test_https_edge.py"
+        "tests/deployment/test_https_edge.py",
+        "tests/deployment/test_nginx_rate_limits.py"
       ]
     }
   ]

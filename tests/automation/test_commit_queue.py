@@ -160,7 +160,7 @@ class PublisherTests(unittest.TestCase):
     def test_secrets_and_unsafe_paths_are_excluded(self):
         for value in (
             ".env",
-            "inventra/.env.test",
+            "ilbi/.env.test",
             ".git/config",
             "../private",
             "media/customer.png",
@@ -172,9 +172,9 @@ class PublisherTests(unittest.TestCase):
             self.assertFalse(queue.path_allowed(value), value)
         for value in (
             ".env.example",
-            "inventra/.env.example",
+            "ilbi/.env.example",
             "branding/new logo.png",
-            "frontend/inventra/package-lock.json",
+            "frontend/ilbi/package-lock.json",
         ):
             self.assertTrue(queue.path_allowed(value), value)
         with self.assertRaises(queue.QueueError):

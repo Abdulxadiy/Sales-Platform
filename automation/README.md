@@ -1,90 +1,60 @@
-# Haqiqiy ishlarni chiqarish va GitHub zaxirasi
+# Avtomatik tekshirilgan chiqarish va GitHub zaxirasi
 
-Chiqarish GitHub Actions orqali qo‘lda ishga tushiriladi va tugallangan, tekshirilgan o‘zgarishlarni yuboradi. Kunlik commit soni, minimum va grafikni to‘ldirish jadvali yo‘q. Avtomatik manba zaxirasi kompyuter yoqilganda har 15 daqiqada ishlaydi.
+Saqlangan kod kompyuter yoqilganda har 15 daqiqada `backup/work-in-progress` branchiga zaxiralanadi. Zaxira muvaffaqiyatli bo‘lgach chiqarish navbati avtomatik yangilanadi. GitHub Actions kuniga bir marta tekshirilgan haqiqiy ishlarni `main`ga yuboradi; kompyuter o‘chiq bo‘lsa ham GitHubga yetib borgan navbat chiqarilishi mumkin.
+
+## Kunlik tartib
+
+- Vaqt zonasi: `Asia/Tashkent`. Kunlik soat sana va repozitoriydan tanlanadi; ketma-ket kunlarning soati farq qiladi. Jadval odatdagi GitHub cron tekshiruvini soatning 17-daqiqasida bajaradi. Kechikkan tekshiruv kunlik ishni keyingi soatda yana sinaydi.
+- Odatdagi paket 20 atrofida, minimum 15, maksimum 25 ta haqiqiy commitdan iborat. Versiya commitiga ham shu maksimum ichida joy ajratiladi.
+- O‘zaro bog‘liq ilova, papka nomi, backend va frontend o‘zgarishlari bitta atomik paketda tekshiriladi. Kunlik sonni olish uchun ishlamaydigan yarim holat yuborilmaydi.
+- Navbatda 15 ta mazmunli guruh bo‘lmasa, yangi haqiqiy ish kelguncha chiqarish kutiladi. Bo‘sh commit, sun’iy fayl yoki soxta Git sanasi yaratilmaydi. Ish bo‘lmagan kunlarda 15 ta haqiqiy commitni kafolatlash mumkin emas.
+- Shu kun uchun paket chiqarilgan bo‘lsa, takror ishga tushirish yana commit yubormaydi. Yangi backup bu kunlik hisobni o‘chirmaydi.
+
+GitHub cron aynan belgilangan daqiqada boshlanishi kafolatlanmaydi. Tizim kechikkan ishga tushirishni ushlaydi. [GitHub schedule hujjati](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+## Versiyalar
+
+Ilova versiyasi backend `pyproject.toml` orqali yuritiladi. Ilovaga tegishli `fix`/`perf`/`refactor` paketi patch, `feat` paketi minor, `!` bilan belgilangan moslikni buzuvchi paket major versiyani oshiradi. Hujjat, test, dizayn manbasi yoki chiqarish avtomatizatsiyasi o‘zgarishining o‘zi ilova versiyasini oshirmaydi.
+
+Versiya bir paketda bir marta o‘zgaradi. Faqat backend loyiha versiyasi, `uv.lock`dagi shu loyihaning yozuvi, frontend `package.json` va `package-lock.json`dagi loyiha yozuvlari yangilanadi. Dependency versiyalari va hujjatlardagi matnlar ommaviy almashtirilmaydi. Mos `vX.Y.Z` tagi `main` va navbat holati bilan bir atomik pushda yuboriladi. Keyingi eski lokal nusxa chiqarilgan versiyani pasaytirmaydi.
 
 ## Branchlar
 
-| Branch | Vazifasi |
+| Branch | Vazifa |
 |---|---|
-| `main` | Tekshirilgan, chiqarilgan o‘zgarishlar |
-| `backup/work-in-progress` | Kompyuterdagi saqlangan kodning eng oxirgi muvaffaqiyatli zaxirasi |
-| `queue/ready` | Ko‘rib chiqilgan chiqarish navbatining o‘zgarmaydigan to‘liq nusxasi va rejasi |
-| `queue/progress` | Qaysi commit guruhlari chiqarilgani haqidagi holat |
+| `main` | Tekshirilgan chiqarishlar |
+| `backup/work-in-progress` | Eng oxirgi muvaffaqiyatli manba zaxirasi |
+| `queue/ready` | Kelgusi chiqarishlarning muzlatilgan manbasi va rejasi |
+| `queue/progress` | Tugallangan guruhlar, kunlik hisob va oxirgi versiya |
 
-Zaxira va navbat branchlari repozitoriy bilan bir xil ochiqlikda. `Sales-Platform` hozir ochiq repozitoriy. `.env`, parollar, yopiq kalitlar, ma’lumotlar bazasi, yuklangan media va kesh zaxiraga yuborilmaydi. Ular uchun alohida xavfsiz zaxira kerak. Bu vosita manba kodini saqlaydi.
+Faol navbat yangilanganda hali chiqarilmagan farqlar yangi asosda qayta hisoblanadi. Oldingi navbat va holat Git tarixida saqlanadi; main o‘zgartirilmaydi. `main` tashqaridan o‘zgargan bo‘lsa jarayon to‘xtaydi va yangi asosni ko‘rib chiqish kerak bo‘ladi. Force push ishlatilmaydi. Ishchi kompyuterdagi HEAD, indeks va fayllar boshqa clone orqali chiqarishdan ta’sirlanmaydi.
 
-## Tugallangan ishlarni chiqarish
+Zaxira branchi repozitoriy bilan bir xil ochiqlikda. `.env`, maxfiy kalit, ma’lumotlar bazasi, media va kesh manba zaxirasiga kirmaydi. IDE’da saqlanmagan buferlar ham yuborilmaydi.
 
-`automation/queue-plan.json` har bir commitning aniq fayllari va mazmunini belgilaydi. Fayl bitta guruhga kiradi; takror, taqsimlanmagan yoki himoyalangan fayl bo‘lsa navbat tuzilmaydi. Sun’iy log yoki bo‘sh commit yaratilmaydi. Git sanasi o‘zgartirilmaydi: commit chiqarish kuni odatiy `git commit` orqali yaratiladi.
+## Tekshiruvlar va boshqarish
 
-Bitta mazmunli guruh ham yetarli. Chiqarish ishga tushirilganda barcha qolgan ko‘rib chiqilgan guruhlar bir paketda tekshiriladi va yuboriladi. Navbat tugaganda jarayon commit yaratmaydi. Commit soni ish hajmiga bog‘liq; kunlar bo‘yicha sun’iy taqsimlanmaydi.
-
-Har bir chiqarish paketi pushdan oldin avtomatizatsiya testlari, backend testlari, API sxemasi, frontend testlari va builddan o‘tadi. Test muvaffaqiyatsiz bo‘lsa `main` va navbat holati o‘zgarmaydi. Bir paket ichidagi commitlar yakuniy tekshirilgan holat bilan bitta pushda yuboriladi.
-
-`main` va `queue/progress` birgalikda atomik push qilinadi. Internet uzilishi, push rad etilishi yoki takror ishga tushirish o‘zgarishlarni yo‘qotmaydi. `main` boshqa tomondan o‘zgarsa, navbat avtomatik bosib yozmaydi: yangi asos bilan reja qayta ko‘rib chiqiladi. Force push ishlatilmaydi. Asl kompyuterdagi Git indeksi va ishchi fayllar saqlanadi.
-
-## Boshqa kompyuterda tiklash
-
-Eng oxirgi saqlangan kod:
-
-```bash
-git clone --branch backup/work-in-progress --single-branch https://github.com/Abdulxadiy/Sales-Platform.git Sales-Platform-recovered
-```
-
-Faqat hozirgi chiqarish navbatining nusxasi:
-
-```bash
-git clone --branch queue/ready --single-branch https://github.com/Abdulxadiy/Sales-Platform.git Sales-Platform-queued
-```
-
-Har bir yangi zaxira oldingi zaxira va GitHubdagi asosiy branchga ulanadi: eski nusxalar Git tarixida saqlanadi. Mahalliy eski Git tarixiga ulanmaydi, shunda tozalangan tarixga sun’iy commitlar qaytib kirmaydi. Yangi kompyuterda `.env` va ishlash muhiti alohida sozlanadi. Tiklangan backup branchni `main`ga merge qilmang — bu chiqarish tekshiruvlarini chetlab o‘tishi mumkin.
-
-## Yangi ishni zaxiralash va navbatga qo‘shish
+Har paket avtomatizatsiya integratsion testlari, backend testlari, API sxemasi, frontend testlari, lint va builddan o‘tadi. Birortasi muvaffaqiyatsiz bo‘lsa `main`, tag va navbat holati oldinga siljimaydi.
 
 ```bash
 python3 scripts/commit_queue.py backup
 python3 scripts/commit_queue.py status
+python3 scripts/commit_queue.py gate
+python3 scripts/commit_queue.py enqueue --refresh
+python3 -m unittest discover -s tests/automation -v
 ```
 
-Hozirgi navbat tugagach yangi ish uchun `automation/queue-plan.json`ni mazmunli guruhlarga moslang:
+GitHub → Actions → **Publish reviewed changes** → **Run workflow** vaqtni kutmasdan chiqarishni tekshiradi; kunlik chegaralar va tekshiruvlar saqlanadi. `dry_run` push qilmaydi. Sozlamalar `automation/commit-queue.json`da, mazmunli guruhlar va atomik bog‘liqliklar `automation/queue-plan.json`da.
 
-```bash
-python3 scripts/commit_queue.py backup
-python3 scripts/commit_queue.py enqueue
-```
-
-Faol navbat yangi backup kelgani uchun o‘zgarmaydi. Keyingi tuzatishlar backup branchda xavfsiz saqlanadi, joriy navbat tugagach yangi navbatga qo‘shiladi. Yangi navbat uchun kamida bitta haqiqiy o‘zgarish kerak.
-
-## Kompyuterdagi avtomatik zaxira
-
-Linuxda quyidagi buyruq foydalanuvchi systemd timerini o‘rnatadi:
+Linux zaxira taymeri:
 
 ```bash
 python3 scripts/install_backup_timer.py
+systemctl --user list-timers ilbi-source-backup.timer
+journalctl --user -u ilbi-source-backup.service -n 30
 ```
 
-Kompyuter yoqilgan va foydalanuvchi seansi ishlayotgan paytda har 15 daqiqada saqlangan fayllar tekshiriladi. Kod o‘zgarmasa yangi backup commit yaratilmaydi. GitHubga kirilgan hisob va internet kerak. Kompyuter o‘chirilganda yangi mahalliy fayllar yuborilmaydi; GitHubdagi oxirgi muvaffaqiyatli zaxira qoladi. Saqlanmagan IDE buferlari zaxiraga kirmaydi.
+Yangi kompyuterda eng oxirgi manbani tiklash:
 
 ```bash
-systemctl --user list-timers inventra-source-backup.timer
-journalctl --user -u inventra-source-backup.service -n 30
-systemctl --user disable --now inventra-source-backup.timer
+git clone --branch backup/work-in-progress --single-branch https://github.com/Abdulxadiy/Sales-Platform.git Sales-Platform-recovered
 ```
-
-## Qo‘lda boshqarish
-
-GitHub → Actions → **Publish reviewed changes** → **Run workflow**. `dry_run` faqat tayyorlanadigan commitlarni ko‘rsatadi; to‘liq test va push qilmaydi. Haqiqiy chiqarish testlar va builddan keyin amalga oshadi.
-
-Qo‘lda chiqarish workflowini o‘chirish:
-
-```bash
-gh workflow disable publish-queue.yml --repo Abdulxadiy/Sales-Platform
-```
-
-Qayta yoqish:
-
-```bash
-gh workflow enable publish-queue.yml --repo Abdulxadiy/Sales-Platform
-```
-
-GitHub profilida commitlar hisoblanishi uchun muallif emaili hisobga bog‘langan va commitlar asosiy branchda bo‘lishi kerak. Bu konfiguratsiya hisobning GitHub `noreply` manzilini ishlatadi. [GitHub contribution qoidalari](https://docs.github.com/en/account-and-profile/reference/profile-contributions-reference).

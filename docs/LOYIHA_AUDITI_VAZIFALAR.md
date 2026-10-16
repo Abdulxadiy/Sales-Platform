@@ -1,7 +1,7 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman), 3-qadamining lokal backup/tiklash tayyorgarligi, 4-qadamining umumiy so‘rov hisoblagichlari, 5-qadamining tayyorlik tekshiruvi, 7-qadamining production API hujjatlarini yopishi, 8-qadamining majburiy token version tekshiruvi, 9-qadamining hujjat testini ajratishi, 10-qadamining avatar faylini xavfsiz almashtirishi va 11-qadamining Telegram 2FAni shaxsiy chat bilan cheklashi bajarildi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan. Navbatdagi 12-qadam — botning backend javobini kutishi boshqa so‘rovlarni to‘xtatmasligi (AUD-32 qisman) — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
+**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman), 3-qadamining lokal backup/tiklash tayyorgarligi, 4-qadamining umumiy so‘rov hisoblagichlari, 5-qadamining tayyorlik tekshiruvi, 7-qadamining production API hujjatlarini yopishi, 8-qadamining majburiy token version tekshiruvi, 9-qadamining hujjat testini ajratishi, 10-qadamining avatar faylini xavfsiz almashtirishi, 11-qadamining Telegram 2FAni shaxsiy chat bilan cheklashi va 12-qadamining bot HTTP kutishini boshqa ishlardan ajratishi bajarildi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan. Navbatdagi 13-qadam — band Telegram chatini boshqa telefonga ulashda texnik 500 o‘rniga tushunarli rad javobi (AUD-32 qisman) — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
 **Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
 
 ## 1. Tahlil chegarasi va mavjud holat
@@ -64,7 +64,7 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 | AUD-29 | Tashqi ta’sirlarni transactiondan keyin bajarish | 2/5 | P1 | Muhokama kutilmoqda |
 | AUD-30 | Davriy hisobot va Telegram retry | 2/5 | P2 | Muhokama kutilmoqda |
 | AUD-31 | JWT bekor qilish va frontend sessiya tiklanishi | 2/5 | P1 | Qisman bajarildi: 8-qadam token version tekshiruvi |
-| AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | Qisman bajarildi: 11-qadam shaxsiy chat himoyasi; 12-qadam taklifi tayyor |
+| AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | Qisman bajarildi: 11-qadam shaxsiy chat, 12-qadam HTTP kutishi; 13-qadam taklifi tayyor |
 | AUD-33 | Brauzer xotirasidagi parolni olib tashlash | 1/5 | P0 | Muhokama kutilmoqda |
 | AUD-34 | Kassa yopishda aniqlanmagan owner o‘zgaruvchisi | 1/5 | P1 | Muhokama kutilmoqda |
 | AUD-35 | Egasi o‘chirilgan do‘konini qayta yoqa olishi | 1/5 | P2 | Muhokama kutilmoqda |
@@ -811,15 +811,33 @@ Kontakt egasi senderga mosligi tekshiriladi — bu foydali himoya. Biroq handler
 
 **Chegara:** real guruh/Telegram API bilan sinov, kontaktlarni ommaviy o‘zgartirish, eski OTPlarni ommaviy bekor qilish va deploy qilinmadi. Oldin yuborilgan kodlar uchun mavjud 180 soniyalik TTL/verification siyosati o‘zgarmadi; ushbu qadam yangi kodning guruhga yuborilishini to‘sadi. Eski noto‘g‘ri kontaktlar kod olish uchun botning shaxsiy chatida qayta ulanadi. Chat/telefon unique konflikti va async HTTP uchun quyidagi/yangi alohida qarorlar kerak. AUD-32 umumiy doirasi qisman ochiq.
 
-#### 2026-10-16 — 12-qadam uchun taklif: botning boshqa so‘rovlarini kutdirmaslik
+#### 2026-10-16 — 12-qadam: botning boshqa so‘rovlarini kutdirmaslik
 
-**Holat:** faqat tahlil va sun’iy read-only probe; implementatsiya alohida tasdiqni kutadi.
+**Holat:** foydalanuvchi **“Ha, 12-qadamni bajar”** deb tasdiqladi. Ushbu lokal tuzatish va tegishli tekshiruvlar **BAJARILDI**; bot/serverga deploy qilinmadi. Quyidagi dalil tuzatishdan oldingi holatga tegishli.
 
 **Dalil:** `telegram_bot_sms/main.py::contact_handler` async bo‘lsa ham `requests.post(..., timeout=5)`ni to‘g‘ridan-to‘g‘ri bajaradi. Shu HTTP tugamaguncha polling jarayonining event loopi boshqa handler/timerlarni bajara olmaydi. Alohida bot Python muhitida barcha HTTP mock qilindi: backend javobiga sun’iy **120 ms** kutish qo‘yilganda, **20 ms**da bajarilishi kerak bo‘lgan boshqa timer **122 ms**dan keyin ishladi. Haqiqiy backend/Telegram, DB yoki `.env` ishlatilmadi; repo kodi bu probe uchun o‘zgartirilmadi. Bu prod latency o‘lchovi emas.
 
 **Taklif doirasi:** kontakt registrationining blocking HTTP ishini event loopdan ajratish (mavjud requestsni threadga berish yoki mavjud async imkoniyat); timeout, ichki service auth, shaxsiy chat himoyasi, javob/xato matnlari va flood tekshiruvini saqlash. Dependency/lock/Docker/runtime install oqimiga tegilmaydi; 6-qadam keyinga qoldirilgan holatda qoladi. Telefon/chat qayta bog‘lash qoidasi o‘zgarmaydi, tashqi retry yoki deploy qo‘shilmaydi.
 
 **Qabul mezoni:** sun’iy sekin backend kutayotganida boshqa coroutine vaqtida ishlaydi; valid private kontakt bir marta yuboriladi; HTTP xatosi foydalanuvchiga avvalgi umumiy xabarni beradi; guruh/begona kontakt yuborilmaydi; bot unit testlari haqiqiy tarmoqqa chiqmaydi. Production botni qayta ishga tushirish alohida kelishiladi.
+
+**Bajarildi:** `telegram_bot_sms/main.py::contact_handler`dagi HTTP `await asyncio.to_thread(requests.post, ...)` orqali standart thread poolda bajariladi. Backendning javobini kutish event loopni band qilmaydi. URL, JSON, ichki auth header, `timeout=5`, `raise_for_status`, xato/muvaffaqiyat matni, shaxsiy chat va flood qoidalari saqlandi. Dependency/lock, Docker/entrypoint, backend biznes kodi va 6-qadamga tegilmadi.
+
+**Tekshiruv:** `telegram_bot_sms/tests/test_contact_handler.py`ga **4 test** qo‘shildi; avvalgi 8 test bilan **12/12, 2.201 s** o‘tdi. Ikki sekin HTTP sinovi `threading.Event` bilan javobni ushlab turadi: birinchi request tugashidan oldin boshqa `/status` handleri hamda boshqa shaxsiy kontakt muvaffaqiyatli ishlashi tekshiriladi. Shu chatdagi parallel takroriy kontakt yangi HTTP chaqiruvini yubormaydi. Connect/read timeout, connection error va HTTP error foydalanuvchiga avvalgi umumiy xabarni beradi. Ikki sekin sinov eski blocking kodda FAIL bo‘lgani ko‘rildi; to‘g‘rilangach ikkalasi ham o‘tdi. Sun’iy HTTP/Telegram, soxta tokenlar, botning Python 3.14/aiogram muhiti ishlatildi; haqiqiy `.env`/Telegram/backend chaqiruvi yoki polling yo‘q. Ruff check va yangi test format check o‘tdi. Backend kodi o‘zgarmagani uchun avvalgi 125 backend testining natijasi tarixiy 11-qadam dalili bo‘lib qoldi; bu safar qayta ishlatilmadi.
+
+**Sinov muhiti qaydi:** restricted sandbox mahalliy socket `send()`ini `PermissionError(1)` bilan rad etdi; asyncio thread callbacklari event loopni uyg‘ota olmay, ikki test jarayoni kutilishda qoldi. Faqat ushbu ishda boshlangan ikki test jarayoni to‘xtatildi va mahalliy uyg‘otish ruxsati bor muhitda shu mock testlar to‘liq o‘tkazildi. Bu avtomatik tasdiq rad javobi yoki production kodi xatosi emas. Vaqtinchalik jarayonlar qolmadi.
+
+**Chegara:** Requests timeouti avvalgi connect/read cheklovi; yangi qat’iy umumiy deadline/retry mexanizmi qo‘shilmadi. Handler bekor qilinsa, workerda allaqachon boshlangan HTTP chaqiruvi tugashi mumkin. Load test, real backend latency, thread pool tuning va deploy bu qadamga kirmaydi. O‘zgargan fayllar: bot `main.py`, mavjud bot test moduli, bot README, `ilbi/README_TESTS.md` va ushbu audit. Haqiqiy kontakt/DB/media/env o‘zgarmadi.
+
+#### 2026-10-16 — 13-qadam uchun taklif: Telegram ulanish konfliktini tushunarli rad etish
+
+**Holat:** faqat tahlil va ajratilgan test bazasidagi sun’iy probe; implementatsiya alohida tasdiqni kutadi.
+
+**Dalil:** `TelegramContact.phone_number` va `chat_id` alohida unique. `TelegramContactSerializer.save()` faqat telefon bo‘yicha `update_or_create()` qiladi, band chat ID bo‘yicha DB `IntegrityError`i ushlanmaydi. Bitta Telegram chatini boshqa telefon bilan yuborish registration endpointida **HTTP 500** berdi. Probe faqat localhost:5433dagi `test_..._test` bazasida sun’iy ikki telefon va bitta chat bilan bajarildi: avvalgi bog‘lanish saqlandi, yangi yozuv yaratilmagan va probe yaratgan qator transaction rollbackidan keyin yo‘qoldi. Telegram/Redis yoki haqiqiy kontaktlarga tegilmadi; ilova kodi bu probe uchun o‘zgartirilmadi. Bot hozir bunday holatni umumiy “serverga ulanish xatosi” deb ko‘rsatadi.
+
+**Taklif doirasi:** band chatga qarshi aniq validation/error code va DB unique poygasiga ham ishlaydigan nazoratli `400/409` javob; botda shu holat uchun tushunarli xabar. Mavjud 2FA bog‘lanishi saqlanadi. Ushbu kichik qadam eski telefon yozuvini o‘chirib, chatni boshqa akkauntga avtomatik ko‘chirmaydi; bunday ko‘chirish/egalik siyosati alohida kelishiladi. Bir xil telefon/chatni takroriy ulash va odatdagi bo‘sh chatga ulash ishlaydi. 11-qadam shaxsiy chat qoidasi saqlanadi, ichki token talabi o‘zgarmaydi.
+
+**Qabul mezoni:** yangi telefon yoki mavjud telefon uchun band chat yuborilganda 500 yo‘q; tegishli xato kodi/bot xabari bor; oldingi bog‘lanishlar o‘zgarmaydi va yarim yozuv qolmaydi. Parallel konflikt ham nazoratli qaytadi, boshqa DB nosozligi noto‘g‘ri “chat band” deb yashirilmaydi. Sinovlar faqat ajratilgan DB, sun’iy kontakt va mock bot HTTPda. Real foydalanuvchini qayta bog‘lash yoki deploy alohida ruxsatga qoladi.
 
 ### AUD-33 — Brauzer xotirasidagi parolni olib tashlash
 
@@ -937,6 +955,8 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-32 | Keyingi 11-qadam uchun bot contact handler, registration serializer va OTP contact lookup qayta o‘qildi. Guruh chat IDsi sun’iy validatsiyadan o‘tdi. | Faqat tahlil. 2FAni shaxsiy chatga cheklash taklifi alohida tasdiqni kutadi; haqiqiy xabar/OTP yuborilmadi. |
 | 2026-10-16 | AUD-32 | Foydalanuvchi 11-qadamni tasdiqladi. Private chat/sender/o‘z kontaktini tekshirish, registration/CLI va OTP lookup/sender uchun musbat user ID himoyasi qo‘shildi. | LOKAL BAJARILDI: 125 backend + 8 bot testi, jami 133 tekshiruv o‘tdi. Oddiy guruh hisobotlari ishlaydi; real Telegram/kontaktlar/deployga tegilmadi. |
 | 2026-10-16 | AUD-32 | Keyingi 12-qadam uchun sinxron bot HTTP chaqiruvi sun’iy 120 ms kutish bilan tekshirildi; 20 ms timer 122 ms kechikishda bajarildi. | Faqat tahlil. Bot backendni kutganda boshqa so‘rovlarni to‘xtatmaslik alohida tasdiqni kutadi. |
+| 2026-10-16 | AUD-32 | Foydalanuvchi 12-qadamni tasdiqladi. Bot registration HTTPsi asyncio thread poolga o‘tkazildi; boshqa buyruq/kontakt shu payt ishlaydi. | LOKAL BAJARILDI: 4 yangi, jami 12 bot testi o‘tdi; timeout/auth/flood/private qoidalari saqlandi. Dependency/deployga tegilmadi. |
+| 2026-10-16 | AUD-32 | Keyingi 13-qadam uchun chat/telefon unique konflikti ajratilgan test DBda qayta tekshirildi: registration 500 qaytardi, sun’iy qator rollback qilindi. | Faqat tahlil. Oldingi ulanishni saqlagan holda tushunarli rad javobi va bot xabari alohida tasdiqni kutadi. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
@@ -959,4 +979,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** 1 va 2.1, 3-qadamning lokal backup/tiklash tayyorgarligi, 4-qadamning umumiy cache hisoblagichlari, 5-qadamning tayyorlik tekshiruvi, 7-qadamning production API hujjatlarini yopishi, 8-qadamning qat’iy token_version tekshiruvi, 9-qadamning hujjat testi izolatsiyasi, 10-qadamning avatar faylini xavfsiz almashtirishi va 11-qadamning Telegram 2FA shaxsiy chat himoyasi bajarilgan. 11-qadamda 125 backend + 8 bot testi, jami 133 tekshiruv o‘tdi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan, production POS cheklovi saqlanadi. 12-qadamning botning boshqa so‘rovlarini kutdirmaslik taklifi alohida tasdiqni kutadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.
+**Joriy natija — 2026-10-16:** 1 va 2.1, 3-qadamning lokal backup/tiklash tayyorgarligi, 4-qadamning umumiy cache hisoblagichlari, 5-qadamning tayyorlik tekshiruvi, 7-qadamning production API hujjatlarini yopishi, 8-qadamning qat’iy token_version tekshiruvi, 9-qadamning hujjat testi izolatsiyasi, 10-qadamning avatar faylini xavfsiz almashtirishi, 11-qadamning Telegram 2FA shaxsiy chat himoyasi va 12-qadamning bot HTTP kutishini ajratishi bajarilgan. 12-qadamda 4 yangi, jami 12 bot testi o‘tdi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan, production POS cheklovi saqlanadi. 13-qadamning band chatni boshqa telefonga ulashda tushunarli rad javobi taklifi alohida tasdiqni kutadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.

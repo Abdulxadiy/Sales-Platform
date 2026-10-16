@@ -334,25 +334,11 @@ For production environments, the following improvements are recommended:
 
 ---
 
-## ⚡ Performance Consideration
+## ⚡ Backend request handling
 
-The Telegram handlers are asynchronous, but the current implementation uses the synchronous `requests` library for internal HTTP communication.
+Contact registration runs `requests.post` through `await asyncio.to_thread(...)`. Waiting for the backend leaves the event loop available for other commands and contacts. The existing five-second Requests timeout, internal authorization, private-chat checks and per-chat flood guard are preserved.
 
-For a high-throughput production environment, replacing `requests` with an asynchronous HTTP client such as:
-
-```text
-httpx
-```
-
-or:
-
-```text
-aiohttp
-```
-
-would prevent blocking the asyncio event loop during backend requests.
-
-For a small authentication integration service, the current implementation remains simple and easy to maintain.
+The worker uses the existing Requests dependency and the standard asyncio thread pool. A cancelled handler does not stop an HTTP call that is already running in a worker.
 
 ---
 
@@ -364,7 +350,7 @@ From the repository root, using the bot's Python environment:
 telegram_bot_sms/.venv/bin/python -m unittest discover -s telegram_bot_sms/tests -p "test_contact_handler.py" -v
 ```
 
-These tests use synthetic messages, credentials and mocked requests; they never contact Telegram or the backend. Backend registration, legacy contact and OTP tests are documented in `ilbi/README_TESTS.md`.
+The 12 tests use synthetic messages, credentials and mocked requests; they never contact Telegram or the backend. They cover private-chat checks, progress of another command/contact during a slow request, duplicate-contact throttling and connection/HTTP failures. Backend registration, legacy contact and OTP tests are documented in `ilbi/README_TESTS.md`.
 
 ## 🧪 Future Improvements
 

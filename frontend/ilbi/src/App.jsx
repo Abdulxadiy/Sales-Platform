@@ -7,6 +7,7 @@ import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppLoadingScreen from './components/common/AppLoadingScreen';
+import SessionRecovery from './components/auth/SessionRecovery';
 const Layout = lazy(() => import('./components/layout/Layout'));
 const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
 const Landing = lazy(() => import('./pages/Landing'));
@@ -34,8 +35,9 @@ const Documentation = lazy(() => import('./pages/Documentation'));
 const PublicReceiptView = lazy(() => import('./pages/PublicReceiptView'));
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, sessionError } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
+  if (sessionError) return <SessionRecovery />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -46,8 +48,9 @@ function ProtectedRoute({ children }) {
 }
 
 function RoleProtectedRoute({ children, allowedRoles, allowedPermission }) {
-  const { role, isAuthenticated, user, loading } = useAuth();
+  const { role, isAuthenticated, user, loading, sessionError } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
+  if (sessionError) return <SessionRecovery />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -61,8 +64,9 @@ function RoleProtectedRoute({ children, allowedRoles, allowedPermission }) {
 }
 
 function SupportRoute() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, sessionError } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
+  if (sessionError) return <SessionRecovery />;
   if (isAuthenticated) {
     return (
       <ProtectedRoute>
@@ -86,14 +90,19 @@ function RoutePresentation() {
   return <Suspense fallback={null}><HelpLauncher /></Suspense>;
 }
 
+function SessionUI({ children }) {
+  const { sessionId, user } = useAuth();
+  // Toasts and open confirmations can contain private names, amounts or drafts.
+  return <ToastProvider key={`${sessionId}:${user?.id || 'guest'}`}><ConfirmProvider>{children}</ConfirmProvider></ToastProvider>;
+}
+
 export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
       <ThemeProvider>
         <AuthProvider>
           <TenantProvider>
-            <ToastProvider>
-              <ConfirmProvider>
+            <SessionUI>
                 <Suspense fallback={<AppLoadingScreen message="Sahifa yuklanmoqda..." />}>
                 <Routes>
                 <Route path="/" element={<Landing />} />
@@ -177,8 +186,7 @@ export default function App() {
               </Routes>
                 </Suspense>
                 <RoutePresentation />
-            </ConfirmProvider>
-          </ToastProvider>
+          </SessionUI>
         </TenantProvider>
         </AuthProvider>
       </ThemeProvider>

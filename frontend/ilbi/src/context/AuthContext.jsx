@@ -1,184 +1,174 @@
 import { localStore, sessionStore } from '../utils/brandStorage.js';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import AuthContext from './authContext';
-import { getAccessToken, getRefreshToken, refreshAccessToken, setTokens, clearTokens, parseJwt, isTokenExpired, authApi } from '../api/client';
+import { getAccessToken, getRefreshToken, refreshAccessToken, setTokens, clearTokens, parseJwt, isTokenExpired, authApi, getAuthenticationGeneration, invalidateAuthenticationRequests } from '../api/client';
+import { beginLoginSupportSession } from '../api/support';
+import { captureLegacyDraftOwner } from '../utils/accountDrafts';
 
 export function AuthProvider({ children }) {
+  const { pathname } = useLocation();
+  const loginPage = pathname === '/login';
   const [token, setToken] = useState(() => {
-    const current = getAccessToken();
-    if (!current || (isTokenExpired(current) && isTokenExpired(getRefreshToken()))) {
-      return null;
-    }
-    return current;
+    const access = getAccessToken();
+    let cached = null;
+    try { cached = JSON.parse(localStore.getItem('ilbi_user') || sessionStore.getItem('ilbi_user') || 'null'); } catch { /* Keep unidentified drafts archived. */ }
+    captureLegacyDraftOwner(parseJwt(access)?.user_id, cached);
+    return access;
   });
+  // Browser storage is a cache, never proof that a session or role is valid.
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(Boolean(getAccessToken() || getRefreshToken()));
+  const [busy, setBusy] = useState(false);
+  const [sessionError, setSessionError] = useState('');
+  const [sessionId, setSessionId] = useState(getAuthenticationGeneration);
+  const profileRequest = useRef(0);
+  const observedTokens = useRef([getAccessToken(), getRefreshToken()]);
 
-  const [user, setUser] = useState(() => {
-    const currentToken = getAccessToken();
-    if (!currentToken || (isTokenExpired(currentToken) && isTokenExpired(getRefreshToken()))) {
-      return null;
-    }
-    const saved = localStore.getItem('ilbi_user') || sessionStore.getItem('ilbi_user');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
-    }
-    return parseJwt(currentToken);
-  });
-
-  const [loading, setLoading] = useState(Boolean(getAccessToken()));
-
-  useEffect(() => {
-    const updateToken = (event) => setToken(event.detail);
-    window.addEventListener('auth:token', updateToken);
-    const current = getAccessToken();
-    if (current && isTokenExpired(current)) {
-      refreshAccessToken().then(setToken).catch(() => {}).finally(() => setLoading(false));
-    } else if (!current) {
-      setLoading(false);
-    }
-    return () => window.removeEventListener('auth:token', updateToken);
+  const logout = useCallback(() => {
+    profileRequest.current += 1;
+    clearTokens();
+    beginLoginSupportSession();
+    observedTokens.current = [null, null];
+    setToken(null);
+    setUser(null);
+    setChecking(false);
+    setSessionError('');
+    setSessionId(getAuthenticationGeneration());
   }, []);
 
-  useEffect(() => {
-    const handleLogout = () => {
+  const refreshProfile = useCallback(async () => {
+    const sequence = ++profileRequest.current;
+    const generation = getAuthenticationGeneration();
+    const current = () => sequence === profileRequest.current && generation === getAuthenticationGeneration();
+    if (!getAccessToken() && !getRefreshToken()) {
       setToken(null);
       setUser(null);
-      clearTokens();
-    };
-
-    window.addEventListener('auth:logout', handleLogout);
-    return () => window.removeEventListener('auth:logout', handleLogout);
-  }, []);
-
-  const refreshProfile = async () => {
-    if (!getAccessToken()) return;
-    const requestedUserId = parseJwt(getAccessToken())?.user_id;
+      setChecking(false);
+      setSessionError('');
+      return;
+    }
     try {
+      if (isTokenExpired(getAccessToken())) await refreshAccessToken();
+      if (!current()) return;
+      const requestedUserId = parseJwt(getAccessToken())?.user_id;
       const profile = await authApi.getProfile();
-      if (String(parseJwt(getAccessToken())?.user_id) !== String(requestedUserId) || String(profile.id) !== String(requestedUserId)) return;
-      setUser((prev) => {
-        const merged = { ...prev, ...profile };
-        if (localStore.getItem('ilbi_access_token')) {
-          localStore.setItem('ilbi_user', JSON.stringify(merged));
-        } else {
-          sessionStore.setItem('ilbi_user', JSON.stringify(merged));
-        }
-        return merged;
-      });
+      if (!current()) return;
+      if (!requestedUserId || String(profile.id) !== String(requestedUserId)) throw new Error('Profil tasdiqlanmadi.');
+      setUser(profile);
+      setToken(getAccessToken());
+      setSessionError('');
+      const remember = Boolean(localStore.getItem('ilbi_access_token'));
+      (remember ? localStore : sessionStore).setItem('ilbi_user', JSON.stringify(profile));
+      (remember ? sessionStore : localStore).removeItem('ilbi_user');
+      observedTokens.current = [getAccessToken(), getRefreshToken()];
       return profile;
-    } catch (err) {
-      if (err.status === 401 && String(parseJwt(getAccessToken())?.user_id) === String(requestedUserId)) {
-        clearTokens();
-        setToken(null);
+    } catch (error) {
+      if (!current()) return;
+      if (error.status === 401) logout();
+      else {
         setUser(null);
+        setSessionError('Sessiyani tekshirib bo‘lmadi. Internet aloqasini tekshirib, qayta urinib ko‘ring.');
       }
+    } finally {
+      if (current()) setChecking(false);
     }
-  };
+  }, [logout]);
+
+  // An explicit visit to /login starts a new login; drafts and login name survive.
+  useLayoutEffect(() => { if (loginPage) logout(); }, [loginPage, logout]);
 
   useEffect(() => {
-    if (token) {
-      refreshProfile().finally(() => setLoading(false));
-    }
-  }, [token]);
-
-  useEffect(() => {
-    const handleProfileRefresh = () => refreshProfile();
+    const updateToken = event => {
+      observedTokens.current = [getAccessToken(), getRefreshToken()];
+      setToken(event.detail);
+    };
+    const handleProfileRefresh = () => { void refreshProfile(); };
+    const handleStorage = event => {
+      if (event.key && !/^(ilbi|inventra)_(access_token|refresh_token|user)$/.test(event.key)) return;
+      const next = [getAccessToken(), getRefreshToken()];
+      if (next.every((value, index) => value === observedTokens.current[index])) return;
+      invalidateAuthenticationRequests();
+      observedTokens.current = next;
+      setUser(null);
+      setToken(next[0]);
+      setSessionId(getAuthenticationGeneration());
+      setChecking(Boolean(next[0] || next[1]));
+      if (window.location.pathname === '/login') {
+        setToken(null);
+        setChecking(false);
+      } else void refreshProfile();
+    };
+    window.addEventListener('auth:token', updateToken);
+    window.addEventListener('auth:logout', logout);
     window.addEventListener('profile:refresh', handleProfileRefresh);
-    return () => window.removeEventListener('profile:refresh', handleProfileRefresh);
-  }, []);
+    window.addEventListener('storage', handleStorage);
+    void refreshProfile();
+    return () => {
+      profileRequest.current += 1;
+      window.removeEventListener('auth:token', updateToken);
+      window.removeEventListener('auth:logout', logout);
+      window.removeEventListener('profile:refresh', handleProfileRefresh);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [logout, refreshProfile]);
 
-  const completeLogin = (username, res, remember) => {
-    setTokens(res.access, res.refresh, remember);
-    setToken(res.access);
-    const userData = { ...parseJwt(res.access), username };
-    setUser(userData);
-    if (remember) {
-      localStore.setItem('ilbi_user', JSON.stringify(userData));
-      sessionStore.removeItem('ilbi_user');
-    } else {
-      sessionStore.setItem('ilbi_user', JSON.stringify(userData));
-      localStore.removeItem('ilbi_user');
-    }
-    refreshProfile();
-    return userData;
+  const completeLogin = (username, response, remember) => {
+    setTokens(response.access, response.refresh, remember);
+    observedTokens.current = [getAccessToken(), getRefreshToken()];
+    setToken(response.access);
+    setUser(null);
+    setSessionId(getAuthenticationGeneration());
+    setSessionError('');
+    setChecking(true);
+    void refreshProfile();
+    return { ...parseJwt(response.access), username };
   };
 
   const loginStep1 = async (username, password, remember = true) => {
-    setLoading(true);
+    setBusy(true);
     try {
-      const res = await authApi.adminLogin(username, password);
-      if (res.demo_login === true && res.access && res.refresh) {
-        completeLogin(username, res, remember);
-      }
-      return res;
-    } finally {
-      setLoading(false);
-    }
+      const response = await authApi.adminLogin(username, password);
+      if (response.demo_login === true && response.access && response.refresh) completeLogin(username, response, remember);
+      return response;
+    } finally { setBusy(false); }
   };
 
   const loginStep2 = async (username, loginTicket, code, remember = true) => {
-    setLoading(true);
-    try {
-      const res = await authApi.verifyOtp(loginTicket, code);
-      return completeLogin(username, res, remember);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = () => {
-    clearTokens();
-    setToken(null);
-    setUser(null);
+    setBusy(true);
+    try { return completeLogin(username, await authApi.verifyOtp(loginTicket, code), remember); }
+    finally { setBusy(false); }
   };
 
   const acceptTerms = async () => {
-    setLoading(true);
+    setBusy(true);
     try {
-      const res = await authApi.acceptTerms();
-      const updatedUser = res.user || { ...user, terms_accepted: true };
+      const response = await authApi.acceptTerms();
+      const updatedUser = response.user || { ...user, terms_accepted: true };
       setUser(updatedUser);
-      if (localStore.getItem('ilbi_access_token')) {
-        localStore.setItem('ilbi_user', JSON.stringify(updatedUser));
-      } else {
-        sessionStore.setItem('ilbi_user', JSON.stringify(updatedUser));
-      }
+      (localStore.getItem('ilbi_access_token') ? localStore : sessionStore).setItem('ilbi_user', JSON.stringify(updatedUser));
       return updatedUser;
-    } finally {
-      setLoading(false);
-    }
+    } finally { setBusy(false); }
   };
 
-  const role = user?.role || null;
-  const isOwner = role === 'owner';
-  const isStaff = role === 'staff';
-  const isAdmin = role === 'platform_admin';
-  const isAuthenticated = Boolean(token && user);
-  const hasAcceptedTerms = Boolean(user?.terms_accepted);
-
+  const visibleUser = loginPage ? null : user;
+  const role = visibleUser?.role || null;
   return (
-    <AuthContext.Provider
-      value={{
-        token,
-        user,
-        role,
-        isOwner,
-        isStaff,
-        isAdmin,
-        isAuthenticated,
-        hasAcceptedTerms,
-        loading,
-        loginStep1,
-        loginStep2,
-        logout,
-        acceptTerms,
-        setUser,
-        refreshProfile,
-      }}
-    >
+    <AuthContext.Provider value={{
+      token: loginPage ? null : token,
+      user: visibleUser,
+      role,
+      isOwner: role === 'owner',
+      isStaff: role === 'staff',
+      isAdmin: role === 'platform_admin',
+      isAuthenticated: Boolean(!loginPage && token && visibleUser),
+      hasAcceptedTerms: Boolean(visibleUser?.terms_accepted),
+      loading: checking || busy,
+      sessionError,
+      sessionId,
+      retrySession: () => { setChecking(true); setSessionError(''); void refreshProfile(); },
+      loginStep1, loginStep2, logout, acceptTerms, setUser, refreshProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   );

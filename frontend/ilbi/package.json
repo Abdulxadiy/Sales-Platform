@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --test tests/*.test.js",
+    "test:auth-session": "node tests/authSession.browser.mjs",
     "test:camera": "node tests/cameraScanner.browser.mjs",
     "test:labels": "node tests/productLabels.browser.mjs",
     "test:receipts": "node tests/receiptSettings.browser.mjs",

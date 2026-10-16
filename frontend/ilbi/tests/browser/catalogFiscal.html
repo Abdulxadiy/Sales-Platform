@@ -19,6 +19,7 @@ import {ToastProvider} from '/src/context/ToastContext.jsx';
 import {ConfirmProvider} from '/src/context/ConfirmContext.jsx';
 import {catalogApi,salesApi} from '/src/api/client.js';
 import Catalog from '/src/pages/Catalog.jsx';
+import { captureLegacyDraftOwner } from '/src/utils/accountDrafts.js';
 import ReceiptSlip from '/src/components/common/ReceiptSlip.jsx';
 import PublicReceiptView from '/src/pages/PublicReceiptView.jsx';
 
@@ -49,6 +50,8 @@ catalogApi.updateProduct=async(id,data)=>{
   return {id};
 };
 // Simulate a draft saved before the fiscal fields existed.
+captureLegacyDraftOwner(user.id, user);
+localStorage.removeItem('ilbi_account_draft:7:7:draft_product');
 localStorage.setItem('ilbi_draft_product:7',JSON.stringify({name:'Sinov mahsuloti',category_id:'1',unit:'dona',
   variant_name:'Standart',code:'01/1',barcode:'',price_partner:'500',price_min:'1000',price_recommended:'1500',do_intake:false}));
 

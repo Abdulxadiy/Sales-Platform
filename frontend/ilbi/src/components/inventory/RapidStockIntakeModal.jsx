@@ -23,7 +23,7 @@ import { useDebouncedValue, usePaginatedList } from '../../hooks/usePaginatedLis
 import { inventoryApi, catalogApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
-import { usePersistedState } from '../../hooks/usePersistedState';
+import { useAccountDraft } from '../../hooks/useAccountDraft';
 import { useTenant } from '../../context/TenantContext';
 
 const EMPTY_DRAFT = {
@@ -101,8 +101,8 @@ export default function RapidStockIntakeModal({
   const navigate = useNavigate();
 
   // Persisted Draft in localStore: survives navigation, tab switches, and reloads
-  const [draft, setDraft, resetDraft] = usePersistedState(
-    `ilbi_stock_intake_full_draft_v1:${activeTenant?.id || 'pending'}`,
+  const [draft, setDraft, resetDraft] = useAccountDraft(
+    'stock_intake_full_draft_v1',
     EMPTY_DRAFT
   );
 

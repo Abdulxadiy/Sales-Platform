@@ -57,7 +57,7 @@ function PrivateImage({ api, conversationId, messageId }) {
 const mergeMessages = (previous, incoming) =>
   Array.from(new Map([...previous, ...incoming].map((m) => [m.id, m])).values()).sort((a, b) => a.id - b.id);
 
-export default function HelpLauncher() {
+function HelpLauncherContent() {
   const { isAuthenticated, isAdmin, loading, user } = useAuth();
   const { activeTenant } = useTenant();
   const { pathname } = useLocation();
@@ -72,6 +72,7 @@ export default function HelpLauncher() {
   const messagesRef = useRef([]);
   const [loadingConv, setLoadingConv] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -183,10 +184,8 @@ export default function HelpLauncher() {
     if (hidden || loading) return;
     let active = true;
     const poller = startSupportPolling(async () => {
-      try {
-        const result = await api.list();
-        if (active) setUnread(result.unread_total || 0);
-      } catch (_) {}
+      const result = await api.list();
+      if (active) setUnread(result.unread_total || 0);
     }, { intervalMs: 20000 });
     return () => { active = false; poller.stop(); };
   }, [api, hidden, loading]);
@@ -196,6 +195,7 @@ export default function HelpLauncher() {
     try {
       setLoadingConv(true);
       const result = await api.list('?page=1');
+      setError('');
       const list = result.results || [];
       setConversations(list);
       if (list.length > 0 && !activeConvId) {
@@ -206,7 +206,8 @@ export default function HelpLauncher() {
       } else if (list.length === 0) {
         setIsStartingNew(true);
       }
-    } catch (_) {
+    } catch (err) {
+      setError(err.message || 'Suhbatlarni yuklab bo‘lmadi. Qayta urinib ko‘ring.');
       setIsStartingNew(true);
     } finally {
       setLoadingConv(false);
@@ -230,6 +231,7 @@ export default function HelpLauncher() {
           api.messages(activeConvId, messagesRef.current.length ? `?after_id=${messagesRef.current.at(-1)?.id}` : ''),
         ]);
         if (!active) return;
+        setError('');
         setActiveConv(detail);
         if (batch.results.length) {
           messagesRef.current = mergeMessages(messagesRef.current, batch.results);
@@ -239,7 +241,10 @@ export default function HelpLauncher() {
         if (lastId) {
           api.action(activeConvId, 'read', { through_id: lastId }).catch(() => {});
         }
-      } catch (_) {}
+      } catch (err) {
+        if (active) setError(err.message || 'Xabarlarni yuklab bo‘lmadi.');
+        throw err;
+      }
     }, { intervalMs: 4000 });
 
     return () => { active = false; poller.stop(); };
@@ -279,6 +284,7 @@ export default function HelpLauncher() {
     if (busy || !activeConvId) return;
 
     setBusy(true);
+    setError('');
     try {
       const body = new FormData();
       body.set('text', draft);
@@ -293,7 +299,8 @@ export default function HelpLauncher() {
       setImage(null);
       setReplyingTo(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (_) {
+    } catch (err) {
+      setError(err.message || 'Xabar yuborilmadi. Qayta urinib ko‘ring.');
     } finally {
       setBusy(false);
     }
@@ -302,6 +309,7 @@ export default function HelpLauncher() {
   const handleSendVoice = async (audioBlob, duration) => {
     if (busy || !activeConvId) return;
     setBusy(true);
+    setError('');
     try {
       const body = new FormData();
       body.set('client_id', crypto.randomUUID());
@@ -314,7 +322,8 @@ export default function HelpLauncher() {
       setMessages([...messagesRef.current]);
       setReplyingTo(null);
       setIsRecordingVoice(false);
-    } catch (_) {
+    } catch (err) {
+      setError(err.message || 'Ovozli xabar yuborilmadi. Qayta urinib ko‘ring.');
     } finally {
       setBusy(false);
     }
@@ -323,6 +332,7 @@ export default function HelpLauncher() {
   const handleSendSticker = async (stickerId) => {
     if (busy || !activeConvId) return;
     setBusy(true);
+    setError('');
     try {
       const body = new FormData();
       body.set('client_id', crypto.randomUUID());
@@ -334,7 +344,8 @@ export default function HelpLauncher() {
       setMessages([...messagesRef.current]);
       setReplyingTo(null);
       setShowStickerPicker(false);
-    } catch (_) {
+    } catch (err) {
+      setError(err.message || 'Stiker yuborilmadi. Qayta urinib ko‘ring.');
     } finally {
       setBusy(false);
     }
@@ -354,6 +365,7 @@ export default function HelpLauncher() {
     if (!newForm.text.trim() || busy) return;
 
     setBusy(true);
+    setError('');
     try {
       const body = new FormData();
       body.set('name', newForm.name || (user?.username || 'Mijoz'));
@@ -374,7 +386,8 @@ export default function HelpLauncher() {
       setImage(null);
       setNewForm((prev) => ({ ...prev, subject: '', text: '' }));
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (_) {
+    } catch (err) {
+      setError(err.message || 'Murojaat yuborilmadi. Qayta urinib ko‘ring.');
     } finally {
       setBusy(false);
     }
@@ -451,6 +464,7 @@ export default function HelpLauncher() {
 
           {/* Body Content */}
           <div className="support-widget-body">
+            {error && <p role="alert" style={{ margin: '0 0 10px', color: 'var(--accent-rose)', fontSize: 13 }}>{error}</p>}
             {isStartingNew ? (
               /* New Conversation Starter Screen */
               <div className="support-widget-start">
@@ -769,3 +783,10 @@ export default function HelpLauncher() {
   );
 }
 
+
+export default function HelpLauncher() {
+  const { isAuthenticated, user, loading, sessionError, sessionId } = useAuth();
+  if (loading || sessionError) return null;
+  // Never carry messages or pending UI work across authentication boundaries.
+  return <HelpLauncherContent key={`${sessionId}:${isAuthenticated ? `${user.id}:${user.role}` : 'guest'}`} />;
+}

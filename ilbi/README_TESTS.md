@@ -29,6 +29,8 @@ uv run pytest --cov=apps --cov-report=term-missing
 
 ## JWT xavfsizlik versiyasi
 
+Login oynasi va chat chegarasi uchun `uv run pytest apps/accounts/tests/test_login_security_boundary.py -q`: platform admini, egasi va xodimning to‘g‘ri paroli faqat login ticket beradi; ticket xususiy profil, chat, hisoblar va katalog APIlariga access token sifatida o‘tmaydi. Brauzerdagi haqiqiy login/OTP, chat kattalashtirish, logout va qoralama tiklash oqimlari `frontend/ilbi` ichida `npm run test:auth-session` bilan sun’iy javoblarda tekshiriladi.
+
 ```bash
 uv run pytest apps/accounts/tests/test_token_version_validation.py apps/accounts/tests/test_token_revocation.py apps/accounts/tests/test_jwt_claims.py -q
 ```

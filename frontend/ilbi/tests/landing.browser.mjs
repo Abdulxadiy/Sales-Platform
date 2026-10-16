@@ -7,7 +7,7 @@ import { resolve, extname, sep } from "node:path";
 import { launchBrowser } from "./browser/chrome.mjs";
 import { auditTheme } from "./helpers/themeAudit.js";
 
-const dist = resolve("dist");
+const dist = resolve(process.env.ILBI_LANDING_DIST_DIR || "dist");
 const out = resolve(
   process.env.ILBI_LANDING_QA_DIR ||
     "../../branding/ilbi-motion-studio/qa/landing",
@@ -1193,7 +1193,7 @@ try {
     },
   );
   await check(
-    "Public CTAs always open login without automatically entering an existing account; saved sessions still work on dashboard",
+    "Public CTAs open fresh login and clear old authentication; independently saved sessions still work on dashboard",
     async () => {
       await browser.evaluate(
         "sessionStorage.setItem('landing_qa_account','owner')",
@@ -1229,10 +1229,10 @@ try {
       );
       assert.equal(
         await browser.evaluate(
-          "Boolean(window.__savedSessionBeforeEntry)&&localStorage.getItem('ilbi_access_token')===window.__savedSessionBeforeEntry",
+          "Boolean(window.__savedSessionBeforeEntry)&&!localStorage.getItem('ilbi_access_token')&&!localStorage.getItem('ilbi_refresh_token')&&!localStorage.getItem('inventra_access_token')&&!sessionStorage.getItem('ilbi_access_token')",
         ),
         true,
-        "Opening login must not delete an existing session",
+        "Explicitly opening login must require fresh authentication",
       );
       assert.equal(
         await browser.evaluate(
@@ -1251,6 +1251,8 @@ try {
         "/login",
         "Direct login URL must also stay on the login form",
       );
+      // The isolated fixture seeds a separately valid remembered session on
+      // document load; direct protected navigation must still restore that.
       await open("/dashboard");
       await wait(
         "location.pathname==='/dashboard' && document.querySelector('.app-header')",

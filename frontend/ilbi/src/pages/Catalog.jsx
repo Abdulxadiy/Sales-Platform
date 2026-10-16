@@ -34,7 +34,8 @@ import ProductLabelsModal from '../components/common/ProductLabelsModal';
 import PriceInput from '../components/common/PriceInput';
 import FiscalMetadataFields from '../components/common/FiscalMetadataFields';
 import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { useAccountDraft } from '../hooks/useAccountDraft';
+import { useAccountDraftFile } from '../hooks/useAccountDraftFile';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../hooks/useAuth';
 
@@ -389,14 +390,21 @@ export default function Catalog() {
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   // Forms - Persisted Drafts
-  const [productForm, setProductForm, resetProductForm] = usePersistedState(
-    `ilbi_draft_product:${activeTenant?.id || 'pending'}`,
+  const [productForm, setProductForm, resetProductForm] = useAccountDraft(
+    'draft_product',
     defaultProductForm
   );
-  const [productImage, setProductImage] = useState(null);
+  const [productImage, setProductImage] = useAccountDraftFile('draft_product_image');
+  const [productImagePreview, setProductImagePreview] = useState('');
+  useEffect(() => {
+    if (!productImage) { setProductImagePreview(''); return; }
+    const url = URL.createObjectURL(productImage);
+    setProductImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [productImage]);
 
-  const [categoryForm, setCategoryForm, resetCategoryForm] = usePersistedState(
-    `ilbi_draft_category:${activeTenant?.id || 'pending'}`,
+  const [categoryForm, setCategoryForm, resetCategoryForm] = useAccountDraft(
+    'draft_category',
     defaultCategoryForm
   );
 
@@ -1858,7 +1866,7 @@ export default function Catalog() {
             {productImage && (
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <img
-                  src={URL.createObjectURL(productImage)}
+                  src={productImagePreview || undefined}
                   alt="Preview"
                   style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border-subtle)' }}
                 />

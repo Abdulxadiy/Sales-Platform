@@ -887,8 +887,8 @@ function SupportCenter({ user, authenticated, operator }) {
 }
 
 export default function Support() {
-  const { user, isAuthenticated, isAdmin, loading } = useAuth();
+  const { user, isAuthenticated, isAdmin, loading, sessionId } = useAuth();
   if (loading) return <div className="support-shell">Yuklanmoqda…</div>;
-  return <SupportCenter key={`${user?.id || 'guest'}:${isAuthenticated}`} user={user} authenticated={isAuthenticated} operator={isAdmin} />;
+  return <SupportCenter key={`${sessionId}:${user?.id || 'guest'}:${isAuthenticated}`} user={user} authenticated={isAuthenticated} operator={isAdmin} />;
 }
 

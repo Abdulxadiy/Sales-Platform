@@ -12,7 +12,7 @@ try {
   const base = `http://127.0.0.1:${server.httpServer.address().port}/tests/browser/catalogFiscal.html`;
   async function wait(expression) {
     for (let i = 0; i < 200; i++) { if (await browser.evaluate(expression)) return; await delay(40); }
-    throw Error('Timeout: ' + expression);
+    throw Error('Timeout: ' + expression + '\n' + browser.errors.join('\n'));
   }
   async function fill(id, value) {
     await browser.evaluate(`(()=>{const input=document.getElementById(${JSON.stringify(id)});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);

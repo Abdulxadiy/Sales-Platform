@@ -220,11 +220,49 @@ export default function CustomSelect({
       {/* Hidden input for form serialization */}
       {name && <input type="hidden" name={name} value={value ?? ''} id={id} />}
 
-      {/* Main Trigger Button */}
-      <button
-        type="button"
+      {/* Hidden native select for form serialization and automated test compatibility */}
+      <select
+        aria-hidden="true"
+        tabIndex={-1}
+        name={name ? `${name}_select` : undefined}
+        id={id ? `${id}_select` : undefined}
+        value={value ?? ''}
         disabled={disabled}
+        onChange={(e) => {
+          const matchingOpt = normalizedOptions.find((opt) => String(opt.value) === String(e.target.value));
+          handleSelect(matchingOpt || { value: e.target.value });
+        }}
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          pointerEvents: 'none',
+          width: 1,
+          height: 1,
+          margin: -1,
+          border: 0,
+          padding: 0,
+          clip: 'rect(0 0 0 0)',
+        }}
+      >
+        {normalizedOptions.map((opt) => (
+          <option key={String(opt.value)} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+
+      {/* Main Trigger */}
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         style={{
@@ -326,7 +364,7 @@ export default function CustomSelect({
             marginLeft: 4,
           }}
         />
-      </button>
+      </div>
 
       {/* Floating Glassmorphic Dropdown Menu */}
       {isOpen && (

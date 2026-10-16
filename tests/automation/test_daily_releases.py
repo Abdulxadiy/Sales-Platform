@@ -198,6 +198,26 @@ class DailyReleaseTests(unittest.TestCase):
         self.assertEqual(queue.output(remote, "rev-parse", "refs/heads/queue/ready"), new_queue)
         self.assertEqual(queue.output(remote, "rev-parse", "refs/heads/queue/progress"), progress_sha)
 
+        # A reviewed manual repair can apply part of the source without advancing
+        # the queue prefix. Refresh must rebase even when the backup is unchanged.
+        queue.git(self.repo, "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*")
+        queue.git(self.repo, "checkout", "--detach", "--quiet", f.base)
+        (self.repo / "update.txt").write_text("real update\n")
+        queue.git(self.repo, "add", "--", "update.txt")
+        queue.git(self.repo, "commit", "--quiet", "-m", "reviewed manual repair")
+        repaired = queue.output(self.repo, "rev-parse", "HEAD")
+        progress["last_main_sha"] = repaired
+        queue.git(self.repo, "read-tree", "--empty")
+        (self.repo / queue.STATE).write_text(json.dumps(progress))
+        queue.git(self.repo, "add", queue.STATE)
+        repaired_state = queue.tree_commit(self.repo, queue.output(self.repo, "write-tree"), [progress_sha], "repair state", settings, bot=True)
+        queue.git(self.repo, "reset", "--hard", repaired)
+        queue.git(self.repo, "push", "--atomic", "origin", f"{repaired}:refs/heads/main", f"{repaired_state}:refs/heads/queue/progress")
+        queue.enqueue(self.repo, settings, refresh=True)
+        refreshed = queue.read_json(remote, queue.output(remote, "rev-parse", "refs/heads/queue/ready"), queue.MANIFEST)
+        self.assertEqual(refreshed["base_sha"], repaired)
+        self.assertEqual([group["id"] for group in refreshed["groups"]], ["second", "third"])
+
     def test_main_progress_and_version_tag_are_one_atomic_delivery(self):
         manifest = self.versioned_snapshot()
         f = self.fixture

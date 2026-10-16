@@ -1,35 +1,11 @@
 {
   "version": 1,
-  "queue_id": "20261016T070939-ba24b6c5",
-  "completed": [
-    "dependencies",
-    "account-memberships",
-    "tenant-permissions",
-    "account-authentication",
-    "employee-directory",
-    "account-api",
-    "shops-and-sellers",
-    "cashbox-ledger",
-    "catalog-import-labels",
-    "inventory-batches-transfers",
-    "sales-debts-returns",
-    "core-exports-analytics",
-    "frontend-tenant-navigation",
-    "frontend-catalog-tools",
-    "frontend-inventory",
-    "frontend-sales",
-    "frontend-management",
-    "backend-regressions",
-    "deployment-configuration",
-    "ci-and-client-regressions",
-    "ilbi-rebranding"
-  ],
+  "queue_id": "20261016T071628-291d71de",
+  "completed": [],
   "last_main_sha": "946a6e29efba70f99e1fd81922aa9a100e3ba88b",
   "days": {
     "2026-10-13": 22,
     "2026-10-16": 23
   },
-  "superseded_queue": "46b81613b5735c6a624825ec520bcfeb13f69f43",
-  "release_tag": "v0.14.0",
-  "updated_at": "2026-10-16T07:13:01.837563+05:00"
+  "superseded_queue": "8e5cdb484b792aeb0aa65046ce1f99e473e5420d"
 }

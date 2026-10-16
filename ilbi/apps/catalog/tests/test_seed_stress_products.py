@@ -7,8 +7,9 @@ from apps.inventory.models import StockMovement
 pytestmark = pytest.mark.django_db
 
 
-def test_seed_stress_products_requires_tenant_id():
-    with pytest.raises(CommandError, match="Error: the following arguments are required: --tenant-id"):
+def test_seed_stress_products_requires_tenant_selector(settings):
+    settings.DEBUG = True
+    with pytest.raises(CommandError, match="Either --tenant-id or --public-code must be provided"):
         call_command("seed_stress_products")
 
 

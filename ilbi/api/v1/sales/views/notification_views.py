@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -89,6 +89,13 @@ class NotificationReadView(TenantContextMixin, APIView):
 class NotificationReadAllView(TenantContextMixin, APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={200: inline_serializer(
+            name="NotificationReadAllResponse",
+            fields={"unread_count": serializers.IntegerField(min_value=0)},
+        )},
+    )
     def post(self, request):
         qs = Notification.objects.filter(recipient=request.user)
         if request.user.role != 'platform_admin':

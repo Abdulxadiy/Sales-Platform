@@ -4,6 +4,7 @@ import json
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
+from pathlib import Path
 
 import test_commit_queue as support
 
@@ -64,7 +65,7 @@ class DailyReleaseTests(unittest.TestCase):
     def gate(self, progress=None, pending=20, manual=False, now=None):
         manifest = {"queue_id": "q", "groups": self.groups(pending)}
         with patch.object(queue, "github_json", side_effect=[manifest, progress or {}]):
-            return queue.release_gate(self.settings, manual=manual, now=now or datetime(2026, 10, 16, 12, tzinfo=timezone.utc))
+            return queue.release_gate(self.settings, manual=manual, now=now or datetime(2026, 10, 16, 18, tzinfo=timezone.utc))
 
     def test_gate_retries_after_the_slot_and_skips_an_already_published_day(self):
         result = self.gate()
@@ -157,3 +158,62 @@ class DailyReleaseTests(unittest.TestCase):
         self.assertEqual([g["id"] for g in groups], ["api", "ilbi-rebranding", "guide"])
         self.assertEqual(groups[0]["atomic_unit"], groups[1]["atomic_unit"])
         self.assertIn("frontend/ilbi/src/new.jsx", groups[1]["paths"])
+
+    def test_refresh_preserves_undelivered_files_history_and_daily_counts(self):
+        f = self.fixture
+        remote = Path(f.tmp.name) / "remote.git"
+        queue.run(["git", "init", "--bare", "-q", str(remote)])
+        queue.git(self.repo, "remote", "add", "origin", str(remote))
+        (self.repo / queue.MANIFEST).parent.mkdir(parents=True, exist_ok=True)
+        (self.repo / queue.MANIFEST).write_text(json.dumps(f.manifest))
+        f.commit("old frozen queue")
+        old_queue = queue.output(self.repo, "rev-parse", "HEAD")
+        queue.git(self.repo, "read-tree", "--empty")
+        state = {"queue_id": "q1", "completed": ["first"], "last_main_sha": f.base, "days": {"2026-10-16": 20}}
+        (self.repo / queue.STATE).write_text(json.dumps(state))
+        queue.git(self.repo, "add", queue.STATE)
+        state_sha = queue.tree_commit(self.repo, queue.output(self.repo, "write-tree"), [], "state", f.settings, bot=True)
+        queue.git(self.repo, "reset", "--hard", old_queue)
+        queue.git(self.repo, "clean", "-ffdx")
+        queue.git(self.repo, "push", "-q", "origin", f"{f.base}:refs/heads/main", f"{f.snapshot}:refs/heads/backup/work-in-progress", f"{old_queue}:refs/heads/queue/ready", f"{state_sha}:refs/heads/queue/progress")
+        plan = self.repo / "automation/queue-plan.json"
+        plan.parent.mkdir(exist_ok=True)
+        plan.write_text(json.dumps({"groups": f.groups}))
+        settings = {**f.settings, "remote": str(remote)}
+        before = queue.output(self.repo, "status", "--porcelain")
+        with self.assertRaisesRegex(queue.QueueError, "still active"):
+            queue.enqueue(self.repo, settings)
+        queue.enqueue(self.repo, settings, refresh=True)
+        new_queue = queue.output(remote, "rev-parse", "refs/heads/queue/ready")
+        self.assertIn(old_queue, queue.output(remote, "show", "-s", "--format=%P", new_queue))
+        manifest = queue.read_json(remote, new_queue, queue.MANIFEST)
+        self.assertEqual(len(manifest["groups"]), 3)
+        progress_sha = queue.output(remote, "rev-parse", "refs/heads/queue/progress")
+        progress = queue.read_json(remote, progress_sha, queue.STATE)
+        self.assertEqual(progress["days"], state["days"])
+        self.assertEqual(progress["last_main_sha"], f.base)
+        self.assertEqual(queue.output(remote, "show", f"{new_queue}:new file.txt"), "real addition")
+        self.assertEqual(queue.output(self.repo, "status", "--porcelain"), before)
+        queue.enqueue(self.repo, settings, refresh=True)
+        self.assertEqual(queue.output(remote, "rev-parse", "refs/heads/queue/ready"), new_queue)
+        self.assertEqual(queue.output(remote, "rev-parse", "refs/heads/queue/progress"), progress_sha)
+
+    def test_main_progress_and_version_tag_are_one_atomic_delivery(self):
+        manifest = self.versioned_snapshot()
+        f = self.fixture
+        remote = Path(f.tmp.name) / "remote.git"
+        queue.run(["git", "init", "--bare", "-q", str(remote)])
+        queue.git(self.repo, "remote", "add", "origin", str(remote))
+        queue.git(self.repo, "push", "-q", "origin", f"{manifest['base_sha']}:refs/heads/main")
+        (self.repo / queue.MANIFEST).parent.mkdir(parents=True, exist_ok=True)
+        (self.repo / queue.MANIFEST).write_text(json.dumps(manifest))
+        f.commit("versioned queue")
+        queue.git(self.repo, "update-ref", "refs/remotes/origin/queue/ready", queue.output(self.repo, "rev-parse", "HEAD"))
+        with patch.object(queue, "remote_clone") as clone:
+            clone.return_value.__enter__.return_value = self.repo
+            queue.publish(f.settings)
+        head = queue.output(remote, "rev-parse", "refs/heads/main")
+        self.assertEqual(queue.output(remote, "rev-parse", "refs/tags/v1.3.0^{}"), head)
+        progress = queue.read_json(remote, queue.output(remote, "rev-parse", "refs/heads/queue/progress"), queue.STATE)
+        self.assertEqual(progress["last_main_sha"], head)
+        self.assertEqual(progress["release_tag"], "v1.3.0")

@@ -182,6 +182,7 @@ def configure(repo, settings):
     git(repo, "config", "credential.helper", "!gh auth git-credential")
     git(repo, "config", "core.autocrlf", "false")
     git(repo, "config", "commit.gpgsign", "false")
+    git(repo, "config", "tag.gpgsign", "false")
 
 
 def fetch(repo):
@@ -372,8 +373,9 @@ def release_level(groups):
         # Documentation, tests, artwork and publisher maintenance do not version the app.
         runtime = any(
             (path.startswith(("ilbi/", "inventra/", "frontend/ilbi/src/", "frontend/inventra/src/"))
-             and not any(part in path for part in ("/tests/", "/migrations/"))
+             and "/tests/" not in path
              and not path.endswith((".md", ".png", ".svg", ".jpg")))
+            or path in ("frontend/ilbi/package.json", "frontend/ilbi/package-lock.json", "frontend/inventra/package.json", "frontend/inventra/package-lock.json")
             for path in group["paths"]
         )
         if runtime:
@@ -476,8 +478,8 @@ def enqueue(root, settings, refresh=False):
             ) != {g["id"] for g in old["groups"]}:
                 if not refresh:
                     raise QueueError(
-                    "Current queue is still active. Its frozen snapshot remains safe; finish it before replacing the queue."
-                )
+                        "Current queue is still active. Its frozen snapshot remains safe; finish it before replacing the queue."
+                    )
         base = ref(repo, settings["default_branch"])
         source_tree = output(repo, "rev-parse", f"{snapshot}^{{tree}}")
         if previous and old.get("source_tree") == source_tree and state.get("last_main_sha") == base:
@@ -693,7 +695,8 @@ def publish(settings, dry_run=False):
                 else 0
             )
             print(
-                f"Dry run: {len(prepared['completed']) - old_count} genuine commits prepared; nothing pushed."
+                f"Dry run: {len(prepared['completed']) - old_count} change commits"
+                f" + {int(prepared.get('release_tag') is not None)} release commit prepared; nothing pushed."
             )
             return
         validate_delivery(repo, settings)

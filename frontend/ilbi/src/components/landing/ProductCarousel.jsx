@@ -94,6 +94,12 @@ function GalleryViewer({ index, onChange, onClose, restoreFocus }) {
       }}
       onKeyDown={(event) => {
         event.stopPropagation();
+        if (
+          zoomed &&
+          event.target === canvas.current &&
+          (event.key === "ArrowLeft" || event.key === "ArrowRight")
+        )
+          return;
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault();
           change(event.key === "ArrowRight" ? 1 : -1);
@@ -404,7 +410,11 @@ export default function ProductCarousel() {
         }}
         onPointerUp={(event) => finishGesture(event)}
         onPointerCancel={(event) => finishGesture(event, true)}
-        onLostPointerCapture={(event) => finishGesture(event, true)}
+        onLostPointerCapture={(event) => {
+          // Touch starts with capture on the image button. Its bubbling loss
+          // during transfer to the viewport must not cancel our new gesture.
+          if (event.target === event.currentTarget) finishGesture(event, true);
+        }}
         onClickCapture={(event) => {
           if (event.timeStamp < suppressClick.current) {
             event.preventDefault();

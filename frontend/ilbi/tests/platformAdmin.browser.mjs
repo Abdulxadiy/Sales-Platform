@@ -30,9 +30,15 @@ try {
   await screenshot('/tmp/ilbi-admin-dashboard-light.png');
   await browser.evaluate(`document.querySelector('.sidebar a[href="/accounts"]').click()`);
   await wait('document.body.innerText.includes("Ali Sinov")');
+  await screenshot('/tmp/ilbi-admin-accounts-light.png');
   await browser.evaluate(`document.querySelector('button[aria-label="Ali Sinov: login va Telegram"]').click()`);
   await wait('Boolean(document.querySelector("dialog[open] input[type=password]"))');
   assert.equal(await browser.evaluate('document.querySelector("dialog[open] form").checkValidity()'), false);
+  await browser.resize(390, 850);
+  await delay(120);
+  assert.equal(await browser.evaluate('document.querySelector("dialog[open] .dialog-content").scrollWidth<=document.querySelector("dialog[open] .dialog-content").clientWidth+1'), true);
+  await screenshot('/tmp/ilbi-admin-recovery-mobile.png');
+  await browser.resize(1440, 1000);
   await fill('dialog[open] textarea', 'Egalik tasdiqlandi, test murojaati');
   await fill('dialog[open] input[type=password]', 'synthetic-admin-password');
   await browser.evaluate('document.querySelector("dialog[open] input[type=checkbox][required]").click()');

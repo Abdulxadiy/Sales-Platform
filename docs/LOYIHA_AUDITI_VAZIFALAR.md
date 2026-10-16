@@ -1,8 +1,8 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** production tayyorgarligining 1-qadami (AUD-21 qisman), 2.1-qadami (AUD-01 qisman), 3-qadamining lokal backup/tiklash tayyorgarligi, 4-qadamining umumiy so‘rov hisoblagichlari, 5-qadamining tayyorlik tekshiruvi, 7-qadamining production API hujjatlarini yopishi, 8-qadamining majburiy token version tekshiruvi, 9-qadamining hujjat testini ajratishi, 10-qadamining avatar faylini xavfsiz almashtirishi, 11-qadamining Telegram 2FAni shaxsiy chat bilan cheklashi va 12-qadamining bot HTTP kutishini boshqa ishlardan ajratishi bajarildi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan. Navbatdagi 13-qadam — band Telegram chatini boshqa telefonga ulashda texnik 500 o‘rniga tushunarli rad javobi (AUD-32 qisman) — alohida tasdiqni kutadi. Dastlabki audit topilmalari tarixiy qayd sifatida saqlangan.  
-**Joriy ko‘rsatma:** har bir tuzatishni alohida tushuntirish va foydalanuvchi tasdig‘idan keyin bajarish; keyingi ishlar uchun umumiy ruxsat berilmagan. Deploy alohida kelishiladi.
+**Holat:** 1, 2.1, 3, 4, 5, 7, 8, 9, 10, 11 va 12-qadamlarning qayd etilgan lokal ishlari bajarilgan. 13-qadam foydalanuvchining yangi topshirig‘i bilan platforma adminining ish muhiti, hisobni tiklash va yordam Telegram bildirishnomalariga kengaytirildi; implementatsiya va lokal tekshiruvlar bajarildi. Yangi migratsiyalar faqat ajratilgan test DBda qo‘llandi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Fiskal integratsiya va 6-qadam keyinga qoldirilgan.
+**Joriy ko‘rsatma:** foydalanuvchi platforma admini uchun login/Telegramni qo‘lda boshqarish, yordam Telegram bildirishnomalari va admin muhitidagi yetishmayotgan amallarni birgalikda qo‘shishni bevosita topshirdi. Shu doira tasdiqlangan; undan tashqaridagi production tuzatishlari avvalgidek birma-bir kelishiladi. Deploy alohida.
 
 ## 1. Tahlil chegarasi va mavjud holat
 
@@ -64,7 +64,7 @@ Topilma turi: **kodda aniq** — sabab manbada ko‘rinadi; **shartli xavf** —
 | AUD-29 | Tashqi ta’sirlarni transactiondan keyin bajarish | 2/5 | P1 | Muhokama kutilmoqda |
 | AUD-30 | Davriy hisobot va Telegram retry | 2/5 | P2 | Muhokama kutilmoqda |
 | AUD-31 | JWT bekor qilish va frontend sessiya tiklanishi | 2/5 | P1 | Qisman bajarildi: 8-qadam token version tekshiruvi |
-| AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | Qisman bajarildi: 11-qadam shaxsiy chat, 12-qadam HTTP kutishi; 13-qadam taklifi tayyor |
+| AUD-32 | Telegram 2FA kontaktini xavfsiz qayta bog‘lash | 2/5 | P1 | 11–13 lokal bajarildi: private chat, async HTTP, konflikt va admin orqali tiklash |
 | AUD-33 | Brauzer xotirasidagi parolni olib tashlash | 1/5 | P0 | Muhokama kutilmoqda |
 | AUD-34 | Kassa yopishda aniqlanmagan owner o‘zgaruvchisi | 1/5 | P1 | Muhokama kutilmoqda |
 | AUD-35 | Egasi o‘chirilgan do‘konini qayta yoqa olishi | 1/5 | P2 | Muhokama kutilmoqda |
@@ -829,15 +829,32 @@ Kontakt egasi senderga mosligi tekshiriladi — bu foydali himoya. Biroq handler
 
 **Chegara:** Requests timeouti avvalgi connect/read cheklovi; yangi qat’iy umumiy deadline/retry mexanizmi qo‘shilmadi. Handler bekor qilinsa, workerda allaqachon boshlangan HTTP chaqiruvi tugashi mumkin. Load test, real backend latency, thread pool tuning va deploy bu qadamga kirmaydi. O‘zgargan fayllar: bot `main.py`, mavjud bot test moduli, bot README, `ilbi/README_TESTS.md` va ushbu audit. Haqiqiy kontakt/DB/media/env o‘zgarmadi.
 
-#### 2026-10-16 — 13-qadam uchun taklif: Telegram ulanish konfliktini tushunarli rad etish
+#### 2026-10-16 — 13-qadam: Telegram konflikti va platforma adminining ish muhiti
 
-**Holat:** faqat tahlil va ajratilgan test bazasidagi sun’iy probe; implementatsiya alohida tasdiqni kutadi.
+**Holat:** foydalanuvchi avval rad xabari/yechimini aniqlashtirdi, so‘ng platforma admini uchun qo‘lda tiklash oynasi, yordam Telegram sozlamalari va barcha asosiy admin imkoniyatlarini interfeysga qo‘shishni bevosita buyurdi. Kengaytirilgan implementatsiya va lokal tekshiruvlar **BAJARILDI**. Quyidagi dastlabki dalil/taklif tarixiy; yakuniy doira pastda.
 
 **Dalil:** `TelegramContact.phone_number` va `chat_id` alohida unique. `TelegramContactSerializer.save()` faqat telefon bo‘yicha `update_or_create()` qiladi, band chat ID bo‘yicha DB `IntegrityError`i ushlanmaydi. Bitta Telegram chatini boshqa telefon bilan yuborish registration endpointida **HTTP 500** berdi. Probe faqat localhost:5433dagi `test_..._test` bazasida sun’iy ikki telefon va bitta chat bilan bajarildi: avvalgi bog‘lanish saqlandi, yangi yozuv yaratilmagan va probe yaratgan qator transaction rollbackidan keyin yo‘qoldi. Telegram/Redis yoki haqiqiy kontaktlarga tegilmadi; ilova kodi bu probe uchun o‘zgartirilmadi. Bot hozir bunday holatni umumiy “serverga ulanish xatosi” deb ko‘rsatadi.
 
 **Taklif doirasi:** band chatga qarshi aniq validation/error code va DB unique poygasiga ham ishlaydigan nazoratli `400/409` javob; botda shu holat uchun tushunarli xabar. Mavjud 2FA bog‘lanishi saqlanadi. Ushbu kichik qadam eski telefon yozuvini o‘chirib, chatni boshqa akkauntga avtomatik ko‘chirmaydi; bunday ko‘chirish/egalik siyosati alohida kelishiladi. Bir xil telefon/chatni takroriy ulash va odatdagi bo‘sh chatga ulash ishlaydi. 11-qadam shaxsiy chat qoidasi saqlanadi, ichki token talabi o‘zgarmaydi.
 
 **Qabul mezoni:** yangi telefon yoki mavjud telefon uchun band chat yuborilganda 500 yo‘q; tegishli xato kodi/bot xabari bor; oldingi bog‘lanishlar o‘zgarmaydi va yarim yozuv qolmaydi. Parallel konflikt ham nazoratli qaytadi, boshqa DB nosozligi noto‘g‘ri “chat band” deb yashirilmaydi. Sinovlar faqat ajratilgan DB, sun’iy kontakt va mock bot HTTPda. Real foydalanuvchini qayta bog‘lash yoki deploy alohida ruxsatga qoladi.
+
+**Yakuniy bajarilgan doira:**
+
+- **Boshqaruv paneli:** tenantga bog‘liq savdo statistikasi o‘rniga umumiy hisob/do‘kon holati, kutayotgan yordam murojaatlari, sotuvchi tekshiruvi, so‘nggi audit va tezkor havolalar. Mavjud do‘kon, seller review, jamoa, yordam va audit amallari saqlandi.
+- **Hisoblar & Kirish:** rol/holat bo‘yicha filtr, qidiruv, sahifalash, hisobning barcha do‘konlari va jamoaga o‘tish; do‘konga biriktirilmagan hisob ham ko‘rinadi. Hisoblar ro‘yxatida N+1 so‘rovlari bartaraf etildi; testda 20 ta qator uchun ko‘pi bilan 7 DB so‘rovi.
+- **Login/Telegramni tiklash:** barcha hisoblar va xodimlar ro‘yxatidan ochiladigan alohida modal. Faqat platform admini, o‘z paroli, sabab va egalikni qo‘lda tekshirganlik tasdig‘i bilan. User/contacts transaction va lock ostida yangilanadi, stale telefon/version hamda begona telefon/chat rad etiladi. Telefon ko‘chirilganda shu hisobning eski Telegram qatori ko‘chadi; boshqa hisoblar birlashtirilmaydi. Eski access/refresh, parol havolalari, OTP va login limitlari bekor/tozalanadi. Savdo va membership IDlari saqlanadi. Yangi telefonni avtomatik telefon-verifikatsiyadan o‘tgan deb belgilamaydi.
+- **Hisobni bloklash/ochish:** butun hisobga ta’sir qiluvchi alohida, parol/sabab talab etuvchi amal; adminni bu oynadan bloklab bo‘lmaydi. Hisobni o‘chirish yoki tarixni yo‘qotish qo‘shilmadi. Mavjud jamoa huquqlari, arxivlash, bo‘shatish va email taklifi o‘z oynasida qoldi.
+- **Yordam Telegram bildirishnomalari:** Services’da platforma sozlamalari do‘kon sozlamalaridan alohida, do‘kon tanlash shart emas. Adminning joriy botga bog‘langan shaxsiy chati, manfiy IDli guruh yoki ikkalasi; yoqish/o‘chirish, saqlash va sinov navbati. DBda admin preference saqlanadi. Biror UI preference yaratilgach ENVdagi eski qabul qiluvchilar fallbacki to‘xtaydi; hali sozlanmagan o‘rnatishda avvalgi ENV rejimi saqlanadi. Yangi visitor xabari oldingi `on_commit → Celery` oqimi bilan yuboriladi; suhbat matni/rasm/token/ism Telegramga chiqmaydi, faqat yangi xabar haqida xabarnoma va autentifikatsiya talab qiluvchi suhbat havolasi boradi.
+- **Qo‘ng‘iroqcha:** admin uchun savdo notification oynasi o‘rniga o‘qilmagan yordam xabarlari soni va murojaatlarga o‘tish. Bitta kichik count endpoint 20 soniyada, faqat ko‘rinadigan tabda, bir vaqtning o‘zida bitta so‘rov bilan so‘raladi.
+- **Konflikt va audit:** band Telegram uchun nazoratli 400/error code va botda adminning aniq tiklash yo‘li. DB unique poygasi ham ushlanadi; boshqa DB xatosi noto‘g‘ri “chat band”ga aylantirilmaydi. Tiklash/notification auditlari tenantdan tashqari, platforma darajasida yoziladi — adminning tasodifiy do‘koniga tushmaydi. Ikki yangi audit amali interfeys filtriga qo‘shildi. Parol auditga yozilmaydi.
+- **Ko‘rinish:** mavjud glass-card, button, modal, telefon inputi va light/dark tokenlari ishlatildi; yangi sahifalar responsive. Admin sarlavhalaridan keraksiz savdo matnlari va “Tenants” texnik yozuvi olindi. Egalar/xodimlarning biznes oynalari o‘chirilmagan.
+
+**Tekshiruvlar:** 199 backend testi (5.39 s), 13 bot testi (2.056 s), 9 Node frontend test to‘plami (0.878 s) o‘tdi. Haqiqiy Chrome’da dashboard/sidebar, hisoblar, tiklash formasi/majburiy tasdiq/payload, notification save/test, light/dark, 390px mobile va modal overflow tekshirildi. Dastlabki brauzer testi selector yozuvida xato bo‘lib tuzatildi; keyingi testlar o‘tdi. Frontend lintidagi yangi `no-use-before-define` xatolari wrapper funksiyalarini to‘g‘ri joylashtirish bilan tuzatildi; yangi komponentlardagi sinxron effect state ogohlantirishlari ham bartaraf etildi. Yakuniy lint/build o‘tdi; loyihadagi qolgan avvaldan mavjud ogohlantirishlar bu qadamda ommaviy o‘zgartirilmadi. Backend yangi fayllari Ruff, Django system/schema tekshiruvlaridan o‘tkazildi. Backendda 8 ta avvaldan mavjud email deprecation ogohlantirishi bor.
+
+**Migratsiya va ekspluatatsiya:** yangi `support/0003_supporttelegramsettings` va `core/0013_alter_auditlog_action` faqat ajratilgan test DBda tekshirildi. Server release vaqtida ular qo‘llanib, backend/Celery/bot yangi kod bilan ishga tushirilishi kerak; bu sessiyada haqiqiy serverga migrate/deploy/restart qilinmadi. `.env`, haqiqiy kontaktlar, chatlar va tashqi Telegram APIga tegilmadi. Sinov xabari uchun API 202 “navbatga qo‘yildi”ni qaytaradi; bu yetkazildi degani emas. Worker, botning guruh huquqlari va serverdagi token tayyor bo‘lishi zarur. Retry mavjud; aynan bir marta yetkazish/outbox kafolati qo‘shilmadi. Eskirgan resetlarni tozalash Redisdagi mavjud xizmatdan foydalanadi; DB/Redis uchun umumiy atomarlik va’da qilinmaydi.
+
+**Fayllar:** accounts platform service/view/test/URL, support model/settings API/task/migratsiya, TG serializer/bot va bot testi, ikki audit choice/migratsiya; frontend platform API/dashboard/accounts/settings/recovery komponentlari, layout/sidebar/Employees/Services/Dashboard/Audit, browser fixture/sinov va qo‘llanmalar. Bir marta qo‘lda ko‘rsatilgan egalik tasdig‘i avtomatik shaxsni aniqlash tizimi emas; admin real tekshiruv uchun javobgar. Fiskal provayder, production POS gate, source backup/commit queue va keyinga qoldirilgan 6-qadam o‘zgarmadi.
 
 ### AUD-33 — Brauzer xotirasidagi parolni olib tashlash
 
@@ -958,6 +975,8 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-32 | Foydalanuvchi 12-qadamni tasdiqladi. Bot registration HTTPsi asyncio thread poolga o‘tkazildi; boshqa buyruq/kontakt shu payt ishlaydi. | LOKAL BAJARILDI: 4 yangi, jami 12 bot testi o‘tdi; timeout/auth/flood/private qoidalari saqlandi. Dependency/deployga tegilmadi. |
 | 2026-10-16 | AUD-32 | Keyingi 13-qadam uchun chat/telefon unique konflikti ajratilgan test DBda qayta tekshirildi: registration 500 qaytardi, sun’iy qator rollback qilindi. | Faqat tahlil. Oldingi ulanishni saqlagan holda tushunarli rad javobi va bot xabari alohida tasdiqni kutadi. |
 
+| 2026-10-16 | AUD-32, admin muhiti | Foydalanuvchi login/Telegramni admin interfeysidan tiklash, yordam uchun shaxsiy/guruh Telegram sozlamalari va adminning umumiy ish muhitini kengaytirishni buyurdi. | LOKAL BAJARILDI: dashboard, hisoblar, parol/audit bilan tiklash va bloklash, notification sozlamalari/qo‘ng‘iroqcha; 199 backend, 13 bot, 9 frontend to‘plami va real Chrome UI sinovi o‘tdi. Migratsiyalar test DBda; deploy yo‘q. |
+
 ### Keyingi suhbatlarda yuritish tartibi
 
 1. Muhokama tegishli `AUD-xx` bo‘limining **Muhokama/qaror** qismiga sana bilan yoziladi. Global jurnalga qisqa qaror va task ID qo‘shiladi.
@@ -979,4 +998,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** 1 va 2.1, 3-qadamning lokal backup/tiklash tayyorgarligi, 4-qadamning umumiy cache hisoblagichlari, 5-qadamning tayyorlik tekshiruvi, 7-qadamning production API hujjatlarini yopishi, 8-qadamning qat’iy token_version tekshiruvi, 9-qadamning hujjat testi izolatsiyasi, 10-qadamning avatar faylini xavfsiz almashtirishi, 11-qadamning Telegram 2FA shaxsiy chat himoyasi va 12-qadamning bot HTTP kutishini ajratishi bajarilgan. 12-qadamda 4 yangi, jami 12 bot testi o‘tdi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan, production POS cheklovi saqlanadi. 13-qadamning band chatni boshqa telefonga ulashda tushunarli rad javobi taklifi alohida tasdiqni kutadi. Qolgan audit vazifalari boshlanishida amaldagi kod bilan qayta solishtiriladi.
+**Joriy natija — 2026-10-16:** 13-qadamning kengaytirilgan admin muhiti lokal tayyor: platforma dashboardi, barcha hisoblar, login/Telegramni audit bilan tiklash, blok/unblock, yordam Telegram manzillari va o‘qilmagan murojaatlar qo‘ng‘iroqchasi. 199 backend testi, 13 bot testi, 9 frontend test to‘plami, haqiqiy Chrome UI sinovi, frontend lint/build o‘tdi. Yangi migratsiyalar test DBda sinovdan o‘tdi; haqiqiy server/env/foydalanuvchilarga tegilmadi. Fiskal POS cheklovi, qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan holatda.

@@ -54,6 +54,6 @@ export default function PlatformSettings() {
       </form>}
     </section>
     <section className="glass-card admin-card admin-form"><div className="admin-heading"><span className="admin-icon"><KeyRound size={22} /></span><div><h3>Hisob va kirish xavfsizligi</h3><div className="admin-muted">Login raqami, shaxsiy Telegram va hisobni tiklash amallari auditda saqlanadi.</div></div></div><div className="admin-toolbar"><button className="btn btn-secondary" onClick={() => setIdentityOpen(true)}>O‘z login va Telegramimni boshqarish</button><a className="admin-link" href="/accounts">Barcha hisoblarni boshqarish →</a></div></section>
-    <IdentityRecoveryModal userId={identityOpen ? user?.id : null} onClose={() => setIdentityOpen(false)} />
+    <IdentityRecoveryModal key={identityOpen ? 'open' : 'closed'} userId={identityOpen ? user?.id : null} onClose={() => setIdentityOpen(false)} />
   </div>;
 }

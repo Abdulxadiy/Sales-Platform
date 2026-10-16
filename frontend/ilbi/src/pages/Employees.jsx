@@ -442,7 +442,7 @@ export default function Employees() {
         </form>
       </Modal>
 
-      <IdentityRecoveryModal userId={identityUser} onClose={() => setIdentityUser(null)} onSaved={() => { refreshList(); toast.success('Login va Telegram yangilandi.'); }} />
+      <IdentityRecoveryModal key={identityUser || 'closed'} userId={identityUser} onClose={() => setIdentityUser(null)} onSaved={() => { refreshList(); toast.success('Login va Telegram yangilandi.'); }} />
       <Modal isOpen={Boolean(editTarget)} onClose={() => { if (!editing) setEditTarget(null); }} title="Hisob ma’lumotlarini tahrirlash" maxWidth={680}>
         {editTarget && <form onSubmit={handleEditSubmit} style={{ display: 'grid', gap: 14 }}>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>

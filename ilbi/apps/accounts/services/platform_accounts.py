@@ -7,6 +7,7 @@ from django.db.models import Q
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 
 from apps.accounts.models import User
+from apps.accounts.services import login_throttle, otp_services
 from apps.accounts.services.password_reset_service import invalidate_password_links
 from apps.core.models import AuditAction, AuditLog
 from apps.tg_bot.identity import current_bot_id
@@ -92,6 +93,10 @@ def recover_identity(*, actor, user_id, values, request):
                 user.is_phone_verified = False
                 fields.append("is_phone_verified")
             user.save(update_fields=fields)
+            login_throttle.register_success(new_phone)
+            otp_services.discard_code(old_phone)
+            if old_phone != new_phone:
+                otp_services.discard_code(new_phone)
             log_platform_action(
                 actor=admin,
                 action=AuditAction.ACCOUNT_IDENTITY_UPDATE,

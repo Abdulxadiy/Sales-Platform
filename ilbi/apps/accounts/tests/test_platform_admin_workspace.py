@@ -1,12 +1,16 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from django.core.cache import cache
+from django.db import close_old_connections
 from rest_framework.test import APIClient
 
 from api.v1.accounts.views.misc import issue_tokens
 from apps.core.models import AuditLog
-from apps.support.models import Conversation, SupportTelegramSettings, Message
+from apps.support.models import Conversation, Message, SupportTelegramSettings
 from apps.support.tasks import notify_operators
 from apps.tg_bot.models import TelegramContact
 from tests.factories import EmployeeFactory, StaffFactory, TenantFactory
@@ -260,7 +264,8 @@ def test_support_badge_counts_only_unread_visitor_messages(admin, staff):
     Message.objects.create(conversation=row, sender="operator", text="Reply", author=admin)
     client = client_for(admin)
     assert client.get("/api/v1/platform/support-unread/").data["unread"] == 2
-    row.operator_read_id = last.pk; row.save()
+    row.operator_read_id = last.pk
+    row.save()
     assert client.get("/api/v1/platform/support-unread/").data["unread"] == 0
     assert client_for(staff).get("/api/v1/platform/support-unread/").status_code == 403
 
@@ -273,3 +278,52 @@ def test_configured_preferences_replace_all_legacy_recipients(admin, settings):
     with patch("apps.support.tasks.send_telegram_message") as send:
         notify_operators(str(row.pk))
         send.assert_not_called()
+
+
+def test_guest_message_queues_notification_only_after_commit(admin, django_capture_on_commit_callbacks):
+    SupportTelegramSettings.objects.create(admin=admin, enabled=True, target="group", group_chat_id="-100777000")
+    client = APIClient()
+    client.credentials(HTTP_X_SUPPORT_TOKEN="d" * 64)
+    with patch("apps.support.tasks.notify_operators.delay") as enqueue:
+        with django_capture_on_commit_callbacks(execute=True):
+            response = client.post(
+                "/api/v1/support/guest/",
+                {
+                    "name": "Private",
+                    "subject": "Help",
+                    "text": "Private question",
+                    "language": "uz",
+                    "consent": True,
+                    "client_id": str(uuid4()),
+                },
+                format="json",
+            )
+            assert response.status_code == 201
+            enqueue.assert_not_called()
+        enqueue.assert_called_once_with(str(response.data["id"]))
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_registration_conflict_is_controlled(settings):
+    barrier = Barrier(2)
+
+    def register(phone):
+        close_old_connections()
+        try:
+            barrier.wait(timeout=5)
+            return (
+                APIClient(raise_request_exception=False)
+                .post(
+                    "/api/v1/internal/telegram/register/",
+                    {"phone_number": phone, "chat_id": "777000"},
+                    HTTP_AUTHORIZATION=f"Internal {settings.INTERNAL_SERVICE_TOKEN}",
+                )
+                .status_code
+            )
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(register, ["+998900001111", "+998900002222"]))
+    assert sorted(results) == [200, 400]
+    assert TelegramContact.objects.filter(chat_id="777000").count() == 1

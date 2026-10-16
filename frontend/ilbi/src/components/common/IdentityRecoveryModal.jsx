@@ -15,9 +15,9 @@ export default function IdentityRecoveryModal({ userId, onClose, onSaved }) {
   useEffect(() => {
     if (!userId) return undefined;
     let cancelled = false;
-    setAccount(null); setError('');
     platformApi.identity(userId).then(data => {
       if (cancelled) return;
+      setError('');
       setAccount(data);
       setForm({ phone_number: data.phone_number, telegram_chat_id: data.telegram_chat_id || '', telegram_action: 'replace', reason: '', admin_password: '', ownership_verified: false });
     }).catch(err => { if (!cancelled) setError(err.message); });

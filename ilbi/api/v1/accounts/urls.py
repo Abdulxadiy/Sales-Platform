@@ -22,11 +22,11 @@ from api.v1.accounts.views.token_refresh import RevocableTokenRefreshView
 
 from .views.docs_views import documentation_image
 from .views.platform_views import (
-    PlatformSupportUnreadView,
     PlatformAccountStatusView,
     PlatformAccountsView,
     PlatformIdentityView,
     PlatformOverviewView,
+    PlatformSupportUnreadView,
 )
 
 urlpatterns = [

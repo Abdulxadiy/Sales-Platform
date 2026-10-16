@@ -36,11 +36,6 @@ import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
 import PhoneInput from '../components/common/PhoneInput';
 import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
-export default function Dashboard() {
-  const { isAdmin } = useAuth();
-  return isAdmin ? <PlatformDashboard /> : <TenantDashboard />;
-}
-
 function TenantDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -1564,4 +1559,9 @@ function TenantDashboard() {
       </div>
     </div>
   );
+}
+
+export default function Dashboard() {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <PlatformDashboard /> : <TenantDashboard />;
 }

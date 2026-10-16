@@ -1,18 +1,11 @@
 {
   "version": 1,
-  "queue_id": "20261016T073130-292e6f28",
+  "queue_id": "20261016T083330-446465f2",
   "completed": [],
   "last_main_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
   "days": {
     "2026-10-13": 22,
     "2026-10-16": 25
   },
-  "superseded_queue": "c05fab8c106d8cece038be55d8a1a1f97ae7ee80",
-  "manual_fixes": [
-    {
-      "sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-      "date": "2026-10-16",
-      "message": "Owner approved removal of exactly 439 duplicate Inventra sources; ILBI replacements preserved"
-    }
-  ]
+  "superseded_queue": "7ac437cceb39217bef9dd3067916157639f36eae"
 }

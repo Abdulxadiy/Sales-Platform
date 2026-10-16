@@ -37,6 +37,16 @@ Testlar sun’iy user va test kaliti bilan haqiqiy imzolangan JWTlarni haqiqiy A
 
 Joriy butun sonli version, yangilangan access token bilan APIga kirish, inactive/deleted user rad etilishi va haqiqiy parol almashtirishdan keyingi bekor qilish tekshiriladi. Parol almashtirilgach eski access/refresh va versionsiz tokenlar rad etiladi, yangi chiqarilgan tokenlar ishlaydi. Faqat ajratilgan test DB ishlatiladi; haqiqiy user sessiyalari yoki bazasi o‘zgartirilmaydi.
 
+## Demo akkauntlarning productiondan ajratilishi
+
+```bash
+uv run pytest apps/accounts/tests/test_demo_mode.py apps/accounts/tests/test_demo_production_isolation.py -q
+```
+
+33 yangi regressiya holati va oldingi 15 demo tekshiruvi: uch rol, hozirgi/legacy demo guruhi, har bir flag o‘chirilishi, eski haqiqiy JWT access/refresh, yangi login, username/telefon o‘zgargan demo hisob, eski OTP ticketi, reset/taklif havolalari va oldingi parol bilan yangilash sinovdan o‘tadi. Productionda ular rad etilishi, oddiy haqiqiy hisob va yoqilgan lokal demo ishlashi kerak. UI preference/legacy ENV bo‘yicha demo adminning Telegram personal/group notificationlari ham tekshiriladi; yuborish mock qilinadi.
+
+Faqat ajratilgan test PostgreSQL/Redis va sun’iy akkauntlar ishlatiladi. Sinov o‘z ticket/link kalitlarini tozalaydi; haqiqiy demo hisoblari, sessiyalar, env va tashqi Telegram/SMTP o‘zgartirilmaydi. Model/migratsiya o‘zgarishi kerak emas.
+
 ## Telegram 2FA shaxsiy chat himoyasi
 
 Platforma adminining yangi ish muhiti:
@@ -120,6 +130,18 @@ Docker va oldindan mavjud `postgres:16-alpine`, `redis:7-alpine` image’lari ke
 Baza va Redis navbat bilan to‘xtatilganda HTTP `503`, qayta ishga tushgach `200` va healthcheck muvaffaqiyati tekshiriladi. Sinov DBsida jadval yaratilmagani va Redisga kalit yozilmagani ham tekshiriladi. Tashqi peer/soxta proxy headerlari rad etilishi, faqat GET/HEAD, xato tafsiloti va parolning javob/logga chiqmasligi, cache taqiqlanishi hamda HTTP checker noto‘g‘ri JSON/redirectni tayyor deb qabul qilmasligi tekshiriladi.
 
 Repo ildizidan `python3 -m unittest discover -s tests/deployment -p 'test_https_edge.py' -v` production Compose start shartlarini va haqiqiy ajratilgan Nginxda readiness manzilining tashqaridan yopilganini tekshiradi. Bu test uchun avvalgi HTTPS image/OpenSSL talablari ham bajarilishi kerak.
+
+## Production Nginx so‘rov cheklovlari
+
+Repo ildizidan:
+
+```bash
+python3 -m unittest discover -s tests/deployment -p 'test_nginx_rate_limits.py' -v
+```
+
+Docker, OpenSSL va oldindan mavjud `nginx:alpine`, `python:3.12-slim` image’lari kerak. Testlar haqiqiy production shablonini ikki Nginx worker bilan, yangi vaqtinchalik tarmoq va TLS sertifikatida ishga tushiradi. Alohida sun’iy klientlar turli haqiqiy peer IP beradi; backend faqat echo/counter fixture. Ilova, haqiqiy DB/Redis/env yoki Telegram ishlatilmaydi, yakunda konteyner/tarmoq/sertifikatlar tozalanadi.
+
+9 test login/kod/parol URLlarining umumiy limiti, query/slash/URL encoding bilan uni chetlab o‘tolmaslik, soxta IP headerlari, ikki workerning bitta hisoblagichi, boshqa IP va savdo API mustaqilligi, qisqa ko‘p kassirli so‘rovlar, ortiqcha API flood, kutgandan keyin tiklanish, JSON/`Retry-After`/xavfsizlik headerlari, rad etilgan so‘rovning backendga bormasligi va upstream `429` saqlanishini tekshiradi. HTTP redirect/ichki URLni yopish/TLS regressiyasi yuqoridagi 9 HTTPS/Compose testida qoladi. Bu sinov haqiqiy POS savdosi yoki internet miqyosidagi DDoS yuklama testi emas.
 
 ## Frontend
 

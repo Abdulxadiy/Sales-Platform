@@ -1,14 +1,15 @@
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { TenantProvider } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
-import Layout from './components/layout/Layout';
-import HelpLauncher from './components/support/HelpLauncher';
 import AppLoadingScreen from './components/common/AppLoadingScreen';
+const Layout = lazy(() => import('./components/layout/Layout'));
+const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
+const Landing = lazy(() => import('./pages/Landing'));
 const Support = lazy(() => import('./pages/Support'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -54,7 +55,7 @@ function RoleProtectedRoute({ children, allowedRoles, allowedPermission }) {
     return <Navigate to="/accept-terms" replace />;
   }
   if (!allowedRoles.includes(role) && !(allowedPermission && (user?.permissions || []).includes(allowedPermission))) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -74,6 +75,17 @@ function SupportRoute() {
   return <Support />;
 }
 
+function RoutePresentation() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const isLanding = pathname === '/';
+    document.title = isLanding ? 'ILBI — Har bir savdo. Bir butun manzara.' : 'ILBI — Savdo va boshqaruv tizimi';
+    document.querySelector('meta[name="robots"]')?.setAttribute('content', isLanding ? 'index, follow' : 'noindex, nofollow');
+  }, [pathname]);
+  if (pathname === '/') return null;
+  return <Suspense fallback={null}><HelpLauncher /></Suspense>;
+}
+
 export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
@@ -84,6 +96,7 @@ export default function App() {
               <ConfirmProvider>
                 <Suspense fallback={<AppLoadingScreen message="Sahifa yuklanmoqda..." />}>
                 <Routes>
+                <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/support" element={<SupportRoute />} />
                 <Route path="/setup-account" element={<SetupAccount />} />
@@ -93,14 +106,13 @@ export default function App() {
                 <Route path="/receipt/:token" element={<PublicReceiptView />} />
 
                 <Route
-                  path="/"
                   element={
                     <ProtectedRoute>
                       <Layout />
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Dashboard />} />
+                  <Route path="dashboard" element={<Dashboard />} />
                   <Route path="accounts" element={<RoleProtectedRoute allowedRoles={['platform_admin']}><PlatformAccounts /></RoleProtectedRoute>} />
                   <Route path="pos" element={<POS />} />
                   <Route path="catalog" element={<Catalog />} />
@@ -164,7 +176,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
                 </Suspense>
-                <HelpLauncher />
+                <RoutePresentation />
             </ConfirmProvider>
           </ToastProvider>
         </TenantProvider>

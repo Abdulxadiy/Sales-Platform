@@ -1,11 +1,12 @@
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-
 from apps.accounts.services import otp_services
+from apps.accounts.services.demo_access_service import DemoAccessService
 from apps.tg_bot.identity import current_bot_id, is_private_chat_id
 from apps.tg_bot.models import TelegramContact
 from apps.tg_bot.services import send_telegram_message
+from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 def issue_tokens(user):
@@ -15,6 +16,8 @@ def issue_tokens(user):
     Tenant access is resolved from active database memberships per request;
     a tenant id in a JWT would go stale and is not authoritative.
     """
+    if DemoAccessService.is_blocked(user):
+        raise AuthenticationFailed("Hisobga kirish ruxsat etilmagan.")
     refresh = RefreshToken.for_user(user)
 
     # Attach custom claims to refresh token

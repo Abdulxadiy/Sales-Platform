@@ -98,13 +98,15 @@ class ProductionComposeTests(unittest.TestCase):
                 self.assertIn(missing, result.stderr)
 
 
-class ProductionHttpsTests(unittest.TestCase):
+class ProductionHttpsFixture:
+    """Real TLS edge and a synthetic echo backend, with no application services."""
+
     @classmethod
     def setUpClass(cls):
         cls.scratch = tempfile.TemporaryDirectory(prefix="ilbi-https-test-")
         cls.addClassCleanup(cls.scratch.cleanup)
         folder = Path(cls.scratch.name)
-        certs = folder / "tls"
+        cls.certs = certs = folder / "tls"
         certs.mkdir()
         command(
             "openssl",
@@ -133,7 +135,7 @@ class ProductionHttpsTests(unittest.TestCase):
         cls.network = f"ilbi-https-test-{tag}"
         command("docker", "network", "create", cls.network)
         cls.addClassCleanup(command, "docker", "network", "rm", cls.network)
-        backend = f"{cls.network}-backend"
+        cls.backend = backend = f"{cls.network}-backend"
         command(
             "docker",
             "run",
@@ -152,22 +154,56 @@ class ProductionHttpsTests(unittest.TestCase):
             "-c",
             """
 import json
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
+counts = {}
+lock = threading.Lock()
 class Handler(BaseHTTPRequestHandler):
+    protocol_version = 'HTTP/1.1'
     def do_GET(self):
-        payload=json.dumps(dict(self.headers)).encode()
-        self.send_response(200)
+        body = self.rfile.read(int(self.headers.get('Content-Length', '0')))
+        parsed = urlsplit(self.path)
+        if parsed.path == '/_fixture/count':
+            run = parse_qs(parsed.query)['run'][0]
+            with lock:
+                data = {'count': counts.get(run, 0)}
+        else:
+            run = self.headers.get('X-Test-Run')
+            with lock:
+                counts[run] = counts.get(run, 0) + 1
+            data = dict(self.headers)
+            data.update(_test_method=self.command, _test_body=body.decode(), _test_path=self.path)
+        upstream_limited = parsed.path == '/api/fixture-throttled/'
+        if upstream_limited:
+            data = {'error': {'code': 'fixture_limit', 'message': 'upstream throttle'}}
+        payload=json.dumps(data).encode()
+        self.send_response(429 if upstream_limited else 200)
         self.send_header('Content-Type','application/json')
         self.send_header('Content-Length',str(len(payload)))
         self.send_header('Strict-Transport-Security','max-age=999999')
+        if upstream_limited:
+            self.send_header('Retry-After', '73')
         self.end_headers()
         self.wfile.write(payload)
+    do_POST = do_GET
+    do_OPTIONS = do_GET
     def log_message(self, *args): pass
-HTTPServer(('0.0.0.0',8000),Handler).serve_forever()
+ThreadingHTTPServer(('0.0.0.0',8000),Handler).serve_forever()
 """,
         )
         cls.addClassCleanup(command, "docker", "rm", "-f", backend)
-        edge = f"{cls.network}-edge"
+        # Two actual workers exercise shared-memory limits. Logs contain only
+        # synthetic run IDs, worker PIDs and statuses, never request contents.
+        main_config = folder / "nginx.conf"
+        main_config.write_text(
+            "worker_processes 2;\nevents { worker_connections 1024; }\n"
+            "http {\ninclude /etc/nginx/mime.types;\n"
+            "log_format fixture '$pid $status $http_x_test_run';\n"
+            "access_log /var/log/nginx/fixture-access.log fixture;\n"
+            "include /etc/nginx/conf.d/*.conf;\n}\n"
+        )
+        cls.edge = edge = f"{cls.network}-edge"
         command(
             "docker",
             "run",
@@ -178,6 +214,8 @@ HTTPServer(('0.0.0.0',8000),Handler).serve_forever()
             edge,
             "--network",
             cls.network,
+            "--network-alias",
+            HOST,
             "-p",
             "127.0.0.1::80",
             "-p",
@@ -190,6 +228,8 @@ HTTPServer(('0.0.0.0',8000),Handler).serve_forever()
             "NGINX_ENVSUBST_FILTER=^(PUBLIC_HOST|SECURE_HSTS_SECONDS)$",
             "-v",
             f"{ROOT / 'frontend/ilbi/nginx.prod.conf'}:/etc/nginx/templates/default.conf.template:ro",
+            "-v",
+            f"{main_config}:/etc/nginx/nginx.conf:ro",
             "-v",
             f"{certs}:/etc/nginx/tls:ro",
             "-v",
@@ -225,6 +265,8 @@ HTTPServer(('0.0.0.0',8000),Handler).serve_forever()
         finally:
             connection.close()
 
+
+class ProductionHttpsTests(ProductionHttpsFixture, unittest.TestCase):
     def test_http_redirect_preserves_method_and_path(self):
         connection = http.client.HTTPConnection("127.0.0.1", self.http_port, timeout=5)
         try:

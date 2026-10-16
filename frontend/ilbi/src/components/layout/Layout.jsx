@@ -194,7 +194,7 @@ export default function Layout({ children }) {
   // Derive title from pathname
   const getPageInfo = () => {
     switch (location.pathname) {
-      case '/':
+      case '/dashboard':
         return {
           title: isAdmin ? 'Platforma boshqaruvi' : 'Savdo Analitikasi & Dashboard',
           subtitle: isAdmin ? 'Hisoblar, do‘konlar, murojaatlar va ma’muriy nazorat' : 'Biznesingizning jonli ko‘rsatkichlari, tushum va qoldiqlar',

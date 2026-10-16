@@ -8,12 +8,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from django.contrib.auth.models import Group
-from django.core.management import call_command
-from django.core.management.base import CommandError
-from django.db.models import Count, F, Sum
-from rest_framework.test import APIClient
-
 from apps.accounts.models import Employee, User
 from apps.accounts.services import login_throttle
 from apps.accounts.services.demo_access_service import DemoAccessService
@@ -21,6 +15,11 @@ from apps.catalog.models import Product, ProductVariant
 from apps.inventory.models import Stock, StockMovement
 from apps.sales.models import Counterparty, Sale
 from apps.tenants.models import Tenant
+from django.contrib.auth.models import Group
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.db.models import Count, F, Sum
+from rest_framework.test import APIClient
 from tests.factories import EmployeeFactory, TenantFactory, UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -66,9 +65,9 @@ def test_both_switches_required(settings, demo_user, disabled):
     with patch("api.v1.accounts.views.admin_login.send_otp_or_error", return_value=None), \
          patch("api.v1.accounts.views.admin_login.get_telegram_contact_or_error", return_value=(object(), None)):
         response = login(demo_user)
-    assert response.status_code == 200
+    assert response.status_code == 401
     assert "access" not in response.data
-    assert "phone_hint" in response.data
+    assert "login_ticket" not in response.data
 
 
 @pytest.mark.parametrize("mutation", ["untagged", "real_phone", "regular_username"])

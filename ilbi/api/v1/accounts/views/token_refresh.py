@@ -1,3 +1,4 @@
+from apps.accounts.services.demo_access_service import DemoAccessService
 from apps.accounts.token_validation import has_current_token_version
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import InvalidToken
@@ -10,7 +11,7 @@ class RevocableTokenRefreshSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
         token = RefreshToken(attrs["refresh"])
         user = get_user_model().objects.filter(pk=token.get("user_id"), is_active=True).first()
-        if user is None or not has_current_token_version(token, user):
+        if user is None or DemoAccessService.is_blocked(user) or not has_current_token_version(token, user):
             raise InvalidToken("Sessiya bekor qilingan. Qaytadan kiring.")
         return super().validate(attrs)
 

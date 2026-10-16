@@ -1,8 +1,8 @@
 # ILBI — loyiha auditi, vazifalar va muhokamalar
 
 **Dastlabki audit sanasi:** 2026-10-12. **So‘nggi yangilanish:** 2026-10-16.  
-**Holat:** 1, 2.1, 3, 4, 5, 7, 8, 9, 10, 11 va 12-qadamlarning qayd etilgan lokal ishlari bajarilgan. 13-qadam foydalanuvchining yangi topshirig‘i bilan platforma adminining ish muhiti, hisobni tiklash va yordam Telegram bildirishnomalariga kengaytirildi; implementatsiya va lokal tekshiruvlar bajarildi. Yangi migratsiyalar faqat ajratilgan test DBda qo‘llandi. Haqiqiy serverga deploy yoki backup faollashtirish qilinmadi. Fiskal integratsiya va 6-qadam keyinga qoldirilgan.
-**Joriy ko‘rsatma:** foydalanuvchi platforma admini uchun login/Telegramni qo‘lda boshqarish, yordam Telegram bildirishnomalari va admin muhitidagi yetishmayotgan amallarni birgalikda qo‘shishni bevosita topshirdi. Shu doira tasdiqlangan; undan tashqaridagi production tuzatishlari avvalgidek birma-bir kelishiladi. Deploy alohida.
+**Holat:** 1, 2.1, 3, 4, 5, 7, 8, 9, 10, 11, 12, kengaytirilgan 13, 14 va 15-qadamlarning qayd etilgan lokal ishlari bajarilgan. Production Nginx cheklovlari 18 TLS/Compose/rate-limit testidan o‘tgan. 15-qadamda production demo login/sessiya/link/notification chegaralari yopildi; 802 backend testi va alohida bitta slow test — jami 803 test o‘tdi. Haqiqiy serverga deploy qilinmagan. Fiskal integratsiya, 6-qadam va Cloudflare WAF/DDoS ulanishi keyinga qoldirilgan.
+**Joriy ko‘rsatma:** foydalanuvchi demo xavfini “yopa hammasini” deb tuzatishni va uch himoyani birinchi o‘ringa qo‘yishni topshirdi. Aniqlashtirishda `ilbi.uz` hali sotib olinmagani (bron), Cloudflarega ulanmagani va production server yo‘qligini bildirdi; WAF/DDoS ulanishini hozircha keyinga qoldirishni ma’qulladi. Lokal demo himoyasi yakunlanadi; domen/server/DNS o‘zgartirilmaydi.
 
 ## 1. Tahlil chegarasi va mavjud holat
 
@@ -305,6 +305,30 @@ OTP tasdiqlashda parol bosqichi o‘tilganini bildiradigan bir martalik ticket y
 
 **Muhokama/qaror:** hali yo‘q. **Bajarilish:** boshlanmagan.
 
+#### 2026-10-16 — Demo akkauntlarning production chegarasi tekshiruvi
+
+**Dastlabki tahlil holati:** foydalanuvchi demo akkauntlar ochilganda xavfsizlik teshigi qolgan-qolmaganini tekshirishni so‘radi. Kod tahlili va ajratilgan sinov **BAJARILDI**; o‘sha tahlilda demo implementatsiyasi va haqiqiy akkauntlar o‘zgartirilmadi. Quyidagi xavf va probe o‘zgarishdan oldingi tarixiy dalil; tuzatish 15-qadamda.
+
+**Mavjud himoya:** demo password-only login `DEBUG=True`, `LOCAL_DEMO_LOGIN_ENABLED=True`, demo username, sun’iy telefon va maxsus hozirgi/legacy guruhning birgalikdagi mosligini talab qiladi. Parol tekshiruvi, inactive user va faol membership talabi saqlanadi. Oddiy demo staffning boshqa tenant katalogiga kirishi `403`. Production sozlamasi debug/demo flaglarini rad etadi; Compose demo flagini `False` qiladi. `seed_demo_platform` HTTP endpoint emas: CLI, faqat bo‘sh DB va ikki dev flag bilan ishlaydi; xatoda transaction rollback bor. Parol manbadan olinadi, kodda universal yashirin parol topilmadi va bu tekshiruvda uning haqiqiy qiymati o‘qilmadi.
+
+**Tasdiqlangan shartli xavf — P1:** demo login bergan JWT oddiy JWTdan ajratilmagan. `CustomJWTAuthentication` hamda refresh faqat faol user va token versionni tekshiradi; demo guruhiga production taqiqi yo‘q. Seed yaratadigan `demo_admin` haqiqiy `platform_admin`/superuser vakolatida. Agar demo user qatorlari va token imzolash kaliti productionga saqlab o‘tilsa, flaglarni o‘chirish avval berilgan sessiyani bekor qilmaydi. Bu parolsiz yangi login topildi degani emas: avval olingan, hali muddati tugamagan token zarur. Alohida production baza/kaliti ushbu token ko‘chishi shartini bartaraf etadi, lekin akkauntning o‘ziga production taqiqi ham kerak.
+
+**Dinamik dalil:** vaqtinchalik pytest probe faqat `config.settings_test`, localhost:5433 va `test_...` DB shartlarini tekshirgach sun’iy demo admin va boshqa oddiy hisob yaratdi. Haqiqiy login endpointidan demo access/refresh olindi; so‘ng ikkala demo flagi o‘chirildi. Eski access bilan global hisoblar `200` (boshqa hisob ko‘rindi), eski refresh `200`, yangilangan access ham `200`. Test shu shartni namoyish qiladi; haqiqiy production serverdagi baza/kalit holati tekshirilmagan. Probe fayli avtomatik o‘chirildi, DB qatorlari test transactionida qaytarildi, token/kalit/parol logga chiqarilmadi. Mavjud demo + production settings testlari va probe: **43 passed, 8 oldingi email deprecation warnings, 4.66 s**.
+
+**Tarixiy taklif:** productionda maxsus demo hisoblarini login, JWT access va refreshda qat’iy rad etish; demo o‘chirilganda eski sessiya bilan ham kirmasligini regressiya testida tekshirish. Foydalanuvchi keyin “yopa hammasini” deb tasdiqladi; yakuniy doira va natija quyida.
+
+#### 2026-10-16 — 15-qadam: demo akkauntlarning production kirishini yopish
+
+**Holat: LOKAL BAJARILDI.** Foydalanuvchi demo hisoblarini productionda, eski sessiya bo‘lsa ham, kiritmaslik taklifini tasdiqladi. Hisoblar o‘chirilmaydi; lokal demo ikkala dev flag yoqilganda ishlaydi.
+
+**Yechim:** `DemoAccessService.is_blocked` hozirgi va legacy demo guruhini flaglardan mustaqil saqlanadigan belgi sifatida tekshiradi. `DEBUG` yoki `LOCAL_DEMO_LOGIN_ENABLED` o‘chiq bo‘lsa, ushbu belgi bor hisobga yangi login va JWT access/refresh `401`. User role, `is_active`, to‘g‘ri parol yoki aynan joriy `token_version` bu taqiqni chetlab o‘tmaydi. Username/telefonni oddiy ko‘rinishga o‘zgartirish ham belgi saqlanganda yordam bermaydi; faqat nom/prefiks sabab belgisiz haqiqiy hisob bloklanmaydi. Token chiqaruvchi umumiy helperda ham yakuniy guard bor.
+
+**Qo‘shimcha kirish yo‘llari:** oldingi login ticketi Telegram status/send/verifyda rad etiladi, OTP yuborish yoki tekshirish chaqirilmaydi. Reset/taklif havolalari valid emas deb ko‘rsatiladi; confirm/resume yoki eski parol orqali yozuv yangilanmaydi. Bloklangan demo hisobga reset emaili/tokeni yaratilmaydi; public javob noma’lum hisobdagi umumiy shaklni saqlaydi. `verify` mavjud API shartiga ko‘ra `200 {valid:false}` beradi. Yordam Telegram tasklari ham shu demo adminning shaxsiy/guruh preference’larini, test navbatini va eski ENV telefonini qabul qiluvchi sifatida ishlatmaydi. Allaqachon navbatdagi task bajarilayotganda joriy siyosat qayta tekshiriladi.
+
+**Tekshiruv:** yangi `test_demo_production_isolation.py`da 33 holat va oldingi 15 demo testi **48/48, 2.21 s** o‘tdi. Dastlab yangi testlarda reset API maydoni/statusi taxmini noto‘g‘ri edi (`identifier` o‘rniga tashqi `login`, invalid verify uchun `400` o‘rniga mavjud `200/valid:false`); test API shartiga moslashtirildi, API xatti-harakati o‘zgartirilmadi. Keng backend regressiyasi: **802 passed, 1 slow deselected, 16 oldingi email deprecation warnings, 41.12 s**. Ajratilgan `test_code_expires_after_ttl` keyin alohida **1 passed, 1.44 s**: jami barcha **803** test bajarildi. Django system check va OpenAPI validate/fail-on-warn o‘tdi. Yangi test/asosiy guard fayllariga Ruff check/format, eski tahrirlangan modullarga import va CI sintaksis/undefined-name tekshiruvi o‘tdi; eski modullardagi mavjud E402/E501/S110 signallari ommaviy qayta yozilmadi.
+
+**Fayllar:** demo access service, CustomJWTAuthentication, token refresh, login view, token chiqarish helperi, login ticket/password reset xizmatlari, support tasklari, mavjud demo testlari, yangi izolyatsiya testlari va yo‘riqnomalar. Model/migratsiya, haqiqiy hisob/token versiyasi, secret/env yoki frontend o‘zgarmadi. Testlar sun’iy test DB/Redisda, Telegram/SMTP mock/xotirada; serverga deploy/restart qilinmadi. Release vaqtida backend va Celery worker yangilanishi kerak.
+
 ### AUD-10 — Parol tiklash tokenlarining hayot sikli
 
 **4/5 · P1 · Kodda aniq.**
@@ -578,6 +602,36 @@ README production uchun ham development Compose’ni tavsiya qiladi. Frontend Vi
 **Tekshiruv:** productionda uchta asosiy texnik URL, slashsiz ko‘rinishlar va schema format querysi `404`; development/testda Swagger/Redoc `200` va schema route’i mavjud. Production sozlamasi bilan CLI OpenAPI yaratish, validatsiya va fail-on-warn o‘tdi. Yangi subprocess testlarida dotenv o‘qish, DB/Redis ulanishlari taqiqlangan; kalit faqat sun’iy. Mavjud schema/UI hamda mahsulot qo‘llanmasi rol/ruxsat regressiyalari ajratilgan test DBda tekshirildi. **38 passed, 1 deselected, 11.94 s**; 8 ta avvaldan mavjud Django email deprecation ogohlantirishi bor. Deselected — repodagi haqiqiy Markdownni vaqtincha o‘zgartiradigan eski `test_docs_edit_only_platform_admin`; ushbu qadam uning fayl izolatsiyasini o‘zgartirmaydi. Yangi/tegishli kod uchun Ruff, base settings uchun CI sintaksis/undefined-name tekshiruvi o‘tdi.
 
 **Chegara:** production sozlamasi ishlatilganda route’lar yopiladi; bu serverga avtomatik deploy emas. Keyinchalik tashqi integratsiya hujjati kerak bo‘lsa alohida kirish siyosati belgilanadi. Export qilingan schema fayli HTTP route yoqmasdan operator tomonidan yaratilishi mumkin.
+
+#### 2026-10-16 — 14-qadam: production Nginx so‘rov cheklovlari
+
+**Qaror:** foydalanuvchi Nginxda login/kod va odatiy API uchun alohida cheklovlarni tayyorlash va lokal sinovni “maqullayman” deb tasdiqladi. **Holat: LOKAL BAJARILDI** — implementatsiya va yakuniy regressiya o‘tdi. Serverga faollashtirish, Cloudflare/DNS va WAF bu doiraga kirmaydi.
+
+**Dalil:** development `nginx/nginx.conf`da limitlar bor, ammo production Compose `frontend/ilbi/Dockerfile` orqali alohida `frontend/ilbi/nginx.prod.conf`ni ishlatadi; unda `limit_req` yo‘q edi. Ilovaning login/OTP va shared Redis/DRF cheklovlari allaqachon mavjud, qayta yozilmadi.
+
+**Implementatsiya:** normalizatsiya qilingan `$uri` bo‘yicha ikki guruh; faqat haqiqiy socket peerining `$binary_remote_addr` manzili bilan kalit. Login, OTP send/verify, password reset request/verify/confirm/resume/change-with-old va change-password — o‘rtacha `60r/m`, `burst=30`; qolgan `/api/` — `60r/s`, `burst=120`. `nodelay` qisqa burstni darhol o‘tkazadi, bu qat’iy kalendar daqiqasi oynasi emas. Ikki bucket alohida: auth to‘lishi savdo allowance’ini sarflamaydi. Refresh, profil va Telegram-link status general bucketda. Statik/SPA/media API hisoblagichidan ajratilgan; ichki `/api/v1/internal` avvalgidek yopiq.
+
+**Javob:** edge ortiqcha so‘rovni Django chaqiruvidan oldin `429` bilan qaytaradi. UI taniydigan `error.code/message/details` JSON, `no-store`, auth uchun `Retry-After: 2`, API uchun `1` va barcha xavfsizlik headerlari bor. Shu IPdan davom etayotgan trafik yana kutishni talab qilishi mumkin. Ilovaning o‘z `429` JSON/retry qiymatlari almashtirilmaydi. Workerlar bitta shared-memory bucketni ko‘radi; alohida Nginx instance’lari uchun umumiy global limit emas.
+
+**Fayllar:** production Nginx shabloni, mavjud HTTPS testining qayta ishlatiladigan sun’iy fixture’i, yangi `tests/deployment/test_nginx_rate_limits.py`, README, test yo‘riqnomasi va shu audit. Haqiqiy env/DB/media yoki ilova biznes kodi o‘zgartirilmadi. Dockerfile/dependency/entrypoint va 6-qadamga tegilmadi.
+
+**Tekshiruv:** haqiqiy Nginx `nginx -t`, ikki worker va vaqtinchalik TLS/echo backend bilan yangi 9 rate-limit testi hamda oldingi 9 HTTPS/Compose testi birga **18/18, 15.451 s** o‘tdi. Login/OTP/reset/encoding/slash/query, soxta header, boshqa peer IP, auth/API ajratilishi, 80 so‘rovli ko‘p kassir burst va 500 so‘rovli sun’iy API flood, umumiy worker budgeti, kutgandan keyin tiklanish, backendga bormagan rejectionlar va upstream `429` tekshirildi. Ruxsat etilgan POST method/body va proxy headerlari saqlandi. Ruff check/format (`ilbi/pyproject.toml`) va Markdown tekshiruvi o‘tdi. Vaqtinchalik konteyner/tarmoq/sertifikatlar tozalangani tekshirildi. Bu POS biznes/yuklama testi emas; backend faqat fixture.
+
+**Qolgan tashqi ish:** real NAT/ko‘p kassir yuklamasida limitni kuzatish va zarur bo‘lsa moslash; Cloudflare/WAF/DDoS ulash alohida. Oldiga proksi qo‘yilsa faqat ishonchli proksi tarmoqlaridan real IP tiklash hamda originni chetlab kirishni yopish kerak; hozir ixtiyoriy `CF-Connecting-IP`/`X-Forwarded-For` ishonilmaydi. Lokal cheklov internet miqyosidagi DDoSdan to‘liq himoya kafolati emas. [Nginx rasmiy algoritmi](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html).
+
+#### 2026-10-16 — WAF va DDoS ulanishini keyinga qoldirish
+
+**Foydalanuvchi javobi:** `ilbi.uz` hali sotib olinmagan, faqat bron qilingan; Cloudflarega qo‘shilmagan, production server ham tayyor emas. Shu sabab tashqi ulanish hozircha to‘xtatiladi, loyihaning lokal tayyorgarligi davom etadi.
+
+| So‘ralgan himoya | Hozirgi holat |
+|---|---|
+| Rate limiting | Ilova/Redis va production Nginx kodi tayyor; 18 edge testi o‘tgan. Production serverda hali ishga tushirilmagan. |
+| WAF | Cloudflare akkaunt/domen ulanishi va qoidalar hali sozlanmagan; foydalanuvchi bilan keyinga qoldirildi. |
+| DDoS | Cloudflare orqali trafikni himoyalash hali faollashtirilmagan; domen/server tayyor bo‘lganda qaytiladi. |
+
+**Qaytilganda bajariladigan ish:** domenni Cloudflarega qo‘shish va web DNS yozuvini proksi orqali o‘tkazish; origin TLS sertifikatini tayyorlash va `Full (strict)`ni ishlatish; tanlangan tarifdagi WAF qoidalarini API/login/support bilan sinash; faqat ishonchli Cloudflare tarmoqlaridan real IP tiklash va originga to‘g‘ridan-to‘g‘ri kirishni yopish. Shundan keyin haqiqiy domenda WAF, IP hisoblanishi va origin chegarasi tekshiriladi. DNS/parol/token/serverga ushbu sessiyada o‘zgartirish qilinmadi.
+
+Cloudflare DDoS himoyasi barcha tariflarda mavjud; bepul WAFda Free Managed Ruleset, kengroq qoidalar tarifga bog‘liq. Bu mavjudlik bizning domenimizda yoqilganini anglatmaydi. Rasmiy manbalar: [WAF imkoniyatlari](https://developers.cloudflare.com/waf/), [DDoS](https://developers.cloudflare.com/ddos-protection/), [originni himoyalash](https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/).
 
 ### AUD-22 — Hujjat versiyalari va rozilik dalili
 
@@ -976,6 +1030,10 @@ README backendni localhost:8000 deydi, Compose backendga host port bermaydi; Swa
 | 2026-10-16 | AUD-32 | Keyingi 13-qadam uchun chat/telefon unique konflikti ajratilgan test DBda qayta tekshirildi: registration 500 qaytardi, sun’iy qator rollback qilindi. | Faqat tahlil. Oldingi ulanishni saqlagan holda tushunarli rad javobi va bot xabari alohida tasdiqni kutadi. |
 
 | 2026-10-16 | AUD-32, admin muhiti | Foydalanuvchi login/Telegramni admin interfeysidan tiklash, yordam uchun shaxsiy/guruh Telegram sozlamalari va adminning umumiy ish muhitini kengaytirishni buyurdi. | LOKAL BAJARILDI: dashboard, hisoblar, parol/audit bilan tiklash va bloklash, notification sozlamalari/qo‘ng‘iroqcha; 199 backend, 13 bot, 9 frontend to‘plami va real Chrome UI sinovi o‘tdi. Migratsiyalar test DBda; deploy yo‘q. |
+| 2026-10-16 | AUD-21 | Foydalanuvchi 14-qadam — production Nginx auth/API so‘rov limitlari va lokal sinovni tasdiqladi. | LOKAL BAJARILDI: alohida per-IP bucketlar, JSON 429 va Retry-After; ikki workerli haqiqiy Nginxda 18 test o‘tdi. Cloudflare/DNS/WAF/deploy faollashtirilmadi. |
+| 2026-10-16 | AUD-09 | Qo‘shimcha topshiriq bilan demo login/seed/tenant chegarasi va eski sessiyalar tekshirildi. | TAHLIL BAJARILDI: bir xil DB/kalit saqlansa demo off eski admin JWT/refreshni rad etmaydi; sun’iy probeda 200/200/200. 43 demo/settings/probe testi o‘tdi. Demo tuzatishi va haqiqiy akkauntlarga o‘zgartirish tasdiqlanmagan. |
+| 2026-10-16 | AUD-09 | Foydalanuvchi demo xavfini “yopa hammasini” deb tuzatishni topshirdi. | 15-qadam LOKAL BAJARILDI: demo login/eski JWT/ticket/reset/invitation va support notification chegaralari yopildi; 33 yangi izolyatsiya testi, 802 + 1 slow = jami 803 regressiya o‘tdi. Haqiqiy hisoblar va env o‘zgarmadi; deploy yo‘q. |
+| 2026-10-16 | AUD-21 | Uch himoya holati aniqlashtirildi. Foydalanuvchi domen hali sotib olinmagani/Cloudflarega ulanmagani va server yo‘qligini bildirdi, ulanishni hozircha to‘xtatishga kelishildi. | Rate limiting lokal tayyor. WAF/DDoS KEYINGA QOLDIRILDI; domen/server tayyor bo‘lganda tashqi ulanish va tekshiruv bajariladi. Uchala ish tugallandi deb belgilanmadi. |
 
 ### Keyingi suhbatlarda yuritish tartibi
 
@@ -998,4 +1056,4 @@ Qolgan ish/tashqi tasdiq: mavjud bo‘lsa
 Yakunlangan sana:
 ```
 
-**Joriy natija — 2026-10-16:** 13-qadamning kengaytirilgan admin muhiti lokal tayyor: platforma dashboardi, barcha hisoblar, login/Telegramni audit bilan tiklash, blok/unblock, yordam Telegram manzillari va o‘qilmagan murojaatlar qo‘ng‘iroqchasi. 199 backend testi, 13 bot testi, 9 frontend test to‘plami, haqiqiy Chrome UI sinovi, frontend lint/build o‘tdi. Yangi migratsiyalar test DBda sinovdan o‘tdi; haqiqiy server/env/foydalanuvchilarga tegilmadi. Fiskal POS cheklovi, qolgan fiskal ishlar va 6-qadam keyinga qoldirilgan holatda.
+**Joriy natija — 2026-10-16:** 15-qadamdagi demo production chegarasi lokal yopildi: 33 yangi izolyatsiya holatini o‘z ichiga olgan 802 backend testi va alohida slow TTL testi — jami 803 test o‘tdi. Oldingi 14-qadamdagi Nginx rate limiting 18 haqiqiy edge testidan o‘tgan, serverda hali yoqilmagan. WAF/DDoS domen/server yo‘qligi sabab foydalanuvchi bilan keyinga qoldirildi. Backend/Celery deploy, haqiqiy hisoblar/env, fiskal POS cheklovi va 6-qadamga tegilmadi. Oldingi ishlar dalillari tegishli bo‘limlarda saqlandi.

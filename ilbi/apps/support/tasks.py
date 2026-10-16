@@ -3,6 +3,8 @@ import logging
 from celery import shared_task
 from django.conf import settings
 
+from apps.accounts.models import User
+from apps.accounts.services.demo_access_service import DemoAccessService
 from apps.tg_bot.identity import current_bot_id, is_group_chat_id, is_private_chat_id
 from apps.tg_bot.models import TelegramContact
 from apps.tg_bot.services import send_telegram_message
@@ -13,6 +15,8 @@ logger = logging.getLogger(__name__)
 def configured_admin_recipients(row):
     recipients = set()
     if not row.enabled or not row.admin.is_active or row.admin.role != "platform_admin" or not current_bot_id():
+        return recipients
+    if DemoAccessService.is_blocked(row.admin):
         return recipients
     if row.target in ("personal", "both"):
         contact = TelegramContact.objects.filter(phone_number=row.admin.phone_number, bot_id=current_bot_id()).first()
@@ -55,11 +59,14 @@ def notify_operators(conversation_id):
     configurations = list(SupportTelegramSettings.objects.select_related("admin"))
     # Once configured in the UI, do not silently notify legacy environment recipients.
     phones = [] if configurations else settings.SUPPORT_OPERATOR_PHONES
+    blocked_phones = {
+        user.phone_number for user in User.objects.filter(phone_number__in=phones) if DemoAccessService.is_blocked(user)
+    }
     contacts = TelegramContact.objects.filter(
         phone_number__in=phones,
         bot_id=bot_id,
         chat_id__regex=r"^[0-9]+$",
-    )
+    ).exclude(phone_number__in=blocked_phones)
     recipients = {contact.chat_id for contact in contacts if is_private_chat_id(contact.chat_id)}
     for row in configurations:
         recipients.update(configured_admin_recipients(row))

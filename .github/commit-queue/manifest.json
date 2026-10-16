@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T094628-33d6a1ca",
+  "queue_id": "20261016T101621-9fabeee5",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "33d6a1cacbee486f21c1481f403fbed8bd7dd941",
-  "source_tree": "430d1624ff17aabac1931fb4bdb343fdb775e8d2",
-  "created_at": "2026-10-16T09:46:28.667423+05:00",
+  "snapshot_sha": "9fabeee58e26d9ab0a67036a5e66453a538745b8",
+  "source_tree": "868ee9b1f28e69c599add5f6f3987d13ea7b4d4c",
+  "created_at": "2026-10-16T10:16:21.042805+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -69,6 +69,7 @@
       "paths": [
         ".gitignore",
         "Architectures/shop-yol-xaritasi.md",
+        "docs/README.md",
         "docs/qollanmalar/owner_amaliy_qollanma.md",
         "frontend/ilbi/src/components/common/FiscalMetadataFields.jsx",
         "frontend/ilbi/src/components/common/ReceiptItemCodes.jsx",
@@ -334,6 +335,7 @@
         "branding/ilbi-motion-studio/qa/night-theme/support-widget-light.png",
         "branding/ilbi-motion-studio/qa/night-theme/terms-dark-accept-terms.png",
         "branding/profile_pic.png",
+        "docs/FISKAL_UZUM_QOLLANMA_UZ.md",
         "docs/NIGHT_MODE_AUDIT_UZ.md",
         "tests/deployment/test_https_edge.py"
       ]

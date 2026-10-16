@@ -53,6 +53,8 @@ docker compose up --build
 
 The frontend root `/` is ILBI's public presentation page. Sign-in stays at `/login`; authenticated work starts at `/dashboard`. The presentation follows native scrolling in both directions, including a four-stage sales story. Reduced-motion preferences and short windows retain the complete, unpinned presentation.
 
+The product gallery presents six real interface captures with synthetic demonstration data. It supports side previews, touch swipes, mouse dragging, keyboard navigation and an original-size image viewer. Automatic playback pauses on hover, focus, hidden pages and when the gallery leaves the viewport; manual navigation stops playback until the visitor enables it again. Reduced-motion preferences disable autoplay by default.
+
 ### Bare-Metal Development (Manual)
 
 #### Backend:

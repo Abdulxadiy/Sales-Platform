@@ -61,6 +61,9 @@ const report = {
   states: [],
   browserErrors: [],
 };
+const checkFilter = process.env.ILBI_LANDING_CHECK_FILTER
+  ? new RegExp(process.env.ILBI_LANDING_CHECK_FILTER)
+  : null;
 const legalContent = await readFile(
   resolve("../../docs/hujjatlar/maxfiylik_siyosati.md"),
   "utf8",
@@ -157,6 +160,7 @@ async function audit(name) {
   assert.deepEqual(clipped, [], name + ": clipped header");
 }
 async function check(name, task) {
+  if (checkFilter && !checkFilter.test(name)) return;
   await task();
   report.checks.push(name);
   console.log("PASS " + name);
@@ -277,27 +281,79 @@ try {
     },
   );
   await check(
-    "Three product views load, tab keyboard navigation moves focus and panel",
+    "Six real carousel scenes load with stable captions, side previews and keyboard navigation in both themes",
     async () => {
-      await scroll("#platforma");
-      for (const view of ["dashboard", "team", "pos"]) {
-        await click(`#lp-tab-${view}`);
-        await wait(
-          "document.querySelector('.lp-browser-frame img').complete && document.querySelector('.lp-browser-frame img').naturalWidth>0",
-        );
-        assert.equal(
+      for (const theme of ["light", "dark"]) {
+        if (
+          (await browser.evaluate("document.documentElement.dataset.theme")) !==
+          theme
+        )
+          await click(".lp-header-actions button");
+        for (const width of [1440, 390]) {
+          await browser.resize(width, width === 390 ? 844 : 1000);
+          await delay(100);
           await browser.evaluate(
-            `document.querySelector('#lp-tab-${view}').getAttribute('aria-selected')`,
-          ),
-          "true",
-        );
-        await audit("product-" + view);
+            "document.querySelector('.pc-viewport').scrollIntoView({behavior:'instant',block:'center'})",
+          );
+          const heights = [];
+          for (const view of [
+            "pos",
+            "checkout",
+            "receipt",
+            "inventory",
+            "dashboard",
+            "team",
+          ]) {
+            await click(`#lp-tab-${view}`);
+            await wait(
+              "document.querySelector('.pc-slide.is-active img').complete && document.querySelector('.pc-slide.is-active img').naturalWidth===1440",
+            );
+            assert.equal(
+              await browser.evaluate(
+                "document.querySelector('.lp-carousel').dataset.activeScene",
+              ),
+              view,
+            );
+            assert.equal(
+              await browser.evaluate(
+                `document.querySelector('#lp-tab-${view}').getAttribute('aria-selected')`,
+              ),
+              "true",
+            );
+            heights.push(
+              await browser.evaluate(
+                "document.querySelector('.pc-caption').offsetHeight",
+              ),
+            );
+            assert.equal(
+              await browser.evaluate(
+                "document.querySelectorAll('.pc-slide[data-distance=\"1\"]').length",
+              ),
+              2,
+            );
+            const bounds = await browser.evaluate(
+              "(()=>{const r=document.querySelector('.pc-slide.is-active').getBoundingClientRect();return {left:r.left,right:r.right}})()",
+            );
+            assert.ok(
+              bounds.left > 0 && bounds.right < width,
+              `${width}: complete active frame with side previews`,
+            );
+            await audit(`carousel-${theme}-${width}-${view}`);
+            if (view === "pos" || view === "checkout")
+              await screenshot(`carousel-${theme}-${width}-${view}`);
+          }
+          assert.equal(
+            Math.max(...heights),
+            Math.min(...heights),
+            "Changing scene must not shift page layout",
+          );
+        }
       }
       await browser.evaluate("document.querySelector('#lp-tab-pos').focus()");
       await key("ArrowRight", "ArrowRight", 39);
       assert.equal(
         await browser.evaluate("document.activeElement.id"),
-        "lp-tab-dashboard",
+        "lp-tab-checkout",
       );
       await key("End", "End", 35);
       assert.equal(
@@ -310,6 +366,363 @@ try {
         "lp-tab-pos",
       );
       await screenshot("product-dark");
+    },
+  );
+  await check(
+    "Gallery viewer supports next/previous, original-size zoom, focus trapping and Escape",
+    async () => {
+      for (const [width, height] of [
+        [1440, 1000],
+        [390, 844],
+        [320, 740],
+      ]) {
+        await browser.resize(width, height);
+        await delay(80);
+        await click("#lp-tab-pos");
+        await browser.evaluate(
+          "document.querySelector('.pc-viewport').scrollIntoView({behavior:'instant',block:'center'});document.querySelector('.pc-slide.is-active .pc-image-action').focus()",
+        );
+        await click(".pc-slide.is-active .pc-image-action");
+        await wait("document.querySelector('.pc-viewer[open]')");
+        await key("ArrowRight", "ArrowRight", 39);
+        await wait(
+          "document.querySelector('.lp-carousel').dataset.activeScene==='checkout'",
+        );
+        await click(
+          '.pc-viewer button[aria-label="Rasmni asl o‘lchamda ko‘rish"]',
+        );
+        await wait(
+          "document.querySelector('.pc-viewer-canvas').dataset.zoomed==='true' && document.querySelector('.pc-viewer-canvas').scrollLeft>0",
+        );
+        assert.ok(
+          await browser.evaluate(
+            "document.querySelector('.pc-viewer-canvas img').getBoundingClientRect().width>=1440",
+          ),
+          "Original pixels are available",
+        );
+        assert.equal(
+          await browser.evaluate(
+            "Boolean(document.querySelector('.pc-viewer-canvas img').naturalWidth)",
+          ),
+          true,
+        );
+        const panBefore = await browser.evaluate(
+          "document.querySelector('.pc-viewer-canvas').scrollLeft",
+        );
+        await browser.evaluate(
+          "document.querySelector('.pc-viewer-canvas').focus()",
+        );
+        await key("ArrowRight", "ArrowRight", 39);
+        await delay(160);
+        assert.ok(
+          (await browser.evaluate(
+            "document.querySelector('.pc-viewer-canvas').scrollLeft",
+          )) > panBefore,
+          "Arrow keys pan an original-size image when its canvas has focus",
+        );
+        assert.equal(
+          await browser.evaluate(
+            "document.querySelector('.lp-carousel').dataset.activeScene",
+          ),
+          "checkout",
+        );
+        await browser.evaluate(
+          "document.querySelector('.pc-viewer-header button').focus()",
+        );
+        await audit(`viewer-${width}-zoomed`);
+        await screenshot(`viewer-${width}-zoomed`);
+        await key("ArrowRight", "ArrowRight", 39);
+        await wait(
+          "document.querySelector('.lp-carousel').dataset.activeScene==='receipt'",
+        );
+        assert.equal(
+          await browser.evaluate(
+            "document.querySelector('.pc-viewer-canvas').dataset.zoomed",
+          ),
+          "false",
+        );
+        for (let i = 0; i < 8; i++) await key("Tab", "Tab", 9);
+        assert.equal(
+          await browser.evaluate(
+            "Boolean(document.activeElement.closest('.pc-viewer'))",
+          ),
+          true,
+        );
+        await key("Escape", "Escape", 27);
+        await wait("!document.querySelector('.pc-viewer')");
+        assert.equal(
+          await browser.evaluate(
+            "Boolean(document.activeElement.closest('.pc-slide.is-active'))",
+          ),
+          true,
+          "Focus returns to the visible scene",
+        );
+      }
+    },
+  );
+  await check(
+    "Touch swipes and mouse dragging navigate without accidental zoom; vertical touch scroll remains native",
+    async () => {
+      await browser.resize(390, 844);
+      await delay(80);
+      await click("#lp-tab-pos");
+      await browser.evaluate(
+        "document.querySelector('.pc-viewport').scrollIntoView({behavior:'instant',block:'center'})",
+      );
+      await browser.call("Emulation.setTouchEmulationEnabled", {
+        enabled: true,
+        maxTouchPoints: 1,
+      });
+      const swipe = async (dx, dy) => {
+        const point = await browser.evaluate(
+          "(()=>{const r=document.querySelector('.pc-viewport').getBoundingClientRect();return {x:r.left+r.width*.55,y:r.top+r.height*.5}})()",
+        );
+        const touches = (x, y) => [
+          { x, y, id: 1, radiusX: 2, radiusY: 2, force: 1 },
+        ];
+        await browser.call("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: touches(point.x, point.y),
+        });
+        for (let i = 1; i <= 6; i++) {
+          await browser.call("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: touches(
+              point.x + (dx * i) / 6,
+              point.y + (dy * i) / 6,
+            ),
+          });
+          await delay(22);
+        }
+        await browser.call("Input.dispatchTouchEvent", {
+          type: "touchEnd",
+          touchPoints: [],
+        });
+        await delay(100);
+      };
+      await swipe(-150, 3);
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelector('.lp-carousel').dataset.activeScene",
+        ),
+        "checkout",
+      );
+      assert.equal(
+        await browser.evaluate("Boolean(document.querySelector('.pc-viewer'))"),
+        false,
+      );
+      await swipe(150, 3);
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelector('.lp-carousel').dataset.activeScene",
+        ),
+        "pos",
+      );
+      const before = await browser.evaluate("scrollY");
+      await swipe(3, -140);
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelector('.lp-carousel').dataset.activeScene",
+        ),
+        "pos",
+      );
+      assert.ok(
+        (await browser.evaluate("scrollY")) > before + 30,
+        "Vertical swipe scrolls the document",
+      );
+      await browser.call("Emulation.setTouchEmulationEnabled", {
+        enabled: false,
+      });
+      await browser.resize(1440, 1000);
+      await delay(80);
+      await browser.evaluate(
+        "document.querySelector('.pc-viewport').scrollIntoView({behavior:'instant',block:'center'})",
+      );
+      const point = await browser.evaluate(
+        "(()=>{const r=document.querySelector('.pc-viewport').getBoundingClientRect();return {x:r.left+r.width*.6,y:r.top+r.height*.45}})()",
+      );
+      await browser.call("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        x: point.x,
+        y: point.y,
+        button: "none",
+        buttons: 0,
+      });
+      await browser.call("Input.dispatchMouseEvent", {
+        type: "mousePressed",
+        x: point.x,
+        y: point.y,
+        button: "left",
+        buttons: 1,
+        clickCount: 1,
+      });
+      for (let i = 1; i <= 5; i++)
+        await browser.call("Input.dispatchMouseEvent", {
+          type: "mouseMoved",
+          x: point.x - i * 40,
+          y: point.y + 3,
+          button: "left",
+          buttons: 1,
+        });
+      await browser.call("Input.dispatchMouseEvent", {
+        type: "mouseReleased",
+        x: point.x - 200,
+        y: point.y + 3,
+        button: "left",
+        buttons: 0,
+        clickCount: 1,
+      });
+      await delay(100);
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelector('.lp-carousel').dataset.activeScene",
+        ),
+        "checkout",
+      );
+      assert.equal(
+        await browser.evaluate("Boolean(document.querySelector('.pc-viewer'))"),
+        false,
+      );
+    },
+  );
+  await check(
+    "An unavailable image has a working retry without blocking carousel navigation",
+    async () => {
+      await browser.call("Network.clearBrowserCache");
+      await browser.call("Network.setCacheDisabled", { cacheDisabled: true });
+      await browser.call("Network.setBlockedURLs", {
+        urls: [
+          "*fonts.googleapis.com*",
+          "*fonts.gstatic.com*",
+          "*landing/receipt-dark.png*",
+        ],
+      });
+      await open();
+      await scroll("#platforma");
+      await click("#lp-tab-receipt");
+      await wait(
+        "document.querySelector('.pc-slide.is-active .pc-image-error')",
+      );
+      await browser.call("Network.setBlockedURLs", {
+        urls: ["*fonts.googleapis.com*", "*fonts.gstatic.com*"],
+      });
+      await click(".pc-slide.is-active .pc-image-error button");
+      await wait(
+        "document.querySelector('.pc-slide.is-active img.is-loaded') && !document.querySelector('.pc-slide.is-active .pc-image-error')",
+      );
+      await browser.call("Network.setCacheDisabled", { cacheDisabled: false });
+    },
+  );
+  await check(
+    "Automatic carousel advances and pauses on hover, focus, offscreen, hidden page and manual navigation",
+    async () => {
+      await browser.call("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+      });
+      await open();
+      await browser.resize(1440, 1000);
+      await delay(100);
+      await browser.call("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        x: 5,
+        y: 5,
+        button: "none",
+        buttons: 0,
+      });
+      await browser.evaluate(
+        "document.querySelector('.pc-viewport').scrollIntoView({behavior:'instant',block:'center'})",
+      );
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='true'",
+      );
+      await delay(150);
+      const point = await browser.evaluate(
+        "(()=>{const r=document.querySelector('.pc-viewport').getBoundingClientRect();return {x:r.left+r.width*.5,y:r.top+r.height*.4}})()",
+      );
+      await browser.call("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        ...point,
+        button: "none",
+        buttons: 0,
+      });
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='false'",
+      );
+      const progress = () =>
+        browser.evaluate(
+          "getComputedStyle(document.querySelector('.lp-carousel')).getPropertyValue('--pc-time')",
+        );
+      const held = await progress();
+      await delay(250);
+      assert.equal(await progress(), held, "Hover pauses the progress clock");
+      await browser.call("Input.dispatchMouseEvent", {
+        type: "mouseMoved",
+        x: 5,
+        y: 5,
+        button: "none",
+        buttons: 0,
+      });
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.activeScene==='checkout'",
+      );
+      await top();
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='false'",
+      );
+      const outside = await progress();
+      await delay(250);
+      assert.equal(
+        await progress(),
+        outside,
+        "Offscreen gallery does not advance its clock",
+      );
+      await browser.evaluate(
+        "document.querySelector('.pc-viewport').scrollIntoView({behavior:'instant',block:'center'});document.querySelector('.pc-navigation button').focus()",
+      );
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='false'",
+      );
+      await browser.evaluate("document.querySelector('.pc-playback').focus()");
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='true'",
+      );
+      await browser.evaluate(
+        "Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'))",
+      );
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='false'",
+      );
+      const hidden = await progress();
+      await delay(250);
+      assert.equal(
+        await progress(),
+        hidden,
+        "Hidden page pauses the progress clock",
+      );
+      await browser.evaluate(
+        "delete document.hidden;document.dispatchEvent(new Event('visibilitychange'))",
+      );
+      await wait(
+        "document.querySelector('.lp-carousel').dataset.running==='true'",
+      );
+      await click('.pc-navigation button[aria-label="Keyingi lavha"]');
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelector('.lp-carousel').dataset.playing",
+        ),
+        "false",
+      );
+      await browser.call("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+      });
+      await open();
+      assert.equal(
+        await browser.evaluate(
+          "document.querySelector('.lp-carousel').dataset.playing",
+        ),
+        "false",
+        "Reduced motion disables automatic playback by default",
+      );
     },
   );
   await check(

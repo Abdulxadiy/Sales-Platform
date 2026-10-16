@@ -30,7 +30,7 @@
   box-shadow: 0 0 0 4px var(--lp-blue-soft);
 }
 .pc-topline-divider {
-  color: var(--lp-line);
+  color: var(--lp-secondary);
   margin-inline: 3px;
 }
 .pc-topline > div {
@@ -86,6 +86,9 @@
 }
 .pc-viewport.is-dragging {
   cursor: grabbing;
+}
+.pc-viewport.is-dragging .pc-image-action {
+  cursor: grabbing !important;
 }
 .pc-viewport:before,
 .pc-viewport:after {

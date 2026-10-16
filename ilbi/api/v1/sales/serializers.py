@@ -137,13 +137,18 @@ class DebtPaymentCorrectionSerializer(serializers.Serializer):
     note = serializers.CharField(required=True, allow_blank=False)
 
 
-class SaleItemOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
-    product_variant_name = serializers.CharField(source="product_variant.name", read_only=True)
-    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
-    product_code = serializers.CharField(source="product_variant.code", read_only=True)
-    product_sku = serializers.CharField(source="product_variant.sku", read_only=True)
-    product_barcode = serializers.CharField(source="product_variant.barcode", read_only=True, allow_null=True)
-    unit = serializers.CharField(source="product_variant.unit", read_only=True)
+class ReceiptProductSerializer(serializers.ModelSerializer):
+    product_variant_name = serializers.CharField(source="receipt_product.product_variant_name", read_only=True)
+    product_name = serializers.CharField(source="receipt_product.product_name", read_only=True)
+    product_code = serializers.CharField(source="receipt_product.product_code", read_only=True)
+    product_sku = serializers.CharField(source="receipt_product.product_sku", read_only=True)
+    product_barcode = serializers.CharField(source="receipt_product.product_barcode", read_only=True, allow_null=True)
+    unit = serializers.CharField(source="receipt_product.unit", read_only=True)
+    mxik = serializers.CharField(source="receipt_product.mxik", read_only=True, allow_null=True)
+    package_code = serializers.CharField(source="receipt_product.package_code", read_only=True, allow_null=True)
+
+
+class SaleItemOutputSerializer(SensitiveCostSerializerMixin, ReceiptProductSerializer):
 
     class Meta:
         model = SaleItem
@@ -156,6 +161,7 @@ class SaleItemOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSe
             "product_sku",
             "product_barcode",
             "unit",
+            "mxik", "package_code",
             "quantity",
             "unit_price",
             "cost_price",
@@ -273,15 +279,7 @@ class B2BReturnDiscrepancyCloseInputSerializer(serializers.Serializer):
     items = B2BReturnItemInputSerializer(many=True, allow_empty=False)
 
 
-class B2BIncomingSaleItemSerializer(serializers.ModelSerializer):
-    product_variant_name = serializers.CharField(source="product_variant.name", read_only=True)
-    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
-    product_code = serializers.CharField(source="product_variant.code", read_only=True)
-    product_sku = serializers.CharField(source="product_variant.sku", read_only=True)
-    product_barcode = serializers.CharField(
-        source="product_variant.barcode", read_only=True, allow_null=True
-    )
-    unit = serializers.CharField(source="product_variant.unit", read_only=True)
+class B2BIncomingSaleItemSerializer(ReceiptProductSerializer):
 
     class Meta:
         model = SaleItem
@@ -293,6 +291,7 @@ class B2BIncomingSaleItemSerializer(serializers.ModelSerializer):
             "product_sku",
             "product_barcode",
             "unit",
+            "mxik", "package_code",
             "quantity",
             "unit_price",
             "status",
@@ -334,10 +333,7 @@ class NotificationOutputSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class PublicReceiptItemSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
-    product_variant_name = serializers.CharField(source="product_variant.name", read_only=True)
-    unit = serializers.CharField(source="product_variant.unit", read_only=True)
+class PublicReceiptItemSerializer(ReceiptProductSerializer):
 
     class Meta:
         model = SaleItem
@@ -346,6 +342,7 @@ class PublicReceiptItemSerializer(serializers.ModelSerializer):
             "product_name",
             "product_variant_name",
             "unit",
+            "mxik", "package_code",
             "quantity",
             "voided_quantity",
             "status",

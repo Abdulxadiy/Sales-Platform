@@ -24,6 +24,13 @@ Yangi sotuvchi profilini **Mening do‘konlarim**dan yuboring. Profil tasdiqlani
 2. Kategoriyani tanlang. Birlik, hamkor, minimal va sotuv narxlarini tekshiring. Boshlang‘ich qoldiq kerak bo‘lsa, kirim tanlovini yoqib miqdor va tannarx kiriting; aks holda tovar omborsiz yaratiladi.
 3. **Mahsulotni Yaratish**ni bosing va katalogdan natijani tekshiring.
 
+**Fiskal rekvizitlar (ixtiyoriy)** qismida mahsulotga mos MXIK (IKPU) va qadoq kodini kiriting.
+Kodlarni [Soliq katalogi](https://tasnif.soliq.uz/)dan tekshiring; shtrix-kod alohida maydon hisoblanadi.
+Keyin ularni mahsulotning **Tahrirlash** oynasidan to‘ldirish yoki tozalash mumkin.
+Yangi savdoda mahsulot nomi, varianti, birligi va kodlari chek uchun alohida saqlanadi;
+katalogdagi keyingi tahrir ushbu chekni o‘zgartirmaydi. Kiritilgan MXIK/qadoq kodi chek nusxasida ham ko‘rsatiladi.
+Eski cheklarga hozirgi katalogdan yangi fiskal rekvizitlar yozilmaydi.
+
 ## 3. Excel/CSV import
 
 ![Import oynasi — shablon, fayl va tekshirish](../rasmlar/focused/catalog_import.png)

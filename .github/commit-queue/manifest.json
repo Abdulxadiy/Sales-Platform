@@ -1,11 +1,57 @@
 {
   "version": 1,
-  "queue_id": "20261016T091609-d871f55d",
+  "queue_id": "20261016T094628-33d6a1ca",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "d871f55da0e239fd9bbe2ca08bde6de71c45ab86",
-  "source_tree": "acf27d5d2be56f5ca7e5d7b9eb69f4b4e464489b",
-  "created_at": "2026-10-16T09:16:09.032711+05:00",
+  "snapshot_sha": "33d6a1cacbee486f21c1481f403fbed8bd7dd941",
+  "source_tree": "430d1624ff17aabac1931fb4bdb343fdb775e8d2",
+  "created_at": "2026-10-16T09:46:28.667423+05:00",
   "groups": [
+    {
+      "id": "dependencies",
+      "message": "chore(deps): install spreadsheet and barcode libraries and update environment examples",
+      "paths": [
+        "frontend/ilbi/package.json"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "catalog-import-labels",
+      "message": "feat(catalog): add validated imports generated barcodes and safe catalog editing",
+      "paths": [
+        "ilbi/api/v1/catalog/serializers.py",
+        "ilbi/api/v1/catalog/views/product_views.py",
+        "ilbi/apps/catalog/models/product_variant_model.py",
+        "ilbi/apps/catalog/services/product_service.py"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "sales-debts-returns",
+      "message": "fix(sales): make refunds debt payments and B2B acceptance idempotent and auditable",
+      "paths": [
+        "ilbi/api/v1/sales/serializers.py",
+        "ilbi/apps/sales/models/sale_item_model.py",
+        "ilbi/apps/sales/services/sale_service.py"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "frontend-catalog-tools",
+      "message": "feat(catalog-ui): connect imports product tools barcode labels and Excel downloads",
+      "paths": [
+        "frontend/ilbi/src/pages/Catalog.jsx"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "frontend-sales",
+      "message": "feat(sales-ui): separate debt and B2B pages and retain safe checkout retries",
+      "paths": [
+        "frontend/ilbi/src/components/common/ReceiptSlip.jsx",
+        "frontend/ilbi/src/pages/PublicReceiptView.jsx"
+      ],
+      "atomic_unit": "application"
+    },
     {
       "id": "deployment-configuration",
       "message": "chore(deploy): build static production frontend and configure backend media and service settings",
@@ -23,7 +69,18 @@
       "paths": [
         ".gitignore",
         "Architectures/shop-yol-xaritasi.md",
+        "docs/qollanmalar/owner_amaliy_qollanma.md",
+        "frontend/ilbi/src/components/common/FiscalMetadataFields.jsx",
+        "frontend/ilbi/src/components/common/ReceiptItemCodes.jsx",
+        "frontend/ilbi/tests/browser/catalogFiscal.html",
+        "frontend/ilbi/tests/catalogFiscal.browser.mjs",
+        "ilbi/apps/catalog/fiscal_metadata.py",
+        "ilbi/apps/catalog/migrations/0006_productvariant_mxik_productvariant_package_code.py",
+        "ilbi/apps/catalog/tests/test_fiscal_metadata.py",
         "ilbi/apps/core/tests/test_production_settings.py",
+        "ilbi/apps/sales/migrations/0016_saleitem_product_snapshot.py",
+        "ilbi/apps/sales/receipt_items.py",
+        "ilbi/apps/sales/tests/test_product_snapshots.py",
         "ilbi/config/settings_production.py",
         "ilbi/gunicorn.conf.py"
       ],

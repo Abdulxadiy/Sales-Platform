@@ -14,6 +14,7 @@ from apps.sales.services.debt_service import DebtService
 from apps.tenants.models import SellerProfile
 from apps.tenants.receipt_settings import receipt_settings
 from apps.sales.taxes import calculate_line
+from apps.sales.receipt_items import product_snapshot
 
 
 class SaleServiceError(Exception):
@@ -269,6 +270,7 @@ class SaleService:
                     product_variant=variant,
                     quantity=qty,
                     unit_price=price,
+                    product_snapshot=product_snapshot(variant),
                     cost_price=cost_price,
                     original_partner_price=variant.price_partner,
                     total_price=line_total,

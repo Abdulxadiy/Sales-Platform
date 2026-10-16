@@ -6,8 +6,10 @@ design rationale."""
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
+from apps.catalog.fiscal_metadata import clean_fiscal_metadata
 from apps.catalog.models import Product, ProductVariant, ProductImage
 from apps.core.utils.image_optimizer import optimize_image
 
@@ -70,6 +72,8 @@ class ProductService:
         variant_name: str = "Standart",
         code: str = None,
         barcode: str = None,
+        mxik: str = None,
+        package_code: str = None,
     ) -> Product:
         """
         Create a Product together with its mandatory first
@@ -79,6 +83,11 @@ class ProductService:
         """
         if category.tenant_id != tenant.id:
             raise ProductServiceError("category must belong to the same tenant.")
+
+        try:
+            fiscal_metadata = clean_fiscal_metadata(mxik=mxik, package_code=package_code)
+        except ValidationError as exc:
+            raise ProductServiceError(" ".join(exc.messages)) from exc
 
         product = Product.objects.create(
             tenant=tenant, name=name, category=category, image=image
@@ -95,6 +104,7 @@ class ProductService:
             price_partner=price_partner,
             price_min=price_min,
             price_recommended=price_recommended,
+            **fiscal_metadata,
         )
         return product
 
@@ -112,6 +122,8 @@ class ProductService:
         barcode: str = None,
         image=None,
         code: str = None,
+        mxik: str = None,
+        package_code: str = None,
     ) -> ProductVariant:
         """Add an additional variant to an existing Product (e.g. a new
         size/colour of an already-created item)."""
@@ -120,6 +132,11 @@ class ProductService:
             raise ProductServiceError(
                 f"'{name}' already exists as a variant of this product."
             )
+
+        try:
+            fiscal_metadata = clean_fiscal_metadata(mxik=mxik, package_code=package_code)
+        except ValidationError as exc:
+            raise ProductServiceError(" ".join(exc.messages)) from exc
 
         variant_code = code.strip() if code and code.strip() else cls._build_code(product.category, price_min)
         return ProductVariant.objects.create(
@@ -136,6 +153,7 @@ class ProductService:
             price_partner=price_partner,
             price_min=price_min,
             price_recommended=price_recommended,
+            **fiscal_metadata,
         )
 
     @staticmethod

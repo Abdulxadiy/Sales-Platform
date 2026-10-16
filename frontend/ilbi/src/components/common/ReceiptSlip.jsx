@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import IlbiLogo from './IlbiLogo';
 import { useAuth } from '../../hooks/useAuth';
 import ReceiptTaxSummary from './ReceiptTaxSummary';
+import ReceiptItemCodes from './ReceiptItemCodes';
 
 /**
  * High-resolution QR Code generator optimized for thermal printer heads (203 DPI)
@@ -585,6 +586,7 @@ export default function ReceiptSlip({
                         {formatMoney(lineTotal, cur)}
                       </span>
                     </div>
+                    <ReceiptItemCodes item={it} />
                     {config.is_vat_payer && config.receipt_show_item_tax !== false && it.tax_rate != null && (
                       <div style={{ fontSize: 9, paddingLeft: 6, marginTop: 2 }}>
                         QQS {Number(it.tax_rate)}%: {formatMoney(it.tax_amount, cur)}

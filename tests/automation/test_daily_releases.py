@@ -217,3 +217,34 @@ class DailyReleaseTests(unittest.TestCase):
         progress = queue.read_json(remote, queue.output(remote, "rev-parse", "refs/heads/queue/progress"), queue.STATE)
         self.assertEqual(progress["last_main_sha"], head)
         self.assertEqual(progress["release_tag"], "v1.3.0")
+
+    def test_rename_queue_contains_both_the_old_deletion_and_new_source(self):
+        f = self.fixture
+        remote = Path(f.tmp.name) / "remote.git"
+        queue.run(["git", "init", "--bare", "-q", str(remote)])
+        queue.git(self.repo, "remote", "add", "origin", str(remote))
+        queue.git(self.repo, "checkout", "--detach", "--quiet", f.base)
+        old = self.repo / "inventra/exact.py"
+        old.parent.mkdir()
+        old.write_text("unchanged source content\n" * 20)
+        f.commit("legacy source")
+        base = queue.output(self.repo, "rev-parse", "HEAD")
+        new = self.repo / "ilbi/exact.py"
+        new.parent.mkdir()
+        old.rename(new)
+        f.commit("renamed source")
+        snapshot = queue.output(self.repo, "rev-parse", "HEAD")
+        queue.git(self.repo, "push", "-q", "origin", f"{base}:refs/heads/main", f"{snapshot}:refs/heads/backup/work-in-progress")
+        plan = self.repo / "automation/queue-plan.json"
+        plan.parent.mkdir()
+        plan.write_text(json.dumps({"groups": [{"id": "rename", "message": "refactor: rename source", "paths": ["inventra/exact.py", "ilbi/exact.py"]}]}))
+        settings = {**f.settings, "remote": str(remote)}
+        queue.enqueue(self.repo, settings)
+        sha = queue.output(remote, "rev-parse", "refs/heads/queue/ready")
+        manifest = queue.read_json(remote, sha, queue.MANIFEST)
+        self.assertEqual(set(manifest["groups"][0]["paths"]), {"inventra/exact.py", "ilbi/exact.py"})
+        queue.git(self.repo, "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*")
+        queue.prepare_batch(self.repo, settings, manifest, {})
+        self.assertFalse(old.exists())
+        self.assertTrue(new.exists())
+        self.assertEqual(queue.output(self.repo, "diff", "--name-only", snapshot, "HEAD"), "")

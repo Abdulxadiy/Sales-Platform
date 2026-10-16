@@ -19,3 +19,7 @@ def is_private_chat_id(chat_id: object) -> bool:
         and not chat_id.startswith("0")
         and int(chat_id) < 2**52
     )
+
+
+def is_group_chat_id(chat_id: object) -> bool:
+    return isinstance(chat_id, str) and chat_id.startswith("-") and is_private_chat_id(chat_id[1:])

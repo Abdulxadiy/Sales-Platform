@@ -1,5 +1,3 @@
-import re
-
 from django.conf import settings
 from django.db import transaction
 from drf_spectacular.types import OpenApiTypes
@@ -13,7 +11,7 @@ from apps.accounts.services.platform_accounts import log_platform_action
 from apps.core.models import AuditAction
 from apps.support.models import SupportTelegramSettings
 from apps.support.tasks import configured_admin_recipients, send_support_test
-from apps.tg_bot.identity import current_bot_id, is_private_chat_id
+from apps.tg_bot.identity import current_bot_id, is_group_chat_id, is_private_chat_id
 from apps.tg_bot.models import TelegramContact
 
 
@@ -25,7 +23,7 @@ class TelegramSettingsInput(serializers.ModelSerializer):
 
     def validate(self, data):
         group = data.get("group_chat_id", "")
-        if group and (not re.fullmatch(r"-[1-9][0-9]{0,15}", group) or abs(int(group)) >= 2**52):
+        if group and not is_group_chat_id(group):
             raise serializers.ValidationError({"group_chat_id": "Guruhning manfiy raqamli chat ID sini kiriting."})
         if data.get("enabled"):
             if not current_bot_id():
@@ -77,7 +75,7 @@ class SupportTelegramSettingsView(APIView):
             )
             log_platform_action(
                 actor=request.user,
-                action=AuditAction.TENANT_UPDATE,
+                action=AuditAction.SUPPORT_TELEGRAM_SETTINGS,
                 target_model="SupportTelegramSettings",
                 target_id=str(row.pk),
                 changes={"operation": "support_telegram_settings", **serializer.validated_data},

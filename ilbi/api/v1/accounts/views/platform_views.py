@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, F
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -16,7 +16,7 @@ from apps.accounts.services import login_throttle
 from apps.accounts.services.password_reset_service import invalidate_password_links
 from apps.accounts.services.platform_accounts import log_platform_action, recover_identity, verify_admin
 from apps.core.models import AuditAction, AuditLog
-from apps.support.models import Conversation
+from apps.support.models import Conversation, Message
 from apps.tenants.models import SellerProfile, Tenant
 from apps.tg_bot.identity import current_bot_id, is_private_chat_id
 from apps.tg_bot.models import TelegramContact
@@ -178,6 +178,17 @@ class PlatformAccountStatusView(APIView):
                     request=request,
                 )
         return Response(account_data(user))
+
+
+class PlatformSupportUnreadView(APIView):
+    permission_classes = [IsPlatformAdmin]
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        unread = Message.objects.filter(sender="visitor", id__gt=F("conversation__operator_read_id")).exclude(
+            conversation__status="closed",
+        ).count()
+        return Response({"unread": unread})
 
 
 class PlatformOverviewView(APIView):

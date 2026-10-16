@@ -94,7 +94,7 @@ def recover_identity(*, actor, user_id, values, request):
             user.save(update_fields=fields)
             log_platform_action(
                 actor=admin,
-                action=AuditAction.EMPLOYEE_UPDATE,
+                action=AuditAction.ACCOUNT_IDENTITY_UPDATE,
                 target_model="User",
                 target_id=str(user.pk),
                 changes={

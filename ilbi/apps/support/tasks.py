@@ -3,7 +3,7 @@ import logging
 from celery import shared_task
 from django.conf import settings
 
-from apps.tg_bot.identity import current_bot_id, is_private_chat_id
+from apps.tg_bot.identity import current_bot_id, is_group_chat_id, is_private_chat_id
 from apps.tg_bot.models import TelegramContact
 from apps.tg_bot.services import send_telegram_message
 
@@ -18,7 +18,7 @@ def configured_admin_recipients(row):
         contact = TelegramContact.objects.filter(phone_number=row.admin.phone_number, bot_id=current_bot_id()).first()
         if contact and is_private_chat_id(contact.chat_id):
             recipients.add(contact.chat_id)
-    if row.target in ("group", "both") and row.group_chat_id.startswith("-"):
+    if row.target in ("group", "both") and is_group_chat_id(row.group_chat_id):
         recipients.add(row.group_chat_id)
     return recipients
 
@@ -53,8 +53,8 @@ def notify_operators(conversation_id):
     if not bot_id:
         return False
     configurations = list(SupportTelegramSettings.objects.select_related("admin"))
-    configured_phones = {row.admin.phone_number for row in configurations}
-    phones = set(settings.SUPPORT_OPERATOR_PHONES) - configured_phones
+    # Once configured in the UI, do not silently notify legacy environment recipients.
+    phones = [] if configurations else settings.SUPPORT_OPERATOR_PHONES
     contacts = TelegramContact.objects.filter(
         phone_number__in=phones,
         bot_id=bot_id,

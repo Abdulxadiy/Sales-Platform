@@ -3,6 +3,7 @@ import { request } from './client';
 const call = (path, options = {}) => request(path, { ...options, skipTenant: true });
 export const platformApi = {
   overview: () => call('/platform/overview/'),
+  supportUnread: signal => call('/platform/support-unread/', { signal }),
   accounts: (params = {}) => call('/platform/accounts/?' + new URLSearchParams(params)),
   identity: id => call(`/platform/accounts/${id}/identity/`),
   recoverIdentity: (id, data) => call(`/platform/accounts/${id}/identity/`, { method: 'POST', body: data }),

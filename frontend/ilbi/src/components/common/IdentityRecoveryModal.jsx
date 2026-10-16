@@ -24,16 +24,17 @@ export default function IdentityRecoveryModal({ userId, onClose, onSaved }) {
     return () => { cancelled = true; };
   }, [userId]);
   const change = (key, value) => setForm(previous => ({ ...previous, [key]: value }));
+  const close = () => { if (!saving) { change('admin_password', ''); onClose(); } };
   async function save(event) {
     event.preventDefault(); setSaving(true); setError('');
     try {
       await platformApi.recoverIdentity(userId, { ...form, expected_phone_number: account.phone_number, expected_version: account.security_version });
-      onSaved?.(); onClose();
+      change('admin_password', ''); onSaved?.(); onClose();
       if (Number(userId) === Number(user?.id)) logout();
     } catch (err) { setError(err.message || 'O‘zgarishni saqlab bo‘lmadi.'); }
     finally { setSaving(false); }
   }
-  return <Modal isOpen={Boolean(userId)} onClose={() => { if (!saving) onClose(); }} title="Login va Telegram ulanishi" maxWidth={570}>
+  return <Modal isOpen={Boolean(userId)} onClose={close} title="Login va Telegram ulanishi" maxWidth={570}>
     {!account ? <div role={error ? 'alert' : 'status'}>{error || 'Hisob yuklanmoqda...'}</div> : <form className="admin-form" onSubmit={save}>
       <div className="admin-note"><KeyRound size={20} /><div><strong>{account.name}</strong><div className="admin-muted">{account.username || 'Login raqami'} · {account.phone_number}</div></div></div>
       <label className="admin-field">Login telefon raqami<PhoneInput value={form.phone_number} required onChange={event => change('phone_number', event.target.value)} /></label>
@@ -44,7 +45,7 @@ export default function IdentityRecoveryModal({ userId, onClose, onSaved }) {
       <label className="admin-check"><input type="checkbox" required checked={form.ownership_verified} onChange={event => change('ownership_verified', event.target.checked)} />Hisob egasi va yangi raqamga egaligini tekshirdim</label>
       <label className="admin-field">Administrator parolingiz<input className="input-field" type="password" autoComplete="current-password" required value={form.admin_password} onChange={event => change('admin_password', event.target.value)} /></label>
       {error && <div className="admin-error" role="alert">{error}</div>}
-      <div className="admin-actions"><button type="button" className="btn btn-secondary" disabled={saving} onClick={onClose}>Bekor qilish</button><button className="btn btn-primary" disabled={saving}><ShieldCheck size={16} />{saving ? 'Saqlanmoqda...' : 'Tekshirib yangilash'}</button></div>
+      <div className="admin-actions"><button type="button" className="btn btn-secondary" disabled={saving} onClick={close}>Bekor qilish</button><button className="btn btn-primary" disabled={saving}><ShieldCheck size={16} />{saving ? 'Saqlanmoqda...' : 'Tekshirib yangilash'}</button></div>
     </form>}
   </Modal>;
 }

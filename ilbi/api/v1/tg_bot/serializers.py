@@ -22,8 +22,10 @@ class TelegramContactSerializer(serializers.Serializer):
             raise serializers.ValidationError("Telegram bot sozlanmagan.")
         conflict = {
             "code": "telegram_chat_already_linked",
-            "detail": ("Bu Telegram akkaunti boshqa raqamga ulangan. Avvalgi login bilan davom eting "
-                       "yoki platforma administratoriga murojaat qiling."),
+            "detail": (
+                "Bu Telegram akkaunti boshqa raqamga ulangan. Avvalgi login bilan davom eting "
+                "yoki platforma administratoriga murojaat qiling."
+            ),
         }
         if TelegramContact.objects.filter(chat_id=chat_id).exclude(phone_number=phone_number).exists():
             raise serializers.ValidationError(conflict)

@@ -775,23 +775,65 @@ try {
     },
   );
   await check(
-    "Authenticated root stays public; login redirects to /dashboard; app brand and nav target dashboard",
+    "Public CTAs always open login without automatically entering an existing account; saved sessions still work on dashboard",
     async () => {
       await browser.evaluate(
         "sessionStorage.setItem('landing_qa_account','owner')",
       );
       await open();
       await wait(
-        "document.querySelector('.lp-header-entry')?.textContent.includes('Boshqaruv')",
+        "document.querySelector('.lp-header-entry')?.textContent.includes('Tizimga kirish')",
       );
       assert.equal(await browser.evaluate("location.pathname"), "/");
+      assert.deepEqual(
+        await browser.evaluate(
+          `[...document.querySelectorAll('.lp-header-entry, .lp-mobile-entry, .lp-final-actions .lp-button-outline')].map(link=>({href:link.getAttribute('href'),text:link.textContent.trim()}))`,
+        ),
+        Array.from({ length: 3 }, () => ({
+          href: "/login",
+          text: "Tizimga kirish",
+        })),
+      );
+      await browser.evaluate(
+        "window.__savedSessionBeforeEntry=localStorage.getItem('ilbi_access_token')",
+      );
+      await click(".lp-header-entry");
+      await wait(
+        "location.pathname==='/login' && document.querySelector('input[type=password]') && !document.querySelector('.ilbi-intro')",
+      );
+      await delay(400);
+      assert.equal(await browser.evaluate("location.pathname"), "/login");
       assert.equal(
         await browser.evaluate(
-          "document.querySelector('.lp-header-entry').getAttribute('href')",
+          "Boolean(document.querySelector('.app-header'))",
         ),
-        "/dashboard",
+        false,
+      );
+      assert.equal(
+        await browser.evaluate(
+          "Boolean(window.__savedSessionBeforeEntry)&&localStorage.getItem('ilbi_access_token')===window.__savedSessionBeforeEntry",
+        ),
+        true,
+        "Opening login must not delete an existing session",
+      );
+      assert.equal(
+        await browser.evaluate(
+          "window.__landingQaRequests.some(request=>request.method!=='GET')",
+        ),
+        false,
+        "Opening login must not submit credentials",
       );
       await open("/login");
+      await wait(
+        "document.querySelector('input[type=password]') && !document.querySelector('.ilbi-intro')",
+      );
+      await delay(400);
+      assert.equal(
+        await browser.evaluate("location.pathname"),
+        "/login",
+        "Direct login URL must also stay on the login form",
+      );
+      await open("/dashboard");
       await wait(
         "location.pathname==='/dashboard' && document.querySelector('.app-header')",
       );

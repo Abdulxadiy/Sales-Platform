@@ -482,7 +482,7 @@ def enqueue(root, settings, refresh=False):
                     )
         base = ref(repo, settings["default_branch"])
         source_tree = output(repo, "rev-parse", f"{snapshot}^{{tree}}")
-        if previous and old.get("source_tree") == source_tree and state.get("last_main_sha") == base:
+        if previous and old.get("source_tree") == source_tree and old.get("base_sha") == base and state.get("last_main_sha") == base:
             print("Queue already covers this source snapshot.")
             return
         if previous and state.get("last_main_sha") and state["last_main_sha"] != base:

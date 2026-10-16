@@ -1,0 +1,42 @@
+<!doctype html><html><head><link rel="icon" href="data:,"></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import { TenantProvider, useTenant } from '/src/context/TenantContext.jsx';
+import { ToastProvider } from '/src/context/ToastContext.jsx';
+import { ConfirmProvider } from '/src/context/ConfirmContext.jsx';
+import POS from '/src/pages/POS.jsx';
+import Catalog from '/src/pages/Catalog.jsx';
+import Intake from '/src/components/inventory/RapidStockIntakeModal.jsx';
+import { catalogApi, tenantApi } from '/src/api/client.js';
+import './cameraFeed.js';
+const qa = window.cameraQA;
+qa.lookups = [];
+localStorage.clear(); localStorage.setItem('ilbi_active_tenant:1', '1');
+const variant = { id: 1, product: 1, product_name: 'VISIBLE_PRODUCT', name: 'Standart', stock_quantity: '10', price_recommended: '100', price_min: '100', cost_price: '50', currency: 'UZS', unit: 'dona', barcode: '000', category: 1, category_name: 'Tests', expired_batches: [] };
+catalogApi.getVariants = async params => {
+  qa.lookups.push({ ...params, dialogOpen: Boolean(document.querySelector('.camera-scanner-dialog[open]')), live: qa.streams.some(s => s.active) });
+  if (params.lookup) {
+    // The modal must close before this request completes.
+    await new Promise(resolve => setTimeout(resolve, 150));
+    return { count: 1, results: [{ ...variant, id: 500, product_name: 'SCANNED_PRODUCT', barcode: params.lookup }] };
+  }
+  return { count: 1, results: [variant] };
+};
+catalogApi.getCategories = async () => [{ id: 1, name: 'Tests', currency: 'UZS', kod: '01', parent: null }];
+tenantApi.getCurrentTenant = async () => ({ usd_rate: '12800' });
+const auth = { isAuthenticated: true, isAdmin: false, isOwner: true, role: 'owner', user: { id: 1, role: 'owner', permissions: ['*'], tenants: [{ id: 1, name: 'Camera tests', is_owner: true, permissions: ['*'] }] } };
+const screen = new URLSearchParams(location.search).get('screen');
+function Page() {
+  const { activeTenant } = useTenant();
+  if (!activeTenant) return null;
+  return screen === 'intake'
+    ? React.createElement(Intake, { isOpen: true, onClose() {}, onSuccess() {} })
+    : React.createElement(screen === 'catalog' ? Catalog : POS);
+}
+createRoot(document.getElementById('root')).render(
+  React.createElement(MemoryRouter, null, React.createElement(AuthContext.Provider, { value: auth },
+    React.createElement(TenantProvider, null, React.createElement(ToastProvider, null,
+      React.createElement(ConfirmProvider, null, React.createElement(Page)))))));
+</script></body></html>

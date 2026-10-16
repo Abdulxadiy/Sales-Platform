@@ -216,7 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-/.idea/inventra.iml
+/.idea/ilbi.iml
 /.idea/material_theme_project_new.xml
 /.idea/.gitignore
 /.idea/misc.xml

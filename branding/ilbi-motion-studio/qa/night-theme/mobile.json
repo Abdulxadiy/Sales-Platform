@@ -1,0 +1,149 @@
+{
+  "states": [
+    {
+      "route": "/pos",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 59,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/catalog",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 18,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/inventory",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 28,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/employees",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 28,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/support",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 14,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/profile",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 17,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/pos",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 59,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/catalog",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 18,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/inventory",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 28,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/employees",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 28,
+      "gradientTextForVisualReview": 0,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/support",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 14,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "route": "/profile",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 17,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    }
+  ],
+  "browserErrors": []
+}

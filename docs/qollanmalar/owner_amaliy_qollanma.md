@@ -1,209 +1,114 @@
-# Do‘kon Egasi (Owner) — To‘liq Amaliy Vizual Foydalanish Qo‘llanmasi
+# Do‘kon egasi: rasmli ish yo‘riqnomasi
 
-Ushbu amaliy qo‘llanma **Inventra Sales Platform** tizimida do‘kon egasi (**Owner**) o‘z savdo korxonasining barcha jarayonlarini — tovarlar katalogi, narxlar siyosati, ombor logistikasi, kassa operatsiyalari, xodimlar boshqaruvi va moliyaviy tahlilni to‘liq va mustaqil boshqarishi uchun bosqichma-bosqich yo‘riqnoma sifatida yaratilgan.
+Yangilangan: **2026-10-14**. Rasmlar amaldagi interfeysdan, sun’iy demo ma’lumotlar bilan olingan. Strelka yonidagi raqam shu rasm ostidagi qadamni ko‘rsatadi. Rasmni bosib kattalashtirish mumkin.
 
----
+## 1. Ishni to‘g‘ri do‘kondan boshlang
 
-## Mundarija
+![Faol do‘kon tanlagichi — boshqa do‘konga o‘tish](../rasmlar/focused/tenant_switch.png)
 
-1. [Tizimga Kirish va Profilni Sozlash](#1-tizimga-kirish-va-profilni-sozlash)
-2. [Dashboard — Savdo Analitikasi va Moliyaviy Holat](#2-dashboard--savdo-analitikasi-va-moliyaviy-holat)
-3. [Katalog — Mahsulotlar va 3 Xil Narx Tizimi](#3-katalog--mahsulotlar-va-3-xil-narx-tizimi)
-   - [3.1. Yangi tovar va mahsulot variantlarini kiritish](#31-yangi-tovar-va-mahsulot-variantlarini-kiritish)
-   - [3.2. Chakana, Minimal va 1-narx (Hamkor narxi) qoidalari](#32-chakana-minimal-va-1-narx-hamkor-narxi-qoidalari)
-4. [Ombor (Inventory) va Tovar Kirimi](#4-ombor-inventory-va-tovar-kirimi)
-   - [4.1. Tovar kirimi (Intake) va tannarx hisob-kitobi](#41-tovar-kirimi-intake-va-tannarx-hisob-kitobi)
-   - [4.2. Qoldiqni to'g'rilash (Adjust) va Spisanie (Write-off)](#42-qoldiqni-togrilash-adjust-va-spisanie-write-off)
-5. [Tezkor Kassa (POS) va Savdo Jarayoni](#5-tezkor-kassa-pos-va-savdo-jarayoni)
-   - [5.1. Shtrix-kod va tovarlarni savatga qo'shish](#51-shtrix-kod-va-tovarlarni-savatga-qoshish)
-   - [5.2. 1-narx (Partner Price) rejimini faollashtirish](#52-1-narx-partner-price-rejimini-faollashtirish)
-   - [5.3. Aralash valyutali savat (UZS va USD)](#53-aralash-valyutali-savat-uzs-va-usd)
-   - [5.4. To'lov qabul qilish: Naqd, Karta va Nasiya](#54-tolov-qabul-qilish-naqd-karta-va-nasiya)
-6. [Savdolar Arxivi, Chekni Bekor Qilish (Void) va Nasiyadorlar](#6-savdolar-arxivi-chekni-bekor-qilish-void-va-nasiyadorlar)
-7. [Kassa Smenalari, Chiqimlar va Z-Hisobot](#7-kassa-smenalari-chiqimlar-va-z-hisobot)
-8. [Xodimlar (Jamoa) Boshqaruvi va Huquqlar](#8-xodimlar-jamoa-boshqaruvi-va-huquqlar)
-9. [B2B Do'konlararo Tovar Almashinuvi](#9-b2b-dokonlararo-tovar-almashinuvi)
+1. Yuqoridagi do‘kon nomini bosing va ishlayotgan do‘koningizni tanlang.
+2. Katalog, ombor, qarz va kassadagi ma’lumotlar shu tanlovga bog‘liq. Amal qilishdan oldin nomni tekshiring.
 
----
+Yangi sotuvchi profilini **Mening do‘konlarim**dan yuboring. Profil tasdiqlanishi, amal qilish muddati va do‘konga bog‘langanini tekshiring.
 
-## 1. Tizimga Kirish va Profilni Sozlash
+## 2. Mahsulot yaratish
 
-Platform Administrator sizning do‘koningizni ro‘yxatga olgach, ko‘rsatilgan emailingizga parol o‘rnatish havolasi keladi. Parol o‘rnatgach, `/login` sahifasi orqali tizimga kirasiz:
+![Katalogdagi import va yangi mahsulot tugmalari](../rasmlar/focused/catalog_tools.png)
 
-![Login va tizimga kirish](/docs/images/login_flow.png)
+1. Ko‘p tovarni birga kiritish uchun **Fayldan yuklash**ni tanlang.
+2. Bitta yangi tovar uchun **Yangi Tovar**ni bosing.
 
-1. Telefon raqamingiz yoki belgilangan **Username** hamda **Parol**ni kiriting.
-2. Tizim bir martalik Telegram OTP kodini so‘raydi.
-3. Telegram botdagi kodni kiritib tasdiqlang.
+![Yangi mahsulot oynasi — nom va kategoriya maydonlari](../rasmlar/focused/catalog_create.png)
 
-> [!TIP]
-> Profil bo‘limida do‘koningizning markaziy valyuta kursini (masalan, 1 USD = 12,850 UZS) va har kungi avtomatik Z-hisobot vaqtini (masalan, 23:00) sozlashingiz mumkin.
+1. Mahsulot nomini yozing.
+2. Kategoriyani tanlang. Birlik, hamkor, minimal va sotuv narxlarini tekshiring. Boshlang‘ich qoldiq kerak bo‘lsa, kirim tanlovini yoqib miqdor va tannarx kiriting; aks holda tovar omborsiz yaratiladi.
+3. **Mahsulotni Yaratish**ni bosing va katalogdan natijani tekshiring.
 
----
+## 3. Excel/CSV import
 
-## 2. Dashboard — Savdo Analitikasi va Moliyaviy Holat
+![Import oynasi — shablon, fayl va tekshirish](../rasmlar/focused/catalog_import.png)
 
-Tizimga kirishingiz bilan do‘koningizning asosiy analitika paneli (`/`) ochiladi:
+1. **Shablonni yuklash**ni bosing va aynan shu ustunlardan foydalaning.
+2. To‘ldirilgan faylni tanlang. Limit: 1 000 qator, 8 MB. Sana `YYYY-MM-DD`, shtrix-kod matn ko‘rinishida bo‘lsin.
+3. **Qatorlarni tekshirish**ni bosing. Xatolarni faylda tuzatib qayta yuklang. Tekshiruv muvaffaqiyatli bo‘lgach **Tasdiqlash va saqlash**ni bosing. Tekshirishning o‘zi katalogga yozmaydi.
 
-![Do'kon egasi Dashboard ko'rinishi](/docs/images/dashboard_overview.png)
+## 4. Shtrix-kod yorlig‘i
 
-### Asosiy ko‘rsatkichlar kartalari:
-* **Jami Tushum:** Tanlangan davr (Bugun, Shu hafta, Shu oy, Shu yil) bo‘yicha tushgan jami mablag‘ (UZS va USD alohida).
-* **Sof Foyda:** Sotilgan tovarlarning chakana narxi bilan ularning kirim tannarxi o‘rtasidagi haqiqiy sof foyda.
-* **Nasiya / Qarz Balansi:** Mijozlar tomonidan to‘lanmagan, do‘konga qaytishi kerak bo‘lgan qarzlar umumiy summasi.
-* **Sotuvlar Soni va O‘rtacha Chek:** Amalga oshirilgan savdolar va o‘rtacha bitta xarid qiymati.
+Mahsulot kartasidagi **Yorliq chop etish**ni bosing.
 
-Quyidagi grafiklarda esa:
-* **Sotuvlar dinamikasi:** Soatlar va kunlar kesimidagi tushumlar to‘lqini.
-* **To‘lov turlari taqsimoti:** Xaridorlar naqd pul, bank kartasi yoki nasiya orqali qancha to‘laganlik ulushi.
-* **Top-10 eng ko‘p sotilgan tovarlar:** Qaysi mahsulotlar eng ko‘p daromad keltirayotganligi.
+![Yorliq oynasi — qog‘oz, o‘lcham va chop etish](../rasmlar/focused/catalog_labels.png)
 
----
+1. A4 yoki yorliq printerini tanlang.
+2. Eni, bo‘yi va nusxalar sonini kiriting. Faqat shtrix-kod kerak bo‘lsa nom va narx belgilashlarini o‘chiring.
+3. Namunani tekshirib **Chop etish**ni bosing. Brauzerda 100% masshtabni qo‘llang.
 
-## 3. Katalog — Mahsulotlar va 3 Xil Narx Tizimi
+## 5. Tovar kirimi va partiyalar
 
-Chap menyudan **Katalog** belgisini tanlang (`/catalog`). Bu yerda barcha mahsulotlar toifalarga bo‘lingan holda boshqariladi:
+**Ombor → + Tovar Kirimi**ni oching.
 
-![Mahsulotlar katalogi](/docs/images/catalog_management.png)
+![Kirim oynasi — qidiruv, qatorlar va tasdiqlash](../rasmlar/focused/inventory_intake.png)
 
-### 3.1. Yangi tovar va mahsulot variantlarini kiritish
+1. Tovarni skanerlang yoki nomini yozib **Enter** bosing. Qatordagi miqdor va tannarxni fakturaga mos kiriting. Kerak bo‘lsa partiya va yaroqlilik sanasini yozing.
+2. Qatorlar va jami summani tekshirib **Partiyani Tasdiqlash**ni bosing. “Qoralama saqlandi” yozuvi kirim omborga o‘tdi degani emas.
 
-Yangi mahsulot kiritish uchun yuqoridagi **"+ Yangi Mahsulot"** tugmasini bosing:
+![Omborning partiyalar va yaroqlilik bo‘limi](../rasmlar/focused/inventory_batches.png)
 
-![Yangi mahsulot yaratish modali](/docs/images/product_create_modal.png)
+1. **Partiyalar va yaroqlilik**ni ochib, kerakli mahsulot va muddat filtrini tanlang. Muddati o‘tgan yoki yaqinlashayotgan partiyalarni tekshiring.
 
-1. **Mahsulot nomi:** Masalan, *"iPhone 15 Pro Silicone Case"*.
-2. **Kategoriya:** Mos toifani tanlang (masalan, *"Chexollar"*).
-3. **Asosiy Rasm:** MinIO bulutli xotirasiga sifatli rasm yuklang.
-4. **Variantlar:** Mahsulotning rangi, o‘lchami yoki modeliga qarab variantlarini yarating (masalan, *"Qora - 128GB"*, *"Moviy - 256GB"*).
-5. **Shtrix-kod:** Mahsulot qutisidagi kodni skanerlang yoki tizim yaratgan shtrix-kodni qoldiring.
+Bir sotuvchining do‘konlari orasidagi ko‘chirish **Transferlar** orqali; boshqa sotuvchiga savdo **B2B** orqali yuritiladi. Qabul/rad etish va jismoniy qaytarish alohida amallar: rad etish tovar jismonan qaytdi degani emas.
 
----
+## 6. POS’da to‘lovga o‘tish
 
-### 3.2. Chakana, Minimal va 1-narx (Hamkor narxi) qoidalari
+Bu misol demo muhitidan. Hozir production POS fiskal integratsiya tayyor bo‘lguncha yopilgan; chakana chek UZS bilan yuritiladi.
 
-Inventra tizimida har bir tovar varianti uchun **3 xil mustaqil narx** ko‘rsatiladi:
-* **Tavsiya etilgan narx (`price_recommended`):** Standart xaridorlar uchun ko‘rinadigan rasmiy chakana narx.
-* **Minimal narx (`price_min`):** Chegirma berilganda tovar tushishi mumkin bo‘lgan eng quyi pol narxi. Kassir bu narxdan pastga sota olmaydi.
-* **1-narx / Hamkor narxi (`price_partner`):** Doimiy ulgurji oluvchilar, dilerlar va yaqin do‘stlar uchun maxsus eng arzon narx.
+![POS savati — to‘lovga o‘tish tugmasi](../rasmlar/focused/pos_cart.png)
 
-> [!IMPORTANT]
-> Agar tovarning 1-narxi belgilanmagan bo‘lsa, kassa rejimida 1-narx galochkasi yoqilganda tizim ushbu tovarni sotishni bloklaydi! Shuning uchun barcha tovarlaringizga 1-narxni to‘ldirish tavsiya etiladi.
+1. Skaner yoki qidiruv bilan tovar qo‘shing. Savatdagi mahsulot, miqdor va narxlarni tekshirib **To‘lovga O‘tish**ni bosing.
 
----
+![To‘lov oynasi — usul va qabul qilingan summa](../rasmlar/focused/pos_payment.png)
 
-## 4. Ombor (Inventory) va Tovar Kirimi
+1. Haqiqiy to‘lov usulini tanlang: naqd, karta yoki nasiya. Nasiya bo‘lsa mijozni tanlang.
+2. Naqd to‘lovda olingan summani kiriting, qaytimni tekshiring va tasdiqlang. USD kalkulyatori alohida hisoblash vositasi.
 
-Chap menyudan **Ombor** (`/inventory`) bo‘limiga o‘ting. Bu yerda tovarlarning aniq qoldiqlari, yetishmovchiliklar va kirim operatsiyalari aks etadi:
+**Savdolar**dan chek tafsilotini ochish, chiqarish va tegishli vakolat bilan 7 kun ichida sababli to‘liq/qisman qaytarish mumkin. Xatoda yangi savdo kiritishdan oldin tarixni tekshiring.
 
-![Ombor qoldiqlari jadvali](/docs/images/inventory_stock.png)
+## 7. Qarz to‘lovi
 
-### 4.1. Tovar kirimi (Intake) va tannarx hisob-kitobi
+**Qarzlar**dan mijozni topib **Qarz To‘lash**ni bosing.
 
-Yangi partiya tovar kelganda yuqoridagi **"+ Tovar Kirimi"** tugmasini bosing:
+![Qarz to‘lovi oynasi — summa va saqlash](../rasmlar/focused/debt_payment.png)
 
-![Tovar kirimi oynasi](/docs/images/inventory_intake.png)
+1. Haqiqiy olingan summani kiriting; valyuta, naqd/karta va pul tushgan do‘konni tekshiring.
+2. **To‘lovni Saqlash**ni bosing va tarixga yozilganini tekshiring. Bu amal ruxsatli xodimga ham berilishi mumkin; tuzatish egaga tegishli.
 
-1. Tovar variantini tanlang yoki shtrix-kodini skanerlang.
-2. Kelgan miqdorni kiriting (masalan, `50 dona`).
-3. **Kirim Tannarxi**ni kiriting (masalan, `120,000 UZS` yoki `$10.50`).
-4. **Ta’minotchi (Kontragent)**ni tanlang.
-5. Tasdiqlangach, ombor qoldig‘i darhol oshadi va o‘rtacha tannarx tizimda qayd etiladi.
+## 8. Smenani yopish
 
----
+**Kassa & Smena → Smenani Yopish (Z-Report)**ni oching.
 
-### 4.2. Qoldiqni to'g'rilash (Adjust) va Spisanie (Write-off)
-* **Qoldiqni to‘g‘rilash:** Inventarizatsiya o‘tkazilganda haqiqiy qoldiq bilan tizimdagi farq aniqlansa, qoldiq to‘g‘rilanadi.
-* **Hisobdan chiqarish (Write-off):** Yaroqsiz bo‘lib qolgan, singan yoki yo‘qolgan tovarlar sababi ko‘rsatilgan holda hisobdan chiqariladi va auditga yoziladi.
+![Smenani yopish — sanalgan naqd va hisobot](../rasmlar/focused/shift_close.png)
 
----
+1. Kassadagi haqiqiy naqdni sanab kiriting. Tafovut chiqsa sababini yozing.
+2. **Smenani Yopish & Z-Chek**ni bosing va hisobotni tekshiring. Telegramga yuborish do‘kon sozlamalariga bog‘liq.
 
-## 5. Tezkor Kassa (POS) va Savdo Jarayoni
+## 9. Xodim va yordam
 
-Do‘konda mijozlarga xizmat ko‘rsatish **Kassa (POS)** oynasida amalga oshiriladi (`/pos`):
+**Xizmatlar & Sozlamalar → Chek va soliqlar** bo‘limida do‘konning soliq rejimi, QQS maqomi va stavkasi,
+narxga QQS kiritilganligi yoki ustiga qo‘shilishi, AOS hamda foyda solig‘i sozlanadi. AOS va foyda solig‘i
+sotuvchining sozlamalari sifatida saqlanadi; xaridor to‘loviga qo‘shilmaydi va bitta chekdan hisoblanmaydi.
+Chekning manzili, telefon va matnlari, 58/80 mm qog‘ozi, kassir/mijoz nomi va mahsulot bo‘yicha QQS ko‘rinishi
+ham shu yerda boshqariladi. STIR va rasmiy nom biriktirilgan sotuvchi profilidan olinadi.
 
-![Kassa savdo ekrani](/docs/images/pos_terminal.png)
+Saqlashdan oldin jonli namunani tekshiring. O‘zgarishlar yangi savdolarga qo‘llanadi; eski savdoning summalari
+va saqlangan chek sozlamalari o‘zgarmaydi. Soliq ma’lumoti saqlanmagan eski cheklar qayta hisoblanmaydi.
+Bu sozlamalar fiskal provayderga ulanishni almashtirmaydi.
 
-### 5.1. Shtrix-kod va tovarlarni savatga qo'shish
-* **Skaner bilan:** Shtrix-kod skaner qilinganda tovar bir zumda savatga tushadi.
-* **Qidiruv bilan:** Qidiruv maydoniga tovar nomining bir qismini yozib `Enter` bosing.
-* **Sensor/Sichqoncha bilan:** Ekranda ko‘rinib turgan tovar kartochkasidagi `+` tugmasini bosing.
+Xodimga boshqarishni topshirish uchun ruxsatlar ichidagi **Do‘kon sozlamalarini boshqarish**
+(`tenants.manage_settings`)ni bering. Bu ruxsat chek/soliq, kurs va bildirishnoma sozlamalariga,
+shu jumladan sozlangan hisobotlarni qo‘lda jo‘natishga ham amal qiladi; boshqa do‘konga kirish bermaydi.
 
----
+![Xodimlar — qo‘shish va email taklifi](../rasmlar/focused/employees_actions.png)
 
-### 5.2. 1-narx (Partner Price) rejimini faollashtirish
-Agar do‘konga ulgurji xaridor yoki hamkor kelsa:
-1. Qidiruv qatori yonidagi **"⚡ 1-Narx (Ulgurji)"** tugmasini bosing.
-2. Savatdagi barcha tovarlar avtomatik ravishda ulgurji 1-narxga aylanadi.
+1. **Xodim qo‘shish** orqali shaxsiy telefon, lavozim va zarur ruxsatlarni belgilang.
+2. Email mavjud bo‘lsa **Emailga yuborish** orqali xavfsiz taklifni yuboring. Ruxsat tahriri, bloklash, arxivlash va ishdan bo‘shatish tugmalarini vazifasiga mos ishlating.
 
----
-
-### 5.3. Aralash valyutali savat (UZS va USD)
-Agar mijoz bir vaqtning o‘zida ham so‘mdagi, ham dollardagi tovarlarni tanlasa, tizim ikkala valyutani alohida jamlaydi va to‘lov paytida avtomatik tarzda **2 ta alohida mustaqil chek** yaratadi.
-
----
-
-### 5.4. To'lov qabul qilish: Naqd, Karta va Nasiya
-
-Savat to‘ldirilgach, pastdagi **"To‘lovga O‘tish"** tugmasini bosing:
-
-![To'lov qabul qilish oynasi](/docs/images/pos_payment_modal.png)
-
-* **Naqd pul:** Mijoz bergan summa kiritiladi, tizim qaytimni avtomatik chiqaradi.
-* **Bank kartasi:** Terminal orqali to‘lov olingach, "Karta" tanlanadi.
-* **Nasiya (Qarz):** Mijozning ismi yoki telefon raqami tanlanadi, qarz uning balansiga yoziladi.
-
----
-
-## 6. Savdolar Arxivi, Chekni Bekor Qilish (Void) va Nasiyadorlar
-
-Chap menyudan **Savdolar** (`/sales`) bo‘limiga o‘ting:
-
-![Savdolar tarixi va cheklar](/docs/images/sales_void_modal.png)
-
-### 7 kunlik Universal Bekor Qilish (Void):
-Xaridor tovarini qaytarib olib kelsa:
-1. Cheklar ro‘yxatidan kerakli chekni toping.
-2. **"Chekni Bekor Qilish" (Void)** tugmasini bosing.
-3. Butun chekni yoki faqat qaytarilgan tovarlarni belgilang (qisman qaytarish).
-4. Bekor qilish sababini yozing.
-5. Tizim pullarni qaytaradi, tovarlarni omborga qayta kirim qiladi va nasiyador qarzini kamaytiradi.
-
-### Nasiyadorlar Balansi va Qarzni Undirish:
-**Nasiyalar** tabida har bir qarzdorning summasi, muddati ko‘rinadi. Qarz to‘langanda **"Qarz to‘lovi qabul qilish"** tugmasi orqali kassa tushumiga kirim qilinadi.
-
-![Nasiyadorlar monitoringi](/docs/images/debts_management.png)
-
----
-
-## 7. Kassa Smenalari, Chiqimlar va Z-Hisobot
-
-Har bir ish kuni alohida **Kassa Smenasi** bilan boshlanadi va tugaydi (`/shifts`):
-
-![Smenani yopish va Z-hisobot](/docs/images/shift_close_modal.png)
-
-* **Smena ochish:** Kassir ish boshlaganda kassa ochiladi.
-* **Chiqim (Xarajat):** Do‘kon xarajatlari (tushlik, yo‘lkira, mayda xaridlar) uchun pul olinganda kassa chiqim orderi yoziladi.
-* **Smenani yopish:** Ish kuni yakunida kassadagi haqiqiy naqd pul sanaladi va tizimga kiritiladi. Tizim nazariy summa bilan haqiqiy summani solishtiradi, tafovut bo‘lsa qayd etadi va rasmiy **Z-Hisobot** chiqaradi.
-
----
-
-## 8. Xodimlar (Jamoa) Boshqaruvi va Huquqlar
-
-Do‘konda ishlaydigan kassirlar, omborchilar va menejerlarni **Xodimlar** (`/employees`) bo‘limida boshqarasiz:
-
-![Xodimlar boshqaruvi](/docs/images/employees_management.png)
-
-* Yangi xodimni ishga qabul qilish uchun telefon raqami va lavozimini kiritasiz.
-* Har bir xodimga o‘z vazifasiga mos ruxsatlar (`can_sell`, `can_manage_inventory`, `can_view_analytics` va h.k.) beriladi.
-* Xodim ishdan bo‘shatilganda bitta tugma bilan uning tizimga kirishi to‘xtatiladi (`fire`).
-
----
-
-## 9. B2B Do'konlararo Tovar Almashinuvi
-
-Agar sizda bir nechta do‘kon bo‘lsa yoki hamkor do‘konlar bilan ishlasangiz:
-1. Ombor bo‘limida **"B2B O‘tkazish"** tugmasini bosing.
-2. Qabul qiluvchi do‘konni va tovarlar ro‘yxatini tanlang.
-3. Yuborilgan tovar ikkinchi do‘kon tasdiqlamaguncha tranzit holatida turadi.
-4. Ikkinchi do‘kon qabul qilgach, uning omboriga avtomatik kirim bo‘ladi.
+**Yordam markazi** orqali o‘zbekcha, ruscha yoki inglizcha murojaat yozishingiz va zarur skrinshotni yuborishingiz mumkin. Operator: **+998 77 021 21 49**, **@abdulxadiy_0**. AI hozircha ulanmagan.

@@ -8,14 +8,14 @@ jobs:
     services:
       postgres:
         image: postgres:16-alpine
-        env: { POSTGRES_DB: inventra_test, POSTGRES_USER: inventra_test, POSTGRES_PASSWORD: inventra_test }
+        env: { POSTGRES_DB: ilbi_test, POSTGRES_USER: ilbi_test, POSTGRES_PASSWORD: ilbi_test }
         ports: ["5433:5432"]
         options: >-
-          --health-cmd "pg_isready -U inventra_test" --health-interval 2s --health-timeout 3s --health-retries 15
+          --health-cmd "pg_isready -U ilbi_test" --health-interval 2s --health-timeout 3s --health-retries 15
       redis:
         image: redis:7-alpine
         ports: ["6380:6379"]
-    defaults: { run: { working-directory: inventra } }
+    defaults: { run: { working-directory: ilbi } }
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -27,19 +27,19 @@ jobs:
         run: uv run pytest -q
         env:
           DJANGO_SETTINGS_MODULE: config.settings_test
-          TEST_DB_NAME: inventra_test
-          TEST_DB_USER: inventra_test
-          TEST_DB_PASSWORD: inventra_test
+          TEST_DB_NAME: ilbi_test
+          TEST_DB_USER: ilbi_test
+          TEST_DB_PASSWORD: ilbi_test
           TEST_DB_HOST: localhost
           TEST_DB_PORT: "5433"
           TEST_REDIS_URL: redis://localhost:6380/0
   frontend:
     runs-on: ubuntu-latest
-    defaults: { run: { working-directory: frontend/inventra } }
+    defaults: { run: { working-directory: frontend/ilbi } }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/inventra/package-lock.json }
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/ilbi/package-lock.json }
       - run: npm ci
       - run: npm run lint --if-present
       - run: npm test

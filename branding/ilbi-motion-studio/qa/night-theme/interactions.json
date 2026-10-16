@@ -1,0 +1,256 @@
+{
+  "states": [
+    {
+      "theme": "dark",
+      "type": "info",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "dark",
+      "type": "success",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "dark",
+      "type": "warning",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "dark",
+      "type": "danger",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "light",
+      "type": "info",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "light",
+      "type": "success",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "light",
+      "type": "warning",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "theme": "light",
+      "type": "danger",
+      "measured": 5,
+      "failures": []
+    },
+    {
+      "name": "inventory-Transferlar-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 48,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Kamchiliklar-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 53,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Harakatlar-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 108,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Partiyalar va yaroqlilik-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 121,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "credit-filter-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 55,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "cashbox-+ Kassaga Kirim-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 70,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "cashbox-- Kassadan Chiqim-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 72,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "cashbox-Smenani Yopish (Z-Report)-dark",
+      "theme": "dark",
+      "primary": "#f0efeb",
+      "background": "#0b0909",
+      "colorScheme": "dark",
+      "measured": 62,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Transferlar-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 48,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Kamchiliklar-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 53,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Harakatlar-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 108,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "inventory-Partiyalar va yaroqlilik-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 121,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "credit-filter-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 55,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "cashbox-+ Kassaga Kirim-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 70,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "cashbox-- Kassadan Chiqim-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 72,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    },
+    {
+      "name": "cashbox-Smenani Yopish (Z-Report)-light",
+      "theme": "light",
+      "primary": "#0b0909",
+      "background": "#f0efeb",
+      "colorScheme": "light",
+      "measured": 62,
+      "gradientTextForVisualReview": 1,
+      "failures": [],
+      "clippedHeaderControls": [],
+      "horizontalOverflow": false
+    }
+  ],
+  "live": {
+    "theme": "dark",
+    "primary": "#F0EFEB",
+    "background": "#0B0909",
+    "colorScheme": "dark",
+    "measured": 12,
+    "gradientTextForVisualReview": 0,
+    "failures": [],
+    "clippedHeaderControls": [],
+    "horizontalOverflow": false
+  },
+  "browserErrors": []
+}

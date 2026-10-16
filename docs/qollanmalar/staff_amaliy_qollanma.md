@@ -1,122 +1,61 @@
-# Xodimlar (Staff: Kassir & Omborchi) — Amaliy Vizual Foydalanish Qo‘llanmasi
+# Xodim: kundalik ishlar bo‘yicha rasmli yo‘riqnoma
 
-Ushbu amaliy yo‘riqnoma **Inventra** tizimidagi do‘kon xodimlari — **Kassirlar** va **Omborchilar** uchun kundalik ish jarayonlarini (sotuv, kassa, tovar kirimi va smena topshirish) eng qulay va to‘g‘ri bajarishlari uchun rasmlar va bosqichma-bosqich ko‘rsatmalar bilan tayyorlangan.
+Yangilangan: **2026-10-14**. Rasmlar hozirgi interfeysning kerakli qismlaridan, faqat demo ma’lumotlar bilan olingan. Katta ko‘rish uchun rasm ustiga bosing. Ayrim tugmalar egasi bergan ruxsatga bog‘liq.
 
----
+## 1. Tizimga kirish
 
-## Mundarija
+![Login maydonlari — foydalanuvchi nomi va parol](../rasmlar/focused/login_fields.png)
 
-1. [Tizimga Kirish va Smenani Ochish](#1-tizimga-kirish-va-smenani-ochish)
-2. [Kassirning Kundalik Savdo Ishi (POS)](#2-kassirning-kundalik-savdo-ishi-pos)
-   - [2.1. Shtrix-kod skaneri va tovar qidirish](#21-shtrix-kod-skaneri-va-tovar-qidirish)
-   - [2.2. Savatni boshqarish va tovarlar soni](#22-savatni-boshqarish-va-tovarlar-soni)
-   - [2.3. "1-narx" (Hamkor narxi) tugmasidan foydalanish](#23-1-narx-hamkor-narxi-tugmasidan-foydalanish)
-   - [2.4. To'lovni qabul qilish: Naqd, Karta va Nasiya](#24-tolovni-qabul-qilish-naqd-karta-va-nasiya)
-3. [Kassadan Chiqim Qilish (Xarajatlar)](#3-kassadan-chiqim-qilish-xarajatlar)
-4. [Ish Kunini Yakunlash va Kassa Smenasini Yopish](#4-ish-kunini-yakunlash-va-kassa-smenasini-yopish)
-5. [Omborchi Uchun Tovar Qabuli va Qoldiqlar](#5-omborchi-uchun-tovar-qabuli-va-qoldiqlar)
+1. Username, telefon yoki emailingizni kiriting.
+2. Shaxsiy parolingizni kiriting va davom eting. Telegram ulanishi so‘ralsa, ekrandagi bot havolasini ochib kontaktingizni ulashing, keyin kelgan OTP’ni kiriting.
 
----
+Parol esdan chiqsa login oynasidagi tiklash amalidan foydalaning. Yordam markazi login qilmasdan ham ochiladi.
 
-## 1. Tizimga Kirish va Smenani Ochish
+## 2. Tovarni sotish
 
-Ish kunining boshida brauzer orqali `/login` sahifasini oching:
+1. POS qidiruviga nom yoki shtrix-kod yozing; skaner bilan ham qo‘shish mumkin.
+2. Savatdagi variant, miqdor va narxni tekshiring. Hamkor narxi faqat tegishli holatda qo‘llanadi.
 
-![Xodim login oynasi](/docs/images/login_flow.png)
+![POS — savatni tekshirgandan keyin to‘lovga o‘tish](../rasmlar/focused/pos_cart.png)
 
-1. Rahbaringiz tomonidan berilgan **Username** va **Parol**ni kiriting.
-2. Agar hisobingizga 2FA ulangan bo‘lsa, Telegram’dagi tasdiqlash kodini kiriting.
-3. Tizimga kirgach, yuqoridagi sarlavhada **"Smena Yopiq"** qizil indikatori turadi.
-4. Savdoni boshlash uchun yuqori o‘ng burchakdagi **"Smena Ochish"** tugmasini bosing.
-5. Smena ochilgach, indikator yashil rangga o‘tadi va kassa faollashadi.
+1. Savat tayyor bo‘lgach **To‘lovga O‘tish**ni bosing.
 
----
+![To‘lov oynasi — usul va naqd summa](../rasmlar/focused/pos_payment.png)
 
-## 2. Kassirning Kundalik Savdo Ishi (POS)
+1. Naqd, karta yoki nasiya turini tanlang. Nasiya uchun mijozni tanlang.
+2. Naqd summani haqiqiy olingan pulga mos kiriting; qaytimni tekshiring va tasdiqlang.
 
-Chap menyudan aravacha belgisi — **Kassa (POS)** bo‘limiga o‘ting (`/pos`):
+Hozir chakana POS UZS bilan ishlaydi. Production savdosi fiskal integratsiya tayyor bo‘lguncha yopilgan; bu rasmlar demo muhitidan. USD kalkulyatori to‘lov amalga oshirmaydi.
 
-![Kassa savdo oynasi](/docs/images/pos_terminal.png)
+## 3. Tovar qabul qilish
 
-### 2.1. Shtrix-kod skaneri va tovar qidirish
-* **Skaner bilan:** Shtrix-kod skaneri yordamida tovar qutisidagi kodni skanerlang. Mahsulot bir zumda o‘ng tarafdagi savatga tushadi.
-* **Qidiruv bilan:** Agar tovar ustida shtrix-kod bo‘lmasa, yuqoridagi qidiruv maydoniga tovar nomini yozing va ro‘yxatdan tanlang.
-* **Kategoriya bo‘yicha:** Yuqoridagi toifalar (masalan: *"Chexollar"*, *"Aksessuarlar"*) tugmasini bosib, kerakli tovar ustiga bosing.
+Ombor vakolati bo‘lsa **Ombor → + Tovar Kirimi**ni oching.
 
----
+![Kirim — tovar qidirish va omborga tasdiqlash](../rasmlar/focused/inventory_intake.png)
 
-### 2.2. Savatni boshqarish va tovarlar soni
-* Savatdagi tovar sonini oshirish yoki kamaytirish uchun `+` va `-` tugmalaridan foydalaning.
-* Agar xaridor fikridan qaytsa, qator chetidagi qizil axlat qutisi belgisini bosib, tovarni savatdan olib tashlang.
+1. Tovar nomi yoki shtrix-kod orqali topib Enter bosing. Miqdor va tannarxni kiriting; kerak bo‘lsa partiya va yaroqlilik sanasini belgilang.
+2. Barcha qatorlarni faktura bilan tekshirib **Partiyani Tasdiqlash**ni bosing. Qoralama bilan tasdiqlangan kirimni aralashtirmang.
 
----
+**Partiyalar va yaroqlilik** bo‘limidan muddatlarni tekshiring. Cheksiz qaytarish, chek bo‘yicha qaytarish, tuzatish va hisobdan chiqarish turli amallardir.
 
-### 2.3. "1-narx" (Hamkor narxi) tugmasidan foydalanish
-Agar do‘konga rahbar bilan kelishgan ulgurji mijoz yoki yaqin hamkor kelsa:
-* Qidiruv maydoni yonidagi **"⚡ 1-Narx (Ulgurji)"** tugmasini yoqing.
-* Savatdagi tovarlar darhol ulgurji 1-narxga aylanadi.
+## 4. Qarz to‘lovini olish
 
-> [!CAUTION]
-> Agar savatdagi tovarlardan birortasining 1-narxi belgilanmagan bo‘lsa, tizim sotuvni to‘xtatadi. Bunday holatda rahbaringizga xabar bering.
+Faqat egasi tegishli ruxsat bergan bo‘lsa **Qarzlar → Qarz To‘lash**ni ishlating.
 
----
+![Qarz to‘lovi — haqiqiy summa va tasdiqlash](../rasmlar/focused/debt_payment.png)
 
-### 2.4. To'lovni qabul qilish: Naqd, Karta va Nasiya
+1. Summani kiriting, naqd/karta va pul tushgan do‘konni tanlang.
+2. Saqlang va to‘lov tarixini tekshiring. Xatoni tuzatish uchun egaga murojaat qiling.
 
-Xaridor tanlagan barcha tovarlar savatga yig‘ilgach, pastdagi **"To‘lovga O‘tish"** tugmasini bosing:
+## 5. Kun yakuni
 
-![To'lovni rasmiylashtirish modali](/docs/images/pos_payment_modal.png)
+![Smenani yopish — haqiqiy naqdni kiritish](../rasmlar/focused/shift_close.png)
 
-1. **Naqd pul:**
-   * Xaridor bergan summani kiriting (masalan, chek `140,000 UZS`, xaridor `200,000 UZS` berdi).
-   * Tizim xaridorga qaytarilishi kerak bo‘lgan qaytimni (`60,000 UZS`) avtomatik ravishda yashil rangda ko‘rsatadi.
-2. **Bank kartasi (Terminal):**
-   * Terminal orqali to‘lov o‘tgach, "Karta" variantini tanlang va tasdiqlang.
-3. **Nasiya (Qarzga berish):**
-   * Rahbar ruxsati bilan nasiyaga berilayotgan bo‘lsa, mijozlar ro‘yxatidan xaridorni tanlang.
-   * Chek summasi uning qarz balansiga yoziladi.
+1. Kassadagi pullarni sanang; olingan natijani kiriting. Farq bo‘lsa sababini yozing.
+2. Smenani yoping va hisobotni tekshiring. Qayta yopishga urinmang; aloqa uzilsa avval holatini yangilang.
 
-To‘lov tugagach, kassa cheki avtomatik chiqariladi va savat yangi mijoz uchun bo‘shatiladi.
+## 6. Operatorga yozish
 
----
+**Yordam markazi → Yangi murojaat**. Mavzu, muammo kuzatilgan sahifa va qilgan amalingizni yozing. Rasm qo‘shishda faqat tushuntirilayotgan joyni ko‘rsating, maxfiy ma’lumotlarni olib tashlang.
 
-## 3. Kassadan Chiqim Qilish (Xarajatlar)
-
-Kun davomida do‘kon ehtiyojlari uchun (tushlik, idora xarajatlari, yo‘lkira) kassadan pul olinishi kerak bo‘lsa:
-1. Yuqori paneldagi **"Chiqim / Xarajat"** tugmasini bosing.
-2. Olinayotgan summani kiriting (masalan, `35,000 UZS`).
-3. Sababini yozing (masalan, *"Ofis uchun qog‘oz xaridi"*).
-4. Tasdiqlang — ushbu summa kassa balansidan ayirilib, Z-hisobotda xarajat sifatida aks etadi.
-
----
-
-## 4. Ish Kunini Yakunlash va Kassa Smenasini Yopish
-
-Ish kuni tugaganda kassir smenani yopishi va hisobot topshirishi shart:
-
-![Kassa smenasini yopish modali](/docs/images/shift_close_modal.png)
-
-### Smenani yopish tartibi:
-1. Kassa g‘aladonidagi barcha naqd pullarni sanang.
-2. Yuqori paneldagi **"Smenani Yopish"** tugmasini bosing (`/shifts`).
-3. Sanalgan haqiqiy naqd pul summasini **"Haqiqiy Naqd Pul"** maydoniga kiriting.
-4. Tizim avtomatik tarzda:
-   * Kunlik barcha savdolar summasini hisoblaydi;
-   * Xarajatlarni ayiradi;
-   * Kutilayotgan summa bilan sanalgan summa o‘rtasida farq (kamomad yoki ortiqchalik) bor-yo‘qligini ko‘rsatadi.
-5. Agar tafovut bo‘lsa, **"Tafovut sababi"** maydoniga izoh yozing.
-6. **"Smenani Yopish va Z-Hisobot"** tugmasini bosing.
-7. Chiqqan rasmiy Z-hisobotni saqlang yoki chop etib do‘kon rahbariga topshiring.
-
----
-
-## 5. Omborchi Uchun Tovar Qabuli va Qoldiqlar
-
-Agar siz omborda tovar qabul qilish va nazorat qilishga mas’ul bo‘lsangiz:
-
-![Tovar kirimi oynasi](/docs/images/inventory_intake.png)
-
-1. Chap menyudan **Ombor** (`/inventory`) bo‘limiga o‘ting.
-2. Yetkazib beruvchi olib kelgan tovarlar partiyasini tekshiring.
-3. **"+ Tovar Kirimi"** tugmasini bosib, qabul qilingan tovarlarni, ularning sonini va hisob-faktura bo‘yicha tannarxini kiritib tasdiqlang.
-4. Tovar omborga joylashtirilgach, kassa xodimlari uni darhol sotishni boshlashlari mumkin bo‘ladi.
+Xabar va javob shu chatda saqlanadi. Telefon: **+998 77 021 21 49**; Telegram: **@abdulxadiy_0**. Parol va OTP’ni hech kimga yubormang.

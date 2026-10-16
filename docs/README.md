@@ -1,106 +1,35 @@
-# Inventra Hujjatlar va Qo'llanmalar Markazi (Documentation Portal)
+# ILBI hujjatlari
 
-Ushbu katalog **Inventra Sales Platform** dasturiy ta'minotining barcha ishtirokchilari uchun foydalanish qo'llanmalari, ma'muriy boshqaruv yo'riqnomalari hamda qonuniy yuridik hujjatlar to'plamini o'z ichiga oladi.
+Yangilangan: **2026-10-14**. Qo‘llanmalar hozirgi kod va interfeysga moslashtirilgan. Rasmli yo‘riqnomalar faqat sun’iy demo ma’lumotlarni ko‘rsatadi.
 
----
+## Kerakli hujjatni tanlang
 
-## 📁 Kataloglar va Fayllar Tuzilishi
+| Kim uchun | Qadamlar va rasmlar | Qoidalar va cheklovlar |
+| --- | --- | --- |
+| Do‘kon egasi | [Amaliy yo‘riqnoma](qollanmalar/owner_amaliy_qollanma.md) | [Vakolatlar](qollanmalar/owner_qollanma.md) |
+| Xodim | [Amaliy yo‘riqnoma](qollanmalar/staff_amaliy_qollanma.md) | [Ish qoidalari](qollanmalar/staff_qollanma.md) |
+| Administrator/operator | [Amaliy yo‘riqnoma](qollanmalar/platform_admin_amaliy_qollanma.md) | [Boshqaruv qoidalari](qollanmalar/platform_admin_qollanma.md) |
+| Mehmon va yangi mijoz | [O‘zbekcha](qollanmalar/yordam_uz.md), [Русский](qollanmalar/yordam_ru.md), [English](qollanmalar/yordam_en.md) | [Foydalanish qoidalari](hujjatlar/foydalanish_qoidalari.md) |
 
-```
-docs/
-├── README.md                              # Bosh yo'riqnoma va hujjatlar mundarijasi (Siz shu yerdasiz)
-│
-├── qollanmalar/                           # Rollar bo'yicha boshqaruv qo'llanmalari
-│   ├── platform_admin_qollanma.md         # 1. Platforma Administratori (Superadmin) qo'llanmasi
-│   ├── owner_qollanma.md                  # 2. Do'kon Egasi (Owner / Rahbar) qo'llanmasi
-│   └── staff_qollanma.md                  # 3. Do'kon Xodimlari (Staff / Kassir / Sotuvchi) qo'llanmasi
-│
-└── hujjatlar/                             # Huquqiy va me'yoriy hujjatlar (Legal Docs)
-    ├── ommaviy_oferta.md                  # Ommaviy Oferta shartnomasi (Public Offer Agreement)
-    ├── maxfiylik_siyosati.md              # Maxfiylik va shaxsiy ma'lumotlar siyosati (Privacy Policy)
-    └── foydalanish_qoidalari.md           # Xizmatdan foydalanish qoidalari va xavfsizlik talablari
-```
+[Ommaviy oferta](hujjatlar/ommaviy_oferta.md) va [maxfiylik siyosati](hujjatlar/maxfiylik_siyosati.md) alohida hujjatlardir. Tasdiqlanmagan rekvizit, SLA, saqlash muddati yoki fiskal imkoniyatni kafolat deb ko‘rsatmang.
 
----
+## Platformadagi kirish
 
-## 👥 1. Rollar Bo'yicha Qo'llanmalar
+- `/docs`: akkaunt roliga mos hujjatlar; matnni administrator tahrirlaydi.
+- `/support`: mehmonlar ham kira oladigan operator chatlari, kontaktlar va qo‘llanmalar. Ruxsatli hujjatlar serverda rol bo‘yicha tekshiriladi.
+- Login oynasidan yordamga havola mavjud. Login boti **@ilbi_bot**, inson operatori **@abdulxadiy_0**. Telefon: **+998 77 021 21 49**.
 
-Inventra tizimida 3 xil foydalanuvchi darajasi mavjud. Har bir foydalanuvchi o'z vazifasiga mos hujjat bilan tanishishi lozim:
+## Rasmni yangilash tartibi
 
-| Foydalanuvchi Roli | Qo'llanma Hujjati | Qisqacha Tavsif |
-| :--- | :--- | :--- |
-| **Platform Administrator** (`platform_admin`) | [platform_admin_qollanma.md](qollanmalar/platform_admin_qollanma.md) | Butun tizim superadmini. Yangi do'konlar (tenants) ochish, egasini almashtirish, do'konlarni to'xtatish/yoqish, bloklanganlarni ochish (`unban`), 2FA, Celery fon xizmatlari va global audit nazorati. |
-| **Do'kon Egasi** (`owner`) | [owner_qollanma.md](qollanmalar/owner_qollanma.md) | Savdo korxonasi egasi. Dashboard tahlili, 2 darajali tovar katalogi (UZS/USD), MinIO rasmlari, ombor kirim-chiqimi, POS 1-narx galochkasi, 7 kunlik Universal Void, Nasiyalar balansi va chegaraviy ogohlantirishlar, B2B do'konlararo transfer, Z-hisobot va xodimlarni ishga olish/bo'shatish. |
-| **Xodimlar** (`staff`) | [staff_qollanma.md](qollanmalar/staff_qollanma.md) | Kassirlar, sotuvchilar, omborchilar. POS kassada skaner bilan ishlash, savat, naqd/karta/nasiya to'lovlari, chekni bekor qilish, kunlik kassa chiqimlarini yozish va kassa smenasini yopish (tafovut tahlili). |
+1. Faqat ajratilgan demo bazasidan foydalaning; haqiqiy foydalanuvchi ma’lumotlarini suratga olmang.
+2. Bitta vazifa uchun tegishli tugma, maydon yoki jadval qismini oling. Butun sahifa rasmini qo‘ymang.
+3. Raqam va strelka bilan ko‘rsating; matndagi qadamlar shu raqamlarga mos bo‘lsin. Tugma yozuvi yopilib qolmasin.
+4. Yangi rasmlarni `rasmlar/focused/`ga, kelib chiqish va crop ma’lumotlarini `manifest.json`ga yozing.
+5. Markdown ichida `../rasmlar/focused/nom.png` havolasini ishlating. Ilova uni `/api/v1/docs/images/nom.png`ga moslaydi; rasm bosilganda kattalashtirish ochiladi.
+6. Telefon ekranida ham o‘qilishini tekshiring. Eski rasmlarni hujjatdan uzing; tarixiy fayllarni qayta ishlatishdan oldin interfeysga solishtiring.
 
----
+## Muhandislik hujjatlari
 
-## ⚖️ 2. Yuridik va Huquqiy Hujjatlar
+[README](../README.md) — ishga tushirish; [testlar](../ilbi/README_TESTS.md) — tekshirish; [yordam moduli](SUPPORT.md) — chat API va operator sozlamalari.
 
-Ushbu hujjatlar O'zbekiston Respublikasining Fuqarolik Kodeksi, "Elektron tijorat to'g'risida"gi va "Shaxsga doir ma'lumotlar to'g'risida"gi (O'RQ-547) qonunlari asosida tayyorlangan:
-
-1. **[Ommaviy Oferta Shartnomasi](hujjatlar/ommaviy_oferta.md)**:
-   * Do'kon egalari va platforma o'rtasidagi rasmiy litsenziya shartnomasi.
-   * Xizmat ko'rsatish tartibi, obuna to'lovlari, ma'lumotlarning daxlsizligi (Tenant Izolatsiyasi kafolati), intellektual mulk va tomonlarning javobgarligi.
-2. **[Maxfiylik Siyosati](hujjatlar/maxfiylik_siyosati.md)**:
-   * Foydalanuvchilarning telefon raqamlari, ism-familiyalari, IP-manzillari, tovarlari va savdo ma'lumotlari qanday to'planishi, shifrlanishi va himoyalanishi.
-   * Ma'lumotlarni hech qachon uchinchi shaxslarga sotmaslik va bermaslik kafolati.
-3. **[Foydalanish Qoidalari va Xavfsizlik](hujjatlar/foydalanish_qoidalari.md)**:
-   * Tizimda taqiqlangan harakatlar (kiberhujumlar, noqonuniy tovarlar, firibgarlik).
-   * Parol gigiyenasi va 3-strike ban tizimi haqida tushuntirish.
-
----
-
-## 💻 3. Saytda (Frontendda) Ommaviy Oferta Roziligini Joriy Qilish
-
-Foydalanuvchilar ko'plab zamonaviy veb-sayt va dasturlarga kirganda *"Ommaviy oferta shartlariga roziman"* degan tasdiqni ko'rishadi. Bu yuridik jihatdan foydalanuvchi tizim shartlarini qabul qilganini isbotlovchi (aksept) asosiy omildir.
-
-Inventra frontend ilovasida (ro'yxatdan o'tish, birinchi marta akkauntni sozlash `/setup-account` yoki login paytida) bu mexanizmni qanday ulash tavsiya etiladi:
-
-### A. React / Tailwind komponent namunasi:
-```jsx
-import React, { useState } from 'react';
-
-export default function TermsCheckbox({ onChange, checked }) {
-  return (
-    <div className="flex items-start gap-2.5 my-3 text-sm text-slate-600 dark:text-slate-300">
-      <input
-        type="checkbox"
-        id="terms_agree"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-        required
-      />
-      <label htmlFor="terms_agree" className="cursor-pointer select-none">
-        Men{' '}
-        <a
-          href="/legal/oferta"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-indigo-600 hover:text-indigo-500 underline"
-        >
-          Ommaviy Oferta
-        </a>{' '}
-        hamda{' '}
-        <a
-          href="/legal/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-indigo-600 hover:text-indigo-500 underline"
-        >
-          Maxfiylik Siyosati
-        </a>{' '}
-        shartlariga to'liq roziman.
-      </label>
-    </div>
-  );
-}
-```
-
-### B. Backendda tasdiqlashni saqlash (Audit uchun):
-Foydalanuvchi ro'yxatdan o'tganda yoki profilini to'ldirganda (`complete_profile`):
-* `terms_accepted_at: 2026-10-01T12:00:00Z`
-* `terms_accepted_ip: 195.158.xxx.xxx`
-
-Ushbu qayd kelgusida har qanday yuridik yoki da'vo jarayonida foydalanuvchi ofertani ixtiyoriy ravishda akseptlaganining qat'iy isboti bo'lib xizmat qiladi.
+Master Plan, arxitektura rejasi, audit va qonunchilik muhokamasi ish yuritish materiallaridir. Ulardagi reja yoki qarorni tayyor funksiya deb foydalanuvchi qo‘llanmasiga ko‘chirmang. Huquqiy masalalar bo‘yicha mavjud qarorlar [walkthrough](OZBEKISTON_QONUNI_WALKTHROUGH.md)da saqlanadi.

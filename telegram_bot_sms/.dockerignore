@@ -1,5 +1,5 @@
 # bot/.dockerignore
-# Inventra'dagi bilan bir xil mantiq — faqat bot uchun kerakli qismlar.
+# ILBI'dagi bilan bir xil mantiq — faqat bot uchun kerakli qismlar.
 
 .venv/
 venv/

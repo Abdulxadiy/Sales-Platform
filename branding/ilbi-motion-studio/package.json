@@ -1,0 +1,12 @@
+{
+  "name": "ilbi-motion-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/verify.mjs",
+    "export": "node scripts/export.mjs"
+  }
+}

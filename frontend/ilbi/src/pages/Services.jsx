@@ -25,8 +25,20 @@ import PriceInput from '../components/common/PriceInput';
 import ReceiptSettingsPanel from '../components/common/ReceiptSettingsPanel';
 import { receiptDefaults } from '../utils/receiptTax';
 import { useTenant } from '../context/TenantContext';
+import PlatformSettings from '../components/platform/PlatformSettings';
 
 export default function Services() {
+  const { isAdmin } = useAuth();
+  const [scope, setScope] = useState('platform');
+  if (!isAdmin) return <TenantServices />;
+  return <div className="admin-page">
+    <div className="glass-card admin-card admin-heading"><span className="admin-icon"><Sliders size={24} /></span><div><h2>Xizmatlar & Sozlamalar</h2><div className="admin-muted">Platforma bildirishnomalari va do‘konlarning alohida sozlamalari.</div></div></div>
+    <div className="admin-toolbar"><button className={`btn ${scope === 'platform' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScope('platform')}>Platforma bildirishnomalari</button><button className={`btn ${scope === 'tenant' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScope('tenant')}>Do‘kon sozlamalari</button></div>
+    {scope === 'platform' ? <PlatformSettings /> : <TenantServices />}
+  </div>;
+}
+
+function TenantServices() {
   const { user, isAdmin } = useAuth();
   const toast = useToast();
   const { activeTenant } = useTenant();

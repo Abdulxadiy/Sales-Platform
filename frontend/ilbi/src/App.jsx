@@ -24,6 +24,7 @@ const Tenants = lazy(() => import('./pages/Tenants'));
 const SellerProfileReviews = lazy(() => import('./pages/SellerProfileReviews'));
 const MyTenants = lazy(() => import('./pages/MyTenants'));
 const Employees = lazy(() => import('./pages/Employees'));
+const PlatformAccounts = lazy(() => import('./pages/PlatformAccounts'));
 const Services = lazy(() => import('./pages/Services'));
 const Profile = lazy(() => import('./pages/Profile'));
 const SetupAccount = lazy(() => import('./pages/SetupAccount'));
@@ -100,6 +101,7 @@ export default function App() {
                   }
                 >
                   <Route index element={<Dashboard />} />
+                  <Route path="accounts" element={<RoleProtectedRoute allowedRoles={['platform_admin']}><PlatformAccounts /></RoleProtectedRoute>} />
                   <Route path="pos" element={<POS />} />
                   <Route path="catalog" element={<Catalog />} />
                   <Route path="inventory" element={<Inventory />} />

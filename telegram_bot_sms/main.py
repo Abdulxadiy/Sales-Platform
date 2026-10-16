@@ -145,6 +145,18 @@ async def contact_handler(message: types.Message):
             headers={"Authorization": f"Internal {INTERNAL_SERVICE_TOKEN}"},
             timeout=5,
         )
+        if response.status_code in (400, 409):
+            try:
+                conflict_code = response.json().get("code")
+            except (ValueError, AttributeError):
+                conflict_code = None
+            if conflict_code == "telegram_chat_already_linked":
+                await message.answer(
+                    "Bu Telegram akkaunti boshqa telefon raqamiga ulangan. "
+                    "Avvalgi login bilan davom eting yoki raqamni yangilash uchun platforma administratoriga murojaat qiling. "
+                    "Administrator «Hisoblar & Kirish → Login va Telegram» orqali egalikni tekshirib yangilaydi."
+                )
+                return
         response.raise_for_status()
 
         logger.info(f"Successfully linked phone {phone_number} to chat_id {chat_id} in ILBI")

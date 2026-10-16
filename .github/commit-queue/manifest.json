@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "queue_id": "20261016T120108-11bb562d",
+  "queue_id": "20261016T121917-3db7984e",
   "base_sha": "3bc4bf092216ba42daa4deef830ad1189406b397",
-  "snapshot_sha": "11bb562de392c99ad4c6a83defba10d5aaafa069",
-  "source_tree": "75418c6fb23671648b49bfc7958a3f770407b442",
-  "created_at": "2026-10-16T12:01:08.218216+05:00",
+  "snapshot_sha": "3db7984e9301d6e2dc3fd9ae8dac11c9b12988de",
+  "source_tree": "863d244239926f14595ed15b7ef375a67876e339",
+  "created_at": "2026-10-16T12:19:17.290452+05:00",
   "groups": [
     {
       "id": "dependencies",
@@ -18,6 +18,7 @@
       "id": "account-api",
       "message": "fix(accounts-api): expose revocable sessions secure profiles and validated recovery routes",
       "paths": [
+        "ilbi/api/v1/accounts/urls.py",
         "ilbi/api/v1/accounts/views/misc.py",
         "ilbi/api/v1/accounts/views/profile_views.py",
         "ilbi/api/v1/accounts/views/token_refresh.py"
@@ -55,6 +56,15 @@
       "atomic_unit": "application"
     },
     {
+      "id": "frontend-tenant-navigation",
+      "message": "feat(ui): replace branch navigation with scoped shop context and secure sign-in flows",
+      "paths": [
+        "frontend/ilbi/src/App.jsx",
+        "frontend/ilbi/src/components/layout/Sidebar.jsx"
+      ],
+      "atomic_unit": "application"
+    },
+    {
       "id": "frontend-catalog-tools",
       "message": "feat(catalog-ui): connect imports product tools barcode labels and Excel downloads",
       "paths": [
@@ -68,6 +78,16 @@
       "paths": [
         "frontend/ilbi/src/components/common/ReceiptSlip.jsx",
         "frontend/ilbi/src/pages/PublicReceiptView.jsx"
+      ],
+      "atomic_unit": "application"
+    },
+    {
+      "id": "frontend-management",
+      "message": "feat(management-ui): expose owner employee shift seller review and audit controls",
+      "paths": [
+        "frontend/ilbi/src/pages/Dashboard.jsx",
+        "frontend/ilbi/src/pages/Employees.jsx",
+        "frontend/ilbi/src/pages/Services.jsx"
       ],
       "atomic_unit": "application"
     },
@@ -101,16 +121,27 @@
         "Architectures/shop-yol-xaritasi.md",
         "docs/README.md",
         "docs/qollanmalar/owner_amaliy_qollanma.md",
+        "frontend/ilbi/src/api/platform.js",
         "frontend/ilbi/src/components/common/FiscalMetadataFields.jsx",
+        "frontend/ilbi/src/components/common/IdentityRecoveryModal.jsx",
         "frontend/ilbi/src/components/common/ReceiptItemCodes.jsx",
+        "frontend/ilbi/src/components/platform/PlatformSettings.jsx",
+        "frontend/ilbi/src/components/platform/platform-admin.css",
+        "frontend/ilbi/src/pages/PlatformAccounts.jsx",
+        "frontend/ilbi/src/pages/PlatformDashboard.jsx",
         "frontend/ilbi/tests/browser/catalogFiscal.html",
         "frontend/ilbi/tests/catalogFiscal.browser.mjs",
         "ilbi/README_TESTS.md",
+        "ilbi/api/v1/accounts/views/platform_views.py",
+        "ilbi/api/v1/support/settings_views.py",
+        "ilbi/api/v1/support/urls.py",
         "ilbi/apps/accounts/authentication.py",
         "ilbi/apps/accounts/management/commands/createsuperuser.py",
         "ilbi/apps/accounts/services/avatar_service.py",
+        "ilbi/apps/accounts/services/platform_accounts.py",
         "ilbi/apps/accounts/tests/test_avatar_storage.py",
         "ilbi/apps/accounts/tests/test_createsuperuser.py",
+        "ilbi/apps/accounts/tests/test_platform_admin_workspace.py",
         "ilbi/apps/accounts/tests/test_terms_and_docs_views.py",
         "ilbi/apps/accounts/tests/test_token_version_validation.py",
         "ilbi/apps/accounts/token_validation.py",
@@ -125,6 +156,9 @@
         "ilbi/apps/sales/migrations/0016_saleitem_product_snapshot.py",
         "ilbi/apps/sales/receipt_items.py",
         "ilbi/apps/sales/tests/test_product_snapshots.py",
+        "ilbi/apps/support/migrations/0003_supporttelegramsettings.py",
+        "ilbi/apps/support/models.py",
+        "ilbi/apps/support/tasks.py",
         "ilbi/apps/tg_bot/tests/test_private_2fa.py",
         "ilbi/config/settings_production.py",
         "ilbi/gunicorn.conf.py",

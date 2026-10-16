@@ -4,6 +4,16 @@ from django.conf import settings
 from django.db import models
 
 
+class SupportTelegramSettings(models.Model):
+    admin = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    enabled = models.BooleanField(default=False)
+    target = models.CharField(
+        max_length=10, choices=[("personal", "Personal"), ("group", "Group"), ("both", "Both")], default="personal"
+    )
+    group_chat_id = models.CharField(max_length=100, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class Conversation(models.Model):
     class Status(models.TextChoices):
         WAITING = "waiting", "Waiting"
@@ -56,9 +66,7 @@ class Message(models.Model):
     has_voice = models.BooleanField(default=False)
     voice_duration = models.PositiveIntegerField(default=0)
     sticker = models.CharField(max_length=100, blank=True)
-    reply_to = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="replies"
-    )
+    reply_to = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="replies")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1,0 +1,164 @@
+{
+  "captured": "2026-10-15",
+  "source": "ILBI React UI + isolated synthetic PostgreSQL fixtures",
+  "images": [
+    {
+      "file": "catalog_tools.png",
+      "route": "/catalog",
+      "annotations": [
+        "Excel / CSV",
+        "Yangi mahsulot"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "catalog_create.png",
+      "route": "/catalog",
+      "annotations": [
+        "Mahsulot nomi",
+        "Kategoriya"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "catalog_import.png",
+      "route": "/catalog",
+      "annotations": [
+        "Shablonni oling",
+        "Faylni tanlang",
+        "Avval tekshiring"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "catalog_labels.png",
+      "route": "/catalog",
+      "annotations": [
+        "Qog‘oz turi",
+        "O‘lcham",
+        "Chop etish"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "inventory_intake.png",
+      "route": "/inventory",
+      "annotations": [
+        "Qidirish + Enter",
+        "Kirimni tasdiqlash"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "inventory_batches.png",
+      "route": "/inventory",
+      "annotations": [
+        "Partiyalar bo‘limi"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "pos_cart.png",
+      "route": "/pos",
+      "annotations": [
+        "To‘lov oynasi"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "pos_payment.png",
+      "route": "/pos",
+      "annotations": [
+        "To‘lov usuli",
+        "Qabul qilingan pul"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "debt_payment.png",
+      "route": "/debts",
+      "annotations": [
+        "To‘lov summasi",
+        "Haqiqiy to‘lovni saqlash"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "shift_close.png",
+      "route": "/shifts",
+      "annotations": [
+        "Sanab kiritilgan naqd",
+        "Yopish va hisobot"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "employees_actions.png",
+      "route": "/employees",
+      "annotations": [
+        "Yangi xodim",
+        "Taklif yuborish"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "tenant_switch.png",
+      "route": "/catalog",
+      "annotations": [
+        "Faol do‘kon"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "login_fields.png",
+      "route": "/login",
+      "annotations": [
+        "Login / telefon / email",
+        "Shaxsiy parol"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "support_guest.png",
+      "route": "/support",
+      "annotations": [
+        "Murojaat mavzusi",
+        "Operatorga yuborish"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "support_operator.png",
+      "route": "/support",
+      "annotations": [
+        "Suhbatni qabul qiling"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    },
+    {
+      "file": "support_reply.png",
+      "route": "/support",
+      "annotations": [
+        "Javob yuborish",
+        "Skrinshot biriktirish"
+      ],
+      "captured": "2026-10-15",
+      "data": "synthetic"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "captured": "2026-10-15",
+  "checks": [
+    "Light/dark loading, reduced-motion, mobile login, badge-free ILBI logo",
+    "Synthetic guest conversation and operator acceptance",
+    "Live port 5173: new logo, no old branding/PRO, legacy theme preserved",
+    "Live port 5174: new logo, no old branding/PRO, legacy theme preserved",
+    "Synthetic receipt: ILBI monochrome vector logo and PDF rendering"
+  ],
+  "focusedImages": 16,
+  "browserErrors": [],
+  "currentSourceInventory": {
+    "text_files": 588,
+    "matched_files": 22,
+    "matched_lines": 448,
+    "occurrences": 453,
+    "binary_or_non_utf8": 106
+  },
+  "backendTestsPassed": 535,
+  "automationTestsPassed": 13,
+  "databaseAggregatesPreserved": true,
+  "botProfileVerified": true
+}

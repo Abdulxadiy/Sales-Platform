@@ -1,0 +1,15 @@
+<!doctype html><html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><style>body{margin:16px;font-family:Arial;background:#eeede9;--bg-card:#fff;--bg-input:#fff;--text-primary:#111;--text-secondary:#333;--text-muted:#555;--border-card:#ddd}.glass-card{background:#fff;border-radius:12px}.btn{padding:10px;cursor:pointer}*{box-sizing:border-box}</style></head><body><div id="root"></div><script type="module">
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import AuthContext from '/src/context/authContext.js';
+import Panel from '/src/components/common/ReceiptSettingsPanel.jsx';
+import {receiptDefaults} from '/src/utils/receiptTax.js';
+const tenant={name:'Test do‘koni',receipt_settings:{version:1,seller_name:'Test MChJ',seller_tax_identifier:'123456789'}};
+window.taxQA={saved:0};
+function App(){
+ const [value,setValue]=useState({...receiptDefaults,address:'Test manzil',receipt_phone:'+998901234567',tax_regime:'general',is_vat_payer:true});
+ taxQA.value=value;taxQA.set=setValue;
+ return React.createElement(AuthContext.Provider,{value:{user:{username:'QA'}}},React.createElement(Panel,{tenant,value,onChange:setValue,onSave(){taxQA.saved++;taxQA.lastSaved=value;},saving:false,previewDate:new Date('2026-10-16T08:00:00Z')}));
+}
+createRoot(document.getElementById('root')).render(React.createElement(App));
+</script></body></html>

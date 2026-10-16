@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"></head><body>
+<div id="root"></div>
+<script type="module">
+import React, { StrictMode, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import Scanner from '/src/components/common/CameraBarcodeScanner.jsx';
+
+import './cameraFeed.js';
+const qa = window.cameraQA;
+function App() {
+  const [open, setOpen] = useState(false);
+  const [tick, setTick] = useState(0);
+  const [mounted, setMounted] = useState(true);
+  qa.open = () => setOpen(true); qa.close = () => setOpen(false);
+  qa.bump = () => setTick(value => value + 1); qa.unmount = () => setMounted(false);
+  return React.createElement(React.Fragment, null,
+    React.createElement('span', null, tick),
+    mounted && React.createElement(Scanner, { isOpen: open,
+      onClose: () => { qa.closes++; setOpen(false); },
+      onScan: code => qa.scans.push({ code, tick, dialogOpen: Boolean(document.querySelector('dialog[open]')), live: qa.streams.some(stream => stream.active) }),
+    }));
+}
+createRoot(document.getElementById('root')).render(React.createElement(StrictMode, null, React.createElement(App)));
+</script>
+</body></html>

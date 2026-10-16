@@ -1,0 +1,46 @@
+{
+  "checks": [
+    "Opening uses a real modal and blocks the underlying login",
+    "Opening starts with the approved single blue dot",
+    "Keyboard focus stays within the opening",
+    "Blue ribbon is formed during the brand reveal",
+    "A parent rerender does not restart the animation",
+    "Final logo has all wordmark glyphs and no leftover seed",
+    "The complete 5.1-second film fades into login automatically",
+    "Login form remains available after completion",
+    "Intro button replays the new film from the start",
+    "Skip immediately returns to login",
+    "Escape dismisses the opening",
+    "Mobile composition fits with safe margins and retains the approved white background",
+    "Reduced-motion skips the jump and the 5.1-second wait",
+    "No opening JavaScript or asset errors; unrelated support API 502s and font certificate failures recorded separately"
+  ],
+  "browserErrors": [
+    "Failed to load resource: net::ERR_CERT_VERIFIER_CHANGED",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "reducedMotionErrors": [
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "environmentErrors": [
+    "Failed to load resource: net::ERR_CERT_VERIFIER_CHANGED",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
+    "502 http://127.0.0.1:5173/api/v1/support/guest/",
+    "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "openingErrors": [],
+  "productionBuild": "passed",
+  "frontendTests": "4 passed",
+  "newOpeningFilesLint": "passed without warnings"
+}

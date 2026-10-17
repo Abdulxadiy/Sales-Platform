@@ -8,6 +8,9 @@ phone-OTP login in login.py -- different audience, different
 security requirements.
 """
 
+from apps.accounts.services import login_throttle, login_ticket_service, otp_services, password_reset_service
+from apps.accounts.services.demo_access_service import DemoAccessService
+from apps.accounts.services.phone_utils import mask_phone_number
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework import status
@@ -26,9 +29,6 @@ from api.v1.accounts.views.misc import (
     issue_tokens,
     send_otp_or_error,
 )
-from apps.accounts.services import login_throttle, login_ticket_service, otp_services, password_reset_service
-from apps.accounts.services.demo_access_service import DemoAccessService
-from apps.accounts.services.phone_utils import mask_phone_number
 
 User = get_user_model()
 
@@ -92,6 +92,9 @@ class AdminLoginView(APIView):
 
         if user is None or not user.check_password(password):
             login_throttle.register_failure(username)
+            return _bad_credentials()
+
+        if DemoAccessService.is_blocked(user):
             return _bad_credentials()
 
         if user.role not in ("staff", "owner", "platform_admin"):

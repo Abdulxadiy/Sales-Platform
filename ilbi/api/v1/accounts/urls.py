@@ -21,8 +21,20 @@ from api.v1.accounts.views import (
 from api.v1.accounts.views.token_refresh import RevocableTokenRefreshView
 
 from .views.docs_views import documentation_image
+from .views.platform_views import (
+    PlatformAccountStatusView,
+    PlatformAccountsView,
+    PlatformIdentityView,
+    PlatformOverviewView,
+    PlatformSupportUnreadView,
+)
 
 urlpatterns = [
+    path('platform/support-unread/', PlatformSupportUnreadView.as_view()),
+    path('platform/overview/', PlatformOverviewView.as_view()),
+    path('platform/accounts/', PlatformAccountsView.as_view()),
+    path('platform/accounts/<int:pk>/identity/', PlatformIdentityView.as_view()),
+    path('platform/accounts/<int:pk>/status/', PlatformAccountStatusView.as_view()),
     path('docs/images/<str:filename>', documentation_image, name='documentation-image'),
     path('auth/token/refresh/', RevocableTokenRefreshView.as_view(), name='token-refresh'),
     path('auth/profile/', UserProfileView.as_view(), name='user-profile'),

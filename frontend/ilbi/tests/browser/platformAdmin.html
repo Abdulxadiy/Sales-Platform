@@ -1,0 +1,35 @@
+<!doctype html><html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import {ThemeProvider} from '/src/context/ThemeContext.jsx';
+import {TenantProvider} from '/src/context/TenantContext.jsx';
+import {ToastProvider} from '/src/context/ToastContext.jsx';
+import {ConfirmProvider} from '/src/context/ConfirmContext.jsx';
+import Layout from '/src/components/layout/Layout.jsx';
+import PlatformAccounts from '/src/pages/PlatformAccounts.jsx';
+import Dashboard from '/src/pages/Dashboard.jsx';
+import Services from '/src/pages/Services.jsx';
+import '/src/index.css';
+window.adminQA={requests:[],settings:{enabled:false,target:'personal',group_chat_id:'',personal_linked:true,bot_configured:true},accounts:[{id:102,name:'Ali Sinov',username:'ali',phone_number:'+998901112233',security_version:1,email:'synthetic@example.invalid',role:'staff',is_active:true,telegram_chat_id:'777000',telegram_linked:true,memberships:[{id:1,name:'Sinov do‘koni',is_owner:false,is_active:true}]}]};
+window.fetch=async(url,options={})=>{
+ const parsed=new URL(url,location.origin),path=parsed.pathname,body=options.body?JSON.parse(options.body):null;
+ adminQA.requests.push({path,method:options.method||'GET',body});
+ let value={};
+ if(path==='/api/v1/platform/overview/') value={counts:{accounts:32,blocked_accounts:2,tenants:12,active_tenants:10,support_waiting:3,support_active:4,seller_pending:2},telegram_configured:true,activity:[{id:1,action:'Login yangilandi',actor:'Administrator',description:'Hisob egasining murojaati tekshirildi',created_at:'2026-10-16T07:00:00Z'}]};
+ else if(path==='/api/v1/platform/support-unread/') value={unread:3};
+ else if(path==='/api/v1/platform/accounts/') {let rows=adminQA.accounts.filter(a=>!parsed.searchParams.get('search')||a.name.toLowerCase().includes(parsed.searchParams.get('search').toLowerCase()));value={count:rows.length,results:rows};}
+ else if(path.endsWith('/identity/')) {value=adminQA.accounts.find(a=>a.id===Number(path.split('/')[5]))||adminQA.accounts[0];if(body){Object.assign(value,body);value.security_version++;}}
+ else if(path==='/api/v1/support/settings/telegram/') {if(body)Object.assign(adminQA.settings,body);value=adminQA.settings;}
+ else if(path==='/api/v1/support/settings/telegram/test/') value={detail:'Sinov xabari yuborish navbatiga qo‘yildi.'};
+ else if(path.endsWith('/status/')) {value=adminQA.accounts[0];value.is_active=!body.blocked;}
+ else throw Error('Unexpected API request in isolated UI: '+path);
+ return new Response(JSON.stringify(value),{headers:{'content-type':'application/json'}});
+};
+const user={id:1,role:'platform_admin',first_name:'Admin',username:'admin',phone_number:'+998900000001',terms_accepted:true,tenants:[]};
+const auth={user,isAdmin:true,isOwner:false,isAuthenticated:true,role:'platform_admin',logout(){adminQA.loggedOut=true;}};
+createRoot(document.getElementById('root')).render(
+ React.createElement(AuthContext.Provider,{value:auth},React.createElement(ThemeProvider,null,React.createElement(TenantProvider,null,React.createElement(ToastProvider,null,React.createElement(ConfirmProvider,null,React.createElement(MemoryRouter,{initialEntries:['/dashboard']},React.createElement(Routes,null,React.createElement(Route,{element:React.createElement(Layout)},React.createElement(Route,{path:'dashboard',element:React.createElement(Dashboard)}),React.createElement(Route,{path:'accounts',element:React.createElement(PlatformAccounts)}),React.createElement(Route,{path:'services',element:React.createElement(Services)})))))))))
+);
+</script></body></html>

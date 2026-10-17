@@ -1,8 +1,13 @@
 from django.urls import path
 
 from . import views
+from .settings_views import SupportTelegramSettingsView, SupportTelegramTestView
 
-urlpatterns = [path("metadata/", views.MetadataView.as_view())]
+urlpatterns = [
+    path("metadata/", views.MetadataView.as_view()),
+    path("settings/telegram/", SupportTelegramSettingsView.as_view()),
+    path("settings/telegram/test/", SupportTelegramTestView.as_view()),
+]
 for prefix, listing, detail, messages, image, voice in [
     (
         "conversations/",

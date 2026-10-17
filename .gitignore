@@ -149,6 +149,7 @@ activemq-data/
 
 # Environments
 .env
+.env.production
 .envrc
 .venv
 env/
@@ -245,3 +246,9 @@ Architectures/.obsidian/
 
 # Local GitHub publishing cache and locks
 .commit-queue-local/
+
+# Private data backups and operator configuration (kept outside this repository)
+ilbi-data-*.tar.gpg
+.ilbi-data-*.partial
+data-backup.config.json
+data-backup.passphrase

@@ -17,10 +17,12 @@ import { docsApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import IlbiLogo from '../components/common/IlbiLogo';
 import MarkdownViewer from '../components/docs/MarkdownViewer';
+import AppLoadingScreen from '../components/common/AppLoadingScreen';
+import SessionRecovery from '../components/auth/SessionRecovery';
 
 export default function AcceptTerms() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, hasAcceptedTerms, acceptTerms, logout, loading } = useAuth();
+  const { user, isAuthenticated, hasAcceptedTerms, acceptTerms, logout, loading, sessionError } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const toast = useToast();
 
@@ -35,12 +37,13 @@ export default function AcceptTerms() {
 
   // Redirect if already accepted or not authenticated
   useEffect(() => {
+    if (loading || sessionError) return;
     if (!isAuthenticated) {
       navigate('/login', { replace: true });
     } else if (hasAcceptedTerms) {
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
-  }, [isAuthenticated, hasAcceptedTerms, navigate]);
+  }, [isAuthenticated, hasAcceptedTerms, loading, sessionError, navigate]);
 
   const handleOpenDetailModal = async (docKey, title) => {
     setActiveModalDoc(docKey);
@@ -67,7 +70,7 @@ export default function AcceptTerms() {
     try {
       await acceptTerms();
       toast.success('Shartlar muvaffaqiyatli qabul qilindi. Xush kelibsiz!');
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       toast.error(err.message || 'Rozilikni qayd etishda xatolik yuz berdi');
     } finally {
@@ -79,6 +82,9 @@ export default function AcceptTerms() {
     logout();
     navigate('/login', { replace: true });
   };
+
+  if (loading) return <AppLoadingScreen />;
+  if (sessionError) return <SessionRecovery />;
 
   return (
     <div

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="data:,">
+  <style>
+    body{margin:12px;font-family:Arial;--bg-card:#fff;--bg-input:#fff;--bg-surface:#fff;--text-primary:#111;--text-muted:#555;--border-card:#ddd}
+    *{box-sizing:border-box}.input-field{width:100%;padding:8px}.custom-dialog{padding:0;border:0}
+    button{cursor:pointer}#receipts{display:flex;flex-wrap:wrap;gap:12px}
+  </style>
+</head>
+<body><div id="root"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import {TenantProvider} from '/src/context/TenantContext.jsx';
+import {ToastProvider} from '/src/context/ToastContext.jsx';
+import {ConfirmProvider} from '/src/context/ConfirmContext.jsx';
+import {catalogApi,salesApi} from '/src/api/client.js';
+import Catalog from '/src/pages/Catalog.jsx';
+import { captureLegacyDraftOwner } from '/src/utils/accountDrafts.js';
+import ReceiptSlip from '/src/components/common/ReceiptSlip.jsx';
+import PublicReceiptView from '/src/pages/PublicReceiptView.jsx';
+
+const params=new URLSearchParams(location.search);
+const tenant={id:7,name:'Test do‘koni',is_owner:true};
+const user={id:7,role:'owner',tenants:[tenant],permissions:[],username:'QA'};
+const auth={user,isAuthenticated:true,isOwner:true,isAdmin:false};
+window.fiscalQA={requests:[],variants:[]};
+const qa=window.fiscalQA;
+const category={id:1,name:'Sinov',kod:'01',currency:'UZS',parent:null,is_active:true};
+catalogApi.getCategories=async()=>[category];
+catalogApi.getVariants=async()=>({results:[...qa.variants],count:qa.variants.length});
+function capture(action,data){
+  const multipart=data instanceof FormData;
+  const payload=multipart?Object.fromEntries(data):data;
+  qa.requests.push({action,multipart,payload:{...payload,image:payload.image?.name}});
+  return payload;
+}
+catalogApi.createProduct=async data=>{
+  const value=capture('create',data);
+  qa.variants=[{...value,id:11,product:5,product_name:value.name,name:'Standart',category_id:1,
+    category_name:category.name,unit:'dona',currency:'UZS',stock_quantity:'0',images:[],image:null}];
+  return {id:5};
+};
+catalogApi.updateProduct=async(id,data)=>{
+  const value=capture('update',data);
+  qa.variants=[{...qa.variants[0],...value,product_name:value.name}];
+  return {id};
+};
+// Simulate a draft saved before the fiscal fields existed.
+captureLegacyDraftOwner(user.id, user);
+localStorage.removeItem('ilbi_account_draft:7:7:draft_product');
+localStorage.setItem('ilbi_draft_product:7',JSON.stringify({name:'Sinov mahsuloti',category_id:'1',unit:'dona',
+  variant_name:'Standart',code:'01/1',barcode:'',price_partner:'500',price_min:'1000',price_recommended:'1500',do_intake:false}));
+
+const item={id:1,product_name:'Sement',product_variant_name:'Qop',quantity:'2',unit:'kg',
+  unit_price:'1000',total_price:'2000',mxik:params.has('legacy')?null:'03816001001000000',
+  package_code:params.has('legacy')?null:'0001234'};
+const sale={id:1,receipt_number:'TEST-ONLY',created_at:'2026-10-16T08:00:00+05:00',payment_type:'cash',
+  currency:'UZS',total_amount:'2000',net_amount:'2000',items:[item],
+  receipt_snapshot:{version:1,store_name:tenant.name,receipt_footer:'Savdo nusxasi — fiskal chek emas'}};
+salesApi.getPublicReceipt=async()=>sale;
+const h=React.createElement;
+const content=params.has('receipts')
+  ? h(MemoryRouter,{initialEntries:['/r/synthetic-token']},h('div',{id:'receipts'},
+      ...['58mm','80mm'].map(width=>h(ReceiptSlip,{key:width,id:'receipt-'+width,sales:[sale],paperWidth:width,showQrCode:false})),
+      h('div',{id:'public-receipt'},h(Routes,null,h(Route,{path:'/r/:token',element:h(PublicReceiptView)})))))
+  : h(TenantProvider,null,h(MemoryRouter,{initialEntries:['/catalog?new=1']},
+      h(ToastProvider,null,h(ConfirmProvider,null,h(Catalog)))));
+createRoot(document.getElementById('root')).render(h(AuthContext.Provider,{value:auth},content));
+</script></body></html>

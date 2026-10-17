@@ -1,11 +1,22 @@
 import pytest
+from api.v1.accounts.views import docs_views
 from rest_framework import status
 from rest_framework.test import APIClient
-from tests.factories import PlatformAdminFactory, OwnerFactory, StaffFactory
-from apps.accounts.models import User
-
+from tests.factories import OwnerFactory, PlatformAdminFactory, StaffFactory
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def isolated_docs(tmp_path, monkeypatch):
+    """Keep documentation GET/PUT tests entirely inside their own temporary files."""
+    docs_root = tmp_path / "docs"
+    for key, meta in docs_views.DOCS_MAP.items():
+        path = docs_root / meta["file"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"# Sun’iy test hujjati: {key}\n", encoding="utf-8")
+    monkeypatch.setattr(docs_views, "_get_docs_root", lambda: docs_root)
+    return docs_root
 
 
 def test_accept_terms_requires_authentication():
@@ -103,7 +114,7 @@ def test_docs_get_detail_permissions():
     assert res_admin_ok.data["can_edit"] is True
 
 
-def test_docs_edit_only_platform_admin():
+def test_docs_edit_only_platform_admin(isolated_docs):
     client = APIClient()
     staff = StaffFactory()
     owner = OwnerFactory()
@@ -129,25 +140,23 @@ def test_docs_edit_only_platform_admin():
 
     # Admin can edit
     client.force_authenticate(user=admin)
-    # Read existing content first
+    # Read the synthetic fixture through the real API before editing it.
     get_res = client.get("/api/v1/docs/?doc=staff_qollanma")
+    assert get_res.status_code == status.HTTP_200_OK
     original_content = get_res.data["content"]
+    updated_content = original_content + "\n\n<!-- updated_test_tag -->"
 
     # Perform edit
     edit_res = client.put(
         "/api/v1/docs/",
-        {"doc": "staff_qollanma", "content": original_content + "\n\n<!-- updated_test_tag -->"},
+        {"doc": "staff_qollanma", "content": updated_content},
         format="json",
     )
     assert edit_res.status_code == status.HTTP_200_OK
 
     # Verify content updated
     updated_res = client.get("/api/v1/docs/?doc=staff_qollanma")
-    assert "<!-- updated_test_tag -->" in updated_res.data["content"]
-
-    # Revert back
-    client.put(
-        "/api/v1/docs/",
-        {"doc": "staff_qollanma", "content": original_content},
-        format="json",
-    )
+    assert updated_res.status_code == status.HTTP_200_OK
+    assert updated_res.data["content"] == updated_content
+    saved_file = isolated_docs / docs_views.DOCS_MAP["staff_qollanma"]["file"]
+    assert saved_file.read_text(encoding="utf-8") == updated_content

@@ -1,6 +1,6 @@
 # ILBI frontend
 
-React/Vite interface for the ILBI sales platform. Updated: 2026-10-15.
+React/Vite interface for the ILBI sales platform. Updated: 2026-10-16.
 
 ## Development
 
@@ -23,11 +23,17 @@ npm run build
 
 `npm run test:labels` checks the enlarged label preview, mandatory barcode digits, optional product name, actual print dimensions and decoding of the printed barcode. Existing product barcodes are preserved; explicit generation for products without a code creates a numeric barcode.
 
+`npm run test:auth-session` drives the actual app in an isolated Chrome profile with synthetic API responses. It covers login/chat privacy, password plus OTP, failed session verification and retry, late responses, logout/storage events, POS cart/payment drafts, shop switching and product form/image restoration. It never sends a real OTP, support message or sale.
+
 Camera capture requires HTTPS (or localhost for development) and browser camera permission. The shared scanner releases its stream and closes as soon as it reads a code; its decoder loads only when the camera is opened.
 
 ## Routes and access
 
 `App.jsx` defines public entry pages, authenticated layout routes and role gates. Account state comes from `context/AuthContext.jsx`; consumers use `hooks/useAuth.js` and the stable context object is in `context/authContext.js`; active shop context comes from `TenantContext`. The API checks permissions independently of frontend navigation.
+
+An explicit visit to `/login` clears the previous browser authentication and starts a fresh login flow. The public landing page and its login links keep their existing behavior. Remembered sessions still restore on protected routes after server profile validation; offline/failed validation offers retry without exposing cached account data. Chat, dialogs, notifications and in-flight responses are isolated across authentication changes. Login help uses a fresh guest capability, retained for expansion to `/support`; it never inherits old account or guest conversation history.
+
+POS cart and checkout inputs, new product/category forms (including product image), bulk intake and inventory adjustment/return/write-off drafts are scoped to the authenticated account and shop. Text is saved on each change in browser storage, images in IndexedDB. Logout preserves these drafts, and restoration never submits a transaction. A successful save or explicit clear stores an empty draft so older backups cannot reappear. Identifiable legacy drafts migrate only to the previously cached matching account and its shops; originals are retained. Unattributed old drafts remain stored without being shown to the next account. Browser storage is not an encrypted backup: clearing site data loses drafts, and local device/browser access is outside this UI isolation guarantee. Storage failures show a warning.
 
 - `/login`: username/phone/email, password and Telegram OTP; includes a public help link.
 - `/support`: public help center; guests and signed-in users have private conversations. Platform administrators see the operator inbox. UI languages: Uzbek, Russian, English.

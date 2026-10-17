@@ -25,8 +25,9 @@ import PriceInput from '../components/common/PriceInput';
 import ReceiptSettingsPanel from '../components/common/ReceiptSettingsPanel';
 import { receiptDefaults } from '../utils/receiptTax';
 import { useTenant } from '../context/TenantContext';
+import PlatformSettings from '../components/platform/PlatformSettings';
 
-export default function Services() {
+function TenantServices() {
   const { user, isAdmin } = useAuth();
   const toast = useToast();
   const { activeTenant } = useTenant();
@@ -1339,4 +1340,14 @@ export default function Services() {
       )}
     </div>
   );
+}
+
+export default function Services() {
+  const { isAdmin } = useAuth();
+  const [scope, setScope] = useState('platform');
+  if (!isAdmin) return <TenantServices />;
+  return <div className="admin-page">
+    <div className="admin-toolbar"><button className={`btn ${scope === 'platform' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScope('platform')}>Platforma bildirishnomalari</button><button className={`btn ${scope === 'tenant' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setScope('tenant')}>Do‘kon sozlamalari</button></div>
+    {scope === 'platform' ? <PlatformSettings /> : <TenantServices />}
+  </div>;
 }

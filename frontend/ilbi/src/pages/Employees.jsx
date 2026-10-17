@@ -1,6 +1,6 @@
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useEffect, useState } from 'react';
-import { Search, UserPlus, UserX, Users, Mail, Pencil, Ban, ShieldCheck, Trash2, RotateCcw } from 'lucide-react';
+import { Search, UserPlus, UserX, Users, Mail, Pencil, Ban, ShieldCheck, Trash2, RotateCcw, KeyRound } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { tenantApi } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
@@ -11,6 +11,7 @@ import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import PhoneInput from '../components/common/PhoneInput';
 import EmployeePermissionsSelector from '../components/employees/EmployeePermissionsSelector';
+import IdentityRecoveryModal from '../components/common/IdentityRecoveryModal';
 
 const PAGE_SIZE = 50;
 
@@ -63,6 +64,7 @@ export default function Employees() {
   const [editTarget, setEditTarget] = useState(null);
   const [editForm, setEditForm] = useState({ first_name: '', last_name: '', email: '', contact_phone: '', position: '' });
   const [editing, setEditing] = useState(false);
+  const [identityUser, setIdentityUser] = useState(null);
   const [accountAction, setAccountAction] = useState(null);
   const [actionReason, setActionReason] = useState('');
   const [actionSubmitting, setActionSubmitting] = useState(false);
@@ -350,6 +352,7 @@ export default function Employees() {
                           <Mail size={15} /> {actionLoadingId === employee.id ? 'Kutilmoqda...' : 'Emailga yuborish'}
                         </button>
                         <button className="btn btn-secondary" onClick={() => openEdit(employee)} disabled={!employee.actions?.edit || actionLoadingId === employee.id} title="Ma’lumotlarni tahrirlash" aria-label={`${name}: tahrirlash`}><Pencil size={15} /></button>
+                        {isAdmin && <button className="btn btn-secondary" title="Login va Telegramni boshqarish" aria-label={`${name}: login va Telegram`} onClick={() => setIdentityUser(employee.user)}><KeyRound size={15} /></button>}
                         <button className="btn btn-secondary" onClick={() => openAccountAction(employee, employee.account_active ? 'block' : 'unblock')} disabled={!employee.actions?.block || actionLoadingId === employee.id}
                           title={employee.account_active ? 'Hisobni bloklash' : 'Hisobni blokdan chiqarish'} aria-label={`${name}: ${employee.account_active ? 'bloklash' : 'blokdan chiqarish'}`}>
                           {employee.account_active ? <Ban size={15} /> : <ShieldCheck size={15} />}
@@ -439,6 +442,7 @@ export default function Employees() {
         </form>
       </Modal>
 
+      <IdentityRecoveryModal key={identityUser || 'closed'} userId={identityUser} onClose={() => setIdentityUser(null)} onSaved={() => { refreshList(); toast.success('Login va Telegram yangilandi.'); }} />
       <Modal isOpen={Boolean(editTarget)} onClose={() => { if (!editing) setEditTarget(null); }} title="Hisob ma’lumotlarini tahrirlash" maxWidth={680}>
         {editTarget && <form onSubmit={handleEditSubmit} style={{ display: 'grid', gap: 14 }}>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>

@@ -42,6 +42,8 @@ export default function Audit() {
   }, [loadLogs]);
 
   const actionLabels = {
+    account_identity_update: 'Login va Telegram yangilandi',
+    support_telegram_settings: 'Yordam bildirishnomalari sozlandi',
     catalog_import: 'Katalog fayldan yuklandi',
     barcode_generate: 'Shtrix-kod yaratildi',
     price_change: 'Narx o‘zgarishi',

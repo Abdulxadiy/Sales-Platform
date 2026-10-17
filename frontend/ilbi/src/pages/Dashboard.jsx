@@ -1,5 +1,6 @@
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
+import PlatformDashboard from './PlatformDashboard';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -35,7 +36,7 @@ import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
 import PhoneInput from '../components/common/PhoneInput';
 import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
-export default function Dashboard() {
+function TenantDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
@@ -1558,4 +1559,9 @@ export default function Dashboard() {
       </div>
     </div>
   );
+}
+
+export default function Dashboard() {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <PlatformDashboard /> : <TenantDashboard />;
 }

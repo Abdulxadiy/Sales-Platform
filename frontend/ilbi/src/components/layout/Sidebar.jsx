@@ -78,17 +78,18 @@ export default function Sidebar({
     ...(canAccessDashboard
       ? [
           {
-            to: '/',
-            label: 'Dashboard',
+            to: '/dashboard',
+            label: isAdmin ? 'Boshqaruv paneli' : 'Dashboard',
             icon: LayoutDashboard,
           },
         ]
       : []),
     ...(isAdmin
       ? [
+          { to: '/accounts', label: 'Hisoblar & Kirish', icon: Users },
           {
             to: '/tenants',
-            label: 'Do‘konlar (Tenants)',
+            label: 'Do‘konlar',
             icon: Store,
           },
           {
@@ -212,7 +213,7 @@ export default function Sidebar({
       {isEffectiveCollapsed ? (
         <div className="sidebar-header-collapsed">
           <NavLink
-            to="/"
+            to="/dashboard"
             className="sidebar-brand-icon"
             title="ILBI — Boshqaruv & POS Tizimi"
             onClick={handleNavClick}
@@ -239,7 +240,7 @@ export default function Sidebar({
       ) : (
         <div className="sidebar-header-row">
           <NavLink
-            to="/"
+            to="/dashboard"
             className="sidebar-brand"
             title="ILBI — Boshqaruv & POS Tizimi"
             onClick={handleNavClick}
@@ -398,7 +399,7 @@ export default function Sidebar({
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === '/'}
+              end={item.to === '/dashboard'}
               onClick={handleNavClick}
               className={({ isActive }) => `item ${isActive ? 'active' : ''}`}
               title={isEffectiveCollapsed ? item.label : undefined}

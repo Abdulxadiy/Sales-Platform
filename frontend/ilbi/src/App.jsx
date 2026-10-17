@@ -1,14 +1,16 @@
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { TenantProvider } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
-import Layout from './components/layout/Layout';
-import HelpLauncher from './components/support/HelpLauncher';
 import AppLoadingScreen from './components/common/AppLoadingScreen';
+import SessionRecovery from './components/auth/SessionRecovery';
+const Layout = lazy(() => import('./components/layout/Layout'));
+const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
+const Landing = lazy(() => import('./pages/Landing'));
 const Support = lazy(() => import('./pages/Support'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -24,6 +26,7 @@ const Tenants = lazy(() => import('./pages/Tenants'));
 const SellerProfileReviews = lazy(() => import('./pages/SellerProfileReviews'));
 const MyTenants = lazy(() => import('./pages/MyTenants'));
 const Employees = lazy(() => import('./pages/Employees'));
+const PlatformAccounts = lazy(() => import('./pages/PlatformAccounts'));
 const Services = lazy(() => import('./pages/Services'));
 const Profile = lazy(() => import('./pages/Profile'));
 const SetupAccount = lazy(() => import('./pages/SetupAccount'));
@@ -32,8 +35,9 @@ const Documentation = lazy(() => import('./pages/Documentation'));
 const PublicReceiptView = lazy(() => import('./pages/PublicReceiptView'));
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, sessionError } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
+  if (sessionError) return <SessionRecovery />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -44,8 +48,9 @@ function ProtectedRoute({ children }) {
 }
 
 function RoleProtectedRoute({ children, allowedRoles, allowedPermission }) {
-  const { role, isAuthenticated, user, loading } = useAuth();
+  const { role, isAuthenticated, user, loading, sessionError } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
+  if (sessionError) return <SessionRecovery />;
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -53,14 +58,15 @@ function RoleProtectedRoute({ children, allowedRoles, allowedPermission }) {
     return <Navigate to="/accept-terms" replace />;
   }
   if (!allowedRoles.includes(role) && !(allowedPermission && (user?.permissions || []).includes(allowedPermission))) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
 
 function SupportRoute() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, sessionError } = useAuth();
   if (loading) return <AppLoadingScreen message="Xavfsiz sessiya tekshirilmoqda..." />;
+  if (sessionError) return <SessionRecovery />;
   if (isAuthenticated) {
     return (
       <ProtectedRoute>
@@ -73,16 +79,33 @@ function SupportRoute() {
   return <Support />;
 }
 
+function RoutePresentation() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const isLanding = pathname === '/';
+    document.title = isLanding ? 'ILBI — Har bir savdo. Bir butun manzara.' : 'ILBI — Savdo va boshqaruv tizimi';
+    document.querySelector('meta[name="robots"]')?.setAttribute('content', isLanding ? 'index, follow' : 'noindex, nofollow');
+  }, [pathname]);
+  if (pathname === '/') return null;
+  return <Suspense fallback={null}><HelpLauncher /></Suspense>;
+}
+
+function SessionUI({ children }) {
+  const { sessionId, user } = useAuth();
+  // Toasts and open confirmations can contain private names, amounts or drafts.
+  return <ToastProvider key={`${sessionId}:${user?.id || 'guest'}`}><ConfirmProvider>{children}</ConfirmProvider></ToastProvider>;
+}
+
 export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
       <ThemeProvider>
         <AuthProvider>
           <TenantProvider>
-            <ToastProvider>
-              <ConfirmProvider>
+            <SessionUI>
                 <Suspense fallback={<AppLoadingScreen message="Sahifa yuklanmoqda..." />}>
                 <Routes>
+                <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/support" element={<SupportRoute />} />
                 <Route path="/setup-account" element={<SetupAccount />} />
@@ -92,14 +115,14 @@ export default function App() {
                 <Route path="/receipt/:token" element={<PublicReceiptView />} />
 
                 <Route
-                  path="/"
                   element={
                     <ProtectedRoute>
                       <Layout />
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Dashboard />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="accounts" element={<RoleProtectedRoute allowedRoles={['platform_admin']}><PlatformAccounts /></RoleProtectedRoute>} />
                   <Route path="pos" element={<POS />} />
                   <Route path="catalog" element={<Catalog />} />
                   <Route path="inventory" element={<Inventory />} />
@@ -162,9 +185,8 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
                 </Suspense>
-                <HelpLauncher />
-            </ConfirmProvider>
-          </ToastProvider>
+                <RoutePresentation />
+          </SessionUI>
         </TenantProvider>
         </AuthProvider>
       </ThemeProvider>

@@ -1,6 +1,6 @@
 import { createVisiblePoller } from '../../utils/visiblePolling';
 import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import Modal from '../common/Modal';
@@ -14,9 +14,11 @@ import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import NotificationCard from '../notifications/NotificationCard';
 import FloatingNotificationToast from '../notifications/FloatingNotificationToast';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { platformApi } from '../../api/platform';
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
   const { isAdmin, user } = useAuth();
@@ -46,6 +48,14 @@ export default function Layout({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifFilter, setNotifFilter] = useState('all'); // 'all' | 'unread'
   const [floatingNotifs, setFloatingNotifs] = useState([]);
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const poller = createVisiblePoller(async signal => {
+      const result = await platformApi.supportUnread(signal);
+      if (!signal.aborted) setUnreadCount(result.unread);
+    }, { intervalMs: 20000, events: ['support_updated'] });
+    return () => poller.stop();
+  }, [isAdmin, user?.id]);
 
   const knownIdsRef = useRef(new Set());
 
@@ -184,10 +194,10 @@ export default function Layout({ children }) {
   // Derive title from pathname
   const getPageInfo = () => {
     switch (location.pathname) {
-      case '/':
+      case '/dashboard':
         return {
-          title: 'Savdo Analitikasi & Dashboard',
-          subtitle: 'Biznesingizning jonli ko‘rsatkichlari, tushum va qoldiqlar',
+          title: isAdmin ? 'Platforma boshqaruvi' : 'Savdo Analitikasi & Dashboard',
+          subtitle: isAdmin ? 'Hisoblar, do‘konlar, murojaatlar va ma’muriy nazorat' : 'Biznesingizning jonli ko‘rsatkichlari, tushum va qoldiqlar',
         };
       case '/pos':
         return {
@@ -231,8 +241,8 @@ export default function Layout({ children }) {
         };
       case '/tenants':
         return {
-          title: 'Do‘konlar (Tenants) Boshqaruvi',
-          subtitle: 'SaaS platformasidagi barcha do‘konlar va ularning faolligi',
+          title: 'Do‘konlar boshqaruvi',
+          subtitle: 'Platformadagi barcha do‘konlar va ularning faolligi',
         };
       case '/employees':
         return {
@@ -242,8 +252,10 @@ export default function Layout({ children }) {
       case '/services':
         return {
           title: 'Xizmatlar & Sozlamalar',
-          subtitle: 'Valyuta kursi, Telegram guruhlar, kassa cheki va hisobotlar avtomatizatsiyasi',
+          subtitle: isAdmin ? 'Platforma bildirishnomalari, kirish xavfsizligi va do‘kon sozlamalari' : 'Valyuta kursi, Telegram guruhlar, kassa cheki va hisobotlar avtomatizatsiyasi',
         };
+      case '/accounts':
+        return { title: 'Hisoblar & Kirish', subtitle: 'Barcha hisoblar, login va Telegram ulanishlarini boshqarish' };
       case '/audit':
         return {
           title: 'O‘zgarmas Audit Jurnali',
@@ -331,7 +343,7 @@ export default function Layout({ children }) {
 
       {/* Floating Collapsible Sidebar */}
       <Sidebar
-        onOpenNotifications={() => setNotifModalOpen(true)}
+        onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
         unreadCount={unreadCount}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

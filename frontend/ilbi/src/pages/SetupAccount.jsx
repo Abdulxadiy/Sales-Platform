@@ -339,7 +339,7 @@ export default function SetupAccount() {
     try {
       await loginStep2(accountUsername, loginTicket, otpCode.trim());
       toast.success(config.step2SuccessMsg);
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err.data?.error === 'invalid_or_expired_login_ticket') {
         await recoverExpiredTicket();

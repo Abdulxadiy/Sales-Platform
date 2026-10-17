@@ -1,6 +1,5 @@
 import RemoteVariantSelect from '../components/common/RemoteVariantSelect';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
-import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   PackagePlus,
@@ -32,6 +31,8 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useAccountDraft } from '../hooks/useAccountDraft';
+import { readAccountDraft } from '../utils/accountDrafts';
 
 const DEFAULT_INVENTORY_FILTERS = {
   stockSearch: '',
@@ -45,7 +46,7 @@ const DEFAULT_INVENTORY_FILTERS = {
 export default function Inventory() {
   const toast = useToast();
   const confirm = useConfirm();
-  const { isOwner } = useAuth();
+  const { isOwner, user } = useAuth();
   const { activeTenant } = useTenant();
 
   const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'transfers' | 'deficits' | 'movements'
@@ -102,11 +103,13 @@ export default function Inventory() {
   const [selectedVariantForIntake, setSelectedVariantForIntake] = useState(null);
 
   // Form states for Other Modals (Adjust, Return, Write-off)
-  const [selectedVariantId, setSelectedVariantId] = usePersistedState(`ilbi_draft_stock_variant:${activeTenant?.id || 'pending'}`, '');
-  const [formQuantity, setFormQuantity] = usePersistedState(`ilbi_draft_stock_qty:${activeTenant?.id || 'pending'}`, '');
-  const [formDirection, setFormDirection] = useState('in');
-  const [selectedBatch, setSelectedBatch] = useState('');
-  const [formNote, setFormNote] = usePersistedState(`ilbi_draft_stock_note:${activeTenant?.id || 'pending'}`, '');
+  const [draftOperation, setDraftOperation] = useState('adjust');
+  const stockDraftPrefix = draftOperation === 'adjust' ? 'draft_stock' : `draft_stock_${draftOperation}`;
+  const [selectedVariantId, setSelectedVariantId] = useAccountDraft(`${stockDraftPrefix}_variant`, '');
+  const [formQuantity, setFormQuantity] = useAccountDraft(`${stockDraftPrefix}_qty`, '');
+  const [formDirection, setFormDirection] = useAccountDraft(`${stockDraftPrefix}_direction`, 'in');
+  const [selectedBatch, setSelectedBatch] = useAccountDraft(`${stockDraftPrefix}_batch`, '');
+  const [formNote, setFormNote] = useAccountDraft(`${stockDraftPrefix}_note`, '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
@@ -322,14 +325,11 @@ export default function Inventory() {
   // Count items in draft for badge display on "+ Tovar Kirimi" button
   const draftItemsCount = useMemo(() => {
     try {
-      const raw = localStore.getItem(`ilbi_stock_intake_full_draft_v1:${activeTenant?.id || 'pending'}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed?.items)) return parsed.items.length;
-      }
+      const draft = readAccountDraft('stock_intake_full_draft_v1', user?.id, activeTenant?.id, null);
+      if (Array.isArray(draft?.items)) return draft.items.length;
     } catch {}
     return 0;
-  }, [intakeModalOpen, activeTenant?.id]);
+  }, [intakeModalOpen, user?.id, activeTenant?.id]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -505,7 +505,7 @@ export default function Inventory() {
           </button>
 
           <button
-            onClick={() => { resetForm(); setAdjustModalOpen(true); }}
+            onClick={() => { setDraftOperation('adjust'); setAdjustModalOpen(true); }}
             style={{
               padding: '9px 14px',
               borderRadius: 'var(--radius-sm)',
@@ -525,7 +525,7 @@ export default function Inventory() {
           </button>
 
           <button
-            onClick={() => { resetForm(); setCustomerReturnModalOpen(true); }}
+            onClick={() => { setDraftOperation('customer_return'); setCustomerReturnModalOpen(true); }}
             title="Cheksiz ombor kirimi — rasmiy chek bo‘yicha qaytarish 'Sotuvlar' bo‘limida amalga oshiriladi"
             style={{
               padding: '9px 14px',
@@ -546,7 +546,7 @@ export default function Inventory() {
           </button>
 
           <button
-            onClick={() => { resetForm(); setSupplierReturnModalOpen(true); }}
+            onClick={() => { setDraftOperation('supplier_return'); setSupplierReturnModalOpen(true); }}
             style={{
               padding: '9px 14px',
               borderRadius: 'var(--radius-sm)',
@@ -566,7 +566,7 @@ export default function Inventory() {
           </button>
 
           <button
-            onClick={() => { resetForm(); setWriteOffModalOpen(true); }}
+            onClick={() => { setDraftOperation('write_off'); setWriteOffModalOpen(true); }}
             style={{
               padding: '9px 14px',
               borderRadius: 'var(--radius-sm)',

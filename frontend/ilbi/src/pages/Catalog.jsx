@@ -32,8 +32,10 @@ import ProductToolsModal from '../components/common/ProductToolsModal';
 import CatalogImportModal from '../components/common/CatalogImportModal';
 import ProductLabelsModal from '../components/common/ProductLabelsModal';
 import PriceInput from '../components/common/PriceInput';
+import FiscalMetadataFields from '../components/common/FiscalMetadataFields';
 import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
-import { usePersistedState } from '../hooks/usePersistedState';
+import { useAccountDraft } from '../hooks/useAccountDraft';
+import { useAccountDraftFile } from '../hooks/useAccountDraftFile';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../hooks/useAuth';
 
@@ -44,6 +46,8 @@ const defaultProductForm = {
   variant_name: 'Standart',
   code: '',
   barcode: '',
+  mxik: '',
+  package_code: '',
   price_partner: '',
   price_min: '',
   price_recommended: '',
@@ -386,14 +390,21 @@ export default function Catalog() {
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   // Forms - Persisted Drafts
-  const [productForm, setProductForm, resetProductForm] = usePersistedState(
-    `ilbi_draft_product:${activeTenant?.id || 'pending'}`,
+  const [productForm, setProductForm, resetProductForm] = useAccountDraft(
+    'draft_product',
     defaultProductForm
   );
-  const [productImage, setProductImage] = useState(null);
+  const [productImage, setProductImage] = useAccountDraftFile('draft_product_image');
+  const [productImagePreview, setProductImagePreview] = useState('');
+  useEffect(() => {
+    if (!productImage) { setProductImagePreview(''); return; }
+    const url = URL.createObjectURL(productImage);
+    setProductImagePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [productImage]);
 
-  const [categoryForm, setCategoryForm, resetCategoryForm] = usePersistedState(
-    `ilbi_draft_category:${activeTenant?.id || 'pending'}`,
+  const [categoryForm, setCategoryForm, resetCategoryForm] = useAccountDraft(
+    'draft_category',
     defaultCategoryForm
   );
 
@@ -412,6 +423,8 @@ export default function Catalog() {
     unit: 'dona',
     code: '',
     barcode: '',
+    mxik: '',
+    package_code: '',
     price_partner: '',
     price_min: '',
     price_recommended: '',
@@ -605,6 +618,8 @@ export default function Catalog() {
         formData.append('category_id', productForm.category_id);
         formData.append('unit', productForm.unit);
         formData.append('variant_name', productForm.variant_name || 'Standart');
+        formData.append('mxik', productForm.mxik?.trim() || '');
+        formData.append('package_code', productForm.package_code?.trim() || '');
         if (productForm.code.trim()) {
           formData.append('code', productForm.code.trim());
         }
@@ -640,6 +655,8 @@ export default function Catalog() {
           category_id: parseInt(productForm.category_id, 10),
           unit: productForm.unit,
           variant_name: productForm.variant_name || 'Standart',
+          mxik: productForm.mxik?.trim() || null,
+          package_code: productForm.package_code?.trim() || null,
           code: productForm.code.trim() || undefined,
           barcode: productForm.barcode?.trim() || undefined,
           price_partner: parseFloat(productForm.price_partner || 0),
@@ -851,6 +868,8 @@ export default function Catalog() {
       unit: v.unit || 'dona',
       code: v.code || '',
       barcode: v.barcode || '',
+      mxik: v.mxik || '',
+      package_code: v.package_code || '',
       price_partner: v.price_partner || '',
       price_min: v.price_min || '',
       price_recommended: v.price_recommended || '',
@@ -899,6 +918,8 @@ export default function Catalog() {
         formData.append('name', editProductForm.name.trim());
         formData.append('category_id', editProductForm.category_id);
         formData.append('variant_id', editProductForm.variant_id);
+        formData.append('mxik', editProductForm.mxik?.trim() || '');
+        formData.append('package_code', editProductForm.package_code?.trim() || '');
         formData.append('unit', editProductForm.unit);
         if (editProductForm.code.trim()) {
           formData.append('code', editProductForm.code.trim());
@@ -917,6 +938,8 @@ export default function Catalog() {
           name: editProductForm.name.trim(),
           category_id: parseInt(editProductForm.category_id, 10),
           variant_id: editProductForm.variant_id,
+          mxik: editProductForm.mxik?.trim() || null,
+          package_code: editProductForm.package_code?.trim() || null,
           unit: editProductForm.unit,
           code: editProductForm.code.trim() || undefined,
           barcode: editProductForm.barcode.trim() || undefined,
@@ -1549,6 +1572,8 @@ export default function Catalog() {
             />
           </div>
 
+          <FiscalMetadataFields value={productForm} onChange={setProductForm} idPrefix="create-product" />
+
           {(() => {
             const selectedCatObj = categories.find((c) => c.id === parseInt(productForm.category_id, 10));
             const cur = selectedCatObj?.currency || 'UZS';
@@ -1841,7 +1866,7 @@ export default function Catalog() {
             {productImage && (
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <img
-                  src={URL.createObjectURL(productImage)}
+                  src={productImagePreview || undefined}
                   alt="Preview"
                   style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border-subtle)' }}
                 />
@@ -2649,6 +2674,8 @@ export default function Catalog() {
               className="input-field"
             />
           </div>
+
+          <FiscalMetadataFields value={editProductForm} onChange={setEditProductForm} idPrefix="edit-product" />
 
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>

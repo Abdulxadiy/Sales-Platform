@@ -18,8 +18,9 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Production receives its environment from Compose; never fall back to local secrets.
+if os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_production":
+    load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -178,6 +179,9 @@ except importlib.metadata.PackageNotFoundError:
             APP_VERSION = tomllib.load(_f).get("project", {}).get("version", "0.13.1")
     except Exception:
         APP_VERSION = "0.13.1"
+
+# Technical API documentation stays available in development/test.
+API_DOCS_ENABLED = True
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'ILBI Platform API',

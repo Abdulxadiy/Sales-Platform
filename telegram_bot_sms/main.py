@@ -3,10 +3,11 @@ import logging
 import os
 import re
 import time
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart, Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+
 import requests
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command, CommandStart
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 # Environment Variables
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
@@ -91,6 +92,14 @@ async def contact_handler(message: types.Message):
     chat_id = message.chat.id
     from_user = message.from_user
 
+    if message.chat.type != "private":
+        await message.answer("🔐 Raqamni ulash uchun bot bilan shaxsiy chatni oching va /start bosing.")
+        return
+
+    if from_user is None or from_user.is_bot or from_user.id <= 0 or chat_id != from_user.id:
+        await message.answer("❌ Kontaktni o‘zingizning shaxsiy Telegram chatingizdan yuboring.")
+        return
+
     # 1. Anti-flood / Rate limit check
     if is_rate_limited(chat_id):
         await message.answer("⚠️ Iltimos, bir oz kuting va qayta urinib ko‘ring.")
@@ -129,12 +138,26 @@ async def contact_handler(message: types.Message):
 
     # 4. Register contact directly in ILBI
     try:
-        response = requests.post(
+        response = await asyncio.to_thread(
+            requests.post,
             ILBI_INTERNAL_URL,
             json={"phone_number": phone_number, "chat_id": str(chat_id)},
             headers={"Authorization": f"Internal {INTERNAL_SERVICE_TOKEN}"},
             timeout=5,
         )
+        if response.status_code in (400, 409):
+            try:
+                conflict_code = response.json().get("code")
+            except (ValueError, AttributeError):
+                conflict_code = None
+            if conflict_code == "telegram_chat_already_linked":
+                await message.answer(
+                    "Bu Telegram akkaunti boshqa telefon raqamiga ulangan. "
+                    "Avvalgi login bilan davom eting yoki raqamni yangilash uchun "
+                    "platforma administratoriga murojaat qiling. "
+                    "Administrator «Hisoblar & Kirish → Login va Telegram» orqali egalikni tekshirib yangilaydi."
+                )
+                return
         response.raise_for_status()
 
         logger.info(f"Successfully linked phone {phone_number} to chat_id {chat_id} in ILBI")

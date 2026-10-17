@@ -1,27 +1,19 @@
+from apps.core.media_views import media_file
 from django.conf import settings
-from django.conf.urls.static import static
-from django.contrib import admin
-from django.urls import path, include
-from drf_spectacular.views import (
-    SpectacularAPIView,
-    SpectacularRedocView,
-    SpectacularSwaggerView,
-)
+from django.urls import include, path, re_path
 
 urlpatterns = [
-    # OpenAPI Schema & Interactive Docs
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
-
     # API v1 endpoints
-    path('api/v1/', include('api.v1.urls')),
+    path("api/v1/", include("api.v1.urls")),
+    # Uploaded avatars and product images
+    re_path(r"^media/(?P<path>.*)$", media_file),
 ]
 
-from apps.core.media_views import media_file
-from django.urls import re_path
+if settings.API_DOCS_ENABLED:
+    from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
-# Serve media files (avatars, product images)
-urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', media_file),
-]
+    urlpatterns += [
+        path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+        path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+        path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    ]

@@ -198,7 +198,7 @@ class ProductDetailView(CatalogAPIView):
             return Response({"detail": "Qoldig‘i bor mahsulot valyutasini o‘zgartirib bo‘lmaydi."}, status=400)
         variant_id = values.pop("variant_id", None)
         fields = {key: values.pop(key) for key in (
-            "unit", "code", "barcode", "price_partner", "price_min", "price_recommended",
+            "unit", "code", "barcode", "mxik", "package_code", "price_partner", "price_min", "price_recommended",
         ) if key in values}
         variant = get_object_or_404(product.variants, pk=variant_id) if variant_id is not None else product.variants.first()
         if variant is not None and "unit" in fields and fields["unit"] != variant.unit and variant_has_history(variant):

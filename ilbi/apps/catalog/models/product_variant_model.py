@@ -7,6 +7,7 @@ purposes)."""
 
 from django.db import models
 
+from apps.catalog.fiscal_metadata import validate_mxik, validate_package_code
 from apps.core.models import BaseModel
 
 
@@ -46,6 +47,10 @@ class ProductVariant(BaseModel):
     # one. Stored as NULL (never empty string) when absent, so the
     # partial unique constraint below only ever compares real values.
     barcode = models.CharField(max_length=64, null=True, blank=True)
+
+    # Fiscal catalog identifiers are independent of our SKU/code and physical barcode.
+    mxik = models.CharField(max_length=17, null=True, blank=True, validators=[validate_mxik])
+    package_code = models.CharField(max_length=20, null=True, blank=True, validators=[validate_package_code])
 
     # Override for Product.image -- falls back to the parent Product's
     # image when unset (see api/v1/catalog serializers).

@@ -11,6 +11,17 @@ class DemoAccessService:
     PHONE_PREFIX = "+99800"
 
     @classmethod
+    def is_blocked(cls, user):
+        """Synthetic accounts are usable only while local demo mode is enabled.
+
+        The persistent group marker survives username/phone edits and protects
+        tokens issued before demo mode was disabled, including legacy accounts.
+        """
+        if settings.DEBUG and settings.LOCAL_DEMO_LOGIN_ENABLED:
+            return False
+        return user.groups.filter(name__in=(cls.GROUP_NAME, cls.LEGACY_GROUP_NAME)).exists()
+
+    @classmethod
     def enabled_for(cls, user):
         return bool(
             settings.DEBUG

@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db import models
 
 from apps.core.models import BaseModel
+from apps.sales.receipt_items import product_snapshot
 
 
 class SaleItem(BaseModel):
@@ -29,6 +30,8 @@ class SaleItem(BaseModel):
     product_variant = models.ForeignKey(
         'catalog.ProductVariant', on_delete=models.PROTECT, related_name='sale_items'
     )
+    # NULL means legacy/unknown. Never backfill historical descriptions from today's catalog.
+    product_snapshot = models.JSONField(null=True, blank=True, editable=False)
     quantity = models.DecimalField(max_digits=14, decimal_places=3)
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
     cost_price = models.DecimalField(max_digits=12, decimal_places=2)
@@ -96,3 +99,10 @@ class SaleItem(BaseModel):
 
     def __str__(self):
         return f"{self.product_variant} x {self.quantity} @ {self.unit_price}"
+
+    @property
+    def receipt_product(self):
+        if self.product_snapshot is not None:
+            return self.product_snapshot
+        # Preserve the old display for legacy rows without inventing fiscal history.
+        return {**product_snapshot(self.product_variant), "mxik": None, "package_code": None}

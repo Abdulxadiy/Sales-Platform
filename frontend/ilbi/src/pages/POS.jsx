@@ -39,6 +39,7 @@ import { useTenant } from '../context/TenantContext';
 import { getOrCreateRequestKey } from '../utils/requestKey';
 import { useAuth } from '../hooks/useAuth';
 import { usePersistedState } from '../hooks/usePersistedState';
+import { useAccountDraft } from '../hooks/useAccountDraft';
 import { calculateTaxLine, taxExpectation } from '../utils/receiptTax';
 
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
@@ -72,30 +73,30 @@ export default function POS() {
   const POS_PAGE_SIZE = 20;
 
   // 1-Narx (Partner Price) Switcher - Persisted
-  const [isPartnerSale, setIsPartnerSale] = usePersistedState(
-    `ilbi_pos_partner_sale:${activeTenant?.id || 'pending'}`,
+  const [isPartnerSale, setIsPartnerSale] = useAccountDraft(
+    'pos_partner_sale',
     false,
   );
 
   // Cart State - Persisted across routes and refreshes
-  const [cart, setCart, resetCart] = usePersistedState(
-    `ilbi_pos_cart:${activeTenant?.id || 'pending'}`,
+  const [cart, setCart, resetCart] = useAccountDraft(
+    'pos_cart',
     EMPTY_CART,
   );
 
   // Checkout Modal State
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('CASH'); // CASH, CARD, DEBT
-  const [paidAmountUZS, setPaidAmountUZS] = useState('');
-  const [paidAmountUSD, setPaidAmountUSD] = useState('');
-  const [counterpartySearch, setCounterpartySearch] = useState('');
-  const [selectedCounterpartyRow, setSelectedCounterpartyRow] = useState(null);
+  const [paymentMethod, setPaymentMethod, resetPaymentMethod] = useAccountDraft('checkout_method', 'CASH');
+  const [paidAmountUZS, setPaidAmountUZS, resetPaidUZS] = useAccountDraft('checkout_paid_uzs', '');
+  const [paidAmountUSD, setPaidAmountUSD, resetPaidUSD] = useAccountDraft('checkout_paid_usd', '');
+  const [counterpartySearch, setCounterpartySearch, resetCounterpartySearch] = useAccountDraft('checkout_search', '');
+  const [selectedCounterpartyRow, setSelectedCounterpartyRow, resetCounterpartyRow] = useAccountDraft('checkout_customer', null);
   const settledCounterpartySearch = useDebouncedValue(counterpartySearch.trim());
   const counterpartyList = usePaginatedList(salesApi.getCounterparties, { search: settledCounterpartySearch },
     { tenantId: activeTenant?.id, enabled: checkoutOpen });
   const counterparties = [...counterpartyList.items];
   if (selectedCounterpartyRow && !counterparties.some(row => row.id === selectedCounterpartyRow.id)) counterparties.unshift(selectedCounterpartyRow);
-  const [selectedCounterparty, setSelectedCounterparty] = useState('');
+  const [selectedCounterparty, setSelectedCounterparty, resetCounterparty] = useAccountDraft('checkout_customer_id', '');
   const [submittingSale, setSubmittingSale] = useState(false);
 
   // Receipt Modal State (supports multiple sales from split dual-currency checkout)
@@ -132,14 +133,11 @@ export default function POS() {
   const previousTenantId = useRef(null);
   useEffect(() => {
     if (previousTenantId.current && String(previousTenantId.current) !== String(activeTenant?.id)) {
-      resetCart();
       setCheckoutOpen(false);
       setReceiptOpen(false);
-      setSelectedCounterparty('');
-      setSelectedCounterpartyRow(null);
     }
     previousTenantId.current = activeTenant?.id || null;
-  }, [activeTenant?.id, resetCart]);
+  }, [activeTenant?.id]);
 
   const handleOpenPosInvoice = (saleToOpen = null) => {
     const target = saleToOpen || (completedSales && completedSales.length > 0 ? completedSales[0] : null);
@@ -311,6 +309,12 @@ export default function POS() {
     });
     if (isConfirmed) {
       resetCart();
+      resetPaymentMethod();
+      resetPaidUZS();
+      resetPaidUSD();
+      resetCounterpartySearch();
+      resetCounterpartyRow();
+      resetCounterparty();
       toast.info('Savat tozalandi');
     }
   };
@@ -418,8 +422,8 @@ export default function POS() {
     }
 
     const refreshedTotal = cartUZS.reduce((sum, item) => sum + Math.round(calculateTaxLine(item.quantity, getItemEffectivePrice(item), checkoutSettings).totalAmount * 100), 0) / 100;
-    setPaidAmountUZS(refreshedTotal > 0 ? String(refreshedTotal) : '');
-    setPaidAmountUSD(cartTotalUSD > 0 ? String(cartTotalUSD) : '');
+    if (paidAmountUZS === '') setPaidAmountUZS(refreshedTotal > 0 ? String(refreshedTotal) : '');
+    if (paidAmountUSD === '') setPaidAmountUSD(cartTotalUSD > 0 ? String(cartTotalUSD) : '');
     setCheckoutOpen(true);
   };
 
@@ -504,6 +508,12 @@ export default function POS() {
       localStore.removeItem(checkoutStorageKey);
       setCompletedSales(salesList);
       resetCart();
+      resetPaymentMethod();
+      resetPaidUZS();
+      resetPaidUSD();
+      resetCounterpartySearch();
+      resetCounterpartyRow();
+      resetCounterparty();
       setMobileTab('catalog');
       loadVariants();
       setCheckoutOpen(false);

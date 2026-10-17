@@ -1,33 +1,12 @@
 {
   "version": 1,
-  "queue_id": "20261016T213114-28184712",
-  "completed": [
-    "dependencies",
-    "account-authentication",
-    "account-api",
-    "shops-and-sellers",
-    "catalog-import-labels",
-    "sales-debts-returns",
-    "core-exports-analytics",
-    "frontend-tenant-navigation",
-    "frontend-catalog-tools",
-    "frontend-inventory",
-    "frontend-sales",
-    "frontend-management",
-    "backend-regressions",
-    "deployment-configuration",
-    "ci-and-client-regressions",
-    "ilbi-rebranding",
-    "architecture-roadmap",
-    "deployment-guide"
-  ],
+  "queue_id": "20261017T110108-28184712",
+  "completed": [],
   "last_main_sha": "d290057d2071d64174a04493755d8886a3be3f7f",
   "days": {
     "2026-10-13": 22,
     "2026-10-16": 25,
     "2026-10-17": 19
   },
-  "superseded_queue": "689c0f844046e44eeeb5c269df36ca99abaf301d",
-  "release_tag": "v0.15.0",
-  "updated_at": "2026-10-17T09:28:48.845205+05:00"
+  "superseded_queue": "514c185ea39906085e02e71d719a57511285e4bc"
 }

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="uz">
+<head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head>
+<body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import AuthContext from '/src/context/authContext.js';
+import { TenantProvider, useTenant } from '/src/context/TenantContext.jsx';
+import { ToastProvider } from '/src/context/ToastContext.jsx';
+import Services from '/src/pages/Services.jsx';
+import { receiptDefaults } from '/src/utils/receiptTax.js';
+import '/src/index.css';
+
+const tenant = { id: 7, name: 'Birinchi do‘kon', is_owner: true, permissions: ['*'] };
+const otherTenant = { id: 8, name: 'Ikkinchi do‘kon', is_owner: true, permissions: ['*'] };
+const user = { id: 51, role: 'owner', tenants: [tenant, otherTenant] };
+localStorage.setItem('ilbi_active_tenant:51', '7');
+localStorage.setItem('ilbi_access_token', `fixture.${btoa(JSON.stringify({ user_id: 51 }))}.fixture`);
+const checked_at = '2026-10-18T09:00:00+05:00';
+window.currencyQA = { requests: [], empty: false, holdNext: false, pending: [], rates: {
+  USD: { rate: '12500.25', date: '2026-10-18', checked_at },
+  EUR: { rate: '14000.50', date: '2026-10-18', checked_at },
+  RUB: { rate: '150.075', date: '2026-10-18', checked_at },
+}, stores: {
+  7: { ...receiptDefaults, ...tenant, manual_usd_rate: '12800.00', auto_usd_rate: false },
+  8: { ...receiptDefaults, ...otherTenant, manual_usd_rate: '14000.00', auto_usd_rate: false },
+}};
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, options = {}) => {
+  const url = new URL(input, location.origin);
+  if (!url.pathname.startsWith('/api/')) return nativeFetch(input, options);
+  if (url.pathname !== '/api/v1/tenants/current/') throw Error(`Unexpected request ${url.pathname}`);
+  const id = Number(options.headers?.['X-Tenant-ID'] || 7);
+  const store = currencyQA.stores[id];
+  const body = options.body ? JSON.parse(options.body) : null;
+  currencyQA.requests.push({ id, method: options.method || 'GET', body });
+  if (body) {
+    if (body.auto_usd_rate && 'usd_rate' in body) throw Error('Automatic save included manual rate');
+    Object.assign(store, body);
+    if ('usd_rate' in body) store.manual_usd_rate = body.usd_rate;
+  }
+  const rates = currencyQA.empty ? {} : currencyQA.rates;
+  const result = structuredClone({ ...store, cbu_rates: rates,
+    usd_rate: store.auto_usd_rate ? rates.USD?.rate || null : store.manual_usd_rate,
+    usd_rate_source: store.auto_usd_rate ? 'cbu' : 'manual',
+  });
+  if (currencyQA.holdNext) {
+    currencyQA.holdNext = false;
+    await new Promise(resolve => currencyQA.pending.push(resolve));
+  }
+  return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
+};
+function App() {
+  const { selectTenant } = useTenant();
+  currencyQA.select = id => selectTenant(id === 7 ? tenant : otherTenant);
+  return React.createElement(Services);
+}
+createRoot(document.getElementById('root')).render(
+  React.createElement(AuthContext.Provider, { value: { user, isAdmin: false, isAuthenticated: true } },
+    React.createElement(TenantProvider, null, React.createElement(ToastProvider, null, React.createElement(App)))),
+);
+</script></body>
+</html>

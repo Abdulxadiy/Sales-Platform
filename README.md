@@ -208,6 +208,23 @@ See [support setup and API](docs/SUPPORT.md) for Telegram recipient configuratio
 
 Retail POS currently accepts UZS only. Production retail sales are blocked pending fiscal provider integration; the guide screenshots use synthetic demo data. USD catalog values and the currency calculator do not enable USD retail checkout.
 
+## CBU exchange rates
+
+In **Sozlamalar → Valyuta & Kurs**, each store can enable **CBU kursidan avtomatik foydalanish**. USD calculations then use the latest effective official rate; manual editing is blocked by the API and UI. Turning it off restores the store's saved manual rate. Existing stores start in manual mode. Official USD/EUR/RUB rates, their effective dates and last successful check times are shown together; EUR/RUB are informational.
+
+After deploying this change, run backend migrations, rebuild the frontend, and restart the Celery worker and Beat. Initialize the shared rates once from the backend environment:
+
+```bash
+python manage.py migrate
+python manage.py sync_cbu_rates
+```
+
+Celery Beat schedules `apps.tenants.tasks.sync_cbu_rates_task` hourly, with retries after source failures. Requests use CBU's date-specific JSON endpoint for the current Asia/Tashkent date. All three currencies are validated and stored atomically, normalized by `Nominal`. Future rates are not applied early; weekends/source outages retain the latest effective rate and its actual date. If no effective USD rate has been fetched, enabling automatic mode is rejected.
+
+`Tenant.usd_rate` remains the saved manual rate in the database. Tenant API responses expose the effective rate as `usd_rate`, the saved value as read-only `manual_usd_rate`, the selected `auto_usd_rate` flag and `usd_rate_source`, and read-only `cbu_rates`. In automatic mode, omit `usd_rate` from PATCH requests, including unrelated settings saves. Debt conversions save the applied rate, source, effective date and converted UZS amount; historical operations are never recalculated using today's rate. Older records retain their original notes without inventing a missing rate.
+
+Validation: `cd ilbi && .venv/bin/python -m pytest apps/tenants/tests/test_exchange_rates.py -q`; `cd frontend/ilbi && npm run test:currency`.
+
 ## ILBI rebranding and existing deployments
 
 Backend source is in `ilbi/`; frontend source is in `frontend/ilbi/`. The master plan is `ILBI_MASTER_PLAN.md`; the implementation checklist is [REBRANDING_AUDIT_ILBI_UZ.md](REBRANDING_AUDIT_ILBI_UZ.md). UI, loading, print, email and Telegram branding use ILBI / ilbi.uz without a PRO product badge.

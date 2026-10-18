@@ -25,6 +25,10 @@ Mahsulot varianti uchun sotuv, minimal va hamkor narxlari yuritiladi. Tannarx om
 
 Hozirgi chakana POS faqat **UZS** bilan ishlaydi. USD kalkulyatori hisoblash uchun; u valyuta to‘lovi yoki ikkinchi chek yaratmaydi.
 
+**Sozlamalar → Valyuta & Kurs** bo‘limida **CBU kursidan avtomatik foydalanish**ni yoqib, saqlasangiz, shu do‘kon USD hisoblashlarida Markaziy bankning amal qilayotgan kursidan foydalanadi. Qo‘lda kurs kiritish bloklanadi. O‘chirib saqlasangiz, avval saqlagan ichki kursingiz qaytadi va uni tahrirlash mumkin bo‘ladi. Har bir do‘kon bu rejimni alohida tanlaydi.
+
+USD, EUR va RUB rasmiy kurslari yonida amal qilish sanasi va oxirgi muvaffaqiyatli tekshiruv vaqti ko‘rsatiladi; EUR/RUB ma’lumot uchun. CBU bilan aloqa uzilsa, oxirgi olingan kurs qoladi. Hali USD kursi olinmagan bo‘lsa, avtomatik rejim yoqilmaydi. Kurs o‘zgarishi avvalgi operatsiyalarni qayta hisoblamaydi.
+
 Sotuvchi tasdiqlanishi va ochiq smena talab etiladi. **Hozir production savdosi fiskal provayder integratsiyasi tayyor bo‘lmagani sabab server tomonidan yopilgan.** Rasmli qo‘llanmadagi savdolar alohida demo muhitiga tegishli. Ichki chekni fiskal chek sifatida taqdim etmang.
 
 Naqd, karta va nasiya to‘lovlari farqlanadi. Nasiya uchun kontragent kerak. Hamkor narxi rejimida tovarlarning tegishli narxlari to‘ldirilgan bo‘lishi lozim.

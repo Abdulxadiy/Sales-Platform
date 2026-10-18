@@ -63,6 +63,10 @@ class CounterpartyOutputSerializer(serializers.ModelSerializer):
             "branch_name": branch_name,
             "note": payment.note,
             "is_correction": payment.is_correction,
+            "exchange_rate": str(payment.exchange_rate) if payment.exchange_rate is not None else None,
+            "exchange_rate_source": payment.exchange_rate_source,
+            "exchange_rate_date": payment.exchange_rate_date.isoformat() if payment.exchange_rate_date else None,
+            "converted_amount_uzs": str(payment.converted_amount_uzs) if payment.converted_amount_uzs is not None else None,
         }
 
 
@@ -100,6 +104,10 @@ class DebtPaymentOutputSerializer(serializers.ModelSerializer):
             "is_correction",
             "payment_type",
             "note",
+            "exchange_rate",
+            "exchange_rate_source",
+            "exchange_rate_date",
+            "converted_amount_uzs",
         ]
         read_only_fields = fields
 

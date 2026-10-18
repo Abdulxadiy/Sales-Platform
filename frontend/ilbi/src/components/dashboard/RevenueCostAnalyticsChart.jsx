@@ -84,7 +84,7 @@ export default function RevenueCostAnalyticsChart({
   period = 'today',
   formatUZS,
   formatUSD,
-  currencyRate = 12500,
+  currencyRate,
 }) {
   // Mode switcher: 'spline' or 'bar'
   const [chartMode, setChartMode] = useState('spline');
@@ -506,6 +506,9 @@ export default function RevenueCostAnalyticsChart({
         overflow: 'visible',
       }}
     >
+      <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+        Grafikdagi USD summalari joriy do‘kon kursida ko‘rsatiladi: 1 USD = {Number(currencyRate).toLocaleString('uz-UZ')} UZS.
+      </p>
       {/* Top Header Row (matching Image 2) */}
       <div
         style={{

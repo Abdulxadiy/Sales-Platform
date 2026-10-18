@@ -24,6 +24,7 @@ import PhoneInput from '../components/common/PhoneInput';
 import { useConfirm } from '../context/ConfirmContext';
 import { useToast } from '../context/ToastContext';
 import { useTenant } from '../context/TenantContext';
+import { useTenantCurrency } from '../hooks/useTenantCurrency';
 
 export default function Debts() {
   const { activeTenant, tenants } = useTenant();
@@ -53,6 +54,9 @@ export default function Debts() {
   const [paymentType, setPaymentType] = useState('cash');
   const [paymentRequestKey, setPaymentRequestKey] = useState('');
   const [submittingPayment, setSubmittingPayment] = useState(false);
+  const { settings: paymentSettings } = useTenantCurrency(debtModalOpen && paymentCurrency === 'USD' ? paymentBranchId : null);
+  const paymentUsdRate = Number(paymentSettings?.usd_rate || 0);
+  const remainingPaymentUsd = Math.max(0, (Number(paymentAmount) || 0) - Math.max(0, Number(selectedCp?.debt_balance_usd) || 0));
 
   // Refund Customer Credit Modal
   const [refundModalOpen, setRefundModalOpen] = useState(false);
@@ -676,7 +680,7 @@ export default function Debts() {
                               >
                                 {cp.last_payment.note}
                               </div>
-                            ) : cp.last_payment.currency === 'USD' ? (
+                            ) : cp.last_payment.exchange_rate != null && cp.last_payment.converted_amount_uzs != null ? (
                               <div
                                 style={{
                                   fontSize: 10.5,
@@ -685,7 +689,7 @@ export default function Debts() {
                                   fontStyle: 'italic',
                                 }}
                               >
-                                (Kurs: 1 USD = {Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS → {(Number(cp.last_payment.amount) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayirildi)
+                                (Kurs: 1 USD = {Number(cp.last_payment.exchange_rate).toLocaleString()} UZS → {Number(cp.last_payment.converted_amount_uzs).toLocaleString()} UZS so‘m qarzidan ayirildi)
                               </div>
                             ) : null}
 
@@ -927,9 +931,9 @@ export default function Debts() {
                     💬 <strong>Hisobot / Izoh:</strong> {selectedCp.last_payment.note}
                   </div>
                 )}
-                {selectedCp.last_payment.currency === 'USD' && !selectedCp.last_payment.note?.includes('Kurs:') && (
+                {selectedCp.last_payment.exchange_rate != null && selectedCp.last_payment.converted_amount_uzs != null && !selectedCp.last_payment.note?.includes('Kurs:') && (
                   <div style={{ width: '100%', fontSize: 11.5, color: 'var(--primary)', background: 'rgba(59, 130, 246, 0.08)', padding: '5px 8px', borderRadius: 4, marginTop: 4 }}>
-                    💱 <strong>Valyuta hisobi:</strong> (Kurs: 1 USD = {Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS → {(Number(selectedCp.last_payment.amount) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayirilgan)
+                    💱 <strong>Valyuta hisobi:</strong> (Kurs: 1 USD = {Number(selectedCp.last_payment.exchange_rate).toLocaleString()} UZS → {Number(selectedCp.last_payment.converted_amount_uzs).toLocaleString()} UZS so‘m qarzidan ayirilgan)
                   </div>
                 )}
               </div>
@@ -1028,11 +1032,13 @@ export default function Debts() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <span>💱</span>
                 <span>
-                  Do‘kon kursi (1 USD = <strong>{Number(activeTenant?.usd_rate || 12800).toLocaleString()} UZS</strong>)
+                  Do‘kon kursi (1 USD = <strong>{paymentUsdRate > 0 ? paymentUsdRate.toLocaleString() : '—'} UZS</strong>)
                 </span>
               </span>
               <span style={{ fontWeight: 800, color: 'var(--accent-rose)' }}>
-                ~{((parseFloat(paymentAmount) || 0) * Number(activeTenant?.usd_rate || 12800)).toLocaleString()} UZS so‘m qarzidan ayiriladi
+                {paymentUsdRate > 0
+                  ? `~${(remainingPaymentUsd * paymentUsdRate).toLocaleString()} UZS so‘m qarzidan ayiriladi`
+                  : 'Kursni olishning imkoni bo‘lmadi. Qayta urinib ko‘ring.'}
               </span>
             </div>
           )}

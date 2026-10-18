@@ -57,6 +57,21 @@ class SellerProfile(models.Model):
         return f"{self.official_name} ({self.get_status_display()})"
 
 
+class CBUExchangeRate(models.Model):
+    """Platform-wide official rates, normalized to one unit of foreign currency."""
+
+    currency = models.CharField(max_length=3, choices=[(code, code) for code in ("USD", "EUR", "RUB")])
+    rate = models.DecimalField(max_digits=18, decimal_places=6, validators=[MinValueValidator(Decimal("0.000001"))])
+    effective_date = models.DateField()
+    checked_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["currency", "effective_date"], name="unique_cbu_currency_date"),
+        ]
+        ordering = ["currency", "-effective_date"]
+
+
 class Tenant(models.Model):
     TARGET_PERSONAL = 'personal'
     TARGET_GROUP = 'group'
@@ -86,6 +101,16 @@ class Tenant(models.Model):
         default=12800.00,
         help_text="Ichki dollar kursi (ko'rgazmali hisoblash uchun)",
     )
+    auto_usd_rate = models.BooleanField(default=False, help_text="Ichki hisoblash uchun CBU USD kursidan foydalanish")
+
+    @property
+    def effective_usd_rate(self):
+        from apps.tenants.exchange_rates import ExchangeRateError, resolve_usd_rate
+        try:
+            return resolve_usd_rate(self)[0]
+        except ExchangeRateError:
+            return None
+
     daily_report_time = models.TimeField(
         default=datetime.time(22, 0),
         help_text="Kunlik Z-hisobot xabari yuboriladigan vaqt (masalan 22:00)",

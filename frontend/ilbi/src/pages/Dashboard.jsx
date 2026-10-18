@@ -30,6 +30,7 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../hooks/useAuth';
+import { useTenantCurrency } from '../hooks/useTenantCurrency';
 import Modal from '../components/common/Modal';
 import RevenueCostAnalyticsChart from '../components/dashboard/RevenueCostAnalyticsChart';
 import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
@@ -48,6 +49,8 @@ function TenantDashboard() {
     activeTenant?.is_owner ||
     userPerms.includes('*') ||
     userPerms.includes('analytics.view_dashboard');
+  const { settings: currencySettings } = useTenantCurrency(canViewDashboard ? activeTenant?.id : null);
+  const currencyRate = Number(currencySettings?.usd_rate || 0);
 
   const [period, setPeriod] = useState('today');
   const [data, setData] = useState(null);
@@ -1311,12 +1314,15 @@ function TenantDashboard() {
       </div>
 
       {/* Main Revenue and Costs Spline Analytics Chart */}
-      <RevenueCostAnalyticsChart
+      {currencyRate > 0 ? <RevenueCostAnalyticsChart
         chartData={data?.sales_chart}
         period={period}
         formatUZS={formatUZS}
         formatUSD={formatUSD}
-      />
+        currencyRate={currencyRate}
+      /> : <div className="glass-card" role="status" style={{ padding: 24 }}>
+        Grafik uchun do‘kon kursi mavjud emas. Qayta urinib ko‘ring.
+      </div>}
 
       {/* Middle Section: Payment Methods Breakdown & Cashier Leaderboard */}
       <div

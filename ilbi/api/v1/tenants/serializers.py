@@ -6,6 +6,8 @@ from rest_framework import serializers
 from apps.tenants.models import SellerProfile, Tenant
 from apps.tenants.receipt_settings import RECEIPT_SETTING_FIELDS, receipt_settings
 
+from .currency_serializers import CURRENCY_FIELDS, TenantCurrencyMixin
+
 
 class ReceiptSettingsMixin:
     def get_receipt_settings(self, obj) -> dict:
@@ -187,7 +189,7 @@ class TenantCreateForOwnerSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
 
-class TenantAdminSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
+class TenantAdminSerializer(ReceiptSettingsMixin, TenantCurrencyMixin):
     """Full view for platform_admin. name/description/usd_rate/settings editable via PATCH;
     owner and is_active are changed only through their dedicated endpoints."""
 
@@ -204,7 +206,7 @@ class TenantAdminSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
             "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
             "last_low_stock_report_sent_at",
             "receipt_header", "receipt_footer", "receipt_phone", "created_at", "address", "receipt_settings",
-        ] + list(RECEIPT_SETTING_FIELDS)
+        ] + list(RECEIPT_SETTING_FIELDS) + CURRENCY_FIELDS
         read_only_fields = ["id", "owner", "is_active", "last_low_stock_report_sent_at", "created_at"]
 
     def get_owner_details(self, obj) -> dict | None:
@@ -221,7 +223,7 @@ class TenantAdminSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
         return None
 
 
-class TenantOwnerSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
+class TenantOwnerSerializer(ReceiptSettingsMixin, TenantCurrencyMixin):
     """View for the tenant's own owner. Sees everything, edits settings and description."""
 
     owner_details = serializers.SerializerMethodField()
@@ -237,7 +239,7 @@ class TenantOwnerSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
             "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",
             "last_low_stock_report_sent_at",
             "receipt_header", "receipt_footer", "receipt_phone", "created_at", "address", "receipt_settings",
-        ] + list(RECEIPT_SETTING_FIELDS)
+        ] + list(RECEIPT_SETTING_FIELDS) + CURRENCY_FIELDS
         read_only_fields = ["id", "name", "owner", "is_active", "last_low_stock_report_sent_at", "created_at"]
 
     def get_owner_details(self, obj) -> dict | None:
@@ -254,21 +256,22 @@ class TenantOwnerSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
         return None
 
 
-class TenantStaffSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
+class TenantStaffSerializer(ReceiptSettingsMixin, TenantCurrencyMixin):
     """Read-only view for staff."""
 
     receipt_settings = serializers.SerializerMethodField()
+    usd_rate = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = Tenant
         fields = [
             "id", "name", "owner", "description", "is_active",
             "usd_rate", "receipt_header", "receipt_footer", "receipt_phone", "receipt_settings",
-        ]
+        ] + CURRENCY_FIELDS
         read_only_fields = fields
 
 
-class TenantSettingsSerializer(ReceiptSettingsMixin, serializers.ModelSerializer):
+class TenantSettingsSerializer(ReceiptSettingsMixin, TenantCurrencyMixin):
     """Assignable settings access does not expose owner account/contact details."""
 
     receipt_settings = serializers.SerializerMethodField()
@@ -281,7 +284,7 @@ class TenantSettingsSerializer(ReceiptSettingsMixin, serializers.ModelSerializer
             "low_stock_report_target", "low_stock_report_time", "low_stock_frequency", "low_stock_weekday",
             "low_stock_day_of_month", "notify_web_low_stock", "receipt_header", "receipt_footer", "receipt_phone",
             "receipt_settings",
-        ] + list(RECEIPT_SETTING_FIELDS)
+        ] + list(RECEIPT_SETTING_FIELDS) + CURRENCY_FIELDS
         read_only_fields = ["id", "name"]
 
     def to_internal_value(self, data):

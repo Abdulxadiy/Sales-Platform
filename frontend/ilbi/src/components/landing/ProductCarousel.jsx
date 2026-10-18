@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import IlbiLoader from "../common/IlbiLoader";
 import {
   ArrowLeft,
   ArrowRight,
@@ -472,7 +473,7 @@ export default function ProductCarousel() {
                   />
                   {!loaded.has(index) && !failed.has(index) && (
                     <div className="pc-image-loading" aria-hidden="true">
-                      <span />
+                      <IlbiLoader size={64} inline decorative />
                     </div>
                   )}
                   <button

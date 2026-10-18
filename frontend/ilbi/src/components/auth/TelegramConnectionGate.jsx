@@ -136,7 +136,7 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
 
       {sessionExpired && onRenew ? (
         <button type="button" onClick={renewTicket} disabled={renewing} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>
-          {renewing ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />}  {renewing ? 'Yangilanmoqda...' : 'Havola orqali davom etish'}
+          {renewing ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />} {renewing ? 'Yangilanmoqda...' : 'Havola orqali davom etish'}
         </button>
       ) : linked ? (
         <button type="button" onClick={sendCode} disabled={sending} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>
@@ -144,7 +144,7 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
         </button>
       ) : (
         <button type="button" onClick={() => checkConnection(true)} disabled={checking} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>
-          {checking ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />}  {checking ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}
+          {checking ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />} {checking ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}
         </button>
       )}
 

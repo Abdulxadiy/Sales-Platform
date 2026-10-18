@@ -1080,7 +1080,7 @@ export default function Sales() {
                       gap: 6,
                     }}
                   >
-                    {rotatingReceiptToken ? <IlbiLoader size={21} inline decorative /> : <RotateCcw size={13} />} 
+                    {rotatingReceiptToken ? <IlbiLoader size={21} inline decorative /> : <RotateCcw size={13} />}
                     {rotatingReceiptToken ? 'Yangilanmoqda…' : 'Havolani yangilash'}
                   </button>
                 )}

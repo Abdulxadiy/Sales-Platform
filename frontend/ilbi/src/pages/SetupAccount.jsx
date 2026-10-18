@@ -784,7 +784,7 @@ export default function SetupAccount() {
                       padding: 0,
                     }}
                   >
-                    {otpLoading ? <IlbiLoader size={22} inline decorative /> : <RefreshCw size={14} />} 
+                    {otpLoading ? <IlbiLoader size={22} inline decorative /> : <RefreshCw size={14} />}
                     <span>
                       {otpTimeLeft > 0 ? `Kodni qayta yuborish (${formatTimer(otpTimeLeft)})` : 'Kodni qayta yuborish'}
                     </span>

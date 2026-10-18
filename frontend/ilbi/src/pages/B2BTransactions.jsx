@@ -542,7 +542,7 @@ export default function B2BTransactions() {
               gap: 6,
             }}
           >
-            {loading ? <IlbiLoader size={21} inline decorative /> : <RefreshCw size={13} />} 
+            {loading ? <IlbiLoader size={21} inline decorative /> : <RefreshCw size={13} />}
             <span>Yangilash</span>
           </button>
         </div>

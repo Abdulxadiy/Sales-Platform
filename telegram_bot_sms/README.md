@@ -158,8 +158,8 @@ The bot reads its configuration from environment variables.
 The application requires three environment variables:
 
 ```env
-BOT_TOKEN=your_telegram_bot_token
-INVENTRA_INTERNAL_URL=https://your-internal-service.example/api/...
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+ILBI_INTERNAL_URL=https://your-internal-service.example/api/...
 INTERNAL_SERVICE_TOKEN=your_internal_service_token
 ```
 
@@ -167,8 +167,8 @@ INTERNAL_SERVICE_TOKEN=your_internal_service_token
 
 | Variable | Description | Required |
 |---|---|---|
-| `BOT_TOKEN` | Telegram Bot API token | ✅ |
-| `INVENTRA_INTERNAL_URL` | Internal authentication service endpoint | ✅ |
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot API token | ✅ |
+| `ILBI_INTERNAL_URL` | Internal authentication service endpoint | ✅ |
 | `INTERNAL_SERVICE_TOKEN` | Token used to authenticate internal API requests | ✅ |
 
 > ⚠️ **Never commit real tokens, passwords, or secrets to Git.**
@@ -250,7 +250,7 @@ The bot communicates with the internal authentication service using an HTTP `POS
 ### Request
 
 ```http
-POST <INVENTRA_INTERNAL_URL>
+POST <ILBI_INTERNAL_URL>
 Authorization: Internal <INTERNAL_SERVICE_TOKEN>
 Content-Type: application/json
 ```
@@ -287,10 +287,12 @@ The current implementation uses a **5-second request timeout** and handles `requ
 
 Because this service is involved in authentication-related workflows, security should be treated as a primary concern.
 
+Contact linking accepts only the sender's own contact in a private chat. The backend also rejects group/channel IDs for 2FA registration and OTP delivery. Existing group-linked contacts must reconnect in the bot's private chat. Store report delivery to Telegram groups is separate and remains supported.
+
 ### Recommended Practices
 
 - 🔒 Never hard-code secrets in source code.
-- 🔑 Store `BOT_TOKEN` and `INTERNAL_SERVICE_TOKEN` in environment variables.
+- 🔑 Store `TELEGRAM_BOT_TOKEN` and `INTERNAL_SERVICE_TOKEN` in environment variables.
 - 🌐 Use HTTPS for remote internal services.
 - 🛡️ Authenticate all internal API requests.
 - 🚦 Implement rate limiting on the backend.
@@ -332,31 +334,27 @@ For production environments, the following improvements are recommended:
 
 ---
 
-## ⚡ Performance Consideration
+## ⚡ Backend request handling
 
-The Telegram handlers are asynchronous, but the current implementation uses the synchronous `requests` library for internal HTTP communication.
+Contact registration runs `requests.post` through `await asyncio.to_thread(...)`. Waiting for the backend leaves the event loop available for other commands and contacts. The existing five-second Requests timeout, internal authorization, private-chat checks and per-chat flood guard are preserved.
 
-For a high-throughput production environment, replacing `requests` with an asynchronous HTTP client such as:
-
-```text
-httpx
-```
-
-or:
-
-```text
-aiohttp
-```
-
-would prevent blocking the asyncio event loop during backend requests.
-
-For a small authentication integration service, the current implementation remains simple and easy to maintain.
+The worker uses the existing Requests dependency and the standard asyncio thread pool. A cancelled handler does not stop an HTTP call that is already running in a worker.
 
 ---
 
+## Tests
+
+From the repository root, using the bot's Python environment:
+
+```bash
+telegram_bot_sms/.venv/bin/python -m unittest discover -s telegram_bot_sms/tests -p "test_contact_handler.py" -v
+```
+
+The 13 tests use synthetic messages, credentials and mocked requests; they never contact Telegram or the backend. They cover private-chat checks, progress of another command/contact during a slow request, duplicate-contact throttling and connection/HTTP failures. Backend registration, legacy contact and OTP tests are documented in `ilbi/README_TESTS.md`.
+
 ## 🧪 Future Improvements
 
-- [ ] Add automated unit tests
+- [x] Add private-chat contact-handler unit tests (mocked outbound HTTP)
 - [ ] Add integration tests
 - [ ] Replace `requests` with an async HTTP client
 - [ ] Add structured logging

@@ -137,7 +137,7 @@ try {
   })()`);
   await wait(guest, `Boolean(document.querySelector('.ilbi-loading'))`);
   assert.equal(await guest.evaluate(`/PRO|inventra/i.test(document.querySelector('.ilbi-loading').innerText)`), false);
-  assert.equal(await guest.evaluate(`getComputedStyle(document.querySelector('.ilbi-loading__ring')).animationName`), 'none');
+  assert.equal(await guest.evaluate(`getComputedStyle(document.querySelector('.ilbi-loader__orbit')).animationName`), 'none');
   await writeFile(new URL('loading-light.png', qa), await guest.screenshot());
   await guest.evaluate(`document.documentElement.dataset.theme='dark'`);
   await delay(300);

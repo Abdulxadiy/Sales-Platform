@@ -6,7 +6,7 @@ import { TenantProvider } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
-import AppLoadingScreen from './components/common/AppLoadingScreen';
+import AppLoadingScreen, { AppLoadingProvider } from './components/common/AppLoadingScreen';
 import SessionRecovery from './components/auth/SessionRecovery';
 const Layout = lazy(() => import('./components/layout/Layout'));
 const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
@@ -101,6 +101,7 @@ export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
       <ThemeProvider>
+        <AppLoadingProvider>
         <AuthProvider>
           <TenantProvider>
             <SessionUI>
@@ -191,6 +192,7 @@ export default function App() {
           </SessionUI>
         </TenantProvider>
         </AuthProvider>
+        </AppLoadingProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -682,7 +683,7 @@ export default function Login() {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <RefreshCw size={13} className={resending ? 'animate-spin' : ''} />
+                  {resending ? <IlbiLoader size={21} inline decorative /> : <RefreshCw size={13} />} 
                   <span>{resending ? 'Yuborilmoqda...' : 'Kodni qayta yuborish'}</span>
                 </button>
               )}

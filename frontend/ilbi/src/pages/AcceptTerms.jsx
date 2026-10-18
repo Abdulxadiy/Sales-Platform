@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -516,7 +517,7 @@ export default function AcceptTerms() {
           <div style={{ maxHeight: '72vh', overflowY: 'auto', paddingRight: 8 }} className="custom-scrollbar">
             {modalLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
-                Hujjat yuklanmoqda...
+                <IlbiLoader label="Hujjat yuklanmoqda..." />
               </div>
             ) : (
               <MarkdownViewer content={modalContent} />

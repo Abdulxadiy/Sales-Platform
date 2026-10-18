@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -482,7 +483,7 @@ export default function Debts() {
               {loading ? (
                 <tr>
                   <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-                    Yuklanmoqda...
+                    <IlbiLoader label="Yuklanmoqda..." />
                   </td>
                 </tr>
               ) : filteredCounterparties.length > 0 ? (
@@ -1460,7 +1461,7 @@ export default function Debts() {
           {(cpDetailTab === 'debt_sales' || cpDetailTab === 'all_sales') && (
             <div>
               {loadingCpDetailSales ? (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></div>
               ) : cpDetailSales.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '52vh', overflowY: 'auto' }}>
                   {cpDetailSales
@@ -1568,7 +1569,7 @@ export default function Debts() {
           {cpDetailTab === 'payments' && (
             <div>
               {loadingCpDetailPayments ? (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></div>
               ) : cpDetailPayments.length > 0 ? (
                 <div className="table-responsive" style={{ maxHeight: '52vh' }}>
                   <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 13 }}>

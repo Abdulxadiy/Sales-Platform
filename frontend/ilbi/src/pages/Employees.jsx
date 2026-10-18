@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useEffect, useState } from 'react';
 import { Search, UserPlus, UserX, Users, Mail, Pencil, Ban, ShieldCheck, Trash2, RotateCcw, KeyRound } from 'lucide-react';
@@ -377,7 +378,7 @@ export default function Employees() {
                   {(isCurrentList && listError) || (selectedTenantId ? 'Bu tanlov bo‘yicha xodim topilmadi.' : 'Avval do‘kon tanlang.')}
                 </td></tr>
               )}
-              {displayLoading && <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)' }}>Xodimlar yuklanmoqda...</td></tr>}
+              {displayLoading && <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Xodimlar yuklanmoqda..." /></td></tr>}
             </tbody>
           </table>
         </div>

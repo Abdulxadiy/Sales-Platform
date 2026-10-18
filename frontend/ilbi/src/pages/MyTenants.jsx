@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { localStore, sessionStore } from '../utils/brandStorage.js';
 import React, { useEffect, useState } from 'react';
 import {
@@ -264,7 +265,7 @@ export default function MyTenants() {
             className="glass-card"
             style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}
           >
-            Ma’lumotlar yuklanmoqda...
+            <IlbiLoader label="Ma’lumotlar yuklanmoqda..." />
           </div>
         ) : tenants.length === 0 ? (
           <div className="glass-card" style={{ padding: 48, textAlign: 'center' }}>

@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
@@ -1210,7 +1211,7 @@ export default function Catalog() {
       >
         {loadingVariants ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-            Tovarlar yuklanmoqda...
+            <IlbiLoader label="Tovarlar yuklanmoqda..." />
           </div>
         ) : variants.length === 0 ? (
           <div

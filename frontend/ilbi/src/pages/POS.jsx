@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
@@ -974,7 +975,7 @@ export default function POS() {
         >
           {loadingProducts ? (
             <div style={{ gridColumn: '1 / -1', padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Tovarlar yuklanmoqda...
+              <IlbiLoader label="Tovarlar yuklanmoqda..." />
             </div>
           ) : variants.length > 0 ? (
             paginatedVariants.map((v) => {

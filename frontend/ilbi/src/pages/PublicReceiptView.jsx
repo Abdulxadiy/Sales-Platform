@@ -1,3 +1,4 @@
+import AppLoadingScreen from '../components/common/AppLoadingScreen';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
@@ -82,16 +83,7 @@ export default function PublicReceiptView() {
     return (Number.isInteger(n) ? n : n.toFixed(2)) + ' ' + unitStr;
   };
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)', padding: 20 }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 44, height: 44, border: '3px solid rgba(255,255,255,0.2)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ fontSize: 15, color: 'var(--text-secondary)' }}>Elektron chek yuklanmoqda...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <AppLoadingScreen message="Elektron chek yuklanmoqda..." />;
 
   if (error || !receipt) {
     return (
@@ -152,9 +144,6 @@ export default function PublicReceiptView() {
             size: auto;
             margin: 8mm;
           }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
         }
       `}</style>
 

@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useState, useEffect } from 'react';
 import {
   Edit3,
@@ -377,18 +378,8 @@ export default function Documentation() {
       {/* Tab Content Display */}
       {loading ? (
         <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <div
-            className="animate-spin"
-            style={{
-              width: 36,
-              height: 36,
-              border: '3px solid var(--border-subtle)',
-              borderTopColor: 'var(--primary)',
-              borderRadius: '50%',
-              margin: '0 auto 16px',
-            }}
-          />
-          <span style={{ fontSize: 14 }}>Hujjat matni yuklanmoqda...</span>
+
+          <span style={{ fontSize: 14 }}><IlbiLoader label="Hujjat matni yuklanmoqda..." /></span>
         </div>
       ) : activeTab === 'certificate' ? (
         /* Acceptance Certificate View (Rozilik Hujjati) */

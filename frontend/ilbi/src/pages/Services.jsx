@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -234,8 +235,7 @@ function TenantServices() {
   if (loading && !tenant) {
     return (
       <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
-        <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-        <div>Xizmatlar va sozlamalar yuklanmoqda...</div>
+        <IlbiLoader label="Xizmatlar va sozlamalar yuklanmoqda..." />
       </div>
     );
   }

@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -572,7 +573,7 @@ export default function Sales() {
       <div>
         {loading ? (
           <div className="glass-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-            Sotuvlar yuklanmoqda...
+            <IlbiLoader label="Sotuvlar yuklanmoqda..." />
           </div>
         ) : sortedDayGroups.length > 0 ? (
           sortedDayGroups.map((group) => {
@@ -901,7 +902,7 @@ export default function Sales() {
       {/* Modal 1: Sale Detail / Printable Thermal Receipt */}
       <Modal isOpen={detailModalOpen} onClose={() => setDetailModalOpen(false)} title="Sotuv Cheki Tafsilotlari">
         {loadingDetail ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</div>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></div>
         ) : selectedSaleDetail ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Printer format switcher */}
@@ -1079,7 +1080,7 @@ export default function Sales() {
                       gap: 6,
                     }}
                   >
-                    <RotateCcw size={13} className={rotatingReceiptToken ? 'animate-spin' : ''} />
+                    {rotatingReceiptToken ? <IlbiLoader size={21} inline decorative /> : <RotateCcw size={13} />} 
                     {rotatingReceiptToken ? 'Yangilanmoqda…' : 'Havolani yangilash'}
                   </button>
                 )}

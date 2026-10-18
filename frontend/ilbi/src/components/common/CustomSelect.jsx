@@ -1,6 +1,7 @@
+import IlbiLoader from './IlbiLoader';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Check, Search, X, Loader2 } from 'lucide-react';
+import { ChevronDown, Check, Search, X } from 'lucide-react';
 import { useSelectPopover } from '../../hooks/useSelectPopover';
 
 const renderIconNode = (IconNode, size) => {
@@ -507,14 +508,14 @@ export default function CustomSelect({
                 gap: 6,
               }}
             >
-              <Loader2 size={13} className="animate-spin" />
+              <IlbiLoader size={24} inline decorative />
               <span>Qidirilmoqda...</span>
             </div>
           )}
 
           {displayedOptions.length === 0 ? (
             <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-              {searchLoading ? 'Yuklanmoqda...' : 'Topilmadi'}
+              {!searchLoading && 'Topilmadi'}
             </div>
           ) : (
             displayedOptions.map((opt) => {

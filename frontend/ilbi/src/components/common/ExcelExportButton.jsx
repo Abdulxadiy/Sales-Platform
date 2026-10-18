@@ -1,3 +1,4 @@
+import IlbiLoader from './IlbiLoader';
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { request } from '../../api/client';
@@ -30,6 +31,6 @@ export default function ExcelExportButton({
   if (!isOwner) return null;
   return <button type="button" className="btn btn-secondary" disabled={disabled || busy} onClick={download}
     aria-busy={busy} title={title}>
-    <Download size={16} /> {busy ? 'Yuklanmoqda…' : label}
+    {busy ? <IlbiLoader size={24} inline decorative /> : <Download size={16} />} {busy ? 'Yuklanmoqda…' : label}
   </button>;
 }

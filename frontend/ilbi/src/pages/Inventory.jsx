@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteVariantSelect from '../components/common/RemoteVariantSelect';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -953,7 +954,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : filteredStock.length > 0 ? (
                 paginatedStock.map((item, idx) => {
@@ -1061,7 +1062,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : deficitsList.length > 0 ? (
                 deficitsList.map((item) => {
@@ -1201,7 +1202,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : filteredMovements.length > 0 ? (
                 paginatedMovements.map((m) => {

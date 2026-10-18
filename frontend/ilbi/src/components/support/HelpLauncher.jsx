@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import { sessionStore } from '../../utils/brandStorage.js';
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -50,7 +51,7 @@ function PrivateImage({ api, conversationId, messageId }) {
       />
     </a>
   ) : (
-    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Yuklanmoqda...</span>
+    <IlbiLoader size={32} label="Rasm yuklanmoqda..." />
   );
 }
 
@@ -528,7 +529,7 @@ function HelpLauncherContent() {
               </div>
             ) : loadingConv ? (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                Xabarlar yuklanmoqda...
+                <IlbiLoader label="Xabarlar yuklanmoqda..." />
               </div>
             ) : (
               /* Live Chat Thread */

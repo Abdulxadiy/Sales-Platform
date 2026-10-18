@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Eye } from 'lucide-react';
@@ -179,7 +180,7 @@ export default function Audit() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={isAdmin ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                <td colSpan={isAdmin ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
               </tr>
             ) : logs.length > 0 ? (
               logs.map((log) => (

@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import React, { useEffect, useState } from 'react';
 import { Bell, Send, Save, ShieldCheck, KeyRound } from 'lucide-react';
 import { platformApi } from '../../api/platform';
@@ -40,7 +41,7 @@ export default function PlatformSettings() {
   return <div className="admin-page">
     <section className="glass-card admin-card admin-form">
       <div className="admin-heading"><span className="admin-icon"><Bell size={22} /></span><div><h3>Yordam markazi bildirishnomalari</h3><div className="admin-muted">Platformadagi yangi murojaat va mijoz xabarlari uchun Telegram xabarnomasi.</div></div></div>
-      {!data ? <div role={error ? 'alert' : 'status'}>{error || 'Sozlamalar yuklanmoqda...'}</div> : <form className="admin-form" onSubmit={save}>
+      {!data ? <div role={error ? 'alert' : 'status'}>{error || <IlbiLoader label="Sozlamalar yuklanmoqda..." />}</div> : <form className="admin-form" onSubmit={save}>
         <label className="admin-check"><input type="checkbox" checked={data.enabled} onChange={event => setData({ ...data, enabled: event.target.checked })} /><span><strong>Telegram orqali xabardor qilish</strong><div className="admin-muted">Barcha do‘konlar va mehmonlarning yordam murojaatlari uchun.</div></span></label>
         <div className="admin-grid">
           <label className="admin-field">Qayerga yuborilsin?<select className="input-field" value={data.target} onChange={event => setData({ ...data, target: event.target.value })}><option value="personal">Mening shaxsiy Telegramimga</option><option value="group">Belgilangan guruhga</option><option value="both">Shaxsiy chat va guruhga</option></select></label>

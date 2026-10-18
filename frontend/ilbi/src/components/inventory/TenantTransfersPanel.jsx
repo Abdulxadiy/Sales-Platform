@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import React, { useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowRightLeft, Check, Plus, RotateCcw, Send, Store, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -365,7 +366,7 @@ export default function TenantTransfersPanel({ activeTenant, isOwner, transfers,
 
       <section style={{ display: 'grid', gap: 12 }}>
         <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Transferlar ({pendingIncoming.length} qabul kutilmoqda)</h3>
-        {loading ? <p>Yuklanmoqda…</p> : transfers.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>Transferlar mavjud emas.</p> : transfers.map((transfer) => {
+        {loading ? <p><IlbiLoader label="Yuklanmoqda…" /></p> : transfers.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>Transferlar mavjud emas.</p> : transfers.map((transfer) => {
           const incoming = String(transfer.destination_tenant) === String(activeTenant?.id);
           const canReceive = incoming && transfer.status === 'pending';
           const canReturn = !incoming && transfer.kind === 'internal' && ['delivered', 'delivered_owner', 'discrepancy', 'closed'].includes(transfer.status);

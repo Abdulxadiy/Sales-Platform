@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import { useEffect, useMemo, useState } from 'react';
 import { Truck } from 'lucide-react';
 import { inventoryApi } from '../../api/client';
@@ -59,7 +60,7 @@ export default function StockBatchesPanel() {
         />
       </div>
     </div>
-    {loading ? <p>Yuklanmoqda…</p> : <div style={{ overflowX: 'auto' }}><table className="data-table" style={{ width: '100%', textAlign: 'left' }}>
+    {loading ? <p><IlbiLoader label="Yuklanmoqda…" /></p> : <div style={{ overflowX: 'auto' }}><table className="data-table" style={{ width: '100%', textAlign: 'left' }}>
       <thead><tr>{tableHeaders.map(label => <th key={label}>{label}</th>)}</tr></thead>
       <tbody>{filtered.slice((page - 1) * 25, page * 25).map(batch => <tr key={batch.id}>
         <td>{batch.product_name} / {batch.variant_name}</td>

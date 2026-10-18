@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
 import React, { useState } from 'react';
@@ -318,7 +319,7 @@ export default function Tenants() {
             {loading ? (
               <tr>
                 <td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Do‘konlar ro‘yxati yuklanmoqda...
+                  <IlbiLoader label="Do‘konlar ro‘yxati yuklanmoqda..." />
                 </td>
               </tr>
             ) : filteredTenants.length === 0 ? (

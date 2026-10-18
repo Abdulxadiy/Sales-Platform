@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
 import { localStore } from '../utils/brandStorage.js';
@@ -608,7 +609,7 @@ export default function Shifts() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : reports.length > 0 ? (
                 reports.map((r) => {
@@ -701,7 +702,7 @@ export default function Shifts() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : expenses.length > 0 ? (
                 expenses.map((ex) => (
@@ -744,7 +745,7 @@ export default function Shifts() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : incomes.length > 0 ? (
                 incomes.map((inc) => (

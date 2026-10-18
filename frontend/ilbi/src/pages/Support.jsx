@@ -1,3 +1,5 @@
+import IlbiLoader from '../components/common/IlbiLoader';
+import AppLoadingScreen from '../components/common/AppLoadingScreen';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -58,7 +60,7 @@ function PrivateImage({ api, conversationId, messageId, t }) {
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [api, conversationId, messageId]);
   if (error) return <span>{t.imageError}</span>;
-  return url ? <a href={url} target="_blank" rel="noreferrer"><img className="support-image" src={url} alt={t.image} /></a> : <span>{t.loading}</span>;
+  return url ? <a href={url} target="_blank" rel="noreferrer"><img className="support-image" src={url} alt={t.image} /></a> : <IlbiLoader size={32} label={t.loading} />;
 }
 
 const mergeMessages = (previous, incoming) => Array.from(new Map([...previous, ...incoming].map((m) => [m.id, m])).values()).sort((a, b) => a.id - b.id);
@@ -477,8 +479,7 @@ function SupportCenter({ user, authenticated, operator }) {
               </>
             ) : (
               <div className="support-empty">
-                <BookOpen size={44} style={{ opacity: 0.35, marginBottom: 10 }} />
-                <p>{t.loading}</p>
+                <IlbiLoader label={t.loading} />
               </div>
             )}
           </section>
@@ -869,7 +870,7 @@ function SupportCenter({ user, authenticated, operator }) {
                   )}
                 </div>
               </form> : <p className="support-note support-compose">{otherOperator ? t.busy : t[conversation.status]}</p>}
-            </> : <div className="support-empty"><Headphones size={44} /><p>{selected ? t.loading : t.select}</p></div>}
+            </> : <div className="support-empty">{selected ? <IlbiLoader label={t.loading} /> : <><Headphones size={44} /><p>{t.select}</p></>}</div>}
           </section>
         </div>
       </>}
@@ -888,7 +889,7 @@ function SupportCenter({ user, authenticated, operator }) {
 
 export default function Support() {
   const { user, isAuthenticated, isAdmin, loading, sessionId } = useAuth();
-  if (loading) return <div className="support-shell">Yuklanmoqda…</div>;
+  if (loading) return <AppLoadingScreen />;
   return <SupportCenter key={`${sessionId}:${user?.id || 'guest'}:${isAuthenticated}`} user={user} authenticated={isAuthenticated} operator={isAdmin} />;
 }
 

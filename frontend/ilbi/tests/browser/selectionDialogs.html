@@ -11,6 +11,7 @@ import {ToastProvider} from '/src/context/ToastContext.jsx';
 import {ConfirmProvider} from '/src/context/ConfirmContext.jsx';
 import Modal from '/src/components/common/Modal.jsx';
 import CustomSelect from '/src/components/common/CustomSelect.jsx';
+import CustomDatePicker from '/src/components/common/CustomDatePicker.jsx';
 import RemoteVariantSelect from '/src/components/common/RemoteVariantSelect.jsx';
 import Inventory from '/src/pages/Inventory.jsx';
 import Catalog from '/src/pages/Catalog.jsx';
@@ -20,6 +21,7 @@ import '/src/index.css';
 const params=new URLSearchParams(location.search);
 if(params.has('fallback'))HTMLElement.prototype.showPopover=undefined;
 localStorage.clear();sessionStorage.clear();
+localStorage.setItem('ilbi_theme',params.get('screen') ? 'dark' : 'light');
 const tenant={id:7,name:'Tanlash sinovlari',is_owner:true,permissions:['*']};
 const user={id:51,role:'owner',username:'QA',tenants:[tenant],permissions:['*']};
 localStorage.setItem('ilbi_active_tenant:51','7');
@@ -39,6 +41,7 @@ catalogApi.getVariants=async(params={})=>{
 inventoryApi.getStock=async()=>({count:1,results:[{...variant(1),product_variant:1,quantity:'269.000',last_cost_price:'9000'}]});
 inventoryApi.getMovements=async()=>({count:0,results:[]});
 inventoryApi.getDeficits=async()=>[];
+inventoryApi.getSuppliers=async()=>[];
 inventoryApi.getBatches=async()=>[{id:1,batch_code:'PARTIYA 001',quantity:'269',unit:'dona',expires_on:'2027-10-01'}];
 const b2b={id:1,receipt_number:'TEST-001',source_tenant_name:'Hamkor do‘kon',tenant_name:'Hamkor do‘kon',status:'b2b_pending',currency:'UZS',total_amount:'150000',created_at:'2026-10-19T08:00:00+05:00',items:[{id:1,product_name:variant(1).product_name,product_variant_name:'Standart',quantity:'10',b2b_accepted_quantity:'0',b2b_rejected_quantity:'0',unit:'dona',product_barcode:'',unit_price:'15000',total_price:'150000'}]};
 salesApi.getB2BInbox=async()=>({count:1,results:[b2b]});
@@ -57,7 +60,13 @@ function Stress(){
     React.createElement(CustomSelect,{id:'stress-category',value:category,onChange:setCategory,fullWidth:true,searchable:true,options:categories.map(row=>({value:row.id,label:row.name})),placeholder:'Kategoriyani tanlang...'}),
     React.createElement('button',{type:'submit',className:'btn btn-primary'},'Saqlash'))));
 }
-function Page(){const{activeTenant}=useTenant();if(!activeTenant)return null;const screen=params.get('screen');return React.createElement('main',{style:{padding:12,minWidth:0}},screen==='inventory'?React.createElement(Inventory):screen==='catalog'?React.createElement(Catalog):screen==='b2b'?React.createElement(B2BTransactions):React.createElement(Stress));}
+function DateStress(){
+ const[open,setOpen]=useState(true);
+ return React.createElement(Modal,{isOpen:open,onClose:()=>setOpen(false),title:'Ichma-ich tanlash',maxWidth:640},
+  React.createElement(CustomDatePicker,{id:'calendar',value:'2026-10-19',onChange:()=>{},fullWidth:true}),
+  React.createElement('div',{style:{height:400}}));
+}
+function Page(){const{activeTenant}=useTenant();if(!activeTenant)return null;const screen=params.get('screen');return React.createElement('main',{style:{padding:12,minWidth:0}},screen==='inventory'?React.createElement(Inventory):screen==='catalog'?React.createElement(Catalog):screen==='b2b'?React.createElement(B2BTransactions):screen==='dates'?React.createElement(DateStress):React.createElement(Stress));}
 createRoot(document.getElementById('root')).render(
  React.createElement(MemoryRouter,null,React.createElement(AuthContext.Provider,{value:{user,isAuthenticated:true,isOwner:true,isAdmin:false,role:'owner'}},
   React.createElement(ThemeProvider,null,React.createElement(TenantProvider,null,React.createElement(ToastProvider,null,React.createElement(ConfirmProvider,null,React.createElement(Page))))))),

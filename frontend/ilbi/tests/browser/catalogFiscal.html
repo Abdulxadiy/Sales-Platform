@@ -17,7 +17,7 @@ import AuthContext from '/src/context/authContext.js';
 import {TenantProvider} from '/src/context/TenantContext.jsx';
 import {ToastProvider} from '/src/context/ToastContext.jsx';
 import {ConfirmProvider} from '/src/context/ConfirmContext.jsx';
-import {catalogApi,salesApi} from '/src/api/client.js';
+import {catalogApi,inventoryApi,salesApi} from '/src/api/client.js';
 import Catalog from '/src/pages/Catalog.jsx';
 import { captureLegacyDraftOwner } from '/src/utils/accountDrafts.js';
 import ReceiptSlip from '/src/components/common/ReceiptSlip.jsx';
@@ -31,6 +31,7 @@ window.fiscalQA={requests:[],variants:[]};
 const qa=window.fiscalQA;
 const category={id:1,name:'Sinov',kod:'01',currency:'UZS',parent:null,is_active:true};
 catalogApi.getCategories=async()=>[category];
+inventoryApi.getSuppliers=async()=>[];
 catalogApi.getVariants=async()=>({results:[...qa.variants],count:qa.variants.length});
 function capture(action,data){
   const multipart=data instanceof FormData;

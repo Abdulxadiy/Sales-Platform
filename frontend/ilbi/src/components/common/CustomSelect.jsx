@@ -57,7 +57,7 @@ export default function CustomSelect({
     searchable, hasFooter: Boolean(footer), menuStyle,
   });
   const renderMenu = menu => popover.supported ? menu
-    : createPortal(menu, containerRef.current?.closest('dialog') || document.body);
+    : createPortal(menu, popover.portalRoot || document.body);
 
   // When menu opens, autofocus the search input if searchable
   useEffect(() => {
@@ -220,6 +220,13 @@ export default function CustomSelect({
       id={id ? `${id}-container` : undefined}
       className={`custom-select-wrapper ${className}`}
       data-open={isOpen ? 'true' : 'false'}
+      onKeyDown={(event) => {
+        if (isOpen && event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          setIsOpen(false);
+        }
+      }}
       style={{
         position: 'relative',
         display: fullWidth ? 'flex' : 'inline-flex',
@@ -393,6 +400,9 @@ export default function CustomSelect({
           popover={popover.supported ? 'manual' : undefined}
           className="custom-select-menu"
           role="listbox"
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
           style={{
             overflow: 'hidden',
             background: 'var(--bg-modal, var(--bg-card))',

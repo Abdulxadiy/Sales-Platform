@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ScanBarcode,
   Camera,
@@ -20,6 +21,7 @@ import Modal from '../common/Modal';
 import PriceInput from '../common/PriceInput';
 import CameraBarcodeScanner from '../common/CameraBarcodeScanner';
 import { useDebouncedValue, usePaginatedList } from '../../hooks/usePaginatedList';
+import { useSelectPopover } from '../../hooks/useSelectPopover';
 import { inventoryApi, catalogApi } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
@@ -154,6 +156,7 @@ export default function RapidStockIntakeModal({
   const searchInputRef = useRef(null);
   const rowInputRefs = useRef({});
   const dropdownRef = useRef(null);
+  const searchBoxRef = useRef(null);
 
   // Auto-focus search input when modal opens
   useEffect(() => {
@@ -295,6 +298,14 @@ export default function RapidStockIntakeModal({
   const searchList = usePaginatedList(catalogApi.getVariants, { search: settledSearch },
     { tenantId: activeTenant?.id, pageSize: 10, enabled: isOpen && Boolean(settledSearch) });
   const searchResults = searchList.items;
+  const searchPopover = useSelectPopover({
+    isOpen: isOpen && isDropdownOpen && searchResults.length > 0,
+    anchorRef: searchBoxRef, menuRef: dropdownRef,
+    onClose: () => setIsDropdownOpen(false), searchable: true,
+    menuStyle: { maxHeight: 400 },
+  });
+  const renderSearchMenu = menu => searchPopover.supported ? menu
+    : createPortal(menu, searchPopover.portalRoot || document.body);
   useEffect(() => { if (searchList.error) toast.error(searchList.error.message); }, [searchList.error, toast]);
   const resolveCode = async (code) => {
     try {
@@ -325,6 +336,10 @@ export default function RapidStockIntakeModal({
 
       resolveCode(searchQuery);
     } else if (e.key === 'Escape') {
+      if (isDropdownOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       setIsDropdownOpen(false);
     }
   };
@@ -510,7 +525,7 @@ export default function RapidStockIntakeModal({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title="" maxWidth={1120}>
+      <Modal isOpen={isOpen} onClose={onClose} title="Tovar Kirimi (Tezkor Partiya Oqimi)" maxWidth={1120}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Top Header with Title and Auto-Saved Draft status */}
         <div
@@ -542,9 +557,6 @@ export default function RapidStockIntakeModal({
               <PackagePlus size={22} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
-                Tovar Kirimi (Tezkor Partiya Oqimi)
-              </h3>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
                 Kamera skaneri, shtrix-kod yoki klaviatura orqali tovarlar partiyasini bir zumda qabul qilish
               </p>
@@ -734,7 +746,7 @@ export default function RapidStockIntakeModal({
 
         {/* Rapid Barcode & Autocomplete Search Bar + Camera Scanner Trigger */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+          <div ref={searchBoxRef} style={{ flex: 1, position: 'relative', minWidth: 0 }}>
             <div
               style={{
                 display: 'flex',
@@ -765,6 +777,7 @@ export default function RapidStockIntakeModal({
                 placeholder="Shtrix-kodni skanerlang yoki tovar nomi / artikul / model bo‘yicha qidiring..."
                 style={{
                   flex: 1,
+                  minWidth: 0,
                   border: 'none',
                   background: 'transparent',
                   outline: 'none',
@@ -794,6 +807,7 @@ export default function RapidStockIntakeModal({
                 </button>
               )}
               <div
+                className="rapid-intake-search-hint"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -814,21 +828,24 @@ export default function RapidStockIntakeModal({
             </div>
 
             {/* Autocomplete Dropdown Popover */}
-          {isDropdownOpen && searchResults.length > 0 && (
+          {isDropdownOpen && searchResults.length > 0 && renderSearchMenu(
             <div
               ref={dropdownRef}
+              popover={searchPopover.supported ? 'manual' : undefined}
+              className="rapid-intake-search-menu"
               style={{
-                position: 'absolute',
-                top: 'calc(100% + 6px)',
-                left: 0,
-                right: 0,
                 background: 'var(--bg-modal, var(--bg-surface))',
+                color: 'var(--text-primary)',
                 border: '1px solid var(--border-card)',
                 borderRadius: 'var(--radius-sm)',
                 boxShadow: '0 12px 30px rgba(0,0,0,0.22)',
                 zIndex: 9999,
-                maxHeight: '340px',
-                overflowY: 'auto',
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+                padding: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                ...searchPopover.style,
               }}
             >
               <div
@@ -840,6 +857,9 @@ export default function RapidStockIntakeModal({
                   fontWeight: 600,
                   color: 'var(--text-secondary)',
                   display: 'flex',
+                  flexShrink: 0,
+                  flexWrap: 'wrap',
+                  gap: 4,
                   justifyContent: 'space-between',
                 }}
               >
@@ -847,6 +867,7 @@ export default function RapidStockIntakeModal({
                 <span>↑ ↓ tugmalari orqali tanlang va Enter bosing</span>
               </div>
 
+              <div style={{ overflowY: 'auto', minHeight: 0, overscrollBehavior: 'contain' }}>
               {searchResults.map((variant, index) => {
                 const info = getVariantInfo(variant);
                 const isSelected = index === highlightedIndex;
@@ -859,6 +880,8 @@ export default function RapidStockIntakeModal({
                     style={{
                       padding: '10px 14px',
                       display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 12,
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       borderBottom: '1px solid var(--border-subtle)',
@@ -867,10 +890,11 @@ export default function RapidStockIntakeModal({
                       transition: 'background 0.1s ease',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 280px', minWidth: 0 }}>
                       <div
                         style={{
                           width: 32,
+                          flexShrink: 0,
                           height: 32,
                           borderRadius: 6,
                           background: 'var(--bg-chip)',
@@ -884,8 +908,8 @@ export default function RapidStockIntakeModal({
                       >
                         {info.name.charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
                             {info.name}
                           </span>
@@ -918,7 +942,7 @@ export default function RapidStockIntakeModal({
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Joriy qoldiq</div>
                         <div
@@ -957,6 +981,7 @@ export default function RapidStockIntakeModal({
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
         </div>
@@ -964,6 +989,7 @@ export default function RapidStockIntakeModal({
         {/* Camera Barcode Scanner Trigger Button */}
         <button
           type="button"
+          className="rapid-intake-camera-button"
           onClick={() => setCameraScannerOpen(true)}
           title="Telefon / kompyuter kamerasi orqali shtrix-kod skanerlash"
           style={{
@@ -994,7 +1020,7 @@ export default function RapidStockIntakeModal({
           }}
         >
           <Camera size={18} />
-          <span>Kamera skaneri</span>
+          <span className="rapid-intake-camera-label">Kamera skaneri</span>
         </button>
       </div>
 

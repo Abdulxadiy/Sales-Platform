@@ -10,6 +10,7 @@ if [ "$1" = "gunicorn" ] || [ "$RUN_MIGRATIONS" = "true" ]; then
     python manage.py migrate --noinput
 
     python manage.py ensure_media_bucket
+    python manage.py sync_cbu_rates || true
 
     echo "==> Collecting static files..."
     python manage.py collectstatic --noinput

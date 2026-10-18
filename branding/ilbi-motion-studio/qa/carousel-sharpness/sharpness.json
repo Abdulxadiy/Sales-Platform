@@ -1,0 +1,150 @@
+{
+  "source": "Live local site; normal motion; settled slide transitions; original 1440×1100 PNGs",
+  "states": [
+    {
+      "width": 1502,
+      "dpr": 1,
+      "scene": "pos",
+      "imageWidth": 838,
+      "imageHeight": 640.125,
+      "layoutWidth": 838,
+      "layoutHeight": 640,
+      "transform": "matrix(1, 0, 0, 1, -420, -350.562)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 1502,
+      "dpr": 1,
+      "scene": "checkout",
+      "imageWidth": 838,
+      "imageHeight": 640.125,
+      "layoutWidth": 838,
+      "layoutHeight": 640,
+      "transform": "matrix(1, 0, 0, 1, -420, -350.562)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 1502,
+      "dpr": 1,
+      "scene": "team",
+      "imageWidth": 838,
+      "imageHeight": 640.125,
+      "layoutWidth": 838,
+      "layoutHeight": 640,
+      "transform": "matrix(1, 0, 0, 1, -420, -350.562)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 1502,
+      "dpr": 2,
+      "scene": "pos",
+      "imageWidth": 838,
+      "imageHeight": 640.125,
+      "layoutWidth": 838,
+      "layoutHeight": 640,
+      "transform": "matrix(1, 0, 0, 1, -420, -350.562)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 1502,
+      "dpr": 2,
+      "scene": "checkout",
+      "imageWidth": 838,
+      "imageHeight": 640.125,
+      "layoutWidth": 838,
+      "layoutHeight": 640,
+      "transform": "matrix(1, 0, 0, 1, -420, -350.562)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 1502,
+      "dpr": 2,
+      "scene": "team",
+      "imageWidth": 838,
+      "imageHeight": 640.125,
+      "layoutWidth": 838,
+      "layoutHeight": 640,
+      "transform": "matrix(1, 0, 0, 1, -420, -350.562)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 390,
+      "dpr": 1,
+      "scene": "pos",
+      "imageWidth": 324,
+      "imageHeight": 247.5,
+      "layoutWidth": 324,
+      "layoutHeight": 248,
+      "transform": "matrix(1, 0, 0, 1, -163, -147.75)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 390,
+      "dpr": 1,
+      "scene": "checkout",
+      "imageWidth": 324,
+      "imageHeight": 247.5,
+      "layoutWidth": 324,
+      "layoutHeight": 248,
+      "transform": "matrix(1, 0, 0, 1, -163, -147.75)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 390,
+      "dpr": 1,
+      "scene": "team",
+      "imageWidth": 324,
+      "imageHeight": 247.5,
+      "layoutWidth": 324,
+      "layoutHeight": 248,
+      "transform": "matrix(1, 0, 0, 1, -163, -147.75)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 390,
+      "dpr": 2,
+      "scene": "pos",
+      "imageWidth": 324,
+      "imageHeight": 247.5,
+      "layoutWidth": 324,
+      "layoutHeight": 248,
+      "transform": "matrix(1, 0, 0, 1, -163, -147.75)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 390,
+      "dpr": 2,
+      "scene": "checkout",
+      "imageWidth": 324,
+      "imageHeight": 247.5,
+      "layoutWidth": 324,
+      "layoutHeight": 248,
+      "transform": "matrix(1, 0, 0, 1, -163, -147.75)",
+      "filter": "none",
+      "loaded": true
+    },
+    {
+      "width": 390,
+      "dpr": 2,
+      "scene": "team",
+      "imageWidth": 324,
+      "imageHeight": 247.5,
+      "layoutWidth": 324,
+      "layoutHeight": 248,
+      "transform": "matrix(1, 0, 0, 1, -163, -147.75)",
+      "filter": "none",
+      "loaded": true
+    }
+  ],
+  "browserErrors": []
+}

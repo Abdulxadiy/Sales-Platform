@@ -1,0 +1,53 @@
+{
+  "checks": [
+    {
+      "theme": "light",
+      "width": 1603,
+      "background": "rgba(0, 0, 0, 0)",
+      "border": "0px",
+      "radius": "0px",
+      "shadow": "none",
+      "headerBackground": "rgba(0, 0, 0, 0)",
+      "footerBackground": "rgba(0, 0, 0, 0)",
+      "loaded": true,
+      "imageVisible": true
+    },
+    {
+      "theme": "dark",
+      "width": 1603,
+      "background": "rgba(0, 0, 0, 0)",
+      "border": "0px",
+      "radius": "0px",
+      "shadow": "none",
+      "headerBackground": "rgba(0, 0, 0, 0)",
+      "footerBackground": "rgba(0, 0, 0, 0)",
+      "loaded": true,
+      "imageVisible": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "background": "rgba(0, 0, 0, 0)",
+      "border": "0px",
+      "radius": "0px",
+      "shadow": "none",
+      "headerBackground": "rgba(0, 0, 0, 0)",
+      "footerBackground": "rgba(0, 0, 0, 0)",
+      "loaded": true,
+      "imageVisible": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "background": "rgba(0, 0, 0, 0)",
+      "border": "0px",
+      "radius": "0px",
+      "shadow": "none",
+      "headerBackground": "rgba(0, 0, 0, 0)",
+      "footerBackground": "rgba(0, 0, 0, 0)",
+      "loaded": true,
+      "imageVisible": true
+    }
+  ],
+  "browserErrors": []
+}

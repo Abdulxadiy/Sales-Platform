@@ -473,7 +473,7 @@ export default function ProductCarousel() {
                   />
                   {!loaded.has(index) && !failed.has(index) && (
                     <div className="pc-image-loading" aria-hidden="true">
-                      <IlbiLoader size={64} inline decorative />
+                      <IlbiLoader size={48} inline decorative />
                     </div>
                   )}
                   <button

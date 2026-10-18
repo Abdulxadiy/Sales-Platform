@@ -36,7 +36,7 @@ try {
     await wait(browser, 'Boolean(window.authQA?.pendingProfiles.length) && !document.querySelector("#ilbi-boot-loader")');
     assert.equal(await browser.evaluate('document.querySelectorAll(".ilbi-loading").length'), 1);
     assert.equal(await browser.evaluate('document.querySelectorAll(".ilbi-loading .ilbi-loader__arc").length'), 3);
-    assert.equal(await browser.evaluate('Math.round(document.querySelector(".ilbi-loading .ilbi-loader").getBoundingClientRect().width)'), 330);
+    assert.equal(await browser.evaluate('Math.round(document.querySelector(".ilbi-loading .ilbi-loader").getBoundingClientRect().width)'), 128);
     await writeFile(`/tmp/ilbi-loader-integrated-${theme}.png`, Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png', fromSurface: true })).data, 'base64'));
     await browser.evaluate('authQA.holdProfile = false; authQA.pendingProfiles.splice(0).forEach(resolve => resolve())');
     await wait(browser, 'Boolean(document.querySelector(".sidebar")) && !document.querySelector(".ilbi-loading")');

@@ -10,8 +10,8 @@
 
 .ilbi-loader {
   display: inline-flex;
-  width: var(--ilbi-loader-size, 80px);
-  height: var(--ilbi-loader-size, 80px);
+  width: var(--ilbi-loader-size, 48px);
+  height: var(--ilbi-loader-size, 48px);
   max-width: 100%;
   flex-shrink: 0;
   vertical-align: middle;
@@ -55,11 +55,11 @@
   opacity: 1;
   transition: opacity 380ms cubic-bezier(.22, 1, .36, 1);
 }
-.ilbi-loading > .ilbi-loader { --ilbi-loader-size: clamp(200px, 42vw, 330px); }
+.ilbi-loading > .ilbi-loader { --ilbi-loader-size: 128px; }
 .ilbi-loading--leaving { opacity: 0; pointer-events: none; }
 
 @media (max-width: 640px) {
-  .ilbi-loading > .ilbi-loader { --ilbi-loader-size: min(68vw, 320px); }
+  .ilbi-loading > .ilbi-loader { --ilbi-loader-size: 96px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ilbi-loader__orbit, .ilbi-loader__arc, .ilbi-loader__shine { animation: none; }

@@ -1,120 +1,57 @@
-# Inventra Platformasi — Maxfiylik va Shaxsiy Ma'lumotlarni Qayta Ishlash Siyosati
+# ILBI — maxfiylik siyosati
 
-*(Privacy Policy)*
+Tahrir: **2026-10-15**. Ushbu matn platformaning hozirgi ma’lumot oqimlarini tushuntiradi. Ma’lumot operatorining rasmiy nomi, manzili, saqlash muddatlari va joylashtirish rekvizitlari yakuniy nashrda tasdiqlanishi kerak; bu hujjat ularning o‘rniga taxminiy ma’lumot bermaydi.
 
-Oxirgi yangilangan sana: 2026-yil 1-oktyabr  
-Kuchga kirish sanasi: 2026-yil 1-oktyabr
+## 1. Qanday ma’lumot ishlatiladi?
 
----
+- **Hisob:** telefon, username, email, ism va familiya; kiritilgan bo‘lsa profil rasmi, tug‘ilgan sana va aloqa telefoni.
+- **Kirish:** parol xeshi, Telegram botga bog‘langan telefon va chat identifikatori, tokenlar, kirish urinishlari. OTP Redis’da 180 soniya amal qiladi.
+- **Do‘kon:** sotuvchi profili, do‘kon va xodimlar, katalog, narxlar, qoldiq/partiyalar, savdo, qarz, kassa va tegishli tarix.
+- **Yordam:** ism, tanlangan til, mavzu, xabarlar, yuborilgan rasmlar, suhbat holati, operator va o‘qilganlik ko‘rsatkichlari. Tizimga kirgan odamning murojaati uning hisobiga, tanlangan bo‘lsa do‘koniga bog‘lanadi.
+- **Texnik yozuvlar:** sozlangan server jurnallari va audit orqali IP, brauzer hamda vaqt ma’lumotlari qayd etilishi mumkin.
 
-Ushbu Maxfiylik va shaxsiy ma'lumotlarni qayta ishlash siyosati (keyingi o'rinlarda — **"Siyosat"**) **"Inventra"** savdo-boshqaruv platformasi (keyingi o'rinlarda — **"Platforma"** yoki **"Biz"**) foydalanuvchilarining (keyingi o'rinlarda — **"Foydalanuvchi"** yoki **"Siz"**) shaxsga doir va tijorat ma'lumotlarini qanday to'planishi, ishlatilishi, saqlanishi va himoya qilinishini belgilaydi.
+## 2. Nima maqsadda?
 
-Mazkur Siyosat O'zbekiston Respublikasining 2019-yil 2-iyuldagi O'RQ-547-sonli **"Shaxsga doir ma'lumotlar to'g'risida"**gi Qonuni hamda tegishli xalqaro axborot xavfsizligi standartlariga to'liq mos holda ishlab chiqilgan.
+Ma’lumot hisobga kirish, foydalanuvchi ruxsatlarini tekshirish, do‘kon operatsiyalarini yuritish, xatolarni tekshirish, hisobot yetkazish va yordam savoliga javob berish uchun ishlatiladi. Har bir do‘konning operatsion so‘rovlari uning a’zoligi va vakolatlari bilan tekshiriladi.
 
----
+Yordam chatini boshlashda foydalanuvchi yozishmalar va rasmlar saqlanib, operatorlarga ko‘rinishi haqidagi alohida tanlovni belgilaydi. Umumiy sahifani ochishning o‘zi bu tanlov o‘rnini bosmaydi.
 
-## 1. Umumiy Qoidalar
+## 3. Yordam yozishmalariga kim kiradi?
 
-1.1. Inventra tizimidan ro'yxatdan o'tish, tizimga kirish yoki xizmatlardan amalda foydalanish orqali Foydalanuvchi ushbu Siyosatda ko'rsatilgan shartlarga, jumladan shaxsiy ma'lumotlarini to'plash va qayta ishlashga o'zining to'liq va ixtiyoriy roziligini bildiradi.  
-1.2. Agar Foydalanuvchi ushbu Siyosat shartlariga rozi bo'lmasa, u Platformadan foydalanishni darhol to'xtatishi lozim.  
-1.3. Ushbu Siyosat faqat Inventra platformasiga taalluqli bo'lib, tashqi havola qilingan uchinchi tomon xizmatlariga tatbiq etilmaydi.
+Yozishmalar murojaat muallifi va `platform_admin` operatorlariga ochiq. Bir do‘kondagi boshqa xodimga avtomatik ochilmaydi.
 
----
+Mehmon brauzerida tasodifiy maxfiy kalit saqlanadi, serverda uning xeshi yuritiladi. Kalit yo‘qolsa, shu suhbatga mehmon sifatida kirish ham yo‘qoladi. Kalitni boshqa odamga berish suhbatga kirishni berishi mumkin. Mehmon ismi shaxs tasdiqlovi hisoblanmaydi.
 
-## 2. To'planadigan Ma'lumotlar Tarkibi
+Rasmlar ochiq media katalogiga qo‘yilmaydi; suhbatga kirish tekshirilgandan so‘ng olinadi. Yuklangan PNG/JPEG/WebP fayllari hajm va o‘lcham bo‘yicha tekshiriladi, kichraytirilib JPEG’ga aylantiriladi. Qo‘llanma rasmlari bundan alohida: ular sun’iy demo ma’lumotlar bilan ommaviy ko‘rsatiladi.
 
-Inventra platformasi o'z xizmatlarini sifatli, xavfsiz va qonuniy taqdim etish uchun quyidagi toifadagi ma'lumotlarni to'playdi va qayta ishlaydi:
+## 4. Telegram va boshqa xizmatlar
 
-### 2.1. Foydalanuvchining Shaxsiy Ma'lumotlari:
-* **Telefon raqami:** Tizimdagi asosiy noyob identifikator (`USERNAME_FIELD`) sifatida foydalaniladi;
-* **Foydalanuvchi nomi (`username`):** Tizimga xavfsiz kirish uchun global unikal login;
-* **Elektron pochta manzili (`email`):** Parollarni xavfsiz o'rnatish va tiklash (magic-link), tizim xabarnomalarini yuborish uchun;
-* **F.I.Sh. (Ism va Familiya):** Tizim ichida va cheklarda xodimni to'g'ri ko'rsatish uchun;
-* **Tug'ilgan sana va Profil surati:** Profilni to'liq shakllantirish uchun (ixtiyoriy).
+Login kodi Telegram bot orqali yetkaziladi. Do‘kon hisobotlari sozlangan qabul qiluvchi va tarkibga bog‘liq; do‘kon egasi yuborishdan oldin tanlovlarini tekshirishi kerak.
 
-### 2.2. Autentifikatsiya va Xavfsizlik Ma'lumotlari:
-* **Telegram `chat_id`:** Telegram boti (`@inventraa_bot`) orqali ikki faktorli (2FA) bir martalik OTP kodlarini yetkazish va avtomatik bildirishnomalarni yuborish uchun;
-* **IP-manzillar va Kirish jurnallari:** Xavfsizlik tahlili, ruxsatsiz urinishlarni to'xtatish (brute-force rate limiting) va audit nazorati uchun;
-* **Parollar:** Hech qachon ochiq holda saqlanmaydi — faqat zamonaviy kriptografik xesh-funksiyalar orqali shifrlanadi.
+**Yordam bildirishnomasi** faqat murojaat tili va operator paneliga havolani yuboradi. Ism, savol matni, ilova rasmi va mehmon kaliti Telegramga yuborilmaydi. Bildirishnoma oluvchi telefon raqami sozlamada bo‘lishi va amaldagi botga tasdiqlangan shaxsiy chat bilan ulangan bo‘lishi kerak.
 
-### 2.3. Biznes va Do'kon Ma'lumotlari:
-* Do'kon nomi, rekvizitlari, faoliyat turi;
-* Tovar katalogi: tovar nomlari, shtrix-kodlar, rasmlar, o'lchov birliklari;
-* Narxlar siyosati: chakana narxlar, tavsiya etilgan narxlar, 1-narx (ulgurji) va kirim tannarxlari;
-* Ombor qoldiqlari va tovarlarning kirim-chiqim harakatlari;
-* Savdo operatsiyalari: cheklar, to'lov turlari (naqd, karta, nasiya), bekor qilish (void) sabablari;
-* Kontragentlar ro'yxati, ularning telefon raqamlari va UZS/USD qarz balanslari;
-* Kassa smenalari: kutilgan naqd pul, haqiqiy kassa qoldig'i, kassa tafovutlari va kunlik chiqimlar/kirimlar.
+Email va fayl saqlash xizmatlari server sozlamalariga qarab ishlatiladi. Qaysi provayder, hudud va huquqiy asos qo‘llanishi operatorning joylashtirish ma’lumotlarida aniqlashtiriladi. “Ma’lumot hech qachon tashqi xizmatga uzatilmaydi” degan va’da berilmaydi.
 
----
+**AI hozir ulanmagan:** yordam xabarlarini AI modeliga yuborish oqimi bu versiyada yo‘q. Keyinchalik ulanadigan xizmat va uning ma’lumot siyosati alohida tushuntirilishi kerak.
 
-## 3. Ma'lumotlarni Qayta Ishlash Maqsadlari
+## 5. Saqlash va himoya
 
-Biz to'plangan ma'lumotlardan faqat quyidagi qat'iy maqsadlarda foydalanamiz:
-1. **Xizmatlarni ko'rsatish:** Savdo, ombor, hisob-kitob va analitika amallarining to'g'ri ishlashini ta'minlash;
-2. **Xavfsiz autentifikatsiya (2FA):** Foydalanuvchining shaxsini tasdiqlash va akkauntni noqonuniy kirishlardan himoyalash;
-3. **Avtomatlashtirilgan xabarnomalar:** B2B tovar o'tkazmalari, qarzdorlik chegarasidan oshishi (har 10 mln so'm / 1000 USD) va kunlik kassa Z-hisobotini Telegram orqali yuborish;
-4. **Shartnoma majburiyatlarini bajarish:** Do'kon faolligini, tarif rejalarini va xizmat muddatlarini nazorat qilish;
-5. **Nizolarni oldini olish va Audit:** Barcha operatsiyalarning o'zgarmas audit tarixini yuritish orqali xodimlar va korxona o'rtasidagi moliyaviy shaffoflikni kafolatlash;
-6. **Texnik takomillashtirish:** Tizim xatolarini aniqlash va barqarorlikni oshirish.
+Parollar ochiq matn sifatida saqlanmaydi. JWT imzolangan token; u ma’lumotni yashiradigan shifrlash emas. HTTPS, zaxira nusxalari, saqlash hududi va server xavfsizligi joylashtirish konfiguratsiyasiga bog‘liq.
 
----
+Chatlar hozir bazada saqlanadi; avtomatik o‘chirish muddati bu versiyada sozlanmagan. Hisob va moliyaviy/audit yozuvlarini saqlash tartibi bilan yordam yozishmalarini saqlash tartibi alohida belgilanadi. Tasdiqlanmagan kun/yil muddatlari kafolat sifatida ko‘rsatilmaydi.
 
-## 4. Ma'lumotlarni Saqlash va Axborot Xavfsizligi Kafolatlari
+## 6. Brauzer xotirasi
 
-Inventra axborot xavfsizligini ta'minlashda eng ilg'or xalqaro me'yorlarga tayanadi:
+Platforma tokenlar, tanlangan do‘kon, interfeys sozlamalari va ayrim ish qoralamalarini mahalliy yoki sessiya xotirasida saqlaydi. Yordam markazi til tanlovi va mehmon maxfiy kalitini mahalliy xotirada saqlaydi. Umumiy qurilmada ushbu xotira boshqa foydalanadigan shaxsga ham ta’sir qilishi mumkin.
 
-* **Tenant Izolatsiyasi (Dasturiy ajratish):** Har bir do'kon ma'lumotlari boshqa do'konlardan dasturiy va ma'lumotlar bazasi darajasida qat'iy ajratilgan. Bir do'kon egasi yoki xodimi hech qachon boshqa do'konning tovarlari, narxlari yoki mijozlari ma'lumotlarini ko'ra olmaydi.
-* **Kriptografik Shifrlash:**
-  * Tarmoq orqali uzatiladigan barcha ma'lumotlar zamonaviy HTTPS / TLS protokollari bilan shifrlanadi.
-  * Tizimga kirish tokenlari (JWT) shifrlangan raqamli imzolar bilan himoyalangan.
-  * Parollar mustahkam tuzlangan (salted) kriptografik xeshlar orqali saqlanadi.
-* **Vaqtinchalik Ma'lumotlar:** Telegram OTP tasdiqlash kodlari faqat operativ xotirada (Redis) 120 soniyalik qisqa muddat (TTL) bilan saqlanadi va muddat o'tishi bilan butunlay yo'q qilinadi.
-* **Obyekt Saqlash Xavfsizligi:** Mahsulot rasmlari MinIO S3 object storage tizimida shaxsiy kirish nazorati bilan saqlanadi.
-* **Muntazam Zaxira Nusxalari (Backups):** Kutilmagan texnik avariyalarning oldini olish uchun ma'lumotlar bazasining zaxira nusxalari avtomatik ravishda muntazam olinadi.
+## 7. So‘rov va aloqa
 
----
+Ma’lumotga kirish, tuzatish, qayta ishlash yoki o‘chirish yuzasidan so‘rovni operatorga yuboring. Hisobga tegishli so‘rovda shaxs va vakolat tekshiriladi; chatdagi ismning o‘zi yetarli emas. Operatsion eksportlar tegishli rol va ruxsatlar bilan olinadi.
 
-## 5. Ma'lumotlarni Uchinchi Shaxslarga Bermaslik Kafolati
+**Telefon:** +998 77 021 21 49. **Telegram operator:** @abdulxadiy_0. **Login boti:** @ilbi_bot. Ish vaqti hozircha e’lon qilinmagan.
 
-5.1. **Biz Foydalanuvchilarning shaxsiy yoki tijorat ma'lumotlarini hech qachon hech qanday uchinchi shaxslarga, reklama agentliklariga yoki tashqi kompaniyalarga sotmaymiz, ijaraga bermaymiz va bepul tarqatmaymiz.**  
-5.2. Ma'lumotlar faqat quyidagi istisno hollarda uchinchi tomonlarga berilishi mumkin:
-* **Foydalanuvchining to'g'ridan-to'g'ri roziligi bo'lganda** (masalan, foydalanuvchi tizimni o'zining banki yoki soliq servislari bilan integratsiya qilishni so'raganda);
-* **Qonun talabi bilan:** O'zbekiston Respublikasi qonunlariga muvofiq, vakolatli sudlar yoki huquqni muhofaza qiluvchi organlarning qonuniy, asoslantirilgan rasmiy qarorlari va talabnomalari asosida.
+## 8. Huquqiy manba va tahrir
 
----
+Shaxsga doir ma’lumotlar bo‘yicha asosiy rasmiy manba: [“Shaxsga doir ma’lumotlar to‘g‘risida”gi O‘RQ-547](https://lex.uz/uz/docs/-4396419). Amaliy ishlov, provayder va operator majburiyatlarini amaldagi tahrir hamda haqiqiy joylashtirish bo‘yicha tekshirish kerak. Ushbu matn to‘liq muvofiqlik sertifikati emas.
 
-## 6. Foydalanuvchining Huquqlari
-
-O'zbekiston Respublikasining "Shaxsga doir ma'lumotlar to'g'risida"gi Qonuniga muvofiq, Siz quyidagi huquqlarga egasiz:
-1. **Ma'lumotlar bilan tanishish:** O'z shaxsiy profilingizda (`/profile`) qanday ma'lumotlar saqlanayotganini to'liq ko'rish;
-2. **Tahrirlash va yangilash:** O'zgarib qolgan ism, familiya, rasm yoki boshqa ma'lumotlarni erkin to'g'rilash;
-3. **Eksport qilish:** O'z do'koningizga tegishli tovarlar, savdolar va mijozlar tarixini yuklab olish;
-4. **Rozilikni bekor qilish va Akkauntni o'chirish:** Xizmatdan foydalanishni to'xtatish va shaxsiy hisobni arxivlashni talab qilish. Bunda qonunchilik talablariga muvofiq moliyaviy va soliq hisoboti uchun zarur bo'lgan audit yozuvlari belgilangan muddatda arxivda saqlanadi.
-
----
-
-## 7. Cookie Fayllari va Mahalliy Xotira (Local Storage)
-
-Platformaning to'g'ri ishlashi uchun brauzeringizning mahalliy xotirasidan (Local Storage) quyidagi minimal texnik maqsadda foydalaniladi:
-* **Autentifikatsiya tokeni (`access_token` va `refresh_token`):** Har bir sahifa yangilanganda qayta login qilmaslik va sessiya xavfsizligini ta'minlash uchun;
-* **Interfeys mavzusi (`theme`):** Qulaylik uchun qorong'i (Dark) yoki yorug' (Light) rejim tanlovini eslab qolish uchun.
-
----
-
-## 8. Siyosatga O'zgartirishlar Kiritish Tartibi
-
-8.1. Mazkur Maxfiylik Siyosati texnologiyalar rivojlanishi, yangi funksiyalar qo'shilishi yoki qonunchilik talablari o'zgarishi munosabati bilan vaqti-vaqti bilan yangilanishi mumkin.  
-8.2. Siyosatning yangi tahriri ushbu sahifada e'lon qilingan paytdan boshlab darhol kuchga kiradi. Muhim o'zgarishlar haqida Foydalanuvchilarga tizim bildirishnomalari orqali xabar beriladi.  
-8.3. Siyosat yangilangandan so'ng Platformadan foydalanishni davom ettirish yangi tahrirga to'liq rozilik deb hisoblanadi.
-
----
-
-## 9. Aloqa va Savollar
-
-Maxfiylik siyosati yoki shaxsiy ma'lumotlaringizning himoyasi yuzasidan har qanday savol, taklif yoki da'volar bo'yicha biz bilan bog'lanishingiz mumkin:
-
-* **Mas'ul xizmat:** Inventra Axborot Xavfsizligi Bo'limi  
-* **Elektron pochta:** `privacy@inventra.uz` / `support@inventra.uz`  
-* **Telegram orqali aloqa:** `@inventraa_bot`  
-* **Veb-sayt:** `https://inventra.uz`
+Hujjat yangilanganda yangi tahrir shu yerda beriladi. Hozirgi umumiy rozilik yozuvi foydalanuvchi, vaqt va IP’ni saqlaydi; har bir o‘qilgan hujjatning nusxasi yoki xeshini alohida saqlamaydi.

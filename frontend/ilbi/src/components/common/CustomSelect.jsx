@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, X, Loader2 } from 'lucide-react';
+import { useSelectPopover } from '../../hooks/useSelectPopover';
 
 const renderIconNode = (IconNode, size) => {
   if (!IconNode) return null;
@@ -47,13 +49,21 @@ export default function CustomSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [internalSearch, setInternalSearch] = useState('');
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
   const searchInputRef = useRef(null);
+  const popover = useSelectPopover({
+    isOpen, anchorRef: triggerRef, menuRef, onClose: () => setIsOpen(false),
+    searchable, hasFooter: Boolean(footer), menuStyle,
+  });
+  const renderMenu = menu => popover.supported ? menu
+    : createPortal(menu, containerRef.current?.closest('dialog') || document.body);
 
   // When menu opens, autofocus the search input if searchable
   useEffect(() => {
     if (isOpen && searchable) {
       const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
+        searchInputRef.current?.focus({ preventScroll: true });
       }, 50);
       return () => clearTimeout(timer);
     }
@@ -106,13 +116,15 @@ export default function CustomSelect({
     if (!isOpen) return;
 
     const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (containerRef.current && !containerRef.current.contains(event.target) && !menuRef.current?.contains(event.target)) {
         setIsOpen(false);
       }
     };
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
         setIsOpen(false);
       }
     };
@@ -211,6 +223,9 @@ export default function CustomSelect({
       style={{
         position: 'relative',
         display: fullWidth ? 'flex' : 'inline-flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        maxWidth: '100%',
         width: fullWidth ? '100%' : 'auto',
         userSelect: 'none',
         zIndex: isOpen ? 100 : undefined,
@@ -253,6 +268,7 @@ export default function CustomSelect({
 
       {/* Main Trigger */}
       <div
+        ref={triggerRef}
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}
@@ -265,12 +281,16 @@ export default function CustomSelect({
         }}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        title={selectedOption ? String(selectedOption.label) : placeholder}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: sizeStyles.gap,
           width: fullWidth ? '100%' : 'auto',
+          minWidth: 0,
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           minHeight: sizeStyles.minHeight,
           padding: sizeStyles.padding,
           fontSize: sizeStyles.fontSize,
@@ -289,7 +309,7 @@ export default function CustomSelect({
           ...style,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: sizeStyles.gap, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: sizeStyles.gap, overflow: 'hidden', minWidth: 0, textOverflow: 'ellipsis' }}>
           {(selectedOption?.icon || Icon) && (
             <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--primary)', flexShrink: 0 }}>
               {renderIconNode(selectedOption?.icon || Icon, sizeStyles.iconSize)}
@@ -367,18 +387,14 @@ export default function CustomSelect({
       </div>
 
       {/* Floating Glassmorphic Dropdown Menu */}
-      {isOpen && (
+      {isOpen && renderMenu(
         <div
+          ref={menuRef}
+          popover={popover.supported ? 'manual' : undefined}
+          className="custom-select-menu"
           role="listbox"
           style={{
-            position: 'absolute',
-            top: 'calc(100% + 5px)',
-            left: 0,
-            minWidth: '100%',
-            maxWidth: fullWidth ? '100%' : 360,
-            width: fullWidth ? '100%' : 'auto',
-            maxHeight: 280,
-            overflowY: 'auto',
+            overflow: 'hidden',
             background: 'var(--bg-modal, var(--bg-card))',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
@@ -392,13 +408,13 @@ export default function CustomSelect({
             gap: 2,
             boxSizing: 'border-box',
             ...menuStyle,
+            ...popover.style,
           }}
         >
           {searchable && (
             <div
               style={{
-                position: 'sticky',
-                top: -5,
+                flexShrink: 0,
                 zIndex: 10,
                 padding: '4px 4px 6px 4px',
                 background: 'var(--bg-modal, var(--bg-card))',
@@ -422,6 +438,7 @@ export default function CustomSelect({
                   type="text"
                   placeholder={searchPlaceholder}
                   value={isControlledSearch ? (searchValue || '') : internalSearch}
+                  onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault(); }}
                   onChange={(e) => {
                     if (onSearchChange) onSearchChange(e.target.value);
                     else setInternalSearch(e.target.value);
@@ -466,6 +483,7 @@ export default function CustomSelect({
             </div>
           )}
 
+          <div className="custom-select-options" style={{ overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', minHeight: 0, flex: '1 1 auto' }}>
           {searchLoading && (
             <div
               style={{
@@ -518,7 +536,8 @@ export default function CustomSelect({
                       : 'transparent',
                     cursor: opt.disabled ? 'not-allowed' : 'pointer',
                     transition: 'background 0.15s ease, color 0.15s ease',
-                    whiteSpace: 'nowrap',
+                    whiteSpace: 'normal',
+                    lineHeight: 1.5,
                     opacity: opt.disabled ? 0.5 : 1,
                   }}
                   onMouseEnter={(e) => {
@@ -532,13 +551,13 @@ export default function CustomSelect({
                     }
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, flex: 1, minWidth: 0 }}>
                     {OptIcon && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }}>
                         {renderIconNode(OptIcon, sizeStyles.iconSize)}
                       </span>
                     )}
-                    <span>{opt.label}</span>
+                    <span style={{ minWidth: 0, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{opt.label}</span>
                     {opt.badge && (
                       <span
                         style={{
@@ -562,12 +581,13 @@ export default function CustomSelect({
               );
             })
           )}
+          </div>
 
           {footer && (
             <div
+              className="custom-select-footer"
               style={{
-                position: 'sticky',
-                bottom: -5,
+                flexShrink: 0,
                 zIndex: 10,
                 background: 'var(--bg-modal, var(--bg-card))',
                 borderTop: '1px solid var(--border-subtle)',

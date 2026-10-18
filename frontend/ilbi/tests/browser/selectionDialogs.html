@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head>
+<body><div id="root"></div><script type="module">
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import {ThemeProvider} from '/src/context/ThemeContext.jsx';
+import {TenantProvider,useTenant} from '/src/context/TenantContext.jsx';
+import {ToastProvider} from '/src/context/ToastContext.jsx';
+import {ConfirmProvider} from '/src/context/ConfirmContext.jsx';
+import Modal from '/src/components/common/Modal.jsx';
+import CustomSelect from '/src/components/common/CustomSelect.jsx';
+import RemoteVariantSelect from '/src/components/common/RemoteVariantSelect.jsx';
+import Inventory from '/src/pages/Inventory.jsx';
+import Catalog from '/src/pages/Catalog.jsx';
+import B2BTransactions from '/src/pages/B2BTransactions.jsx';
+import {catalogApi,inventoryApi,salesApi} from '/src/api/client.js';
+import '/src/index.css';
+const params=new URLSearchParams(location.search);
+if(params.has('fallback'))HTMLElement.prototype.showPopover=undefined;
+localStorage.clear();sessionStorage.clear();
+const tenant={id:7,name:'Tanlash sinovlari',is_owner:true,permissions:['*']};
+const user={id:51,role:'owner',username:'QA',tenants:[tenant],permissions:['*']};
+localStorage.setItem('ilbi_active_tenant:51','7');
+window.selectionQA={requests:[],submits:0,selected:null};
+const qa=window.selectionQA;
+const categories=Array.from({length:30},(_,i)=>({id:i+1,name:`Oziq-ovqat va ichimliklar uchun juda uzun kategoriya nomi — ${i+1}`,kod:String(i+1),currency:'UZS',parent:null,is_active:true}));
+const variant=id=>({id,product:id,product_name:`Greenfield Qora choy 100g (Model #${String(id).padStart(5,'0')}) — uzundan uzun to‘liq tovar nomi`,name:'Standart 100 dona qadoq',stock_quantity:'269.000',unit:'dona',currency:'UZS',price_recommended:'15000',price_min:'12000',price_partner:'11000',cost_price:'9000',category:1,category_id:1,category_name:categories[0].name,barcode:`000${id}`,code:`01/${id}`,expired_batches:[]});
+catalogApi.getCategories=async()=>categories;
+catalogApi.getVariants=async(params={})=>{
+  qa.requests.push({...params});
+  if(params.barcodes)return[];
+  if(params.ids)return String(params.ids).split(',').map(id=>variant(Number(id)));
+  const page=Number(params.page||1);
+  const rows=Array.from({length:20},(_,i)=>variant((page-1)*20+i+1));
+  return params.page?{count:10004,results:rows}:rows;
+};
+inventoryApi.getStock=async()=>({count:1,results:[{...variant(1),product_variant:1,quantity:'269.000',last_cost_price:'9000'}]});
+inventoryApi.getMovements=async()=>({count:0,results:[]});
+inventoryApi.getDeficits=async()=>[];
+inventoryApi.getBatches=async()=>[{id:1,batch_code:'PARTIYA 001',quantity:'269',unit:'dona',expires_on:'2027-10-01'}];
+const b2b={id:1,receipt_number:'TEST-001',source_tenant_name:'Hamkor do‘kon',tenant_name:'Hamkor do‘kon',status:'b2b_pending',currency:'UZS',total_amount:'150000',created_at:'2026-10-19T08:00:00+05:00',items:[{id:1,product_name:variant(1).product_name,product_variant_name:'Standart',quantity:'10',b2b_accepted_quantity:'0',b2b_rejected_quantity:'0',unit:'dona',product_barcode:'',unit_price:'15000',total_price:'150000'}]};
+salesApi.getB2BInbox=async()=>({count:1,results:[b2b]});
+salesApi.getSales=async()=>({count:0,results:[]});
+salesApi.getSaleDetail=async()=>b2b;
+function Stress(){
+ const[open,setOpen]=useState(true),[value,setValue]=useState(''),[category,setCategory]=useState('');
+ return React.createElement(React.Fragment,null,
+  React.createElement('button',{onClick:()=>setOpen(true)},'Oynani ochish'),
+  React.createElement(Modal,{isOpen:open,onClose:()=>setOpen(false),title:'Tor konteynerdagi tovar va kategoriya',maxWidth:640},
+   React.createElement('form',{onSubmit:e=>{e.preventDefault();qa.submits++;},style:{display:'grid',gap:12}},
+    React.createElement('div',{id:'clipped-container',style:{height:140,overflow:'hidden',transform:'translateZ(0)',border:'1px solid var(--border-subtle)',padding:10}},
+     React.createElement('p',{style:{margin:'0 0 65px'}},'Ro‘yxat ichki oynaning chegarasida kesilmasligi kerak'),
+     React.createElement(RemoteVariantSelect,{id:'stress-variant',value,onChange:id=>{setValue(id);qa.selected=id;},fullWidth:true,placeholder:'Tovarni tanlang...'})),
+    React.createElement('div',{style:{height:320}},'Pastdagi kategoriya tanlagichi yuqoriga ochiladi'),
+    React.createElement(CustomSelect,{id:'stress-category',value:category,onChange:setCategory,fullWidth:true,searchable:true,options:categories.map(row=>({value:row.id,label:row.name})),placeholder:'Kategoriyani tanlang...'}),
+    React.createElement('button',{type:'submit',className:'btn btn-primary'},'Saqlash'))));
+}
+function Page(){const{activeTenant}=useTenant();if(!activeTenant)return null;const screen=params.get('screen');return React.createElement('main',{style:{padding:12,minWidth:0}},screen==='inventory'?React.createElement(Inventory):screen==='catalog'?React.createElement(Catalog):screen==='b2b'?React.createElement(B2BTransactions):React.createElement(Stress));}
+createRoot(document.getElementById('root')).render(
+ React.createElement(MemoryRouter,null,React.createElement(AuthContext.Provider,{value:{user,isAuthenticated:true,isOwner:true,isAdmin:false,role:'owner'}},
+  React.createElement(ThemeProvider,null,React.createElement(TenantProvider,null,React.createElement(ToastProvider,null,React.createElement(ConfirmProvider,null,React.createElement(Page))))))),
+);
+</script></body></html>

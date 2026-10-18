@@ -871,6 +871,7 @@ export default function B2BTransactions() {
         isOpen={Boolean(b2bAcceptSale)}
         onClose={() => !submittingB2BAccept && setB2BAcceptSale(null)}
         title="B2B tovarlarni do‘kon katalogiga joylash"
+        maxWidth={880}
       >
         <form onSubmit={handleConfirmAcceptB2B} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}>

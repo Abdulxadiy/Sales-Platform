@@ -422,7 +422,7 @@ function TenantServices() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
-              <div>
+              {!formData.auto_usd_rate && <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
                   Qo‘lda kiritilgan dollar kursi (so‘mda)
                 </label>
@@ -468,7 +468,7 @@ function TenantServices() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>}
 
               {/* Live Calculator Card */}
               <div

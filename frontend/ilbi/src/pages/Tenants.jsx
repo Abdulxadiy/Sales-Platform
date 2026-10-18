@@ -621,7 +621,7 @@ export default function Tenants() {
             />
           </div>
 
-          <div>
+          {!editingTenant?.auto_usd_rate && <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               Ichki Dollar Kursi (USD Rate, UZS)
             </label>
@@ -638,7 +638,7 @@ export default function Tenants() {
                 ? 'CBU avtomatik rejimi yoqilgan. Kurs manbasini do‘kon sozlamalarida o‘zgartiring.'
                 : 'Ushbu do‘kon uchun ichki hisob-kitob dollar kursi (masalan: 12800).'}
             </span>
-          </div>
+          </div>}
 
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>

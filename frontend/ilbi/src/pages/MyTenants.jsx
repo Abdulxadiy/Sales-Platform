@@ -734,23 +734,43 @@ export default function MyTenants() {
                       </span>
                     </div>
 
-                    <button className="btn btn-secondary" onClick={() => {
-                      setEditingProfileId(profile.id);
-                      setProfileForm(Object.fromEntries(['legal_form', 'official_name', 'tax_identifier', 'tax_regime', 'permitted_activity', 'fiscal_provider'].map((field) => [field, profile[field] || ''])));
-                    }}>Ma’lumotlarini tahrirlash</button>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ marginTop: 8 }}
+                      onClick={() => {
+                        setEditingProfileId(profile.id);
+                        setProfileForm(Object.fromEntries(['legal_form', 'official_name', 'tax_identifier', 'tax_regime', 'permitted_activity', 'fiscal_provider'].map((field) => [field, profile[field] || ''])));
+                      }}
+                    >
+                      Ma’lumotlarini tahrirlash
+                    </button>
                     {profile.review_reason && (
                       <div
                         style={{
                           fontSize: 12,
-                          color: 'var(--accent-rose)',
-                          marginTop: 6,
-                          background: 'rgba(var(--danger-rgb), 0.08)',
+                          color: isApproved
+                            ? 'var(--accent-emerald)'
+                            : isRejected
+                            ? 'var(--accent-rose)'
+                            : 'var(--accent-amber)',
+                          marginTop: 8,
+                          background: isApproved
+                            ? 'rgba(var(--success-rgb), 0.1)'
+                            : isRejected
+                            ? 'rgba(var(--danger-rgb), 0.08)'
+                            : 'rgba(var(--primary-rgb), 0.08)',
                           padding: '6px 10px',
                           borderRadius: 6,
-                          border: '1px solid rgba(var(--danger-rgb), 0.2)',
+                          border: `1px solid ${
+                            isApproved
+                              ? 'rgba(var(--success-rgb), 0.25)'
+                              : isRejected
+                              ? 'rgba(var(--danger-rgb), 0.25)'
+                              : 'rgba(var(--primary-rgb), 0.25)'
+                          }`,
                         }}
                       >
-                        Sabab: {profile.review_reason}
+                        {isRejected ? 'Rad etish sababi' : 'Izoh'}: {profile.review_reason}
                       </div>
                     )}
                   </div>

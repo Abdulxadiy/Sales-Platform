@@ -22,7 +22,7 @@ window.currencyQA = { requests: [], empty: false, holdNext: false, pending: [], 
   EUR: { rate: '14000.50', date: '2026-10-18', checked_at },
   RUB: { rate: '150.075', date: '2026-10-18', checked_at },
 }, stores: {
-  7: { ...receiptDefaults, ...tenant, manual_usd_rate: '12800.00', auto_usd_rate: false },
+  7: { ...receiptDefaults, ...tenant, manual_usd_rate: '12800.00', auto_usd_rate: new URLSearchParams(location.search).get('auto') === '1' },
   8: { ...receiptDefaults, ...otherTenant, manual_usd_rate: '14000.00', auto_usd_rate: false },
 }};
 const nativeFetch = window.fetch.bind(window);

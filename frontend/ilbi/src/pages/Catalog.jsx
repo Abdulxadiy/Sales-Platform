@@ -22,9 +22,12 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { catalogApi, resolveMediaUrl } from '../api/client';
+import { catalogApi, inventoryApi, resolveMediaUrl } from '../api/client';
+import { localStore } from '../utils/brandStorage.js';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+
+const supplierStorageKey = (tenantId) => `ilbi_saved_suppliers:${tenantId || 'pending'}`;
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import Pagination from '../components/common/Pagination';
@@ -380,6 +383,41 @@ export default function Catalog() {
   );
   const paginatedVariants = variants;
 
+  // Remembered suppliers for tenant
+  const [savedSuppliers, setSavedSuppliers] = useState(() => {
+    try {
+      const stored = localStore.getItem(supplierStorageKey(activeTenant?.id));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    let live = true;
+    const canView = isSuperUser || userPerms.has('inventory.view_supplier') || userPerms.has('view_supplier');
+    if (canView) {
+      inventoryApi.getSuppliers().then((apiList) => {
+        if (!live || !Array.isArray(apiList)) return;
+        setSavedSuppliers((prev) => {
+          const merged = [...prev];
+          for (const s of apiList) {
+            if (s && !merged.some((x) => x.toLowerCase() === s.toLowerCase())) {
+              merged.push(s);
+            }
+          }
+          try {
+            localStore.setItem(supplierStorageKey(activeTenant?.id), JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }).catch(() => {});
+    }
+    return () => { live = false; };
+  }, [activeTenant?.id, isSuperUser, userPerms]);
+
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -682,6 +720,20 @@ export default function Catalog() {
         }
 
         await catalogApi.createProduct(payload);
+      }
+
+      if (productForm.do_intake && productForm.intake_supplier?.trim()) {
+        const cleanSupp = productForm.intake_supplier.trim();
+        setSavedSuppliers((prev) => {
+          if (!prev.some((s) => s.toLowerCase() === cleanSupp.toLowerCase())) {
+            const updated = [cleanSupp, ...prev];
+            try {
+              localStore.setItem(supplierStorageKey(activeTenant?.id), JSON.stringify(updated));
+            } catch {}
+            return updated;
+          }
+          return prev;
+        });
       }
 
       if (productForm.do_intake) {
@@ -1441,7 +1493,7 @@ export default function Catalog() {
         isOpen={productModalOpen}
         onClose={() => setProductModalOpen(false)}
         title="Yangi Mahsulot Qo‘shish"
-        maxWidth={640}
+        maxWidth={800}
       >
         <form onSubmit={handleProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
@@ -1749,11 +1801,42 @@ export default function Catalog() {
                           </label>
                           <input
                             type="text"
+                            list="catalog-saved-suppliers-list"
                             placeholder="Masalan: Global Trade MCHJ yoki Baza"
                             value={productForm.intake_supplier}
                             onChange={(e) => setProductForm((prev) => ({ ...prev, intake_supplier: e.target.value }))}
                             className="input-field"
                           />
+                          <datalist id="catalog-saved-suppliers-list">
+                            {savedSuppliers.map((s, idx) => (
+                              <option key={idx} value={s} />
+                            ))}
+                          </datalist>
+                          {savedSuppliers.length > 0 && !productForm.intake_supplier && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4, alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Eslab qolingan:</span>
+                              {savedSuppliers.slice(0, 4).map((s, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setProductForm((prev) => ({ ...prev, intake_supplier: s }))}
+                                  style={{
+                                    padding: '1px 6px',
+                                    borderRadius: 4,
+                                    border: '1px solid var(--border-subtle)',
+                                    background: 'var(--bg-card)',
+                                    color: 'var(--primary)',
+                                    fontSize: 10.5,
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Ta’minotchi sifatida tanlash"
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         <div>
@@ -1940,6 +2023,7 @@ export default function Catalog() {
         isOpen={categoryModalOpen}
         onClose={() => setCategoryModalOpen(false)}
         title="Yangi Kategoriya Qo‘shish"
+        maxWidth={680}
       >
         <form onSubmit={handleCategorySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
@@ -2147,7 +2231,7 @@ export default function Catalog() {
           setEditingCategory(null);
         }}
         title="Kategoriyalarni Boshqarish"
-        maxWidth={700}
+        maxWidth={800}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {/* Subheading / Header Actions */}
@@ -2491,7 +2575,7 @@ export default function Catalog() {
           setEditProductImage(null);
         }}
         title={`Mahsulotni Tahrirlash: ${editProductForm.name || ''}`}
-        maxWidth={580}
+        maxWidth={800}
       >
         <form onSubmit={handleSaveEditProduct} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>

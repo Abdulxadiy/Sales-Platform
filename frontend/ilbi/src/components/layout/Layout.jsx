@@ -261,6 +261,8 @@ export default function Layout({ children }) {
           title: 'O‘zgarmas Audit Jurnali',
           subtitle: 'Barcha ma’muriy va moliyaviy amallar xavfsizlik nazorati',
         };
+      case '/history':
+        return { title: 'Amallar tarixi', subtitle: 'Sotuv, kirim, tahrir va barcha muhim harakatlar bir joyda' };
       case '/profile':
         return {
           title: 'Foydalanuvchi Profili',

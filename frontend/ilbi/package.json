@@ -14,6 +14,7 @@
     "test:labels": "node tests/productLabels.browser.mjs",
     "test:receipts": "node tests/receiptSettings.browser.mjs",
     "test:currency": "node tests/currencySettings.browser.mjs",
+    "test:history": "node tests/history.browser.mjs",
     "test:catalog-fiscal": "node tests/catalogFiscal.browser.mjs",
     "test:theme": "node tests/theme.browser.mjs",
     "build:theme-preview": "node tests/buildThemePreview.mjs",

@@ -54,6 +54,7 @@ class ProductListCreateView(CatalogAPIView):
     mandatory first ProductVariant in one call."""
 
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+    history_model = Product
     permission_classes = [HasEmployeePermission]
     permission_map = {"GET": "catalog.view_product", "POST": "catalog.add_product"}
 
@@ -169,6 +170,7 @@ class ProductDetailView(CatalogAPIView):
     PATCH /api/v1/catalog/products/{pk}/ -- edits the Product's own
     fields only (name/category/image), never its variants."""
 
+    history_model = Product
     permission_classes = [HasEmployeePermission]
     permission_map = {
         "GET": "catalog.view_product",
@@ -240,6 +242,7 @@ class ProductArchiveView(CatalogAPIView):
     """POST /api/v1/catalog/products/{pk}/archive/ -- cascades to every
     variant of this product (see ProductService.archive())."""
 
+    history_model = Product
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_product"
 
@@ -254,6 +257,7 @@ class ProductUnarchiveView(CatalogAPIView):
     """POST /api/v1/catalog/products/{pk}/unarchive/ -- restores product
     and all its variants (see ProductService.unarchive())."""
 
+    history_model = Product
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_product"
 
@@ -270,6 +274,7 @@ class ProductVariantCreateView(CatalogAPIView):
     Gated on "change_product", per the consolidated permission model --
     a variant has no permission of its own (9-bosqich)."""
 
+    history_model = ProductVariant
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.change_product"
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -295,6 +300,7 @@ class ProductVariantDetailView(CatalogAPIView):
     own fields (price, code, barcode, unit, image, name). Also gated on
     "change_product" for the same reason as above."""
 
+    history_model = ProductVariant
     permission_classes = [HasEmployeePermission]
     permission_map = {
         "PATCH": "catalog.change_product",
@@ -365,6 +371,7 @@ class ProductVariantArchiveView(CatalogAPIView):
     low-risk consequence of variants being independently sellable
     units."""
 
+    history_model = ProductVariant
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_product"
 
@@ -380,6 +387,7 @@ class ProductVariantUnarchiveView(CatalogAPIView):
     """POST /api/v1/catalog/variants/{pk}/unarchive/ -- restores ONE
     variant and ensures its parent Product is active."""
 
+    history_model = ProductVariant
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_product"
 
@@ -392,6 +400,7 @@ class ProductVariantUnarchiveView(CatalogAPIView):
 
 class ProductImageUploadView(CatalogAPIView):
     """POST /api/v1/catalog/products/{pk}/images/ -- uploads an image (up to 3 max)."""
+    history_model = Product
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.change_product"
     parser_classes = [MultiPartParser, FormParser]
@@ -425,6 +434,7 @@ class ProductImageUploadView(CatalogAPIView):
 
 class ProductImageDeleteView(CatalogAPIView):
     """DELETE /api/v1/catalog/products/{pk}/images/{image_id}/ -- deletes a gallery image."""
+    history_model = Product
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.change_product"
 

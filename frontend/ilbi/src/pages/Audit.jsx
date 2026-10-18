@@ -42,6 +42,11 @@ export default function Audit() {
   }, [loadLogs]);
 
   const actionLabels = {
+    catalog_create: 'Katalogga qo‘shildi',
+    catalog_update: 'Katalog tahrirlandi',
+    catalog_archive: 'Katalog arxivlandi',
+    catalog_restore: 'Katalog tiklandi',
+    catalog_delete: 'Katalogdan o‘chirildi',
     account_identity_update: 'Login va Telegram yangilandi',
     support_telegram_settings: 'Yordam bildirishnomalari sozlandi',
     catalog_import: 'Katalog fayldan yuklandi',

@@ -783,6 +783,10 @@ export const cashboxApi = {
 };
 
 export const auditApi = {
+  getHistory: (params = {}, options = {}) => request(`/audit/history/?${queryString(params)}`, options),
+  getHistoryDetail: (source, id, params = {}, options = {}) => request(
+    `/audit/history/${encodeURIComponent(source)}/${id}/?${queryString(params)}`, options,
+  ),
   getLogs: (params = {}) => {
     const query = new URLSearchParams();
     if (params.page) query.append('page', params.page);

@@ -1,79 +1,45 @@
-# Inventra Platformasi — Xizmatdan Foydalanish Qoidalari va Xavfsizlik Talablari
+# ILBI — foydalanish qoidalari
 
-*(Acceptable Use Policy & Platform Rules)*
+Yangilangan: **2026-10-15**. Bu qoidalar hisob egalari, xodimlar, administratorlar va yordam markazidagi mehmonlarga taalluqli.
 
-Oxirgi yangilangan sana: 2026-yil 1-oktyabr
+## 1. Shaxsiy hisob
 
----
+Har bir xodim o‘z hisobidan foydalansin. Parol, Telegram OTP va sessiya tokenlarini boshqalarga bermang. Umumiy qurilmadan ketayotganda hisobdan chiqing. Parolni login oynasidagi tiklash jarayoni orqali yangilang.
 
-Ushbu qoidalar to'plami **"Inventra"** savdo platformasining barcha foydalanuvchilari (Platforma Administratorlari, Do'kon Egalari, Xodimlar hamda tizimga tashrif buyuruvchilar) uchun qat'iy majburiy bo'lgan xulq-atvor, xavfsizlik va axloqiy talablarni belgilaydi.
+Boshqa odamning hisobiga yoki boshqa do‘kon ma’lumotlariga ruxsatsiz kirish, vakolatlarni chetlab o‘tish, xabarlarni spam bilan to‘ldirish va xizmatni izdan chiqarish taqiqlanadi. Aniqlangan muammoni operatorga yuboring.
 
-Platformadan foydalanish mazkur qoidalarga so'zsiz rioya qilish majburiyatini yuklaydi.
+## 2. Savdo va ma’lumot aniqligi
 
----
+- Tovar, narx, partiya, qaytarish va to‘lov ma’lumotlarini haqiqiy operatsiyaga mos kiriting.
+- Chek bo‘yicha qaytarish, cheksiz ombor qaytarishi va qarz to‘lovini tuzatish turli amallar. Birini boshqasi o‘rniga ishlatmang.
+- Haqiqiy qarz to‘lovi faqat tegishli vakolatli hisobdan kiritiladi; tuzatishga egasi javobgar.
+- Ichki yoki demo hujjatni fiskal chek deb taqdim etmang. Hozir production chakana POS fiskal integratsiya sabab yopilgan. UZS savdosi va USD kalkulyatorini farqlang.
+- Boshqa shaxsning rasmi, rekviziti yoki mijoz ma’lumotini asossiz yuklamang.
 
-## 1. Akkaunt Xavfsizligi va Parol Gigiyenasi
+## 3. Kirish cheklovlari
 
-1.1. **Shaxsiy Mas'uliyat:** Har bir foydalanuvchi o'z login ma'lumotlari (`username`, `parol`) hamda Telegram boti orqali yuboriladigan bir martalik 2FA tasdiqlash kodlarining maxfiyligi va daxlsizligi uchun shaxsan javobgardir.  
-1.2. **Parol talablari:** Parol kamida 8 ta belgidan iborat bo'lishi, katta va kichik harflar, raqamlar hamda maxsus belgilarni o'z ichiga olishi tavsiya etiladi. Oson taxmin qilinadigan parollardan (masalan, `12345678`, `admin123`) foydalanish taqiqlanadi.  
-1.3. **Akkauntni topshirish taqiqi:** O'z profilingizni, parolingizni yoki sessiya tokeningizni boshqa shaxsga (hatto bir xonada ishlaydigan hamkasbingizga ham) berish qat'iyan man etiladi. Do'konning har bir xodimi o'zining shaxsiy telefoni va akkaunti orqali tizimga kirishi shart.  
-1.4. **Sessiyani yakunlash (Logout):** Umumiy foydalanishdagi yoki do'kon kassasidagi kompyuterlardan uzoqlashganda har doim tizimdan chiqish (Logout) tugmasini bosing yoki qurilma ekranini qulflang.
+Kirishdagi ketma-ket xatolar bosqichma-bosqich cheklanadi: 5 xatodan so‘ng 60 soniya; keyingi bosqichda 3 xatodan so‘ng 1 soat; undan keyin 1 xatodan so‘ng 1 kun. Uchta kunlik blok sikli muvaffaqiyatli kirishsiz takrorlansa hisob bloklanadi. Muvaffaqiyatli kirish hisoblagichlarni tozalaydi.
 
----
+Bloklangan hisobni ochish uchun operatorga murojaat qiling. Shaxs va vakolat tekshiriladi. Yordam markazini ochish uchun tizimga kirish shart emas.
 
-## 2. Taqiqlangan Harakatlar (Acceptable Use Policy)
+## 4. Yordam chati
 
-Platformaning normal ishlashini buzish, xavfsizligiga tahdid solish yoki boshqa foydalanuvchilarga zarar yetkazish qat'iyan man etiladi. Xususan:
+Murojaatni aniq mavzu bilan, zarur kontekst va kichik skrinshot bilan yuboring. Parol, OTP va bank karta ma’lumotlarini chatga yozmang. Operatorlar bu ma’lumotlarni so‘ramasligi kerak.
 
-### 2.1. Texnik va Kiberxavfsizlikka Oid Taqiqlar:
-* Tizimga ruxsatsiz kirishga (xakerlik, ekspluatatsiya, zaifliklarni qidirish) urinish;
-* Parollarni avtomatik tanlash (brute-force) yoki parollarni lug'at orqali taxmin qilish;
-* Tizim infratuzilmasiga haddan tashqari yuklama beruvchi DoS/DDoS hujumlarini uyushtirish;
-* Tizimdan avtomatlashtirilgan botlar, skriptlar, veb-skreping (scraping) yoki kraulerdan foydalangan holda ruxsatsiz ma'lumotlarni o'g'irlash;
-* API interfeyslariga tasdiqlanmagan yoki soxtalashtirilgan so'rovlarni (masalan, boshqa tenantlarning ID raqamlarini almashtirib ko'rishga urinish) yuborish.
+Rasm: PNG/JPEG/WebP, 2 MB gacha. Xabar matni 4 000 belgigacha; bir foydalanuvchida ko‘pi bilan 5 ta ochiq murojaat. So‘rovlar va yozishlar tezligiga cheklov bor; limitdan oshganda kutib qayta uriniladi.
 
-### 2.2. Biznes va Qonunchilikka Oid Taqiqlar:
-* O'zbekiston Respublikasi qonunchiligida taqiqlangan yoki aylanmasi cheklangan tovarlar (giyohvandlik vositalari, psixotrop moddalar, noqonuniy qurol-yarog', portlovchi moddalar, qalbaki kontrafakt mahsulotlar) hisobini yuritish va sotish;
-* Moliyaviy firibgarlik, qalbaki yoki soxta kassa cheklari orqali xaridorlarni yoki soliq organlarini chalg'itish;
-* Tizimdagi xodimlarning savdo ko'rsatkichlarini noqonuniy soxtalashtirish;
-* Boshqa korxonalarning tovar belgilari va intellektual mulk huquqlarini buzuvchi fotosuratlar va nomlardan ruxsatsiz foydalanish.
+Mehmon suhbatiga shu brauzerda saqlangan maxfiy kalit orqali kiriladi. Brauzer ma’lumotlarini o‘chirish kirishni yo‘qotadi. Mehmon ismi hisob egasini tasdiqlamaydi. Javob operator mavjudligiga bog‘liq; ish vaqti va kafolatlangan javob muddati e’lon qilinmagan.
 
----
+Yordam tillari: o‘zbek, rus va ingliz. AI bu versiyada ulanmagan. Inson operator javoblari shu chatda ko‘rsatiladi.
 
-## 3. Avtomatik Himoya va Bloklash (Ban Qoidalari)
+## 5. Tarix va nazorat
 
-Inventra platformasi ilg'or avtomatlashtirilgan xavfsizlik filtrlari bilan jihozlangan:
+Moliyaviy amallar va tegishli boshqaruv harakatlari tarix bilan yuritiladi. Savdo yoki to‘lov xatosini yashirish uchun tarixni o‘chirishga urinmang. Muammo bo‘lsa egasi yoki operatorga xabar bering.
 
-1. **Kirish cheklovi (Rate Limiting):**
-   * Qisqa vaqt ichida ketma-ket 5 marta noto'g'ri parol yoki OTP kiritilganda kirish 60 soniyaga muzlatiladi;
-   * Xato urinishlar davom etsa, cheklov 1 soatga va keyin 24 soatga oshiriladi (strike);
-   * 3 ta strike qayd etilganda — tizim foydalanuvchi akkauntini butunlay bloklaydi (`is_active = False`).
-2. **Blokdan chiqarish (Unban):**
-   * Bloklangan foydalanuvchi faqat shaxsi to'liq tekshirilgandan so'ng Platform Administratori tomonidan ochilishi mumkin (`POST /api/v1/auth/unban/`).
-
----
-
-## 4. Audit Jurnali va Qilmishlar Isboti
-
-4.1. Platformada amalga oshirilgan har bir muhim amal (savdo chekini urish, chekni bekor qilish, mahsulot tannarxi yoki narxini o'zgartirish, ombor qoldig'ini tuzatish, do'kon parametrlarini yangilash) o'zgarmas **Audit Jurnali**da qayd etiladi.  
-4.2. Audit jurnalida amalni bajargan shaxs, uning IP-manzili, aniq vaqti va kiritilgan o'zgarishlar saqlanadi.  
-4.3. Qonunbuzarlik, ichki o'g'irlik yoki firibgarlik holatlari aniqlanganda, Audit jurnali ma'lumotlari do'kon rahbariyati hamda tergov organlariga qonuniy dalil sifatida taqdim etiladi.
-
----
-
-## 5. Qoidalarni Buzganlik Uchun Javobgarlik
-
-Mazkur Foydalanish qoidalariga rioya qilmaslik quyidagi oqibatlarga olib kelishi mumkin:
-* Foydalanuvchiga ogohlantirish berish;
-* Foydalanuvchi akkauntini vaqtincha yoki butunlay bloklash;
-* Qoidabuzar do'konning (tenantning) xizmatlarini bir tomonlama to'xtatish;
-* Yetkazilgan moddiy zararni sud tartibida undirish;
-* Qilmishda jinoiy alomatlar mavjud bo'lganda, ma'lumotlarni huquqni muhofaza qiluvchi organlarga topshirish.
-
----
+Hisobni bloklash, do‘kon faolligini o‘zgartirish va xodim a’zoligini yakunlash alohida amallardir; ularning ta’siri tegishli vakolat bilan boshqariladi.
 
 ## 6. Aloqa
 
-Qoidalar yuzasidan savollar yoki aniqlangan zaifliklar (bug bounty) haqida xabar berish uchun:
-* **Email:** `security@inventra.uz`
-* **Telegram:** `@inventraa_bot`
+**Telefon:** +998 77 021 21 49. **Telegram operator:** @abdulxadiy_0. **Login boti:** @ilbi_bot.
+
+Yozishmalar qanday saqlanishi [maxfiylik siyosati](maxfiylik_siyosati.md)da tushuntirilgan.

@@ -38,12 +38,14 @@ def client_for(user):
 
 def movement(tenant, actor, **kwargs):
     variant = ProductVariantFactory(tenant=tenant, product__tenant=tenant, product__category__tenant=tenant)
+    kind = kwargs.pop("type", "kirim")
+    direction = kwargs.pop("direction", "in")
     return StockMovement.objects.create(
         tenant=tenant,
         created_by=actor,
         product_variant=variant,
-        type="kirim",
-        direction="in",
+        type=kind,
+        direction=direction,
         quantity="5",
         cost_price="1000",
         **kwargs,
@@ -80,7 +82,7 @@ def test_history_unifies_existing_business_data_in_reverse_order(tenant, owner):
 
 def test_sale_stock_lines_and_stock_adjustment_audit_do_not_duplicate_events(tenant, owner):
     sale = SaleFactory(tenant=tenant, sold_by=owner)
-    movement(tenant, owner, sale=sale)
+    movement(tenant, owner, sale=sale, type="sotuv", direction="out")
     stock = movement(tenant, owner)
     AuditService.log(
         action=AuditAction.STOCK_ADJUSTMENT,
@@ -120,9 +122,16 @@ def test_tenant_isolation_applies_to_list_and_every_detail(tenant, owner):
 def test_admin_can_filter_tenant_and_open_receipt(tenant, owner, platform_admin):
     sale = SaleFactory(tenant=tenant, sold_by=owner, receipt_number="HISTORY-001", total_amount="12000")
     variant = ProductVariantFactory(tenant=tenant, product__tenant=tenant, product__category__tenant=tenant)
-    SaleItemFactory(sale=sale, product_variant=variant, product_snapshot={
-        "version": 1, "product_name": "Tarix tovari", "product_variant_name": "Standart", "unit": "dona",
-    })
+    SaleItemFactory(
+        sale=sale,
+        product_variant=variant,
+        product_snapshot={
+            "version": 1,
+            "product_name": "Tarix tovari",
+            "product_variant_name": "Standart",
+            "unit": "dona",
+        },
+    )
     foreign_sale = SaleFactory()
     client = client_for(platform_admin)
     response = client.get(URL, {"tenant_id": tenant.pk, "category": "sales"})
@@ -143,6 +152,46 @@ def test_stock_detail_shows_actual_intake_quantity_and_cost(tenant, owner):
     fields = {row["label"]: row["value"] for row in response.data["details"]["fields"]}
     assert Decimal(fields["Jami tannarx"]) == Decimal("5000")
     assert response.data["details"]["note"] == "Faktura #123"
+
+
+def test_audit_references_never_expose_another_tenants_receipt(tenant, owner):
+    sale = SaleFactory(receipt_number="FOREIGN_PRIVATE_RECEIPT")
+    audit = AuditService.log(
+        action=AuditAction.B2B_RETURN_PENDING,
+        tenant=tenant,
+        actor=owner,
+        target_model="Sale",
+        target_id=str(sale.pk),
+        description="Local receiving event",
+    )
+    detail = client_for(owner).get(f"{URL}audit/{audit.pk}/")
+    assert detail.status_code == 200
+    assert detail.data["sale"] is None
+    assert detail.data["event"]["sale_id"] is None
+    assert "FOREIGN_PRIVATE_RECEIPT" not in str(detail.data)
+
+
+def test_receiving_intake_linked_to_a_foreign_sale_remains_visible(tenant, owner):
+    foreign_sale = SaleFactory(receipt_number="PRIVATE_SENDER_RECEIPT")
+    stock = movement(tenant, owner, sale=foreign_sale)
+    client = client_for(owner)
+    rows = client.get(URL, {"category": "inventory"}).data["results"]
+    assert [row["id"] for row in rows] == [f"stock:{stock.pk}"]
+    detail = client.get(f"{URL}stock/{stock.pk}/")
+    assert detail.status_code == 200
+    assert detail.data["sale"] is None
+    assert "PRIVATE_SENDER_RECEIPT" not in str(detail.data)
+
+
+def test_item_void_audit_opens_the_same_local_receipt(tenant, owner):
+    sale = SaleFactory(tenant=tenant, sold_by=owner)
+    item = SaleItemFactory(sale=sale)
+    audit = AuditService.log(
+        action=AuditAction.VOID_SALE, tenant=tenant, actor=owner, target_model="SaleItem", target_id=str(item.pk)
+    )
+    detail = client_for(owner).get(f"{URL}audit/{audit.pk}/")
+    assert detail.status_code == 200
+    assert detail.data["sale"]["id"] == sale.pk
 
 
 def test_staff_and_unauthenticated_cannot_read_private_business_history(tenant):

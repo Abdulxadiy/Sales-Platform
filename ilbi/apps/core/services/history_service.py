@@ -1,6 +1,6 @@
 """A paginated timeline of existing business records and immutable edits."""
 
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from django.db.models import CharField, F, Q, Value
@@ -17,12 +17,16 @@ CATALOG = Q(target_model__in=["Product", "ProductVariant", "Category", "ProductI
 SALES = Q(target_model__in=["Sale", "SaleItem"]) | Q(action__startswith="b2b_")
 INVENTORY = Q(target_model__in=["StockMovement", "Stock", "TenantTransfer"]) | Q(action__startswith="tenant_transfer_")
 TEAM = Q(action__startswith="employee_") | Q(action=AuditAction.OWNER_TRANSFER)
+FINANCE = Q(action=AuditAction.CASH_DISCREPANCY) | Q(
+    target_model__in=["CashShift", "DailyCashReport", "CashIncome", "CashExpense", "DebtPayment"],
+)
 AUDIT_GROUPS = {
     "catalog": CATALOG,
     "sales": SALES,
     "inventory": INVENTORY,
     "team": TEAM,
-    "settings": ~(CATALOG | SALES | INVENTORY | TEAM),
+    "finance": FINANCE,
+    "settings": ~(CATALOG | SALES | INVENTORY | TEAM | FINANCE),
 }
 
 ACTION_LABELS = {
@@ -75,13 +79,18 @@ def history_sources(tenant_id=None, filters=None):
             "created_at",
             "sold_by",
             "sales",
-            ["receipt_number", "counterparty__name", "items__product_snapshot__product_name",
-             "items__product_variant__product__name"],
+            [
+                "receipt_number",
+                "counterparty__name",
+                "items__product_snapshot__product_name",
+                "items__product_variant__product__name",
+            ],
         ),
         "stock": (
-            StockMovement.objects.filter(sale__isnull=True).select_related(
-                "tenant", "created_by", "product_variant__product__category"
-            ),
+            StockMovement.objects.exclude(
+                sale__isnull=False,
+                type__in=[StockMovement.TYPE_SOTUV, StockMovement.TYPE_SALE_RESTORE, StockMovement.TYPE_MIJOZ_QAYTARDI],
+            ).select_related("tenant", "created_by", "product_variant__product__category"),
             "created_at",
             "created_by",
             "inventory",
@@ -155,8 +164,8 @@ def history_sources(tenant_id=None, filters=None):
         if filters.get("date_from"):
             qs = qs.filter(**{f"{when}__gte": datetime.combine(filters["date_from"], time.min, TASHKENT)})
         if filters.get("date_to"):
-            end = datetime.combine(filters["date_to"] + timedelta(days=1), time.min, TASHKENT)
-            qs = qs.filter(**{f"{when}__lt": end})
+            end = datetime.combine(filters["date_to"], time.max, TASHKENT)
+            qs = qs.filter(**{f"{when}__lte": end})
         result[source] = (qs, when, actor, category)
     return result
 
@@ -188,6 +197,14 @@ def _audit_category(obj):
         return "inventory"
     if obj.action.startswith("employee_") or obj.action == AuditAction.OWNER_TRANSFER:
         return "team"
+    if obj.action == AuditAction.CASH_DISCREPANCY or obj.target_model in (
+        "CashShift",
+        "DailyCashReport",
+        "CashIncome",
+        "CashExpense",
+        "DebtPayment",
+    ):
+        return "finance"
     return "settings"
 
 
@@ -302,9 +319,18 @@ def history_details(source, obj):
         changes = {key: value for key, value in changes.items() if key != "snapshot"}
         field(
             "Obyekt",
-            {"Product": "Tovar", "ProductVariant": "Variant", "Category": "Kategoriya"}.get(
-                obj.target_model, obj.target_model
-            ),
+            {
+                "Product": "Tovar",
+                "ProductVariant": "Variant",
+                "Category": "Kategoriya",
+                "Tenant": "Do‘kon",
+                "Employee": "Xodim",
+                "Sale": "Sotuv",
+                "SaleItem": "Sotuv qatori",
+                "SellerProfile": "Sotuvchi profili",
+                "TenantTransfer": "Tovar transferi",
+                "CashShift": "Kassa smenasi",
+            }.get(obj.target_model, obj.target_model),
         )
     elif source in ("debt", "income", "expense"):
         field("Summa", f"{obj.amount} {obj.currency}")

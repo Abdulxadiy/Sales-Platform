@@ -6,13 +6,13 @@ from rest_framework import serializers
 from rest_framework.response import Response
 
 from api.permissions import HasEmployeePermission
-from api.serializers import SensitiveCostSerializerMixin
+from api.serializers import SensitiveCostSerializerMixin, SensitiveSupplierSerializerMixin
 from apps.inventory.models import StockBatch
 
 from ._base import InventoryAPIView
 
 
-class StockBatchOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
+class StockBatchOutputSerializer(SensitiveCostSerializerMixin, SensitiveSupplierSerializerMixin, serializers.ModelSerializer):
     product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
     variant_name = serializers.CharField(source="product_variant.name", read_only=True)
     unit = serializers.CharField(source="product_variant.unit", read_only=True)
@@ -33,6 +33,7 @@ class StockBatchOutputSerializer(SensitiveCostSerializerMixin, serializers.Model
             "received_on",
             "quantity",
             "cost_price",
+            "supplier",
             "expiry_status",
         ]
         read_only_fields = fields
@@ -78,13 +79,52 @@ class StockBatchListView(InventoryAPIView):
             batches = batches.filter(expires_on__gt=today + timedelta(days=30))
         if params.get("search"):
             from django.db.models import Q
+            from apps.accounts.services.permission_service import PermissionService
 
-            batches = batches.filter(
-                Q(batch_code__icontains=params["search"])
-                | Q(product_variant__product__name__icontains=params["search"])
+            search_term = params["search"].strip()
+            search_q = (
+                Q(batch_code__icontains=search_term)
+                | Q(product_variant__product__name__icontains=search_term)
             )
+            if PermissionService.has_permission(
+                request.user, "inventory.view_supplier", tenant=self.tenant, employee=self.employee
+            ):
+                search_q |= Q(supplier__icontains=search_term)
+
+            batches = batches.filter(search_q)
         return Response(
             StockBatchOutputSerializer(
                 batches.order_by("expires_on", "pk"), many=True, context={"request": request}
             ).data
         )
+
+
+class StockSupplierListView(InventoryAPIView):
+    permission_classes = [HasEmployeePermission]
+    required_permission = "inventory.view_supplier"
+
+    @extend_schema(responses={200: serializers.ListSerializer(child=serializers.CharField())})
+    def get(self, request):
+        from apps.inventory.models import StockMovement
+
+        batch_suppliers = list(
+            StockBatch.objects.filter(tenant=self.tenant)
+            .exclude(supplier="")
+            .values_list("supplier", flat=True)
+            .distinct()
+        )
+        movement_suppliers = list(
+            StockMovement.objects.filter(tenant=self.tenant)
+            .exclude(supplier="")
+            .values_list("supplier", flat=True)
+            .distinct()
+        )
+        seen = set()
+        unique_suppliers = []
+        for s in batch_suppliers + movement_suppliers:
+            clean = (s or "").strip()
+            if clean and clean.lower() not in seen:
+                seen.add(clean.lower())
+                unique_suppliers.append(clean)
+        unique_suppliers.sort(key=str.lower)
+        return Response(unique_suppliers)

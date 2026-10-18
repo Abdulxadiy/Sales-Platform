@@ -2,12 +2,12 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from api.serializers import SensitiveCostSerializerMixin
+from api.serializers import SensitiveCostSerializerMixin, SensitiveSupplierSerializerMixin
 from apps.catalog.models import ProductVariant
 from apps.inventory.models import Stock, StockMovement, TenantTransfer, TenantTransferItem
 
 
-class StockOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
+class StockOutputSerializer(SensitiveCostSerializerMixin, SensitiveSupplierSerializerMixin, serializers.ModelSerializer):
     product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
     variant_name = serializers.CharField(source="product_variant.name", read_only=True)
     sku = serializers.CharField(source="product_variant.sku", read_only=True)
@@ -17,17 +17,26 @@ class StockOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSeria
     category_name = serializers.CharField(source="product_variant.product.category.name", read_only=True)
     unit = serializers.CharField(source="product_variant.unit", read_only=True)
     currency = serializers.CharField(source="product_variant.currency", read_only=True)
+    supplier = serializers.SerializerMethodField()
+
     class Meta:
         model = Stock
         fields = [
             "id", "product_variant", "quantity", "last_cost_price",
             "product_name", "variant_name", "sku", "code", "barcode",
-            "category_id", "category_name", "unit", "currency",
+            "category_id", "category_name", "unit", "currency", "supplier",
         ]
         read_only_fields = fields
 
+    def get_supplier(self, obj):
+        batch = obj.product_variant.stock_batches.filter(quantity__gt=0).exclude(supplier="").order_by("-received_on", "-pk").first()
+        if batch and batch.supplier:
+            return batch.supplier
+        mov = obj.product_variant.stock_movements.filter(direction="in").exclude(supplier="").order_by("-created_at", "-pk").first()
+        return mov.supplier if mov else None
 
-class StockMovementOutputSerializer(SensitiveCostSerializerMixin, serializers.ModelSerializer):
+
+class StockMovementOutputSerializer(SensitiveCostSerializerMixin, SensitiveSupplierSerializerMixin, serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     product_name = serializers.CharField(source="product_variant.product.name", read_only=True)
     variant_name = serializers.CharField(source="product_variant.name", read_only=True)
@@ -39,7 +48,7 @@ class StockMovementOutputSerializer(SensitiveCostSerializerMixin, serializers.Mo
         fields = [
             "id",
             "product_variant", "product_name", "variant_name", "code", "unit", "currency",
-            "type", "direction", "quantity", "cost_price", "note", "created_by", "created_by_name", "created_at",
+            "type", "direction", "quantity", "cost_price", "note", "supplier", "created_by", "created_by_name", "created_at",
         ]
         read_only_fields = fields
 
@@ -70,6 +79,7 @@ class IntakeCreateSerializer(_BaseMovementInputSerializer):
     expires_on = serializers.DateField(required=False, allow_null=True)
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     cost_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
+    supplier = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
@@ -81,6 +91,7 @@ class BatchIntakeItemInputSerializer(serializers.Serializer):
     )
     quantity = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0.001"))
     cost_price = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0"))
+    supplier = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_product_variant_id(self, value):

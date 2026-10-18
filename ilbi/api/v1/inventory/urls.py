@@ -1,6 +1,6 @@
 from django.urls import path
 from api.v1.exports import StockExportView
-from .views.batch_views import StockBatchListView
+from .views.batch_views import StockBatchListView, StockSupplierListView
 
 from .views.movement_views import (
     CustomerReturnCreateView,
@@ -22,6 +22,7 @@ from .views.transfer_views import (
 urlpatterns = [
     path("stock/export/", StockExportView.as_view(), name="stock-export"),
     path("batches/", StockBatchListView.as_view(), name="stock-batches"),
+    path("suppliers/", StockSupplierListView.as_view(), name="stock-suppliers"),
     path("stock/", StockListView.as_view(), name="stock-list"),
     path("stock/<int:product_variant_id>/", StockDetailView.as_view(), name="stock-detail"),
     path("deficits/", DeficitStockListView.as_view(), name="deficit-stock-list"),

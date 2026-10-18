@@ -99,7 +99,7 @@ function HistoryDetail({ event, data, loading, error, onRetry }) {
         </div>
       </div>
       <div className="history-receipt"><ReceiptSlip id="history-receipt" sales={[data.sale]} paperWidth={paperWidth} /></div>
-      <InvoiceA4Modal isOpen={invoice} onClose={() => setInvoice(false)} sale={data.sale} />
+      <InvoiceA4Modal isOpen={invoice} onClose={() => setInvoice(false)} sale={data.sale} tenantName={event.tenant_name} />
     </> : <>
       {event.subtitle && <div className="history-detail-object"><span className={`history-event-icon tone-${categoryFor(event.category).tone}`}><Package size={21} /></span><div><small>{categoryFor(event.category).label}</small><h3>{event.subtitle}</h3></div></div>}
       {(details.fields || []).length > 0 && <dl className="history-fields">{details.fields.map(field => <div key={field.label}><dt>{field.label}</dt><dd>{field.value}</dd></div>)}</dl>}

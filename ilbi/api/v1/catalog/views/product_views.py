@@ -145,6 +145,7 @@ class ProductListCreateView(CatalogAPIView):
                         note=combined_note,
                         batch_code=batch_code,
                         expires_on=expires_on,
+                        supplier=supplier,
                     )
         except (ProductServiceError, StockServiceError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)

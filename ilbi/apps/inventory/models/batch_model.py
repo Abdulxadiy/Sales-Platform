@@ -15,6 +15,7 @@ class StockBatch(BaseModel):
     received_on = models.DateField(default=timezone.localdate)
     quantity = models.DecimalField(max_digits=14, decimal_places=3, default=Decimal("0"))
     cost_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    supplier = models.CharField(max_length=255, blank=True, db_index=True)
 
     class Meta:
         ordering = ["expires_on", "received_on", "pk"]

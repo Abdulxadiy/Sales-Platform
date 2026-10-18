@@ -54,6 +54,7 @@ class StockService:
         note: str = "",
         sale=None,
         batch_code="", expires_on=None, batch_id=None, batch_manifest=None, return_offset=None,
+        supplier: str = "",
     ) -> StockMovement:
         if product_variant.tenant_id != tenant.id:
             raise StockServiceError("product_variant must belong to the same tenant.")
@@ -79,6 +80,7 @@ class StockService:
             stock.last_cost_price = cost_price
         stock.save(update_fields=["quantity", "last_cost_price", "updated_at"])
 
+        clean_supplier = (supplier or "").strip()
         movement = StockMovement.objects.create(
             tenant=tenant,
             product_variant=product_variant,
@@ -89,10 +91,18 @@ class StockService:
             note=note,
             sale=sale,
             created_by=created_by,
+            supplier=clean_supplier,
         )
 
-        BatchService.record(movement, batch_code=batch_code, expires_on=expires_on, batch_id=batch_id,
-                            manifest=batch_manifest, return_offset=return_offset)
+        BatchService.record(
+            movement,
+            batch_code=batch_code,
+            expires_on=expires_on,
+            batch_id=batch_id,
+            manifest=batch_manifest,
+            return_offset=return_offset,
+            supplier=clean_supplier,
+        )
         return movement
 
     # -- Public, explicit-verb API -- one method per real-world action,
@@ -100,17 +110,40 @@ class StockService:
     # "record_movement(type=...)" entry point. --
 
     @classmethod
-    def intake(cls, *, tenant, product_variant, quantity, cost_price, created_by, note="", sale=None, batch_code="", expires_on=None, batch_manifest=None) -> StockMovement:
+    def intake(
+        cls,
+        *,
+        tenant,
+        product_variant,
+        quantity,
+        cost_price,
+        created_by,
+        note="",
+        sale=None,
+        batch_code="",
+        expires_on=None,
+        batch_manifest=None,
+        supplier="",
+    ) -> StockMovement:
         """A purchase/restock -- the only movement type that carries a
         cost_price, and the only one gated by `add_stock_intake` rather
         than `adjust_stock` (see api/v1/inventory/views)."""
         if cost_price is None:
             raise StockServiceError("cost_price is required for an intake.")
         return cls.apply_movement(
-            tenant=tenant, product_variant=product_variant, type=StockMovement.TYPE_KIRIM,
-            quantity=quantity, direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_KIRIM],
-            created_by=created_by, cost_price=cost_price, note=note, sale=sale,
-            batch_code=batch_code, expires_on=expires_on, batch_manifest=batch_manifest,
+            tenant=tenant,
+            product_variant=product_variant,
+            type=StockMovement.TYPE_KIRIM,
+            quantity=quantity,
+            direction=_FIXED_DIRECTION_BY_TYPE[StockMovement.TYPE_KIRIM],
+            created_by=created_by,
+            cost_price=cost_price,
+            note=note,
+            sale=sale,
+            batch_code=batch_code,
+            expires_on=expires_on,
+            batch_manifest=batch_manifest,
+            supplier=supplier,
         )
 
     @classmethod
@@ -138,9 +171,10 @@ class StockService:
         if len(items) > 100:
             raise StockServiceError("Bitta partiyada ko'pi bilan 100 ta tovar bo'lishi mumkin.")
 
+        clean_supplier = (supplier or "").strip()
         header_parts = []
-        if supplier and supplier.strip():
-            header_parts.append(f"Ta’minotchi: {supplier.strip()}")
+        if clean_supplier:
+            header_parts.append(f"Ta’minotchi: {clean_supplier}")
         if faktura_number and faktura_number.strip():
             header_parts.append(f"Faktura: {faktura_number.strip()}")
         if common_note and common_note.strip():
@@ -156,13 +190,17 @@ class StockService:
                 else composite_header or item_note
             )
 
+            item_supplier = (it.get("supplier") or clean_supplier).strip()
             movement = cls.intake(
                 tenant=tenant,
                 product_variant=it["product_variant"],
                 quantity=it["quantity"],
                 cost_price=it["cost_price"],
                 created_by=created_by,
-                note=final_note, batch_code=it.get("batch_code", ""), expires_on=it.get("expires_on"),
+                note=final_note,
+                batch_code=it.get("batch_code", ""),
+                expires_on=it.get("expires_on"),
+                supplier=item_supplier,
             )
             movements.append(movement)
 

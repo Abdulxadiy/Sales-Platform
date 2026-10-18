@@ -572,6 +572,7 @@ export const catalogApi = {
 };
 
 export const inventoryApi = {
+  getSuppliers: () => request('/inventory/suppliers/'),
   getBatches: (params = {}) => request(`/inventory/batches/?${new URLSearchParams(params)}`),
   getStock: (pageOrParams = 1, search = '', options = {}) => {
     if (typeof pageOrParams === 'object' && pageOrParams !== null) {

@@ -25,6 +25,9 @@ import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { useAccountDraft } from '../../hooks/useAccountDraft';
 import { useTenant } from '../../context/TenantContext';
+import { localStore } from '../../utils/brandStorage.js';
+
+const supplierStorageKey = (tenantId) => `ilbi_saved_suppliers:${tenantId || 'pending'}`;
 
 const EMPTY_DRAFT = {
   supplier: '',
@@ -112,6 +115,41 @@ export default function RapidStockIntakeModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastAddedRowId, setLastAddedRowId] = useState(null);
   const [cameraScannerOpen, setCameraScannerOpen] = useState(false);
+
+  // Remembered suppliers for tenant
+  const [savedSuppliers, setSavedSuppliers] = useState(() => {
+    try {
+      const stored = localStore.getItem(supplierStorageKey(activeTenant?.id));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
+
+  useEffect(() => {
+    let live = true;
+    const canView = activeTenant?.is_owner || activeTenant?.permissions?.includes('inventory.view_supplier');
+    if (canView) {
+      inventoryApi.getSuppliers().then((apiList) => {
+        if (!live || !Array.isArray(apiList)) return;
+        setSavedSuppliers((prev) => {
+          const merged = [...prev];
+          for (const s of apiList) {
+            if (s && !merged.some((x) => x.toLowerCase() === s.toLowerCase())) {
+              merged.push(s);
+            }
+          }
+          try {
+            localStore.setItem(supplierStorageKey(activeTenant?.id), JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }).catch(() => {});
+    }
+    return () => { live = false; };
+  }, [activeTenant?.id]);
 
   const searchInputRef = useRef(null);
   const rowInputRefs = useRef({});
@@ -438,6 +476,21 @@ export default function RapidStockIntakeModal({
         })),
       });
 
+      // Save supplier to remembered suppliers list
+      const cleanSupplier = (draft.supplier || '').trim();
+      if (cleanSupplier) {
+        setSavedSuppliers((prev) => {
+          if (!prev.some((s) => s.toLowerCase() === cleanSupplier.toLowerCase())) {
+            const updated = [cleanSupplier, ...prev];
+            try {
+              localStore.setItem(supplierStorageKey(activeTenant?.id), JSON.stringify(updated));
+            } catch {}
+            return updated;
+          }
+          return prev;
+        });
+      }
+
       toast.success(
         `Kirim muvaffaqiyatli qabul qilindi! (${items.length} xil tovar, ${summary.totalQuantity} dona)`
       );
@@ -579,6 +632,7 @@ export default function RapidStockIntakeModal({
             </label>
             <input
               type="text"
+              list="rapid-intake-suppliers-list"
               placeholder="Yetkazib beruvchi nomi (ixtiyoriy)"
               value={draft.supplier || ''}
               onChange={(e) => setDraft((prev) => ({ ...prev, supplier: e.target.value }))}
@@ -594,6 +648,39 @@ export default function RapidStockIntakeModal({
                 boxSizing: 'border-box',
               }}
             />
+            <datalist id="rapid-intake-suppliers-list">
+              {savedSuppliers.map((s, idx) => (
+                <option key={idx} value={s} />
+              ))}
+            </datalist>
+            {savedSuppliers.length > 0 && !draft.supplier && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 10.5, color: 'var(--text-muted)', marginRight: 2 }}>
+                  Eslab qolingan:
+                </span>
+                {savedSuppliers.slice(0, 5).map((s, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setDraft((prev) => ({ ...prev, supplier: s }))}
+                    style={{
+                      padding: '2px 7px',
+                      borderRadius: 5,
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--primary)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Ta’minotchi sifatida tanlash"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

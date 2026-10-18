@@ -244,3 +244,104 @@ def test_batch_migration_preserves_existing_stock_once(tenant):
     assert batch.cost_price == 1234
     assert batch.expires_on is None
     assert_balance(variant)
+
+
+def test_batch_and_single_intake_record_supplier(tenant, owner):
+    variant = ProductVariantFactory(tenant=tenant)
+    movement = StockService.intake(
+        tenant=tenant,
+        product_variant=variant,
+        quantity=Decimal("5"),
+        cost_price=Decimal("1500"),
+        created_by=owner,
+        supplier="Akrom Distribyutor",
+    )
+    assert movement.supplier == "Akrom Distribyutor"
+    batch = StockBatch.objects.get(product_variant=variant)
+    assert batch.supplier == "Akrom Distribyutor"
+
+    # Test batch intake
+    variant2 = ProductVariantFactory(tenant=tenant)
+    movements = StockService.batch_intake(
+        tenant=tenant,
+        items=[
+            {"product_variant": variant2, "quantity": Decimal("10"), "cost_price": Decimal("2000"), "batch_code": "B1"}
+        ],
+        created_by=owner,
+        supplier="Global Trade LLC",
+        faktura_number="FAK-101",
+    )
+    assert movements[0].supplier == "Global Trade LLC"
+    batch2 = StockBatch.objects.get(product_variant=variant2)
+    assert batch2.supplier == "Global Trade LLC"
+
+
+def test_supplier_visibility_permission_and_endpoint(tenant, owner):
+    from apps.accounts.models import Employee
+    from apps.permissions.models import Permission
+
+    variant = ProductVariantFactory(tenant=tenant)
+    StockService.intake(
+        tenant=tenant,
+        product_variant=variant,
+        quantity=Decimal("10"),
+        cost_price=Decimal("1200"),
+        created_by=owner,
+        supplier="Maxfiy Ta’minotchi",
+        note="Ta’minotchi: Maxfiy Ta’minotchi | Ehtiyot qism",
+    )
+
+    client = APIClient()
+
+    # 1. Owner can see supplier in batches list
+    client.force_authenticate(user=owner)
+    res = client.get("/api/v1/inventory/batches/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res.status_code == 200
+    assert any(b.get("supplier") == "Maxfiy Ta’minotchi" for b in res.data)
+
+    # 1b. Owner can see suppliers in /suppliers/ endpoint
+    res_suppliers = client.get("/api/v1/inventory/suppliers/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res_suppliers.status_code == 200
+    assert "Maxfiy Ta’minotchi" in res_suppliers.data
+
+    # 2. Staff without inventory.view_supplier CANNOT see supplier
+    perm_view_stock = Permission.objects.get(category="inventory", codename="view_stock")
+    emp = EmployeeFactory(tenant=tenant)
+    emp.permissions.set([perm_view_stock])
+    staff_user = emp.user
+
+    client.force_authenticate(user=staff_user)
+    res_staff = client.get("/api/v1/inventory/batches/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res_staff.status_code == 200
+    assert len(res_staff.data) > 0
+    # supplier field is stripped / popped by SensitiveSupplierSerializerMixin
+    for item in res_staff.data:
+        assert "supplier" not in item
+
+    # Staff without view_supplier gets 403 on /suppliers/
+    res_staff_suppliers = client.get("/api/v1/inventory/suppliers/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res_staff_suppliers.status_code == 403
+
+    # Check StockMovement serializer note masking
+    res_movements = client.get("/api/v1/inventory/movements/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res_movements.status_code == 200
+    for mov in res_movements.data:
+        assert "supplier" not in mov
+        assert "Maxfiy Ta’minotchi" not in mov.get("note", "")
+
+    # 3. Grant inventory.view_supplier to staff -> now they can see it
+    perm_view_supplier, _ = Permission.objects.get_or_create(
+        category="inventory", codename="view_supplier",
+        defaults={"name": "Ta’minotchi ma’lumotlarini ko‘rish"}
+    )
+    employee = Employee.objects.get(user=staff_user, tenant=tenant)
+    employee.permissions.add(perm_view_supplier)
+
+    client.force_authenticate(user=staff_user)
+    res_allowed = client.get("/api/v1/inventory/batches/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res_allowed.status_code == 200
+    assert any(b.get("supplier") == "Maxfiy Ta’minotchi" for b in res_allowed.data)
+
+    res_allowed_suppliers = client.get("/api/v1/inventory/suppliers/", HTTP_X_TENANT_ID=str(tenant.id))
+    assert res_allowed_suppliers.status_code == 200
+    assert "Maxfiy Ta’minotchi" in res_allowed_suppliers.data

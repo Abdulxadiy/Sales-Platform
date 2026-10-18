@@ -72,12 +72,12 @@ try {
   await delay(100);
   assert.equal(await browser.evaluate('Boolean(document.querySelector("dialog[open]"))'),false);
   await browser.evaluate('historyQA.select(7)');
-  await wait('document.querySelectorAll(".history-event").length===4');
+  await wait('document.querySelectorAll(".history-event").length===20');
   await browser.evaluate('historyQA.failList=true;window.dispatchEvent(new Event("focus"))');
   await wait('document.body.innerText.includes("Tarixni yuklab bo‘lmadi")');
   await browser.evaluate('historyQA.failList=false');
   await clickText('Qayta urinish');
-  await wait('document.querySelectorAll(".history-event").length===4');
+  await wait('document.querySelectorAll(".history-event").length===20');
   await browser.evaluate('document.documentElement.setAttribute("data-theme","dark")');
   await screenshot('/tmp/ilbi-history-dark.png');
   await browser.resize(390,900);

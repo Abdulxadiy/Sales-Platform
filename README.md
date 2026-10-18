@@ -225,6 +225,16 @@ Celery Beat schedules `apps.tenants.tasks.sync_cbu_rates_task` hourly, with retr
 
 Validation: `cd ilbi && .venv/bin/python -m pytest apps/tenants/tests/test_exchange_rates.py -q`; `cd frontend/ilbi && npm run test:currency`.
 
+## Unified activity history
+
+Owners and platform administrators have a **Tarix** sidebar entry at `/history`. The read-only timeline combines existing sales, standalone stock movements, debt payments, cash income/expenses, shift openings/closings and audit records. It supports server pagination, category, text/actor search and Asia/Tashkent date bounds. Owners remain restricted to the selected tenant; administrators may filter by `tenant_id`. Ordinary staff cannot read this consolidated financial and administrative history.
+
+`GET /api/v1/audit/history/` returns the timeline. `GET /api/v1/audit/history/{source}/{id}/` returns a scoped detail record, including the same sale serializer used by receipts. The frontend reuses the thermal receipt and A4 components. Sale-linked stock lines and the existing stock-adjustment audit entry are omitted from duplicate timeline representations.
+
+Successful catalog API mutations now record actor, object name and before/after snapshots in the existing immutable audit journal, in the same transaction as the mutation. Deleted product snapshots remain readable; failed and no-op edits do not create events. Price-only edits retain their existing price-change audit. Existing sales/movements are immediately available; edits that were never recorded before this release cannot be reconstructed. Apply `core.0014_catalog_history_actions` through the normal migration process and rebuild the frontend.
+
+Validation: `cd ilbi && .venv/bin/python -m pytest apps/core/tests/test_history_api.py apps/catalog/tests -q`; `cd frontend/ilbi && npm run test:history`. Browser QA uses synthetic data and covers receipts/A4, intake/edit details, filtering/pagination, tenant switching with delayed replies, errors and mobile/light/dark layout.
+
 ## ILBI rebranding and existing deployments
 
 Backend source is in `ilbi/`; frontend source is in `frontend/ilbi/`. The master plan is `ILBI_MASTER_PLAN.md`; the implementation checklist is [REBRANDING_AUDIT_ILBI_UZ.md](REBRANDING_AUDIT_ILBI_UZ.md). UI, loading, print, email and Telegram branding use ILBI / ilbi.uz without a PRO product badge.

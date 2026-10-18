@@ -23,6 +23,8 @@ class CatalogAPIView(OwnerStaffOnlyAPIView):
         super().initial(request, *args, **kwargs)
         self._history_before = {}
         if self.history_model and request.method in ("POST", "PATCH", "DELETE"):
+            # Serialize the before snapshot with the write, including category/image edits.
+            type(self.tenant).objects.select_for_update().get(pk=self.tenant.pk)
             variant_id = request.data.get("variant_id")
             self._history_variant = variant_id if str(variant_id).isdigit() else None
             obj = self.history_model.objects.filter(pk=kwargs.get("pk"), tenant=self.tenant).first()

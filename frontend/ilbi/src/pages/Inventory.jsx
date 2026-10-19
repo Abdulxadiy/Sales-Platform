@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteVariantSelect from '../components/common/RemoteVariantSelect';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -48,6 +49,7 @@ export default function Inventory() {
   const confirm = useConfirm();
   const { isOwner, user } = useAuth();
   const { activeTenant } = useTenant();
+  const canViewSupplier = isOwner || activeTenant?.is_owner || activeTenant?.permissions?.includes('inventory.view_supplier');
 
   const [activeTab, setActiveTab] = useState('stock'); // 'stock' | 'transfers' | 'deficits' | 'movements'
   const [transfers, setTransfers] = useState([]);
@@ -944,6 +946,9 @@ export default function Inventory() {
                   <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Tovar Varianti</th>
                   <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Tovar Kodi</th>
                   <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Filial</th>
+                  {canViewSupplier && (
+                    <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Ta’minotchi</th>
+                  )}
                   <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Oxirgi Tan Narxi</th>
                   <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Mavjud Qoldiq</th>
                   <th style={{ padding: '14px 20px', textAlign: 'center', whiteSpace: 'nowrap' }}>Amallar</th>
@@ -952,7 +957,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={canViewSupplier ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : filteredStock.length > 0 ? (
                 paginatedStock.map((item, idx) => {
@@ -981,6 +986,31 @@ export default function Inventory() {
                           <span>{item.branch_name || activeTenant?.name || 'Asosiy'}</span>
                         </span>
                       </td>
+                      {canViewSupplier && (
+                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                          {item.supplier ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '4px 9px',
+                                borderRadius: 'var(--radius-xs)',
+                                background: 'rgba(59, 130, 246, 0.12)',
+                                color: '#60a5fa',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                border: '1px solid rgba(59, 130, 246, 0.25)',
+                              }}
+                            >
+                              <Truck size={12} />
+                              {item.supplier}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
+                          )}
+                        </td>
+                      )}
                       <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>
                         {item.last_cost_price ? `${Number(item.last_cost_price).toLocaleString()} ${item.currency || 'UZS'}` : '—'}
                       </td>
@@ -1026,7 +1056,7 @@ export default function Inventory() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={canViewSupplier ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                     {hasActiveStockFilters ? 'Tanlangan filtrlar bo‘yicha tovarlar topilmadi' : 'Hozircha omborda qoldiqlar mavjud emas'}
                   </td>
                 </tr>
@@ -1060,7 +1090,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : deficitsList.length > 0 ? (
                 deficitsList.map((item) => {
@@ -1200,7 +1230,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Yuklanmoqda...</td>
+                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : filteredMovements.length > 0 ? (
                 paginatedMovements.map((m) => {
@@ -1234,7 +1264,29 @@ export default function Inventory() {
                       <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
                         {m.cost_price ? `${Number(m.cost_price).toLocaleString()} ${m.currency || 'UZS'}` : '—'}
                       </td>
-                      <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{m.note || m.reason || '—'}</td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: 13 }}>
+                        {canViewSupplier && m.supplier && (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '2px 7px',
+                              borderRadius: 4,
+                              background: 'rgba(var(--primary-rgb), 0.1)',
+                              color: 'var(--primary)',
+                              fontWeight: 600,
+                              fontSize: 11,
+                              marginRight: 6,
+                            }}
+                            title="Ta’minotchi"
+                          >
+                            <Truck size={11} />
+                            {m.supplier}
+                          </span>
+                        )}
+                        {m.note || m.reason || (!m.supplier ? '—' : '')}
+                      </td>
                       <td style={{ padding: '14px 20px', textAlign: 'right', color: 'var(--text-secondary)', fontSize: 12 }}>
                         {new Date(m.created_at).toLocaleString('uz-UZ')}
                       </td>
@@ -1290,7 +1342,7 @@ export default function Inventory() {
       />
 
       {/* Modal 2: Qoldiqni To‘g‘rilash (Stock Adjust) */}
-      <Modal isOpen={adjustModalOpen} onClose={() => setAdjustModalOpen(false)} title="Ombor Qoldig‘ini Tuzatish">
+      <Modal isOpen={adjustModalOpen} onClose={() => setAdjustModalOpen(false)} title="Ombor Qoldig‘ini Tuzatish" maxWidth={760}>
         <form onSubmit={handleAdjustSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={formDirection === 'in'} />
           <div>
@@ -1372,7 +1424,7 @@ export default function Inventory() {
       </Modal>
 
       {/* Modal 3: Mijoz Qaytardi (Customer Return) */}
-      <Modal isOpen={customerReturnModalOpen} onClose={() => setCustomerReturnModalOpen(false)} title="Mijozdan Tovarni Qaytarib Olish (Cheksiz)">
+      <Modal isOpen={customerReturnModalOpen} onClose={() => setCustomerReturnModalOpen(false)} title="Mijozdan Tovarni Qaytarib Olish (Cheksiz)" maxWidth={760}>
         <form onSubmit={handleCustomerReturnSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={true} />
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: 'var(--radius-sm)', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.25)', color: '#93c5fa', fontSize: 13 }}>
@@ -1447,7 +1499,7 @@ export default function Inventory() {
       </Modal>
 
       {/* Modal 4: Ta’minotchiga Qaytarish (Supplier Return) */}
-      <Modal isOpen={supplierReturnModalOpen} onClose={() => setSupplierReturnModalOpen(false)} title="Ta’minotchiga Tovarni Qaytarish">
+      <Modal isOpen={supplierReturnModalOpen} onClose={() => setSupplierReturnModalOpen(false)} title="Ta’minotchiga Tovarni Qaytarish" maxWidth={760}>
         <form onSubmit={handleSupplierReturnSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={false} />
           <div>
@@ -1513,7 +1565,7 @@ export default function Inventory() {
       </Modal>
 
       {/* Modal 5: Write-off / Hisobdan chiqarish */}
-      <Modal isOpen={writeOffModalOpen} onClose={() => setWriteOffModalOpen(false)} title="Hisobdan Chiqarish (Isrofgarchilik)">
+      <Modal isOpen={writeOffModalOpen} onClose={() => setWriteOffModalOpen(false)} title="Hisobdan Chiqarish (Isrofgarchilik)" maxWidth={760}>
         <form onSubmit={handleWriteOffSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <BatchSelector variantId={selectedVariantId} value={selectedBatch} onChange={setSelectedBatch} allowEmpty={false} />
           <div style={{ padding: 12, borderRadius: 'var(--radius-xs)', background: 'rgba(var(--danger-rgb), 0.1)', border: '1px solid rgba(var(--danger-rgb), 0.2)', color: 'var(--accent-rose)', fontSize: 13 }}>
@@ -1624,7 +1676,7 @@ export default function Inventory() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: canViewSupplier && selectedStockDetail.supplier ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr', gap: 12 }}>
               <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Oxirgi Tan Narxi</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -1637,6 +1689,17 @@ export default function Inventory() {
                   {selectedStockDetail.category_name || 'Bosh kategoriya'}
                 </div>
               </div>
+              {canViewSupplier && selectedStockDetail.supplier && (
+                <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Truck size={12} style={{ color: 'var(--primary)' }} />
+                    Ta’minotchi
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--primary)' }}>
+                    {selectedStockDetail.supplier}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>

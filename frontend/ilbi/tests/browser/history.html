@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head>
+<body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import { ThemeProvider } from '/src/context/ThemeContext.jsx';
+import { TenantProvider, useTenant } from '/src/context/TenantContext.jsx';
+import { ToastProvider } from '/src/context/ToastContext.jsx';
+import { ConfirmProvider } from '/src/context/ConfirmContext.jsx';
+import Layout from '/src/components/layout/Layout.jsx';
+import History from '/src/pages/History.jsx';
+import '/src/index.css';
+
+const tenant = { id: 7, name: 'Chilonzor do‘koni', is_owner: true, permissions: ['*'] };
+const second = { id: 8, name: 'Yunusobod do‘koni', is_owner: true, permissions: ['*'] };
+const user = { id: 51, role: 'owner', first_name: 'Aziz', last_name: 'Karimov', username: 'aziz', tenants: [tenant, second] };
+localStorage.setItem('ilbi_active_tenant:51', '7');
+localStorage.setItem('ilbi_access_token', `fixture.${btoa(JSON.stringify({user_id:51}))}.fixture`);
+const today = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Tashkent' }).format(new Date());
+const before = new Date(`${today}T12:00:00Z`);before.setUTCDate(before.getUTCDate()-1);
+const yesterday = before.toISOString().slice(0,10);
+const base = { tenant_id:7, tenant_name:tenant.name, actor_id:51, actor_name:'Aziz Karimov',
+  amount:null, currency:'', quantity:null, unit:'', reference:'#1', subtitle:'', status:'', sale_id:null };
+const event = (source,id,category,title,subtitle,extra={}) => ({...base,id:`${source}:${id}`,source,object_id:id,category,title,subtitle,created_at:`${today}T10:40:00+05:00`,...extra});
+window.historyQA = { requests:[], failList:false, holdDetail:false, pending:[], rows:[
+  event('sale',101,'sales','Sotuv amalga oshirildi','Chakana savdo',{reference:'ILB-001042',amount:'120000',currency:'UZS',sale_id:101}),
+  event('stock',102,'inventory','Tovar kirim qilindi','Coca-Cola 1.5 L · Standart',{created_at:`${today}T10:25:00+05:00`,quantity:'24.000',unit:'dona',direction:'in'}),
+  event('audit',103,'catalog','Tovar tahrirlandi','Coca-Cola 1.5 L',{created_at:`${today}T09:50:00+05:00`,actor_name:'Madina Rasulova'}),
+  event('debt',104,'finance','Qarz to‘lovi qabul qilindi','Anvar Abdullayev',{created_at:`${today}T09:10:00+05:00`,amount:'250000',currency:'UZS'}),
+  event('audit',105,'team','Xodim qo‘shildi','Madina Rasulova',{created_at:`${yesterday}T17:40:00+05:00`}),
+  event('income',106,'finance','Kassaga kirim qilindi','Qo‘shimcha mablag‘',{created_at:`${yesterday}T17:20:00+05:00`,amount:'500000',currency:'UZS'}),
+  ...Array.from({length:18},(_,i)=>event('audit',200+i,'catalog','Tovar qo‘shildi',`Sinov tovari ${i+1}`,{created_at:`${yesterday}T16:${String(40-i).padStart(2,'0')}:00+05:00`})),
+] };
+const receipt = { id:101, receipt_number:'ILB-001042',tenant_name:tenant.name,created_at:`${today}T10:40:00+05:00`,currency:'UZS',payment_type:'cash',payment_type_display:'Naqd',status:'completed',status_display:'Tugallangan',total_amount:'120000',subtotal_amount:'120000',tax_amount:'0',paid_amount:'120000',net_amount:'120000',refunded_amount:'0',sold_by_name:'Aziz Karimov',items:[{id:1,product_name:'Arabica qahva 250 g',product_variant_name:'Standart',quantity:'2',unit:'dona',unit_price:'60000',total_price:'120000',voided_quantity:'0',tax_amount:'0',mxik:null,package_code:null}],receipt_snapshot:{version:1,store_name:tenant.name,store_address:'Toshkent shahri, Chilonzor',receipt_phone:'+998901234567',seller_name:'Sinov MChJ',seller_tax_identifier:'123456789',is_vat_payer:false,receipt_show_cashier:true,receipt_show_customer:true,receipt_paper_width:'58mm'}};
+function detail(row) {
+  const fields = row.source === 'stock' ? [{label:'Tovar',value:'Coca-Cola 1.5 L'},{label:'Miqdor',value:'24 dona'},{label:'Birlik tannarxi',value:'5000 UZS'},{label:'Jami tannarx',value:'120000 UZS'}] : [];
+  return {event:row,sale:row.source==='sale'?receipt:null,details:{fields,
+    changes:row.object_id===103?{name:{old:'Coca-Cola 1 L',new:'Coca-Cola 1.5 L'}}:{},
+    snapshot:row.object_id>=200?{name:row.subtitle,variant_price_recommended:'12000',variant_unit:'dona'}:{},
+    note:row.source==='stock'?'Ta’minotchi: Coca-Cola Bottlers | Faktura: 1248':'',
+  }};
+}
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, options={}) => {
+  const url = new URL(input,location.origin),path=url.pathname;
+  if(!path.startsWith('/api/')) return nativeFetch(input,options);
+  const id = Number(options.headers?.['X-Tenant-ID']||7);
+  historyQA.requests.push({path,query:Object.fromEntries(url.searchParams),tenant:id});
+  let value;
+  if(path==='/api/v1/audit/history/') {
+    if(historyQA.failList) throw new TypeError('Sinov: aloqa uzildi');
+    let rows=id===7?[...historyQA.rows]:[event('audit',800,'catalog','Tovar qo‘shildi','IKKINCHI_DOKON_TOVARI',{tenant_id:8,tenant_name:second.name})];
+    const category=url.searchParams.get('category'),search=(url.searchParams.get('search')||'').toLowerCase();
+    if(category&&category!=='all') rows=rows.filter(row=>row.category===category);
+    if(search) rows=rows.filter(row=>`${row.title} ${row.subtitle} ${row.actor_name} ${row.reference}`.toLowerCase().includes(search));
+    if(url.searchParams.get('date_from')) rows=rows.filter(row=>row.created_at.slice(0,10)>=url.searchParams.get('date_from'));
+    if(url.searchParams.get('date_to')) rows=rows.filter(row=>row.created_at.slice(0,10)<=url.searchParams.get('date_to'));
+    const page=Number(url.searchParams.get('page')||1);
+    value={count:rows.length,results:rows.slice((page-1)*20,page*20),next:rows.length>page*20?'?page=2':null,previous:null};
+  } else if(path.startsWith('/api/v1/audit/history/')) {
+    const objectId=Number(path.split('/').filter(Boolean).at(-1));
+    const row=historyQA.rows.find(row=>row.object_id===objectId)||event('audit',800,'catalog','Tovar qo‘shildi','IKKINCHI_DOKON_TOVARI',{tenant_id:8,tenant_name:second.name});
+    value=detail(row);
+    if(historyQA.holdDetail){historyQA.holdDetail=false;await new Promise(resolve=>historyQA.pending.push(resolve));}
+  } else if(path==='/api/v1/cashbox/shift/current/') value={id:1,is_open:true};
+  else if(path==='/api/v1/sales/notifications/') value={results:[],count:0,unread_count:0};
+  else throw Error('Unexpected fixture request: '+path);
+  return new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
+};
+function Page(){const{selectTenant}=useTenant();historyQA.select=id=>selectTenant(id===7?tenant:second);return React.createElement(History);}
+createRoot(document.getElementById('root')).render(
+  React.createElement(AuthContext.Provider,{value:{user,isOwner:true,isAdmin:false,isAuthenticated:true,role:'owner',logout(){}}},
+    React.createElement(ThemeProvider,null,React.createElement(TenantProvider,null,
+      React.createElement(ToastProvider,null,React.createElement(ConfirmProvider,null,
+        React.createElement(MemoryRouter,{initialEntries:['/history']},React.createElement(Routes,null,
+          React.createElement(Route,{element:React.createElement(Layout)},React.createElement(Route,{path:'history',element:React.createElement(Page)})),
+        )),
+      )),
+    )),
+  ),
+);
+</script></body></html>

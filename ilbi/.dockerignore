@@ -25,6 +25,10 @@ __pycache__/
 db.sqlite3
 *.sqlite3
 
+# Production starts with fresh volumes, never with local user uploads.
+media/
+staticfiles/
+
 # --- IDE and editor files ---
 .vscode/
 .idea/

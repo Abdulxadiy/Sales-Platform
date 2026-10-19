@@ -508,13 +508,15 @@ class CustomerProfileView(SupportView):
         tenant_data = None
         seller_profile_data = None
         if tenant:
+            effective_rate = tenant.effective_usd_rate
             tenant_data = {
                 "id": tenant.id,
                 "name": tenant.name,
                 "public_code": tenant.public_code,
                 "address": tenant.address or "",
                 "is_active": tenant.is_active,
-                "usd_rate": str(tenant.usd_rate),
+                "usd_rate": str(effective_rate) if effective_rate is not None else None,
+                "auto_usd_rate": tenant.auto_usd_rate,
                 "created_at": tenant.created_at,
                 "owner_name": tenant.owner.get_full_name() if tenant.owner else "",
                 "owner_phone": tenant.owner.phone_number if tenant.owner else "",

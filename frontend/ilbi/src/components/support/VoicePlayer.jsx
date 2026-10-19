@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, AlertCircle } from 'lucide-react';
 
@@ -182,7 +183,7 @@ export default function VoicePlayer({ api, conversationId, messageId, duration =
         title={isPlaying ? 'To‘xtatish' : 'Tinglash'}
       >
         {loading ? (
-          <span className="support-voice-spinner" />
+          <IlbiLoader size={24} inline decorative />
         ) : isPlaying ? (
           <Pause size={14} fill="currentColor" />
         ) : (

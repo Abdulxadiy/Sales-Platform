@@ -579,14 +579,6 @@ html:has(.ilbi-landing .lp-dialog[open]) {
 .is-complete .lp-sale-status {
   color: var(--lp-blue);
 }
-.lp-mini-spinner {
-  height: 12px;
-  width: 12px;
-  border-radius: 50%;
-  border: 1px solid currentColor;
-  border-right-color: transparent;
-  animation: lp-spin 0.7s linear infinite;
-}
 .lp-scene-caption {
   position: absolute;
   bottom: 6px;
@@ -1602,11 +1594,6 @@ html:has(.ilbi-landing .lp-dialog[open]) {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-@keyframes lp-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 @keyframes lp-path-flow {

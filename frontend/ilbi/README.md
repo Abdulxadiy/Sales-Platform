@@ -23,6 +23,8 @@ npm run build
 
 `npm run test:labels` checks the enlarged label preview, mandatory barcode digits, optional product name, actual print dimensions and decoding of the printed barcode. Existing product barcodes are preserved; explicit generation for products without a code creates a numeric barcode.
 
+`npm run test:selections` checks product/category dropdowns in Chrome with synthetic data: viewport placement, clipping and transformed containers, older-browser fallback, long labels, fixed search/pagination, keyboard and pointer behavior, inventory return/adjust/write-off dialogs, rapid intake, catalog and B2B mapping. It covers desktop, mobile and short landscape windows without writing inventory data. Selection menus use the browser top layer when available and a dialog-aware portal otherwise.
+
 `npm run test:auth-session` drives the actual app in an isolated Chrome profile with synthetic API responses. It covers login/chat privacy, password plus OTP, failed session verification and retry, late responses, logout/storage events, POS cart/payment drafts, shop switching and product form/image restoration. It never sends a real OTP, support message or sale.
 
 Camera capture requires HTTPS (or localhost for development) and browser camera permission. The shared scanner releases its stream and closes as soon as it reads a code; its decoder loads only when the camera is opened.

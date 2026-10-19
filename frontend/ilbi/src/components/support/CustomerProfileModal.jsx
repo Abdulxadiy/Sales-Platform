@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -228,7 +229,7 @@ export default function CustomerProfileModal({ conversationId, api, onClose, onC
         <div className="customer-profile-body">
           {loading ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-              Mijoz ma‘lumotlari yuklanmoqda...
+              <IlbiLoader label="Mijoz ma‘lumotlari yuklanmoqda..." />
             </div>
           ) : error ? (
             <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--accent-rose)' }}>

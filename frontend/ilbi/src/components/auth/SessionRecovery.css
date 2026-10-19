@@ -1,0 +1,24 @@
+.session-recovery {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 24px 20px;
+  background: var(--bg-app, #0d1117);
+  color: var(--text-primary, #141820);
+}
+.session-recovery__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: min(100%, 340px);
+  padding: 36px 28px 30px;
+  border: 1px solid var(--border-subtle, #dce4ee);
+  border-radius: 20px;
+  background: var(--bg-card, #fff);
+  box-shadow: 0 20px 48px rgb(0 0 0 / 15%);
+  text-align: center;
+}
+.session-recovery__message { margin: 0; color: var(--text-secondary, #526078); font-size: 13px; }

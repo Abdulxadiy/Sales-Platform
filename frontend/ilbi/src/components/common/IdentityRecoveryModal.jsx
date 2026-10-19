@@ -1,3 +1,4 @@
+import IlbiLoader from './IlbiLoader';
 import React, { useEffect, useState } from 'react';
 import { KeyRound, ShieldCheck, AlertTriangle } from 'lucide-react';
 import Modal from './Modal';
@@ -35,7 +36,7 @@ export default function IdentityRecoveryModal({ userId, onClose, onSaved }) {
     finally { setSaving(false); }
   }
   return <Modal isOpen={Boolean(userId)} onClose={close} title="Login va Telegram ulanishi" maxWidth={570}>
-    {!account ? <div role={error ? 'alert' : 'status'}>{error || 'Hisob yuklanmoqda...'}</div> : <form className="admin-form" onSubmit={save}>
+    {!account ? <div role={error ? 'alert' : 'status'}>{error || <IlbiLoader label="Hisob yuklanmoqda..." />}</div> : <form className="admin-form" onSubmit={save}>
       <div className="admin-note"><KeyRound size={20} /><div><strong>{account.name}</strong><div className="admin-muted">{account.username || 'Login raqami'} · {account.phone_number}</div></div></div>
       <label className="admin-field">Login telefon raqami<PhoneInput value={form.phone_number} required onChange={event => change('phone_number', event.target.value)} /></label>
       <label className="admin-check"><input type="checkbox" checked={form.telegram_action === 'unlink'} onChange={event => change('telegram_action', event.target.checked ? 'unlink' : 'replace')} />Telegram ulanishini uzish, keyin botdan qayta ulash</label>

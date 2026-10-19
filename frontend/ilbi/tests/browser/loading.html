@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uz" data-theme="light">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,"><title>Loading fixture</title></head>
+<body><div id="loading-fixture"></div>
+<script type="module">
+import React, { StrictMode, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import AppLoadingScreen, { AppLoadingProvider } from '../../src/components/common/AppLoadingScreen.jsx';
+import IlbiLoader from '../../src/components/common/IlbiLoader.jsx';
+import '../../src/index.css';
+function Fixture() {
+  const [requests, setRequests] = useState([false, false]);
+  window.loadingQA = { setRequests };
+  return React.createElement(AppLoadingProvider, null,
+    requests[0] && React.createElement(AppLoadingScreen, { message: 'Sessiya tekshirilmoqda...' }),
+    requests[1] && React.createElement(AppLoadingScreen, { message: 'Sahifa yuklanmoqda...' }),
+    React.createElement('main', { id: 'ready-content' },
+      React.createElement('p', null, 'Sahifa tayyor'),
+      React.createElement(IlbiLoader, { size: 80, label: 'Jadval yuklanmoqda...' }),
+      React.createElement('button', { className: 'btn btn-primary' }, React.createElement(IlbiLoader, { size: 24, inline: true, decorative: true }), 'Saqlanmoqda...'),
+    ),
+  );
+}
+createRoot(document.querySelector('#loading-fixture')).render(React.createElement(StrictMode, null, React.createElement(Fixture)));
+</script>
+</body></html>

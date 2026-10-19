@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, {
   lazy,
   Suspense,
@@ -360,7 +361,7 @@ function SaleScene() {
             </>
           ) : stage > 0 ? (
             <>
-              <span className="lp-mini-spinner" /> Qayd etilmoqda
+              <IlbiLoader size={20} inline decorative /> Qayd etilmoqda
             </>
           ) : (
             <>
@@ -552,7 +553,7 @@ function LegalDialog({ documentKey, onClose }) {
       </div>
       <div className="lp-legal-body">
         {state === "loading" ? (
-          <p role="status">Hujjat yuklanmoqda…</p>
+          <p role="status"><IlbiLoader label="Hujjat yuklanmoqda…" /></p>
         ) : state === "error" ? (
           <div role="alert">
             <p>Hujjatni yuklab bo‘lmadi. Qayta urinib ko‘ring.</p>
@@ -569,7 +570,7 @@ function LegalDialog({ documentKey, onClose }) {
             </button>
           </div>
         ) : (
-          <Suspense fallback={<p>Hujjat tayyorlanmoqda…</p>}>
+          <Suspense fallback={<p><IlbiLoader label="Hujjat tayyorlanmoqda…" /></p>}>
             <MarkdownViewer content={content} />
           </Suspense>
         )}

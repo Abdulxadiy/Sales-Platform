@@ -69,6 +69,7 @@ const PERMISSION_DESCRIPTIONS = {
   change_product: 'Tovarlar narxi va ma’lumotlarini tahrirlash',
   archive_product: 'Tovarni arxivlash va ro‘yxatdan chiqarish',
   view_cost_price: 'Tovarning tannarxi va do‘kon foydasini ko‘rish (Maxfiy)',
+  view_supplier: 'Tovarlarni qaysi ta’minotchi keltirganini ko‘rish (Maxfiy)',
   view_stock: 'Ombordagi tovarlar qoldig‘i va zaxirani ko‘rish',
   add_stock_intake: 'Omborga tovarlarni tezkor qabul qilish (Kirim)',
   adjust_stock: 'Ombor qoldiqlarini qo‘lda inventarizatsiya/tuzatish',

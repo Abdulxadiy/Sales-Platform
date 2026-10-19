@@ -150,6 +150,10 @@ activemq-data/
 # Environments
 .env
 .env.production
+.env.production.previous
+.env.production-*
+.operations.lock
+.deployed-images
 .envrc
 .venv
 env/

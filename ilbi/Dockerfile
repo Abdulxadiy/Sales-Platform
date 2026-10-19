@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS application
 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,3 +34,14 @@ ENTRYPOINT ["./entrypoint.sh"]
 
 
 CMD ["gunicorn", "config.wsgi:application", "-c", "gunicorn.conf.py"]
+
+FROM application AS production
+RUN uv sync --frozen --no-dev \
+    && useradd --uid 1000 --user-group --create-home --shell /usr/sbin/nologin ilbi \
+    && mkdir -p /app/media /app/staticfiles /app/state \
+    && chown ilbi:ilbi /app/media /app/staticfiles /app/state
+ENV ILBI_SKIP_DEPENDENCY_SYNC=true PYTHONDONTWRITEBYTECODE=1 HOME=/home/ilbi
+USER 1000:1000
+
+# Preserve the development target as the default for docker-compose.yml.
+FROM application AS development

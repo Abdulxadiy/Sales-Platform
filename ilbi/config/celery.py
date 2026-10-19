@@ -9,6 +9,11 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
+    # Recheck hourly so delayed publications/recovery are picked up the same day.
+    'sync-cbu-rates-hourly': {
+        'task': 'apps.tenants.tasks.sync_cbu_rates_task',
+        'schedule': crontab(minute=0),
+    },
     'auto-expire-b2b-transfers-hourly': {
         'task': 'apps.sales.tasks.auto_expire_transfers_task',
         'schedule': crontab(minute=0),

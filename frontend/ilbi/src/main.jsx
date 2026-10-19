@@ -14,6 +14,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    document.getElementById('ilbi-boot-loader')?.remove();
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 

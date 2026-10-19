@@ -1,8 +1,10 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Users, KeyRound, Ban, ShieldCheck, RefreshCw } from 'lucide-react';
 import { platformApi } from '../api/platform';
 import Modal from '../components/common/Modal';
+import CustomSelect from '../components/common/CustomSelect';
 import IdentityRecoveryModal from '../components/common/IdentityRecoveryModal';
 import { useToast } from '../context/ToastContext';
 import '../components/platform/platform-admin.css';
@@ -50,13 +52,13 @@ export default function PlatformAccounts() {
       <div className="admin-muted">Yangi do‘kon egasi <Link className="admin-link" to="/tenants">Do‘konlar</Link>, xodim esa <Link className="admin-link" to="/employees">Jamoa</Link> bo‘limidan qo‘shiladi.</div>
       <div className="admin-grid">
         <label className="admin-field">Hisobni qidirish<input className="input-field" type="search" value={input} onChange={event => setInput(event.target.value)} placeholder="Ism, login, telefon yoki email" /></label>
-        <label className="admin-field">Hisob turi<select className="input-field" value={role} onChange={event => { setRole(event.target.value); setPage(1); }}><option value="">Barcha hisoblar</option>{Object.entries(roles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label className="admin-field">Holati<select className="input-field" value={active} onChange={event => { setActive(event.target.value); setPage(1); }}><option value="">Barcha holatlar</option><option value="true">Faol</option><option value="false">Bloklangan</option></select></label>
+        <label className="admin-field">Hisob turi<CustomSelect fullWidth aria-label="Hisob turi" value={role} onChange={value => { setRole(value); setPage(1); }} options={[{ value: '', label: 'Barcha hisoblar' }, ...Object.entries(roles).map(([value, label]) => ({ value, label }))]} /></label>
+        <label className="admin-field">Holati<CustomSelect fullWidth aria-label="Hisob holati" value={active} onChange={value => { setActive(value); setPage(1); }} options={[{ value: '', label: 'Barcha holatlar' }, { value: 'true', label: 'Faol' }, { value: 'false', label: 'Bloklangan' }]} /></label>
       </div>
       {!loading && error && <div className="admin-error" role="alert">{error}</div>}
       <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Hisob</th><th>Roli</th><th>Telegram / holat</th><th>Do‘konlar</th><th>Amallar</th></tr></thead><tbody>
         {(loading ? [] : result.results).map(account => <tr key={account.id}><td><strong>{account.name}</strong><div className="admin-muted">{account.phone_number}</div><div className="admin-muted">{account.email || account.username || '—'}</div></td><td>{roles[account.role]}</td><td><span className="admin-pill" style={{ color: account.is_active ? 'var(--accent-emerald)' : 'var(--accent-rose)' }}>{account.is_active ? 'Faol' : 'Bloklangan'}</span><div className="admin-muted">Telegram: {account.telegram_linked ? 'ulangan' : 'ulanmagan'}</div></td><td><button className="btn btn-secondary" onClick={() => setDetail(account)}>{account.memberships.length} ta do‘kon</button></td><td><div className="admin-toolbar"><button className="btn btn-secondary" title="Login va Telegramni boshqarish" aria-label={`${account.name}: login va Telegram`} onClick={() => setIdentity(account.id)}><KeyRound size={16} /></button>{account.role !== 'platform_admin' && <button className="btn btn-secondary" aria-label={`${account.name}: hisob holati`} title={account.is_active ? 'Hisobni bloklash' : 'Blokdan chiqarish'} onClick={() => { setTarget(account); setPassword(''); setReason(''); setActionError(''); }}>{account.is_active ? <Ban size={16} /> : <ShieldCheck size={16} />}</button>}</div></td></tr>)}
-        {(loading || !result.results.length) && <tr><td colSpan={5} className="admin-empty">{loading ? 'Hisoblar yuklanmoqda...' : error ? 'Ro‘yxatni yuklab bo‘lmadi.' : 'Hisob topilmadi.'}</td></tr>}
+        {(loading || !result.results.length) && <tr><td colSpan={5} className="admin-empty">{loading ? <IlbiLoader label="Hisoblar yuklanmoqda..." /> : error ? 'Ro‘yxatni yuklab bo‘lmadi.' : 'Hisob topilmadi.'}</td></tr>}
       </tbody></table></div>
       <div className="admin-toolbar" style={{ justifyContent: 'space-between' }}><span className="admin-muted">Jami {result.count} ta hisob · {page}-sahifa</span><div className="admin-toolbar"><button className="btn btn-secondary" disabled={loading || page === 1} onClick={() => setPage(value => value - 1)}>Oldingi</button><button className="btn btn-secondary" disabled={loading || page * 20 >= result.count} onClick={() => setPage(value => value + 1)}>Keyingi</button></div></div>
     </section>

@@ -42,7 +42,7 @@ class DebtService:
         if target_branch.owner_id != counterparty.tenant.owner_id or not target_branch.is_active:
             raise DebtServiceError("To‘lov faqat faol va shu egaga tegishli do‘konda qabul qilinadi.")
         from apps.tenants.models import Tenant
-        Tenant.objects.select_for_update().get(pk=target_branch.pk)
+        target_branch = Tenant.objects.select_for_update().get(pk=target_branch.pk)
         fingerprint = hashlib.sha256(json.dumps({
             'branch': target_branch.pk, 'amount': str(amount.normalize()), 'currency': currency,
             'type': payment_type, 'correction': is_correction, 'note': note.strip(),
@@ -75,12 +75,13 @@ class DebtService:
             raise DebtServiceError("Valyuta 'UZS' yoki 'USD' bo'lishi shart.")
 
         effective_note = note.strip()
+        exchange_rate = None
+        exchange_rate_source = ""
+        exchange_rate_date = None
+        converted_amount_uzs = None
         if currency == 'UZS':
             cp.debt_balance_uzs -= amount
         else:
-            # Payment made in USD: convert to UZS using store's internal usd_rate
-            usd_rate = Decimal(str(getattr(target_branch, 'usd_rate', None) or getattr(counterparty.tenant, 'usd_rate', None) or Decimal('12800.00')))
-
             # If counterparty has USD debt, pay off USD debt first
             if cp.debt_balance_usd > 0:
                 usd_to_usd_debt = min(amount, cp.debt_balance_usd)
@@ -91,9 +92,15 @@ class DebtService:
 
             # Deduct remaining USD from UZS debt at shop rate
             if remaining_usd != 0:
-                uzs_equivalent = (remaining_usd * usd_rate).quantize(Decimal('0.01'))
+                from apps.tenants.exchange_rates import ExchangeRateError, resolve_usd_rate
+                try:
+                    exchange_rate, exchange_rate_source, exchange_rate_date = resolve_usd_rate(target_branch)
+                except ExchangeRateError as exc:
+                    raise DebtServiceError(str(exc)) from exc
+                uzs_equivalent = (remaining_usd * exchange_rate).quantize(Decimal('0.01'))
+                converted_amount_uzs = uzs_equivalent
                 cp.debt_balance_uzs -= uzs_equivalent
-                conv_text = f"(Kurs: 1 USD = {usd_rate:,.0f} UZS → {uzs_equivalent:,.0f} UZS so‘m qarzidan ayirildi)"
+                conv_text = f"(Kurs: 1 USD = {exchange_rate:,.2f} UZS → {uzs_equivalent:,.2f} UZS so‘m qarzidan ayirildi)"
                 effective_note = f"{effective_note} {conv_text}".strip()
 
         payment = DebtPayment.objects.create(
@@ -103,6 +110,10 @@ class DebtService:
             counterparty=cp,
             amount=amount,
             currency=currency,
+            exchange_rate=exchange_rate,
+            exchange_rate_source=exchange_rate_source,
+            exchange_rate_date=exchange_rate_date,
+            converted_amount_uzs=converted_amount_uzs,
             recorded_by=recorded_by,
             is_correction=is_correction,
             note=effective_note,

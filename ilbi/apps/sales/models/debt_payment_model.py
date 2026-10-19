@@ -30,6 +30,10 @@ class DebtPayment(BaseModel):
     idempotency_key = models.CharField(max_length=64, null=True, blank=True)
     request_fingerprint = models.CharField(max_length=64, blank=True, default='')
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_UZS)
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    exchange_rate_source = models.CharField(max_length=6, blank=True, choices=[("manual", "Manual"), ("cbu", "CBU")])
+    exchange_rate_date = models.DateField(null=True, blank=True)
+    converted_amount_uzs = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True)
     paid_at = models.DateTimeField(auto_now_add=True)
     recorded_by = models.ForeignKey(
         'accounts.User',

@@ -108,6 +108,8 @@ These browser checks use synthetic API responses and never sign in to or write t
 
 ## Production Deployment
 
+Lightsail installation status, SSH operations, deferred DNS/HTTPS activation and CI/CD setup are documented in [ops/README.md](ops/README.md).
+
 Production uses a separate Compose file with a built React bundle served by Nginx. The development Vite server is used only by `docker-compose.yml`.
 
 1. Prepare separate production environment files on the server:
@@ -207,6 +209,33 @@ Copyright (c) 2026 ILBI. All rights reserved. See [LICENSE](LICENSE) for details
 See [support setup and API](docs/SUPPORT.md) for Telegram recipient configuration and [documentation index](docs/README.md) for concise role guides and focused, annotated screenshots. After updating, apply backend migrations and rebuild the frontend.
 
 Retail POS currently accepts UZS only. Production retail sales are blocked pending fiscal provider integration; the guide screenshots use synthetic demo data. USD catalog values and the currency calculator do not enable USD retail checkout.
+
+## CBU exchange rates
+
+In **Sozlamalar → Valyuta & Kurs**, each store can enable **CBU kursidan avtomatik foydalanish**. USD calculations then use the latest effective official rate; manual editing is blocked by the API and UI. Turning it off restores the store's saved manual rate. Existing stores start in manual mode. Official USD/EUR/RUB rates, their effective dates and last successful check times are shown together; EUR/RUB are informational.
+
+After deploying this change, run backend migrations, rebuild the frontend, and restart the Celery worker and Beat. Initialize the shared rates once from the backend environment:
+
+```bash
+python manage.py migrate
+python manage.py sync_cbu_rates
+```
+
+Celery Beat schedules `apps.tenants.tasks.sync_cbu_rates_task` hourly, with retries after source failures. Requests use CBU's date-specific JSON endpoint for the current Asia/Tashkent date. All three currencies are validated and stored atomically, normalized by `Nominal`. Future rates are not applied early; weekends/source outages retain the latest effective rate and its actual date. If no effective USD rate has been fetched, enabling automatic mode is rejected.
+
+`Tenant.usd_rate` remains the saved manual rate in the database. Tenant API responses expose the effective rate as `usd_rate`, the saved value as read-only `manual_usd_rate`, the selected `auto_usd_rate` flag and `usd_rate_source`, and read-only `cbu_rates`. In automatic mode, omit `usd_rate` from PATCH requests, including unrelated settings saves. Debt conversions save the applied rate, source, effective date and converted UZS amount; historical operations are never recalculated using today's rate. Older records retain their original notes without inventing a missing rate.
+
+Validation: `cd ilbi && .venv/bin/python -m pytest apps/tenants/tests/test_exchange_rates.py -q`; `cd frontend/ilbi && npm run test:currency`.
+
+## Unified activity history
+
+Owners and platform administrators have a **Tarix** sidebar entry at `/history`. The read-only timeline combines existing sales, standalone stock movements, debt payments, cash income/expenses, shift openings/closings and audit records. It supports server pagination, category, text/actor search and Asia/Tashkent date bounds. Owners remain restricted to the selected tenant; administrators may filter by `tenant_id`. Ordinary staff cannot read this consolidated financial and administrative history.
+
+`GET /api/v1/audit/history/` returns the timeline. `GET /api/v1/audit/history/{source}/{id}/` returns a scoped detail record, including the same sale serializer used by receipts. The frontend reuses the thermal receipt and A4 components. Sale-linked stock lines and the existing stock-adjustment audit entry are omitted from duplicate timeline representations.
+
+Successful catalog API mutations now record actor, object name and before/after snapshots in the existing immutable audit journal, in the same transaction as the mutation. Deleted product snapshots remain readable; failed and no-op edits do not create events. Price-only edits retain their existing price-change audit. Existing sales/movements are immediately available; edits that were never recorded before this release cannot be reconstructed. Apply `core.0014_catalog_history_actions` through the normal migration process and rebuild the frontend.
+
+Validation: `cd ilbi && .venv/bin/python -m pytest apps/core/tests/test_history_api.py apps/catalog/tests -q`; `cd frontend/ilbi && npm run test:history`. Browser QA uses synthetic data and covers receipts/A4, intake/edit details, filtering/pagination, tenant switching with delayed replies, errors and mobile/light/dark layout.
 
 ## ILBI rebranding and existing deployments
 

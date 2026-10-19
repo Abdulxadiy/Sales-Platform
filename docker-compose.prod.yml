@@ -1,11 +1,21 @@
 # Standalone production layout; TLS terminates at the frontend Nginx edge.
 # docker compose --env-file .env.production -f docker-compose.prod.yml ...
 name: ${COMPOSE_PROJECT_NAME:-ilbi-platform}
+x-logging: &bounded_logging
+  driver: local
+  options:
+    max-size: '10m'
+    max-file: '3'
 services:
   postgres:
+    security_opt: [no-new-privileges:true]
     image: postgres:16-alpine
+    logging: *bounded_logging
     restart: unless-stopped
-    env_file: ./.env.production
+    environment:
+      POSTGRES_DB: '${POSTGRES_DB:?Set POSTGRES_DB}'
+      POSTGRES_USER: '${POSTGRES_USER:?Set POSTGRES_USER}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
@@ -14,7 +24,9 @@ services:
       interval: 5s
       retries: 10
   redis:
+    security_opt: [no-new-privileges:true]
     image: redis:7-alpine
+    logging: *bounded_logging
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes: [redis_data:/data]
@@ -23,7 +35,13 @@ services:
       interval: 5s
       retries: 10
   ilbi:
-    build: ./ilbi
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    image: '${ILBI_BACKEND_IMAGE:-ilbi-backend:local}'
+    build:
+      context: ./ilbi
+      target: production
+    logging: *bounded_logging
     restart: unless-stopped
     env_file: ./ilbi/.env.production
     environment: &backend_environment
@@ -55,28 +73,53 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
   celery_worker:
-    build: ./ilbi
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    image: '${ILBI_BACKEND_IMAGE:-ilbi-backend:local}'
+    build:
+      context: ./ilbi
+      target: production
+    logging: *bounded_logging
     restart: unless-stopped
-    command: celery -A config worker -l info
+    command: celery -A config worker -l info --concurrency=1 --prefetch-multiplier=1 --max-tasks-per-child=100
+    volumes:
+      - media_data:/app/media
     env_file: ./ilbi/.env.production
     environment: *backend_environment
     depends_on:
       ilbi: {condition: service_healthy}
   celery_beat:
-    build: ./ilbi
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    image: '${ILBI_BACKEND_IMAGE:-ilbi-backend:local}'
+    build:
+      context: ./ilbi
+      target: production
+    logging: *bounded_logging
     restart: unless-stopped
-    command: celery -A config beat -l info
+    command: celery -A config beat -l info --schedule=/app/state/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/app/state
     env_file: ./ilbi/.env.production
     environment: *backend_environment
     depends_on:
       ilbi: {condition: service_healthy}
   bot:
-    build: ./telegram_bot_sms
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    image: '${ILBI_BOT_IMAGE:-ilbi-bot:local}'
+    build:
+      context: ./telegram_bot_sms
+      target: production
+    logging: *bounded_logging
     restart: unless-stopped
     env_file: ./telegram_bot_sms/.env.production
     depends_on:
       ilbi: {condition: service_healthy}
   frontend:
+    security_opt: [no-new-privileges:true]
+    image: '${ILBI_FRONTEND_IMAGE:-ilbi-frontend:local}'
+    logging: *bounded_logging
     build:
       context: ./frontend/ilbi
       target: production
@@ -85,7 +128,9 @@ services:
       PUBLIC_HOST: '${PUBLIC_HOST:?Set PUBLIC_HOST in .env.production}'
       SECURE_HSTS_SECONDS: '${SECURE_HSTS_SECONDS:-3600}'
       NGINX_ENVSUBST_FILTER: '^(PUBLIC_HOST|SECURE_HSTS_SECONDS)$'
-    ports: ['80:80', '443:443']
+    ports:
+      - '${EDGE_BIND_ADDRESS:-0.0.0.0}:80:80'
+      - '${EDGE_BIND_ADDRESS:-0.0.0.0}:443:443'
     volumes:
       - static_data:/var/www/static:ro
       - type: bind
@@ -98,6 +143,7 @@ services:
       ilbi: {condition: service_healthy}
   minio:
     image: cgr.dev/chainguard/minio:latest
+    logging: *bounded_logging
     profiles: [minio]
     restart: unless-stopped
     command: server /data --console-address ':9001'
@@ -110,4 +156,5 @@ volumes:
   redis_data:
   static_data:
   media_data:
+  celery_beat_data:
   minio_data:

@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
 import PlatformDashboard from './PlatformDashboard';
@@ -30,6 +31,7 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useTenant } from '../context/TenantContext';
 import { useAuth } from '../hooks/useAuth';
+import { useTenantCurrency } from '../hooks/useTenantCurrency';
 import Modal from '../components/common/Modal';
 import RevenueCostAnalyticsChart from '../components/dashboard/RevenueCostAnalyticsChart';
 import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
@@ -48,6 +50,8 @@ function TenantDashboard() {
     activeTenant?.is_owner ||
     userPerms.includes('*') ||
     userPerms.includes('analytics.view_dashboard');
+  const { settings: currencySettings } = useTenantCurrency(canViewDashboard ? activeTenant?.id : null);
+  const currencyRate = Number(currencySettings?.usd_rate || 0);
 
   const [period, setPeriod] = useState('today');
   const [data, setData] = useState(null);
@@ -430,7 +434,7 @@ function TenantDashboard() {
 
           {tenantError && <div role="alert" style={{ padding: 16, color: 'var(--accent-rose)' }}>{tenantError} <button className="btn btn-secondary" onClick={loadTenants}>Qayta urinish</button></div>}
           {!tenantsLoaded ? (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Do‘konlar yuklanmoqda...</div>
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Do‘konlar yuklanmoqda..." /></div>
           ) : filteredTenants.length > 0 ? (
             <div className="table-responsive">
               <table style={{ width: '100%', minWidth: 780, borderCollapse: 'collapse', fontSize: 13 }}>
@@ -799,7 +803,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(overview.total_debt_uzs)
                 )}
@@ -844,7 +848,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(overview.inventory_cost_value_uzs)
                 )}
@@ -888,7 +892,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(overview.inventory_retail_value_uzs)
                 )}
@@ -932,7 +936,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(overview.all_time_profit_uzs)
                 )}
@@ -976,7 +980,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(overview.all_time_sales_uzs)
                 )}
@@ -1095,7 +1099,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(kpi.total_revenue_uzs)
                 )}
@@ -1144,7 +1148,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(kpi.debt_sales_uzs)
                 )}
@@ -1238,7 +1242,7 @@ function TenantDashboard() {
               </div>
               <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
                 {loading && !data ? (
-                  <div className="skeleton" style={{ height: 28, width: '70%', margin: '4px 0' }} />
+                  <IlbiLoader size={32} label="Statistika yuklanmoqda..." />
                 ) : (
                   formatUZS(costUZS)
                 )}
@@ -1311,12 +1315,15 @@ function TenantDashboard() {
       </div>
 
       {/* Main Revenue and Costs Spline Analytics Chart */}
-      <RevenueCostAnalyticsChart
+      {currencyRate > 0 ? <RevenueCostAnalyticsChart
         chartData={data?.sales_chart}
         period={period}
         formatUZS={formatUZS}
         formatUSD={formatUSD}
-      />
+        currencyRate={currencyRate}
+      /> : <div className="glass-card" role="status" style={{ padding: 24 }}>
+        Grafik uchun do‘kon kursi mavjud emas. Qayta urinib ko‘ring.
+      </div>}
 
       {/* Middle Section: Payment Methods Breakdown & Cashier Leaderboard */}
       <div

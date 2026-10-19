@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
 import React, { useState } from 'react';
@@ -167,7 +168,7 @@ export default function Tenants() {
       const updated = await tenantApi.updateTenant(editingTenant.id, {
         name: editForm.name.trim(),
         description: editForm.description.trim(),
-        usd_rate: Number(editForm.usd_rate) || 12800,
+        ...(!editingTenant.auto_usd_rate ? { usd_rate: editForm.usd_rate } : {}),
       });
 
       // 2. Transfer ownership if requested
@@ -318,7 +319,7 @@ export default function Tenants() {
             {loading ? (
               <tr>
                 <td colSpan={7} style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Do‘konlar ro‘yxati yuklanmoqda...
+                  <IlbiLoader label="Do‘konlar ro‘yxati yuklanmoqda..." />
                 </td>
               </tr>
             ) : filteredTenants.length === 0 ? (
@@ -621,7 +622,7 @@ export default function Tenants() {
             />
           </div>
 
-          <div>
+          {!editingTenant?.auto_usd_rate && <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
               Ichki Dollar Kursi (USD Rate, UZS)
             </label>
@@ -629,12 +630,16 @@ export default function Tenants() {
               className="input-field"
               placeholder="12 800"
               value={editForm.usd_rate}
+              disabled={Boolean(editingTenant?.auto_usd_rate)}
+              min={0.01}
               onChange={(e) => setEditForm({ ...editForm, usd_rate: e.target.value })}
             />
             <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-              Ushbu do‘kon uchun ichki hisob-kitob dollar kursi (masalan: 12800).
+              {editingTenant?.auto_usd_rate
+                ? 'CBU avtomatik rejimi yoqilgan. Kurs manbasini do‘kon sozlamalarida o‘zgartiring.'
+                : 'Ushbu do‘kon uchun ichki hisob-kitob dollar kursi (masalan: 12800).'}
             </span>
-          </div>
+          </div>}
 
           <div>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>

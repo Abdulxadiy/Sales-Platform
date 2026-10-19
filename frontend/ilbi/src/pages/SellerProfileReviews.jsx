@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Clock, RefreshCw, Search, ShieldCheck, XCircle } from 'lucide-react';
 import { tenantApi } from '../api/client';
@@ -174,7 +175,7 @@ export default function SellerProfileReviews() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center' }}>Yuklanmoqda...</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center' }}><IlbiLoader label="Yuklanmoqda..." /></td></tr>
                 ) : profiles.length === 0 ? (
                   <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)' }}>Bu filtr bo‘yicha profil topilmadi.</td></tr>
                 ) : profiles.map((profile) => (

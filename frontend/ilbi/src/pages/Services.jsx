@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -26,6 +27,7 @@ import ReceiptSettingsPanel from '../components/common/ReceiptSettingsPanel';
 import { receiptDefaults } from '../utils/receiptTax';
 import { useTenant } from '../context/TenantContext';
 import PlatformSettings from '../components/platform/PlatformSettings';
+import { useTenantCurrency } from '../hooks/useTenantCurrency';
 
 function TenantServices() {
   const { user, isAdmin } = useAuth();
@@ -46,8 +48,7 @@ function TenantServices() {
   const [previewDate] = useState(() => new Date());
 
   // Quick Calculator State (USD <-> UZS)
-  const [calcUsd, setCalcUsd] = useState('100');
-  const [calcUzs, setCalcUzs] = useState('');
+  const [calculatorInput, setCalculatorInput] = useState({ currency: 'USD', value: '100' });
 
   // Main Form Data
   const [formData, setFormData] = useState({
@@ -56,6 +57,7 @@ function TenantServices() {
     name: '',
     description: '',
     usd_rate: '12800.00',
+    auto_usd_rate: false,
     daily_report_time: '22:00:00',
     daily_report_target: 'both',
     shift_report_target: 'both',
@@ -73,6 +75,17 @@ function TenantServices() {
     receipt_footer: '',
     receipt_phone: '',
   });
+
+  const { settings: currencySettings } = useTenantCurrency(isAdmin ? selectedTenantId : activeTenantId);
+  const cbuRates = currencySettings?.cbu_rates || tenant?.cbu_rates || {};
+  const effectiveUsdRate = formData.auto_usd_rate ? Number(cbuRates.USD?.rate || 0) : Number(formData.usd_rate || 0);
+
+  const calculatorAmount = Number(calculatorInput.value);
+  const canCalculate = calculatorInput.value !== '' && Number.isFinite(calculatorAmount) && effectiveUsdRate > 0;
+  const calcUsd = calculatorInput.currency === 'USD' ? calculatorInput.value
+    : canCalculate ? (calculatorAmount / effectiveUsdRate).toFixed(2) : '';
+  const calcUzs = calculatorInput.currency === 'UZS' ? calculatorInput.value
+    : canCalculate ? (calculatorAmount * effectiveUsdRate).toLocaleString('uz-UZ') : '';
 
   // Load current tenant settings
   const loadTenantData = useCallback(async () => {
@@ -95,7 +108,8 @@ function TenantServices() {
         address: data.address || '',
         name: data.name || '',
         description: data.description || '',
-        usd_rate: data.usd_rate ? String(data.usd_rate) : '12800.00',
+        usd_rate: String(data.manual_usd_rate ?? data.usd_rate ?? ''),
+        auto_usd_rate: Boolean(data.auto_usd_rate),
         daily_report_time: data.daily_report_time || '22:00:00',
         daily_report_target: data.daily_report_target || 'both',
         shift_report_target: data.shift_report_target || 'both',
@@ -116,9 +130,6 @@ function TenantServices() {
         receipt_phone: data.receipt_phone || '',
       });
 
-      // Update calculator initial UZS
-      const rate = parseFloat(data.usd_rate) || 12800;
-      setCalcUzs((100 * rate).toLocaleString('uz-UZ'));
     } catch (err) {
       if (generation !== loadGeneration.current) return;
       setLoadError('Do‘kon sozlamalarini yuklab bo‘lmadi: ' + err.message);
@@ -134,26 +145,11 @@ function TenantServices() {
 
   // Handle Calculator Changes
   const handleUsdChange = (val) => {
-    setCalcUsd(val);
-    const rate = parseFloat(formData.usd_rate) || 12800;
-    const num = parseFloat(val);
-    if (!isNaN(num)) {
-      setCalcUzs((num * rate).toLocaleString('uz-UZ'));
-    } else {
-      setCalcUzs('');
-    }
+    setCalculatorInput({ currency: 'USD', value: val });
   };
 
   const handleUzsChange = (val) => {
-    const clean = val.replace(/\s+/g, '');
-    setCalcUzs(clean);
-    const rate = parseFloat(formData.usd_rate) || 12800;
-    const num = parseFloat(clean);
-    if (!isNaN(num) && rate > 0) {
-      setCalcUsd((num / rate).toFixed(2));
-    } else {
-      setCalcUsd('');
-    }
+    setCalculatorInput({ currency: 'UZS', value: val.replace(/\s+/g, '') });
   };
 
   // Save Tenant Settings
@@ -162,9 +158,14 @@ function TenantServices() {
     const generation = loadGeneration.current;
     setSaving(true);
     try {
+      if (!formData.auto_usd_rate && !(Number(formData.usd_rate) > 0)) {
+        toast.warning('Ichki dollar kursi 0 dan katta bo‘lishi kerak.');
+        return;
+      }
+      const { usd_rate, ...settings } = formData;
       const payload = {
-        ...formData,
-        usd_rate: parseFloat(formData.usd_rate) || 12800,
+        ...settings,
+        ...(!formData.auto_usd_rate ? { usd_rate } : {}),
         low_stock_weekday: parseInt(formData.low_stock_weekday, 10) || 1,
         low_stock_day_of_month: parseInt(formData.low_stock_day_of_month, 10) || 1,
       };
@@ -172,6 +173,8 @@ function TenantServices() {
       const updated = await tenantApi.updateCurrentTenant(payload, params);
       if (generation !== loadGeneration.current) return;
       setTenant(updated);
+      setFormData(previous => ({ ...previous, usd_rate: String(updated.manual_usd_rate), auto_usd_rate: Boolean(updated.auto_usd_rate) }));
+      window.dispatchEvent(new Event('tenant:currency-updated'));
       toast.success('Sozlamalar muvaffaqiyatli saqlandi');
     } catch (err) {
       toast.error('Saqlashda xatolik yuz berdi: ' + (err.detail || err.message));
@@ -232,8 +235,7 @@ function TenantServices() {
   if (loading && !tenant) {
     return (
       <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
-        <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-        <div>Xizmatlar va sozlamalar yuklanmoqda...</div>
+        <IlbiLoader label="Xizmatlar va sozlamalar yuklanmoqda..." />
       </div>
     );
   }
@@ -385,25 +387,53 @@ function TenantServices() {
                   background: 'var(--primary-light)',
                 }}
               >
-                1 $ = {Number(formData.usd_rate || 0).toLocaleString('uz-UZ')} UZS
+                1 $ = {effectiveUsdRate > 0 ? effectiveUsdRate.toLocaleString('uz-UZ') : '—'} UZS
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-              <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                aria-label="CBU kursidan avtomatik foydalanish"
+                checked={formData.auto_usd_rate}
+                disabled={saving || (!formData.auto_usd_rate && !cbuRates.USD)}
+                onChange={event => setFormData(previous => ({ ...previous, auto_usd_rate: event.target.checked }))}
+              />
+              <span>CBU kursidan avtomatik foydalanish</span>
+            </label>
+            <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {formData.auto_usd_rate
+                ? 'Hisoblash CBU kursi bo‘yicha. Avtomatik rejimni o‘chirsangiz, avvalgi qo‘lda kiritilgan kurs qaytadi.'
+                : 'Hisoblash owner saqlagan ichki kurs bo‘yicha. CBU rejimini yoqsangiz, kurs avtomatik yangilanadi.'}
+              {!cbuRates.USD && <div role="status">CBU kurslari hali mavjud emas. Avtomatik rejim kurs olingach yoqiladi.</div>}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: 12 }}>
+              {['USD', 'EUR', 'RUB'].map(code => (
+                <div key={code} style={{ padding: 12, borderRadius: 10, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                  <strong>1 {code} = {cbuRates[code] ? Number(cbuRates[code].rate).toLocaleString('uz-UZ', { maximumFractionDigits: 6 }) : '—'} UZS</strong>
+                  <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--text-muted)' }}>
+                    {cbuRates[code] ? `Amal qilish sanasi: ${cbuRates[code].date}` : 'CBU kursi kutilmoqda'}
+                  </div>
+                  {cbuRates[code] && <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                    Tekshirilgan: {new Date(cbuRates[code].checked_at).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}
+                  </div>}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16 }}>
+              {!formData.auto_usd_rate && <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  Baza Dollar Kursi (so‘mda)
+                  Qo‘lda kiritilgan dollar kursi (so‘mda)
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <PriceInput
+                    aria-label="Qo‘lda kiritilgan dollar kursi"
                     value={formData.usd_rate}
+                    disabled={formData.auto_usd_rate || saving}
+                    min={0.01}
                     onChange={(e) => {
                       setFormData({ ...formData, usd_rate: e.target.value });
-                      const num = parseFloat(calcUsd);
-                      const rate = parseFloat(e.target.value);
-                      if (!isNaN(num) && !isNaN(rate)) {
-                        setCalcUzs((num * rate).toLocaleString('uz-UZ'));
-                      }
                     }}
                     placeholder="12 800"
                     style={{
@@ -427,10 +457,9 @@ function TenantServices() {
                     <button
                       key={preset}
                       type="button"
+                      disabled={formData.auto_usd_rate || saving}
                       onClick={() => {
                         setFormData({ ...formData, usd_rate: String(preset) });
-                        const num = parseFloat(calcUsd);
-                        if (!isNaN(num)) setCalcUzs((num * preset).toLocaleString('uz-UZ'));
                       }}
                       className="btn btn-secondary"
                       style={{ padding: '4px 10px', fontSize: 12, borderRadius: 8 }}
@@ -439,7 +468,7 @@ function TenantServices() {
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>}
 
               {/* Live Calculator Card */}
               <div
@@ -461,6 +490,7 @@ function TenantServices() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>USD ($)</div>
                     <PriceInput
+                      aria-label="Kalkulyator USD"
                       value={calcUsd}
                       onChange={(e) => handleUsdChange(e.target.value)}
                       placeholder="USD"
@@ -480,6 +510,7 @@ function TenantServices() {
                   <div style={{ flex: 1.4 }}>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>UZS (so‘m)</div>
                     <input
+                      aria-label="Kalkulyator UZS"
                       type="text"
                       value={calcUzs}
                       onChange={(e) => handleUzsChange(e.target.value)}
@@ -514,7 +545,7 @@ function TenantServices() {
             >
               <Info size={18} color="var(--primary)" style={{ flexShrink: 0, marginTop: 2 }} />
               <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Dollar kursi o‘zgartirilganda, katalogdagi avtomatik konvertatsiya va kassa smenasidagi yangi sotuvlar ushbu kurs bo‘yicha amalga oshiriladi. Avval yopilgan tarixiy smenalar va hisobotlar o‘zgartirilmaydi.
+                CBU kurslari har kuni avtomatik tekshiriladi. Oxirgi muvaffaqiyatli olingan, amal qilayotgan kurs ishlatiladi. Kurs o‘zgarishi oldingi operatsiyalarni qayta hisoblamaydi. POS narxi va to‘lovi UZS’da yuritiladi.
               </div>
             </div>
 
@@ -527,7 +558,7 @@ function TenantServices() {
                 style={{ padding: '10px 24px', fontSize: 14, fontWeight: 700 }}
               >
                 <Save size={16} />
-                <span>{saving ? 'Saqlanmoqda...' : 'Kursni Saqlash'}</span>
+                <span>{saving ? 'Saqlanmoqda...' : 'Kurs sozlamalarini saqlash'}</span>
               </button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
 import React, { useState, useEffect, } from 'react';
@@ -541,7 +542,7 @@ export default function B2BTransactions() {
               gap: 6,
             }}
           >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            {loading ? <IlbiLoader size={21} inline decorative /> : <RefreshCw size={13} />}
             <span>Yangilash</span>
           </button>
         </div>
@@ -576,7 +577,7 @@ export default function B2BTransactions() {
                 {loading ? (
                   <tr>
                     <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      Yuklanmoqda...
+                      <IlbiLoader label="Yuklanmoqda..." />
                     </td>
                   </tr>
                 ) : filteredInbox.length > 0 ? (
@@ -713,7 +714,7 @@ export default function B2BTransactions() {
                 {loading ? (
                   <tr>
                     <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      Yuklanmoqda...
+                      <IlbiLoader label="Yuklanmoqda..." />
                     </td>
                   </tr>
                 ) : filteredOutgoing.length > 0 ? (
@@ -871,6 +872,7 @@ export default function B2BTransactions() {
         isOpen={Boolean(b2bAcceptSale)}
         onClose={() => !submittingB2BAccept && setB2BAcceptSale(null)}
         title="B2B tovarlarni do‘kon katalogiga joylash"
+        maxWidth={880}
       >
         <form onSubmit={handleConfirmAcceptB2B} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}>

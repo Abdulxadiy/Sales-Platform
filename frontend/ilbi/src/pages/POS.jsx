@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
@@ -40,6 +41,7 @@ import { getOrCreateRequestKey } from '../utils/requestKey';
 import { useAuth } from '../hooks/useAuth';
 import { usePersistedState } from '../hooks/usePersistedState';
 import { useAccountDraft } from '../hooks/useAccountDraft';
+import { useTenantCurrency } from '../hooks/useTenantCurrency';
 import { calculateTaxLine, taxExpectation } from '../utils/receiptTax';
 
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
@@ -65,8 +67,12 @@ export default function POS() {
     { tenantId: activeTenant?.id, pageSize: 20 },
   );
   const [checkoutVariants, setCheckoutVariants] = useState([]);
-  const [usdRate, setUsdRate] = useState(0);
-  const [receiptSettings, setReceiptSettings] = useState(null);
+  const { settings: tenantSettings } = useTenantCurrency(activeTenant?.id);
+  const usdRate = Number(tenantSettings?.usd_rate || 0);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutSettingsSnapshot, setCheckoutSettingsSnapshot] = useState(null);
+  const receiptSettings = checkoutOpen && String(checkoutSettingsSnapshot?.tenantId) === String(activeTenant?.id)
+    ? checkoutSettingsSnapshot.settings : tenantSettings?.receipt_settings || null;
   const [usdCalculatorOpen, setUsdCalculatorOpen] = useState(false);
   const [usdCalculatorAmount, setUsdCalculatorAmount] = useState('');
   const [usdCalculatorSaleTotalUzs, setUsdCalculatorSaleTotalUzs] = useState('');
@@ -85,7 +91,6 @@ export default function POS() {
   );
 
   // Checkout Modal State
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod, resetPaymentMethod] = useAccountDraft('checkout_method', 'CASH');
   const [paidAmountUZS, setPaidAmountUZS, resetPaidUZS] = useAccountDraft('checkout_paid_uzs', '');
   const [paidAmountUSD, setPaidAmountUSD, resetPaidUSD] = useAccountDraft('checkout_paid_usd', '');
@@ -118,17 +123,8 @@ export default function POS() {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    setReceiptSettings(null);
-    tenantApi.getCurrentTenant().then((data) => {
-      if (active) {
-        setUsdRate(Number(data.usd_rate || 0));
-        setReceiptSettings(data.receipt_settings || {});
-        if (data.receipt_settings?.receipt_paper_width) setReceiptPaperWidth(data.receipt_settings.receipt_paper_width);
-      }
-    }).catch(() => { if (active) { setUsdRate(0); setReceiptSettings(null); } });
-    return () => { active = false; };
-  }, [activeTenant?.id, setReceiptPaperWidth]);
+    if (receiptSettings?.receipt_paper_width) setReceiptPaperWidth(receiptSettings.receipt_paper_width);
+  }, [receiptSettings?.receipt_paper_width, setReceiptPaperWidth]);
 
   const previousTenantId = useRef(null);
   useEffect(() => {
@@ -397,7 +393,7 @@ export default function POS() {
       const tenantData = await tenantApi.getCurrentTenant();
       if (String(checkingTenantId) !== String(previousTenantId.current)) return;
       checkoutSettings = tenantData.receipt_settings || {};
-      setReceiptSettings(checkoutSettings);
+      setCheckoutSettingsSnapshot({ tenantId: checkingTenantId, settings: checkoutSettings });
       const data = await catalogApi.getVariants({ ids: cart.map(item => item.variant.id).join(',') });
       if (String(checkingTenantId) !== String(previousTenantId.current)) return;
       currentVariants = Array.isArray(data) ? data : data.results || [];
@@ -979,7 +975,7 @@ export default function POS() {
         >
           {loadingProducts ? (
             <div style={{ gridColumn: '1 / -1', padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Tovarlar yuklanmoqda...
+              <IlbiLoader label="Tovarlar yuklanmoqda..." />
             </div>
           ) : variants.length > 0 ? (
             paginatedVariants.map((v) => {

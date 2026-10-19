@@ -18,7 +18,7 @@ class TenantService:
     """Encapsulates the business rules for creating and managing tenants."""
 
     COPYABLE_SETTINGS = (
-        "usd_rate", "daily_report_time", "daily_report_target", "shift_report_target",
+        "usd_rate", "auto_usd_rate", "daily_report_time", "daily_report_target", "shift_report_target",
         "telegram_group_id", "notify_web_reports", "notify_on_sale", "notify_on_debt",
         "low_stock_report_target", "low_stock_report_time", "low_stock_frequency",
         "low_stock_weekday", "low_stock_day_of_month", "notify_web_low_stock",

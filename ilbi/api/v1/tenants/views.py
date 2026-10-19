@@ -562,10 +562,12 @@ class TenantTestTelegramView(TenantContextMixin, APIView):
                 "detail": "Hech qanday Telegram manzil topilmadi. Guruh ID sini kiriting yoki Telegram bot (@ilbi_bot) ga shaxsiy raqamingizni ulang."
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        effective_rate = tenant.effective_usd_rate
+        rate_text = f"{effective_rate:,.2f} UZS" if effective_rate is not None else "Kurs mavjud emas"
         test_msg = (
             "🔔 *ILBI Test Bildirishnomasi*\n\n"
             f"🏢 *Do'kon:* {tenant.name}\n"
-            f"💵 *Ichki dollar kursi:* `{tenant.usd_rate:,.2f} UZS`\n"
+            f"💵 *Ichki dollar kursi:* `{rate_text}`\n"
             "✅ *Aloqa holati:* Telegram kanali/guruhi muvaffaqiyatli ulandi va sozlandi!"
         )
 

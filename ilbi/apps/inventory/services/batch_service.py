@@ -36,6 +36,7 @@ class BatchService:
                 "expires_on": a.batch.expires_on.isoformat() if a.batch.expires_on else None,
                 "quantity": str(a.quantity),
                 "cost_price": str(a.batch.cost_price) if a.batch.cost_price is not None else None,
+                "supplier": a.batch.supplier or "",
             }
             for a in movement.batch_allocations.select_related("batch").order_by("pk")
         ]
@@ -75,13 +76,14 @@ class BatchService:
                 "expires_on": a.batch.expires_on.isoformat() if a.batch.expires_on else None,
                 "quantity": str(a.quantity),
                 "cost_price": str(a.batch.cost_price) if a.batch.cost_price is not None else None,
+                "supplier": a.batch.supplier or "",
             }
             for a in allocations
         ]
         return cls.slice_manifest(manifest, quantity, offset)
 
     @classmethod
-    def record(cls, movement, *, batch_code="", expires_on=None, batch_id=None, manifest=None, return_offset=None):
+    def record(cls, movement, *, batch_code="", expires_on=None, batch_id=None, manifest=None, return_offset=None, supplier=""):
         if movement.direction == "out":
             cls._consume(movement, batch_id)
             return
@@ -96,12 +98,14 @@ class BatchService:
             batch.save(update_fields=["quantity", "updated_at"])
             BatchAllocation.objects.create(movement=movement, batch=batch, quantity=movement.quantity)
             return
+        batch_supplier = (supplier or getattr(movement, "supplier", "") or "").strip()
         entries = manifest or [
             {
                 "batch_code": batch_code,
                 "expires_on": expires_on,
                 "quantity": str(movement.quantity),
                 "cost_price": movement.cost_price,
+                "supplier": batch_supplier,
             }
         ]
         covered = Decimal("0")
@@ -113,6 +117,7 @@ class BatchService:
             cost = entry.get("cost_price")
             if movement.type == StockMovement.TYPE_KIRIM:
                 cost = movement.cost_price
+            entry_supplier = (entry.get("supplier") or batch_supplier or "").strip()
             batch = StockBatch.objects.create(
                 tenant=movement.tenant,
                 product_variant=movement.product_variant,
@@ -120,6 +125,7 @@ class BatchService:
                 expires_on=expiry,
                 quantity=quantity,
                 cost_price=cost,
+                supplier=entry_supplier,
             )
             BatchAllocation.objects.create(movement=movement, batch=batch, quantity=quantity)
             covered += quantity

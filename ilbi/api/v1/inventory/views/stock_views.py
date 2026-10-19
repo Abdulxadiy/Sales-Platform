@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -8,25 +8,58 @@ from api.permissions import HasEmployeePermission
 from api.query_params import positive_id
 from api.schema import optional_pagination
 from api.v1.inventory.serializers import StockOutputSerializer
+from apps.accounts.services.permission_service import PermissionService
 from apps.catalog.models import ProductVariant
-from apps.inventory.models import Stock
+from apps.inventory.models import Stock, StockBatch, StockMovement
 
 from ._base import InventoryAPIView
 
 
-def filtered_stock_queryset(tenant, params):
+def filtered_stock_queryset(tenant, params, request=None):
     stock = Stock.objects.filter(tenant=tenant).select_related(
         "product_variant", "product_variant__product", "product_variant__product__category"
+    ).prefetch_related(
+        Prefetch(
+            "product_variant__stock_batches",
+            queryset=StockBatch.objects.exclude(supplier="").order_by("-received_on", "-pk"),
+            to_attr="_cached_supplier_batches",
+        ),
+        Prefetch(
+            "product_variant__stock_movements",
+            queryset=StockMovement.objects.filter(direction="in").exclude(supplier="").order_by("-created_at", "-pk"),
+            to_attr="_cached_supplier_movements",
+        ),
     )
     search = (params.get("search") or "").strip()
     if search:
-        stock = stock.filter(
+        can_view_supplier = False
+        if request is not None:
+            cache = getattr(request, "_supplier_permission_cache", None)
+            if cache is None:
+                cache = request._supplier_permission_cache = {}
+            employee = getattr(request, "employee", None)
+            key = (request.user.pk, getattr(tenant, "pk", None), getattr(employee, "pk", None))
+            if key not in cache:
+                cache[key] = PermissionService.has_permission(
+                    request.user, "inventory.view_supplier", tenant=tenant, employee=employee
+                )
+            can_view_supplier = cache[key]
+
+        q_filter = (
             Q(product_variant__product__name__icontains=search)
             | Q(product_variant__name__icontains=search)
             | Q(product_variant__sku__icontains=search)
             | Q(product_variant__code__icontains=search)
             | Q(product_variant__barcode__icontains=search)
         )
+        if can_view_supplier:
+            q_filter |= (
+                Q(product_variant__stock_batches__supplier__icontains=search)
+                | Q(product_variant__stock_movements__supplier__icontains=search)
+            )
+            stock = stock.filter(q_filter).distinct()
+        else:
+            stock = stock.filter(q_filter)
     category = positive_id(params.get("category"), "category")
     if category:
         stock = stock.filter(product_variant__product__category_id=category)
@@ -49,7 +82,7 @@ class StockListView(InventoryAPIView):
 
     @extend_schema(request=None, responses={200: optional_pagination(StockOutputSerializer)})
     def get(self, request):
-        stock = filtered_stock_queryset(self.tenant, request.query_params)
+        stock = filtered_stock_queryset(self.tenant, request.query_params, request=request)
         if request.query_params.get("page"):
             from api.pagination import StandardResultsSetPagination
             paginator = StandardResultsSetPagination()

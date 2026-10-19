@@ -48,6 +48,7 @@ class StockMovement(BaseModel):
     cost_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     note = models.TextField(blank=True)
+    supplier = models.CharField(max_length=255, blank=True, db_index=True)
 
     sale = models.ForeignKey(
         "sales.Sale",

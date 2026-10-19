@@ -13,6 +13,6 @@ fi
 install -m 0644 "$lineage/fullchain.pem" "$tls_dir/fullchain.pem"
 install -m 0600 "$lineage/privkey.pem" "$tls_dir/privkey.pem"
 if ./ops/compose.sh ps --status running --services | grep -qx frontend; then
-    ./ops/compose.sh exec -T frontend nginx -t
-    ./ops/compose.sh exec -T frontend nginx -s reload
+    ./ops/compose.sh exec -T --interactive=false frontend nginx -t
+    ./ops/compose.sh exec -T --interactive=false frontend nginx -s reload
 fi

@@ -97,7 +97,9 @@ services:
       target: production
     logging: *bounded_logging
     restart: unless-stopped
-    command: celery -A config beat -l info
+    command: celery -A config beat -l info --schedule=/app/state/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/app/state
     env_file: ./ilbi/.env.production
     environment: *backend_environment
     depends_on:
@@ -154,4 +156,5 @@ volumes:
   redis_data:
   static_data:
   media_data:
+  celery_beat_data:
   minio_data:

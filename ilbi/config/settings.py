@@ -176,9 +176,9 @@ try:
 except importlib.metadata.PackageNotFoundError:
     try:
         with open(BASE_DIR / "pyproject.toml", "rb") as _f:
-            APP_VERSION = tomllib.load(_f).get("project", {}).get("version", "0.13.1")
+            APP_VERSION = tomllib.load(_f).get("project", {}).get("version", "1.0.0")
     except Exception:
-        APP_VERSION = "0.13.1"
+        APP_VERSION = "1.0.0"
 
 # Technical API documentation stays available in development/test.
 API_DOCS_ENABLED = True

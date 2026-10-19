@@ -6,7 +6,7 @@ import { TenantProvider } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
-import AppLoadingScreen from './components/common/AppLoadingScreen';
+import AppLoadingScreen, { AppLoadingProvider } from './components/common/AppLoadingScreen';
 import SessionRecovery from './components/auth/SessionRecovery';
 const Layout = lazy(() => import('./components/layout/Layout'));
 const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
@@ -22,6 +22,7 @@ const Debts = lazy(() => import('./pages/Debts'));
 const B2BTransactions = lazy(() => import('./pages/B2BTransactions'));
 const Shifts = lazy(() => import('./pages/Shifts'));
 const Audit = lazy(() => import('./pages/Audit'));
+const History = lazy(() => import('./pages/History'));
 const Tenants = lazy(() => import('./pages/Tenants'));
 const SellerProfileReviews = lazy(() => import('./pages/SellerProfileReviews'));
 const MyTenants = lazy(() => import('./pages/MyTenants'));
@@ -100,6 +101,7 @@ export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
       <ThemeProvider>
+        <AppLoadingProvider>
         <AuthProvider>
           <TenantProvider>
             <SessionUI>
@@ -130,6 +132,7 @@ export default function App() {
                   <Route path="debts" element={<Debts />} />
                   <Route path="b2b" element={<B2BTransactions />} />
                   <Route path="shifts" element={<Shifts />} />
+                  <Route path="history" element={<RoleProtectedRoute allowedRoles={['owner', 'platform_admin']}><History /></RoleProtectedRoute>} />
                   <Route
                     path="tenants"
                     element={
@@ -189,6 +192,7 @@ export default function App() {
           </SessionUI>
         </TenantProvider>
         </AuthProvider>
+        </AppLoadingProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

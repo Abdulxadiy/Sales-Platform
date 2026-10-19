@@ -1,3 +1,4 @@
+import IlbiLoader from '../common/IlbiLoader';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, RefreshCw, Send, ShieldCheck } from 'lucide-react';
 import { authApi } from '../../api/client';
@@ -127,7 +128,7 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
       )}
 
       <div aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '12px 14px', borderRadius: 12, background: linked ? 'rgba(34, 197, 94, 0.1)' : 'var(--primary-light)', color: linked ? 'var(--accent-emerald)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600 }}>
-        {linked ? <CheckCircle2 size={18} /> : <RefreshCw size={17} className={checking ? 'animate-spin' : ''} />}
+        {linked ? <CheckCircle2 size={18} /> : checking ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />}
         <span>{linked ? (sending ? 'Tasdiqlash kodi yuborilmoqda...' : 'Raqamingiz botga muvaffaqiyatli ulandi') : checking ? 'Botga ulanish tekshirilmoqda...' : checked ? 'Raqamingiz hali botga ulanmagan' : 'Ulanishni tekshirib bo‘lmadi'}</span>
       </div>
 
@@ -135,7 +136,7 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
 
       {sessionExpired && onRenew ? (
         <button type="button" onClick={renewTicket} disabled={renewing} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>
-          <RefreshCw size={17} className={renewing ? 'animate-spin' : ''} /> {renewing ? 'Yangilanmoqda...' : 'Havola orqali davom etish'}
+          {renewing ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />} {renewing ? 'Yangilanmoqda...' : 'Havola orqali davom etish'}
         </button>
       ) : linked ? (
         <button type="button" onClick={sendCode} disabled={sending} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>
@@ -143,7 +144,7 @@ export default function TelegramConnectionGate({ loginTicket, phoneHint, onOtpSe
         </button>
       ) : (
         <button type="button" onClick={() => checkConnection(true)} disabled={checking} className="btn btn-primary" style={{ width: '100%', padding: '13px', justifyContent: 'center' }}>
-          <RefreshCw size={17} className={checking ? 'animate-spin' : ''} /> {checking ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}
+          {checking ? <IlbiLoader size={25} inline decorative /> : <RefreshCw size={17} />} {checking ? 'Tekshirilmoqda...' : 'Ulanishni tekshirish'}
         </button>
       )}
 

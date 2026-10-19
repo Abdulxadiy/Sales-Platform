@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import { localStore } from '../utils/brandStorage.js';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -554,7 +555,7 @@ export default function Login() {
               style={{ marginTop: 8, padding: '13px' }}
             >
               <span>{loading || submittingStep1 ? 'Tekshirilmoqda...' : 'Davom etish'}</span>
-              <ArrowRight size={18} />
+              {loading || submittingStep1 ? <IlbiLoader size={24} inline decorative /> : <ArrowRight size={18} />}
             </button>
           </form>
         ) : step === 2 ? (
@@ -682,7 +683,7 @@ export default function Login() {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <RefreshCw size={13} className={resending ? 'animate-spin' : ''} />
+                  {resending ? <IlbiLoader size={21} inline decorative /> : <RefreshCw size={13} />}
                   <span>{resending ? 'Yuborilmoqda...' : 'Kodni qayta yuborish'}</span>
                 </button>
               )}
@@ -703,6 +704,7 @@ export default function Login() {
                 className="btn btn-primary"
                 style={{ flex: 2 }}
               >
+                {loading && <IlbiLoader size={24} inline decorative />}
                 {loading ? 'Kutilyapti...' : otpTimeLeft === 0 ? 'Kodni Yangilang' : 'Tizimga Kirish'}
               </button>
             </div>

@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sliders,
+  History,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -140,6 +141,7 @@ export default function Sidebar({
       : []),
     ...(isAdmin || isOwner
       ? [
+          { to: '/history', label: 'Tarix', icon: History },
           ...(isOwner ? [{ to: '/my-tenants', label: 'Mening do‘konlarim', icon: Store }] : []),
           {
             to: '/employees',

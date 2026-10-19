@@ -1,3 +1,4 @@
+import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
@@ -439,19 +440,9 @@ export default function SetupAccount() {
         {/* Token Verification Loading State */}
         {verifyingToken ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                border: '3px solid var(--border-subtle)',
-                borderTopColor: 'var(--primary)',
-                margin: '0 auto 16px',
-                animation: 'spin 0.8s linear infinite',
-              }}
-            />
+
             <p style={{ color: 'var(--text-muted)', fontSize: 13.5, margin: 0, fontWeight: 500 }}>
-              Xavfsizlik havolasi tekshirilmoqda...
+              <IlbiLoader label="Xavfsizlik havolasi tekshirilmoqda..." />
             </p>
           </div>
         ) : isTokenExpired ? (
@@ -793,7 +784,7 @@ export default function SetupAccount() {
                       padding: 0,
                     }}
                   >
-                    <RefreshCw size={14} className={otpLoading ? 'animate-spin' : ''} />
+                    {otpLoading ? <IlbiLoader size={22} inline decorative /> : <RefreshCw size={14} />}
                     <span>
                       {otpTimeLeft > 0 ? `Kodni qayta yuborish (${formatTimer(otpTimeLeft)})` : 'Kodni qayta yuborish'}
                     </span>

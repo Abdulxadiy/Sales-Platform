@@ -23,6 +23,7 @@ class CategoryListCreateView(CatalogAPIView):
     """GET  /api/v1/catalog/categories/
     POST /api/v1/catalog/categories/"""
 
+    history_model = Category
     permission_classes = [HasEmployeePermission]
     permission_map = {"GET": "catalog.view_category", "POST": "catalog.add_category"}
 
@@ -66,6 +67,7 @@ class CategoryDetailView(CatalogAPIView):
     """GET   /api/v1/catalog/categories/{pk}/
     PATCH /api/v1/catalog/categories/{pk}/"""
 
+    history_model = Category
     permission_classes = [HasEmployeePermission]
     permission_map = {
         "GET": "catalog.view_category",
@@ -107,6 +109,7 @@ class CategoryDetailView(CatalogAPIView):
 class CategoryArchiveView(CatalogAPIView):
     """POST /api/v1/catalog/categories/{pk}/archive/"""
 
+    history_model = Category
     permission_classes = [HasEmployeePermission]
     required_permission = "catalog.archive_category"
 

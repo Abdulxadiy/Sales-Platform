@@ -3,6 +3,43 @@ on:
   push: { branches: [main] }
   pull_request:
 jobs:
+  dependency-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { version: "0.12.x" }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Audit locked production dependencies
+        run: |
+          uv export --project ilbi --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt --output-file /tmp/backend-requirements.txt
+          uv export --project telegram_bot_sms --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt --output-file /tmp/bot-requirements.txt
+          uvx --from pip-audit==2.10.1 pip-audit --no-deps --disable-pip -r /tmp/backend-requirements.txt
+          uvx --from pip-audit==2.10.1 pip-audit --no-deps --disable-pip -r /tmp/bot-requirements.txt
+          npm audit --prefix frontend/ilbi --omit=dev --audit-level=high
+  bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { version: "0.12.x" }
+      - run: uv sync --project telegram_bot_sms --frozen
+      - run: uv run --project telegram_bot_sms python -m unittest discover -s telegram_bot_sms/tests -v
+  production-edge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployment scripts
+        run: |
+          for script in ops/*.sh; do bash -n "$script"; done
+          python3 -m unittest discover -s tests/deployment -p 'test_operations.py' -v
+      - name: Fetch isolated test images
+        run: |
+          docker pull nginx:alpine
+          docker pull python:3.12-slim
+      - name: Test HTTPS boundary and activation failure recovery
+        run: python3 -m unittest discover -s tests/deployment -p 'test_https*.py' -v
   backend:
     runs-on: ubuntu-latest
     services:

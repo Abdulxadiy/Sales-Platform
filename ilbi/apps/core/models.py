@@ -11,6 +11,11 @@ class BaseModel(models.Model):
 
 
 class AuditAction(models.TextChoices):
+    CATALOG_CREATE = "catalog_create", "Katalogga qo‘shildi"
+    CATALOG_UPDATE = "catalog_update", "Katalog tahrirlandi"
+    CATALOG_ARCHIVE = "catalog_archive", "Katalog arxivlandi"
+    CATALOG_RESTORE = "catalog_restore", "Katalog tiklandi"
+    CATALOG_DELETE = "catalog_delete", "Katalogdan o‘chirildi"
     ACCOUNT_IDENTITY_UPDATE = "account_identity_update", "Login va Telegram yangilandi"
     SUPPORT_TELEGRAM_SETTINGS = "support_telegram_settings", "Yordam bildirishnomalari sozlandi"
     CATALOG_IMPORT = "catalog_import", "Catalog import"

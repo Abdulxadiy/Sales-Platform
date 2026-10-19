@@ -3,8 +3,10 @@
 set -e
 
 if [ "$1" = "gunicorn" ] || [ "$RUN_MIGRATIONS" = "true" ]; then
-    echo "==> Syncing virtual environment..."
-    uv sync --frozen --no-dev
+    if [ "${ILBI_SKIP_DEPENDENCY_SYNC:-false}" != "true" ]; then
+        echo "==> Syncing virtual environment..."
+        uv sync --frozen --no-dev
+    fi
 
     echo "==> Running migrations..."
     python manage.py migrate --noinput

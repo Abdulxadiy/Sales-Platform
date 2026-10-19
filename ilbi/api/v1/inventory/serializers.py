@@ -28,7 +28,7 @@ class StockOutputSerializer(SensitiveCostSerializerMixin, SensitiveSupplierSeria
         ]
         read_only_fields = fields
 
-    def get_supplier(self, obj):
+    def get_supplier(self, obj) -> str | None:
         pv = getattr(obj, "product_variant", None)
         if not pv:
             return None

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS application
 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,3 +34,10 @@ ENTRYPOINT ["./entrypoint.sh"]
 
 
 CMD ["gunicorn", "config.wsgi:application", "-c", "gunicorn.conf.py"]
+
+FROM application AS production
+RUN uv sync --frozen --no-dev
+ENV ILBI_SKIP_DEPENDENCY_SYNC=true
+
+# Preserve the development target as the default for docker-compose.yml.
+FROM application AS development

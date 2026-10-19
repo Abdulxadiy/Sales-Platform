@@ -108,6 +108,8 @@ These browser checks use synthetic API responses and never sign in to or write t
 
 ## Production Deployment
 
+Lightsail installation status, SSH operations, deferred DNS/HTTPS activation and CI/CD setup are documented in [ops/README.md](ops/README.md).
+
 Production uses a separate Compose file with a built React bundle served by Nginx. The development Vite server is used only by `docker-compose.yml`.
 
 1. Prepare separate production environment files on the server:

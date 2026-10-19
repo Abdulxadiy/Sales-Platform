@@ -12,6 +12,8 @@ backup_data() (
         fi
     }
     trap restore_writers EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
     if ((${#active[@]})); then
         ./ops/compose.sh stop "${active[@]}"
     fi

@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -63,6 +64,41 @@ class HttpsActivationTests(unittest.TestCase):
         self.assertIn("compose stop frontend", commands)
         self.assertEqual(commands[-1], "compose up -d --no-build frontend")
         self.assertEqual(self.env_file.read_bytes(), before)
+
+    def prepare_successful_certbot(self):
+        self.stub(self.root / "bin/sudo", 'printf "sudo %s\\n" "$*" >> "$TEST_COMMAND_LOG"\nexit 0\n')
+        self.stub(
+            self.root / "bin/curl",
+            'bind=$(sed -n "s/^EDGE_BIND_ADDRESS=//p" .env.production)\n'
+            'printf "curl %s\\n" "$bind" >> "$TEST_COMMAND_LOG"\n'
+            '[[ "${TEST_CURL_FAIL_AT:-}" == "$bind" ]] && exit 60\nexit 0\n',
+        )
+
+    def test_invalid_certificate_is_never_published(self):
+        self.prepare_successful_certbot()
+        before = self.env_file.read_bytes()
+        with patch.dict(os.environ, {"TEST_CURL_FAIL_AT": "127.0.0.1"}):
+            result = self.run_activation()
+        self.assertEqual(result.returncode, 60, result.stderr)
+        self.assertEqual(self.env_file.read_bytes(), before)
+        self.assertNotIn("curl 0.0.0.0", self.log.read_text())
+
+    def test_public_start_failure_restores_private_binding(self):
+        self.prepare_successful_certbot()
+        with patch.dict(os.environ, {"TEST_CURL_FAIL_AT": "0.0.0.0"}):
+            result = self.run_activation()
+        self.assertEqual(result.returncode, 60, result.stderr)
+        self.assertIn("EDGE_BIND_ADDRESS=127.0.0.1\n", self.env_file.read_text())
+        self.assertEqual(self.log.read_text().splitlines()[-1], "compose up -d --no-build frontend")
+
+    def test_trusted_private_https_is_checked_before_publishing(self):
+        self.prepare_successful_certbot()
+        result = self.run_activation()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        checks = [line for line in self.log.read_text().splitlines() if line.startswith("curl ")]
+        self.assertEqual(checks, ["curl 127.0.0.1", "curl 0.0.0.0"])
+        self.assertIn("EDGE_BIND_ADDRESS=0.0.0.0\n", self.env_file.read_text())
+        self.assertEqual(self.env_file.stat().st_mode & 0o777, 0o600)
 
 
 if __name__ == "__main__":

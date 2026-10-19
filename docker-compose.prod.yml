@@ -8,6 +8,7 @@ x-logging: &bounded_logging
     max-file: '3'
 services:
   postgres:
+    security_opt: [no-new-privileges:true]
     image: postgres:16-alpine
     logging: *bounded_logging
     restart: unless-stopped
@@ -23,6 +24,7 @@ services:
       interval: 5s
       retries: 10
   redis:
+    security_opt: [no-new-privileges:true]
     image: redis:7-alpine
     logging: *bounded_logging
     restart: unless-stopped
@@ -33,6 +35,8 @@ services:
       interval: 5s
       retries: 10
   ilbi:
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     image: '${ILBI_BACKEND_IMAGE:-ilbi-backend:local}'
     build:
       context: ./ilbi
@@ -69,6 +73,8 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
   celery_worker:
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     image: '${ILBI_BACKEND_IMAGE:-ilbi-backend:local}'
     build:
       context: ./ilbi
@@ -83,6 +89,8 @@ services:
     depends_on:
       ilbi: {condition: service_healthy}
   celery_beat:
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     image: '${ILBI_BACKEND_IMAGE:-ilbi-backend:local}'
     build:
       context: ./ilbi
@@ -95,6 +103,8 @@ services:
     depends_on:
       ilbi: {condition: service_healthy}
   bot:
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
     image: '${ILBI_BOT_IMAGE:-ilbi-bot:local}'
     build:
       context: ./telegram_bot_sms
@@ -105,6 +115,7 @@ services:
     depends_on:
       ilbi: {condition: service_healthy}
   frontend:
+    security_opt: [no-new-privileges:true]
     image: '${ILBI_FRONTEND_IMAGE:-ilbi-frontend:local}'
     logging: *bounded_logging
     build:

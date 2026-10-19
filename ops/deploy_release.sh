@@ -22,14 +22,17 @@ backup_data
 umask 077
 cp .env.production .env.production.previous
 python3 - "$backend_image" "$frontend_image" "$bot_image" <<'PY'
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 updates = dict(zip(('ILBI_BACKEND_IMAGE', 'ILBI_FRONTEND_IMAGE', 'ILBI_BOT_IMAGE'), sys.argv[1:]))
 path = Path('.env.production')
 lines = [line for line in path.read_text().splitlines() if line.split('=', 1)[0] not in updates]
-path.write_text('\n'.join([*lines, *(f'{key}={value}' for key, value in updates.items()), '']))
-path.chmod(0o600)
+with tempfile.NamedTemporaryFile(mode='w', dir=path.parent, prefix='.env.production-', delete=False) as pending:
+    pending.write('\n'.join([*lines, *(f'{key}={value}' for key, value in updates.items()), '']))
+os.replace(pending.name, path)
 PY
 if ! ./ops/compose.sh up -d --no-build --wait --wait-timeout 300; then
     echo 'Release failed. Backup and .env.production.previous are retained. Check migrations before rollback.' >&2

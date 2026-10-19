@@ -1,8 +1,8 @@
 # Ma’lumotlarni zaxiralash va qayta tiklash
 
-Yangilangan: **2026-10-16**. Production tayyorgarligining foydalanuvchi tasdiqlagan **3-qadami**.
+Yangilangan: **2026-10-19**.
 
-Vosita tayyor va sun’iy ma’lumotlarda tekshirilgan. Haqiqiy serverda ishga tushirilmagan, avtomatik jadval va tashqi saqlash ulanmagan. Quyidagi server buyruqlari operator uchun yo‘riqnoma; ularni bajarish alohida kelishiladi.
+Vosita sun’iy ma’lumotlarda tekshirilgan. 2026-10-19 kuni Lightsail’dagi yangi production bazasi ham nusxalandi, alohida tarmoqsiz PostgreSQL konteyneriga tiklanib tekshirildi va sinov resurslari tozalandi. Dastlabki shifrlangan arxiv hamda tiklash kalitining alohida nusxalari Arch kompyuterida saqlandi. Kunlik jadval va keyingi arxivlarni avtomatik tashqi uzatish hali yoqilmagan. Amaldagi server buyruqlari va CI/CD holati [ops/README.md](../ops/README.md)da.
 
 ## Nima saqlanadi?
 
@@ -123,7 +123,7 @@ Arxivni ochish limiti odatda **100 GiB va 100 000 yozuv**. `verify`/`restore` uc
 
 Quyidagilarni serverni ishga tushirishda alohida hal qilish zarur:
 
-1. **Boshqa serverdagi nusxa.** Shu serverdagi yagona arxiv server diski yo‘qolsa yordam bermaydi. Faqat shifrlangan nusxani alohida joyga ko‘chirish, kirish huquqlari va qayta yuklab tiklash sinovi kelishiladi. Hozir tashqariga hech narsa yuborilmadi.
+1. **Boshqa serverdagi nusxa.** Shu serverdagi yagona arxiv server diski yo‘qolsa yordam bermaydi. Dastlabki nusxa Arch kompyuteriga ko‘chirilib, yana tekshirildi. Keyingi arxivlarni ham alohida qurilmaga uzatish, saqlash muddati va muntazam tiklash sinovi kerak; bu uzatish hali avtomatik emas.
 2. **Jadval va saqlash muddati.** Qachon nusxa olinishi, qancha kun saqlanishi, disk to‘lishi va xatoni kim kuzatishi belgilanadi. Hozir timer ham, eski nusxalarni o‘chirish ham yoqilmagan. Uzluksiz WAL/PITR tiklash bu vositada yo‘q; oxirgi nusxadan keyingi yozuvlar unda bo‘lmaydi.
 3. **Maxfiy server sozlamalari.** Haqiqiy `.env.production`lar, TLS xususiy kaliti, tashqi xizmat kalitlari va parol menejeri arxivga avtomatik qo‘shilmaydi. Ularning alohida himoyalangan tiklash nusxasi kerak. Nusxa vaqtida ishlagan aniq kod commit/release va image versiyalarini ham saqlang; manifestdagi dastur versiyasi buning to‘liq o‘rnini bosmaydi.
 4. **Qo‘shimcha bazalar va storage.** Vosita sozlangan bitta DBni oladi, serverning barcha bazalarini yoki global rollarini emas. Real ishlatiladigan qo‘shimcha baza bo‘lsa alohida nusxalanadi. `init-db.sql`dagi legacy `shop_db` o‘chirilmaydi. MinIO/S3 ishlatilsa bucket zaxirasi qo‘shilmaguncha bu usul yetarli emas.

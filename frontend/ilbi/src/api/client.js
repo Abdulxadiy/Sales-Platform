@@ -455,9 +455,12 @@ export const tenantApi = {
       method: 'POST',
       body: JSON.stringify({ target_user_id: targetUserId }),
     }),
-  getCurrentTenant: (params = {}) => {
+  getCurrentTenant: (params = {}, options = {}) => {
     const q = params.tenant_id ? `?tenant_id=${params.tenant_id}` : '';
-    return request(`/tenants/current/${q}`);
+    return request(`/tenants/current/${q}`, {
+      ...options,
+      ...(params.tenant_id ? { skipTenant: true, headers: { ...options.headers, 'X-Tenant-ID': String(params.tenant_id) } } : {}),
+    });
   },
   updateCurrentTenant: (data, params = {}) => {
     const q = params.tenant_id ? `?tenant_id=${params.tenant_id}` : '';
@@ -569,6 +572,7 @@ export const catalogApi = {
 };
 
 export const inventoryApi = {
+  getSuppliers: () => request('/inventory/suppliers/'),
   getBatches: (params = {}) => request(`/inventory/batches/?${new URLSearchParams(params)}`),
   getStock: (pageOrParams = 1, search = '', options = {}) => {
     if (typeof pageOrParams === 'object' && pageOrParams !== null) {
@@ -780,6 +784,10 @@ export const cashboxApi = {
 };
 
 export const auditApi = {
+  getHistory: (params = {}, options = {}) => request(`/audit/history/?${queryString(params)}`, options),
+  getHistoryDetail: (source, id, params = {}, options = {}) => request(
+    `/audit/history/${encodeURIComponent(source)}/${id}/?${queryString(params)}`, options,
+  ),
   getLogs: (params = {}) => {
     const query = new URLSearchParams();
     if (params.page) query.append('page', params.page);

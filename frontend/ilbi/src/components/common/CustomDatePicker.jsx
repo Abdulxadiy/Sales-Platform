@@ -413,7 +413,7 @@ export default function CustomDatePicker({
                   fontSize: 12,
                   fontWeight: 700,
                 }}
-                menuStyle={{ maxHeight: 200, minWidth: 110 }}
+                menuStyle={{ maxHeight: 200, minWidth: 180 }}
               />
 
               {/* Year Picker (Supports jumping to 1980, 1995, etc. instantly!) */}
@@ -433,7 +433,7 @@ export default function CustomDatePicker({
                   fontSize: 12,
                   fontWeight: 700,
                 }}
-                menuStyle={{ maxHeight: 200, minWidth: 85 }}
+                menuStyle={{ maxHeight: 200, minWidth: 160 }}
               />
             </div>
 

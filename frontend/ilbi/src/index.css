@@ -1138,15 +1138,6 @@ dialog.custom-dialog[open] .dialog-content {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
 /* Print Styles — Thermal POS Receipt & Document Isolation */
 @media print {
   @page {
@@ -2006,6 +1997,19 @@ dialog.doc-image-dialog .doc-image-scroll img.is-zoomed {
 .import-metric-chip.error {
   background: rgba(var(--danger-rgb), 0.15);
   color: var(--accent-rose);
+}
+
+/* Leave room for the intake search field on narrow screens. */
+@media (max-width: 600px) {
+  .rapid-intake-search-hint,
+  .rapid-intake-camera-label {
+    display: none !important;
+  }
+
+  .rapid-intake-camera-button {
+    padding: 0 12px !important;
+    flex-shrink: 0;
+  }
 }
 
 /* Stacking context fix: ensure cards containing open CustomSelect dropdowns sit on top of sibling tables */

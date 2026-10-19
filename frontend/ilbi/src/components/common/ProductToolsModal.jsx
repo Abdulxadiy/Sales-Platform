@@ -1,3 +1,4 @@
+import IlbiLoader from './IlbiLoader';
 import { useEffect, useState, useRef } from 'react';
 import { catalogApi, resolveMediaUrl } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
@@ -286,7 +287,7 @@ export default function ProductToolsModal({ productId, onClose, onChanged }) {
         </div>
       ) : (
         <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>
-          Yuklanmoqda...
+          <IlbiLoader label="Yuklanmoqda..." />
         </div>
       )}
     </Modal>

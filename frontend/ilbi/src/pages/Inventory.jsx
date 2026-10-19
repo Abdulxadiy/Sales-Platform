@@ -946,6 +946,9 @@ export default function Inventory() {
                   <th style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>Tovar Varianti</th>
                   <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Tovar Kodi</th>
                   <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Filial</th>
+                  {canViewSupplier && (
+                    <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Ta’minotchi</th>
+                  )}
                   <th style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>Oxirgi Tan Narxi</th>
                   <th style={{ padding: '14px 20px', textAlign: 'right', whiteSpace: 'nowrap' }}>Mavjud Qoldiq</th>
                   <th style={{ padding: '14px 20px', textAlign: 'center', whiteSpace: 'nowrap' }}>Amallar</th>
@@ -954,7 +957,7 @@ export default function Inventory() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
+                  <td colSpan={canViewSupplier ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Yuklanmoqda..." /></td>
                 </tr>
               ) : filteredStock.length > 0 ? (
                 paginatedStock.map((item, idx) => {
@@ -983,6 +986,31 @@ export default function Inventory() {
                           <span>{item.branch_name || activeTenant?.name || 'Asosiy'}</span>
                         </span>
                       </td>
+                      {canViewSupplier && (
+                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                          {item.supplier ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '4px 9px',
+                                borderRadius: 'var(--radius-xs)',
+                                background: 'rgba(59, 130, 246, 0.12)',
+                                color: '#60a5fa',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                border: '1px solid rgba(59, 130, 246, 0.25)',
+                              }}
+                            >
+                              <Truck size={12} />
+                              {item.supplier}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>
+                          )}
+                        </td>
+                      )}
                       <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>
                         {item.last_cost_price ? `${Number(item.last_cost_price).toLocaleString()} ${item.currency || 'UZS'}` : '—'}
                       </td>
@@ -1028,7 +1056,7 @@ export default function Inventory() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={canViewSupplier ? 7 : 6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                     {hasActiveStockFilters ? 'Tanlangan filtrlar bo‘yicha tovarlar topilmadi' : 'Hozircha omborda qoldiqlar mavjud emas'}
                   </td>
                 </tr>

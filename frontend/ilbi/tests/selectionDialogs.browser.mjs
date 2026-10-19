@@ -21,6 +21,35 @@ try{
  const open=async selector=>{await browser.evaluate(`(()=>{const trigger=document.querySelector(${JSON.stringify(selector)});trigger.blur();trigger.focus();trigger.click();})()`);await wait('Boolean(document.querySelector(".custom-select-menu"))');await delay(100);assert.equal(await menuFits(),true,'Dropdown must stay inside the viewport');};
  const snapshot=async path=>{const{data}=await browser.call('Page.captureScreenshot',{format:'png'});await writeFile(path,Buffer.from(data,'base64'));};
  const contentFits=()=>browser.evaluate('document.querySelector("dialog[open] .dialog-content").scrollWidth<=document.querySelector("dialog[open] .dialog-content").clientWidth+1');
+ const search=async value=>browser.evaluate(`(()=>{const input=document.querySelector('.custom-select-menu input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+
+ // Ordinary single-value selectors search locally by default in both menu modes.
+ for(const fallback of [false,true]){
+  await navigate(fallback?'?fallback=1':'');
+  await wait('Boolean(document.querySelector("dialog[open] #stress-category-container"))');
+  await browser.evaluate('document.querySelector("#stress-category-container").scrollIntoView({block:"center"})');
+  await open('#stress-category-container [aria-haspopup=listbox]');
+  assert.equal(await browser.evaluate('document.activeElement===document.querySelector(".custom-select-menu input")'),true,'Search should receive focus when a default selector opens');
+  await search('TELEVIZOR');
+  await wait('document.querySelectorAll(".custom-select-menu [role=option]").length===1&&document.querySelector(".custom-select-menu [role=option]").textContent.includes("Televizor")');
+  await search("  GO'SHT  ");
+  await wait('document.querySelectorAll(".custom-select-menu [role=option]").length===1&&document.querySelector(".custom-select-menu [role=option]").textContent.includes("baliq")');
+  await search('mavjud-emas');
+  await wait('!document.querySelector(".custom-select-menu [role=option]")&&document.querySelector(".custom-select-menu").textContent.includes("Topilmadi")');
+  await pointerClick('.custom-select-menu button[title="Qidiruvni tozalash"]');
+  await wait('document.querySelectorAll(".custom-select-menu [role=option]").length===30');
+  await search('[17]');
+  await wait('document.querySelectorAll(".custom-select-menu [role=option]").length===1');
+  await pointerClick('.custom-select-menu [role=option]');
+  await wait('!document.querySelector(".custom-select-menu")&&document.querySelector("#stress-category-container [aria-haspopup]").textContent.includes("[17]")');
+  await open('#stress-category-container [aria-haspopup=listbox]');
+  assert.equal(await browser.evaluate('document.querySelector(".custom-select-menu input").value'),'','Reopening a local selector should show the full list');
+  assert.equal(await browser.evaluate('document.querySelectorAll(".custom-select-menu [role=option]").length'),30);
+  await browser.resize(390,700);await delay(150);assert.equal(await menuFits(),true);
+  await snapshot('/tmp/ilbi-select-search-mobile.png');
+  await escape();
+  await browser.resize(1280,900);
+ }
 
  // Both the native top layer and the fallback must escape clipped/transformed containers.
  for(const fallback of [false,true]){

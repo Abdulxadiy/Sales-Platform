@@ -41,7 +41,7 @@ export function useSelectPopover({ isOpen, anchorRef, menuRef, onClose, searchab
       const viewportHeight = viewport?.height || window.innerHeight;
       const rightEdge = leftEdge + Math.max(1, viewportWidth - 24);
       const bottomEdge = topEdge + Math.max(1, viewportHeight - 24);
-      const preferredWidth = pixels(custom.width, pixels(custom.minWidth, search || footer ? 520 : 320));
+      const preferredWidth = pixels(custom.width, pixels(custom.minWidth, footer ? 520 : 320));
       const width = Math.min(rightEdge - leftEdge, Math.max(rect.width, preferredWidth));
       const maxDesiredHeight = pixels(custom.maxHeight, search || footer ? 460 : 320);
       const below = Math.max(0, bottomEdge - rect.bottom - 7);

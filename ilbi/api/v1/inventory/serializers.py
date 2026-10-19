@@ -29,11 +29,34 @@ class StockOutputSerializer(SensitiveCostSerializerMixin, SensitiveSupplierSeria
         read_only_fields = fields
 
     def get_supplier(self, obj):
-        batch = obj.product_variant.stock_batches.filter(quantity__gt=0).exclude(supplier="").order_by("-received_on", "-pk").first()
-        if batch and batch.supplier:
-            return batch.supplier
-        mov = obj.product_variant.stock_movements.filter(direction="in").exclude(supplier="").order_by("-created_at", "-pk").first()
-        return mov.supplier if mov else None
+        pv = getattr(obj, "product_variant", None)
+        if not pv:
+            return None
+        cached_batches = getattr(pv, "_cached_supplier_batches", None)
+        if cached_batches is not None:
+            for b in cached_batches:
+                if b.quantity > 0 and b.supplier:
+                    return b.supplier
+            if cached_batches and cached_batches[0].supplier:
+                return cached_batches[0].supplier
+        else:
+            batch = pv.stock_batches.filter(quantity__gt=0).exclude(supplier="").order_by("-received_on", "-pk").first()
+            if batch and batch.supplier:
+                return batch.supplier
+            batch = pv.stock_batches.exclude(supplier="").order_by("-received_on", "-pk").first()
+            if batch and batch.supplier:
+                return batch.supplier
+
+        cached_movs = getattr(pv, "_cached_supplier_movements", None)
+        if cached_movs is not None:
+            if cached_movs and cached_movs[0].supplier:
+                return cached_movs[0].supplier
+        else:
+            mov = pv.stock_movements.filter(direction="in").exclude(supplier="").order_by("-created_at", "-pk").first()
+            if mov and mov.supplier:
+                return mov.supplier
+
+        return None
 
 
 class StockMovementOutputSerializer(SensitiveCostSerializerMixin, SensitiveSupplierSerializerMixin, serializers.ModelSerializer):

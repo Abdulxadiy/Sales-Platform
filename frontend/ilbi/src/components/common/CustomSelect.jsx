@@ -4,6 +4,13 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, X } from 'lucide-react';
 import { useSelectPopover } from '../../hooks/useSelectPopover';
 
+const normalizeSearch = value => String(value ?? '')
+  .normalize('NFKC')
+  .toLocaleLowerCase('uz')
+  .replace(/['‘’ʻʼ`´]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
 const renderIconNode = (IconNode, size) => {
   if (!IconNode) return null;
   if (React.isValidElement(IconNode)) return IconNode;
@@ -38,7 +45,8 @@ export default function CustomSelect({
   id = '',
   fullWidth = false,
   title = '',
-  searchable = false,
+  'aria-label': ariaLabel,
+  searchable = true,
   searchValue,
   onSearchChange,
   searchPlaceholder = 'Qidirish...',
@@ -100,7 +108,7 @@ export default function CustomSelect({
   );
 
   const isControlledSearch = searchValue !== undefined;
-  const currentQuery = (isControlledSearch ? searchValue : internalSearch).toLowerCase().trim();
+  const currentQuery = normalizeSearch(isControlledSearch ? searchValue : internalSearch);
 
   // If controlled (remote), options are filtered by server. If uncontrolled and searchable, filter locally.
   const displayedOptions = useMemo(() => {
@@ -108,9 +116,13 @@ export default function CustomSelect({
       return normalizedOptions;
     }
     return normalizedOptions.filter((opt) =>
-      opt.label.toLowerCase().includes(currentQuery)
+      normalizeSearch(opt.label).includes(currentQuery)
     );
   }, [normalizedOptions, searchable, isControlledSearch, currentQuery]);
+
+  useEffect(() => {
+    menuRef.current?.querySelector('.custom-select-options')?.scrollTo({ top: 0 });
+  }, [currentQuery]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -280,6 +292,7 @@ export default function CustomSelect({
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}
+        aria-label={ariaLabel}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={(e) => {
           if (!disabled && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) {
@@ -448,6 +461,9 @@ export default function CustomSelect({
                   ref={searchInputRef}
                   type="text"
                   placeholder={searchPlaceholder}
+                  aria-label={searchPlaceholder}
+                  autoComplete="off"
+                  spellCheck={false}
                   value={isControlledSearch ? (searchValue || '') : internalSearch}
                   onKeyDown={(event) => { if (event.key === 'Enter') event.preventDefault(); }}
                   onChange={(e) => {
@@ -485,7 +501,7 @@ export default function CustomSelect({
                       display: 'flex',
                       alignItems: 'center',
                     }}
-                    title="Tozalash"
+                    title="Qidiruvni tozalash"
                   >
                     <X size={12} />
                   </button>

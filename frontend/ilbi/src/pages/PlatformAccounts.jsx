@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Users, KeyRound, Ban, ShieldCheck, RefreshCw } from 'lucide-react';
 import { platformApi } from '../api/platform';
 import Modal from '../components/common/Modal';
+import CustomSelect from '../components/common/CustomSelect';
 import IdentityRecoveryModal from '../components/common/IdentityRecoveryModal';
 import { useToast } from '../context/ToastContext';
 import '../components/platform/platform-admin.css';
@@ -51,8 +52,8 @@ export default function PlatformAccounts() {
       <div className="admin-muted">Yangi do‘kon egasi <Link className="admin-link" to="/tenants">Do‘konlar</Link>, xodim esa <Link className="admin-link" to="/employees">Jamoa</Link> bo‘limidan qo‘shiladi.</div>
       <div className="admin-grid">
         <label className="admin-field">Hisobni qidirish<input className="input-field" type="search" value={input} onChange={event => setInput(event.target.value)} placeholder="Ism, login, telefon yoki email" /></label>
-        <label className="admin-field">Hisob turi<select className="input-field" value={role} onChange={event => { setRole(event.target.value); setPage(1); }}><option value="">Barcha hisoblar</option>{Object.entries(roles).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label className="admin-field">Holati<select className="input-field" value={active} onChange={event => { setActive(event.target.value); setPage(1); }}><option value="">Barcha holatlar</option><option value="true">Faol</option><option value="false">Bloklangan</option></select></label>
+        <label className="admin-field">Hisob turi<CustomSelect fullWidth aria-label="Hisob turi" value={role} onChange={value => { setRole(value); setPage(1); }} options={[{ value: '', label: 'Barcha hisoblar' }, ...Object.entries(roles).map(([value, label]) => ({ value, label }))]} /></label>
+        <label className="admin-field">Holati<CustomSelect fullWidth aria-label="Hisob holati" value={active} onChange={value => { setActive(value); setPage(1); }} options={[{ value: '', label: 'Barcha holatlar' }, { value: 'true', label: 'Faol' }, { value: 'false', label: 'Bloklangan' }]} /></label>
       </div>
       {!loading && error && <div className="admin-error" role="alert">{error}</div>}
       <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Hisob</th><th>Roli</th><th>Telegram / holat</th><th>Do‘konlar</th><th>Amallar</th></tr></thead><tbody>

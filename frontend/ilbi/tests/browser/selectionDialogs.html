@@ -28,6 +28,9 @@ localStorage.setItem('ilbi_active_tenant:51','7');
 window.selectionQA={requests:[],submits:0,selected:null};
 const qa=window.selectionQA;
 const categories=Array.from({length:30},(_,i)=>({id:i+1,name:`Oziq-ovqat va ichimliklar uchun juda uzun kategoriya nomi — ${i+1}`,kod:String(i+1),currency:'UZS',parent:null,is_active:true}));
+categories[0].name='Televizor';
+categories[1].name='Ichimliklar va sharbatlar';
+categories[2].name='Go‘sht va baliq';
 const variant=id=>({id,product:id,product_name:`Greenfield Qora choy 100g (Model #${String(id).padStart(5,'0')}) — uzundan uzun to‘liq tovar nomi`,name:'Standart 100 dona qadoq',stock_quantity:'269.000',unit:'dona',currency:'UZS',price_recommended:'15000',price_min:'12000',price_partner:'11000',cost_price:'9000',category:1,category_id:1,category_name:categories[0].name,barcode:`000${id}`,code:`01/${id}`,expired_batches:[]});
 catalogApi.getCategories=async()=>categories;
 catalogApi.getVariants=async(params={})=>{
@@ -57,7 +60,7 @@ function Stress(){
      React.createElement('p',{style:{margin:'0 0 65px'}},'Ro‘yxat ichki oynaning chegarasida kesilmasligi kerak'),
      React.createElement(RemoteVariantSelect,{id:'stress-variant',value,onChange:id=>{setValue(id);qa.selected=id;},fullWidth:true,placeholder:'Tovarni tanlang...'})),
     React.createElement('div',{style:{height:320}},'Pastdagi kategoriya tanlagichi yuqoriga ochiladi'),
-    React.createElement(CustomSelect,{id:'stress-category',value:category,onChange:setCategory,fullWidth:true,searchable:true,options:categories.map(row=>({value:row.id,label:row.name})),placeholder:'Kategoriyani tanlang...'}),
+    React.createElement(CustomSelect,{id:'stress-category',value:category,onChange:setCategory,fullWidth:true,options:categories.map(row=>({value:row.id,label:`${row.name} [${row.kod}] (${row.currency})`})),placeholder:'Kategoriyani tanlang...'}),
     React.createElement('button',{type:'submit',className:'btn btn-primary'},'Saqlash'))));
 }
 function DateStress(){

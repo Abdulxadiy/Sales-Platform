@@ -49,8 +49,12 @@ try {
   assert.equal(request.expected_version, 1);
   assert.equal(request.expected_phone_number, '+998901112233');
   await browser.evaluate(`document.querySelector('.sidebar a[href="/services"]').click()`);
-  await wait('document.body.innerText.includes("Yordam markazi bildirishnomalari")&&Boolean(document.querySelector("select"))');
-  await browser.evaluate(`(()=>{const select=document.querySelector('select');select.value='both';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await wait('Boolean(document.querySelector("[aria-label=\\"Bildirishnoma manzili\\"][aria-haspopup]"))');
+  await browser.evaluate('document.querySelector("[aria-label=\\"Bildirishnoma manzili\\"][aria-haspopup]").click()');
+  await wait('Boolean(document.querySelector(".custom-select-menu input"))');
+  await fill('.custom-select-menu input','guruh');
+  await wait('document.querySelectorAll(".custom-select-menu [role=option]").length===2');
+  await browser.evaluate('[...document.querySelectorAll(".custom-select-menu [role=option]")].find(option=>option.textContent.trim()==="Shaxsiy chat va guruhga").click()');
   await wait(`Boolean(document.querySelector('input[placeholder="-1001234567890"]'))`);
   await fill('input[placeholder="-1001234567890"]', '-100777000');
   await browser.evaluate('document.querySelector(".admin-check input").click()');

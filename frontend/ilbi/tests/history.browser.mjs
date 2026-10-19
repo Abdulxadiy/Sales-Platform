@@ -61,7 +61,11 @@ try {
   await wait('document.body.innerText.includes("Mos amallar topilmadi")');
   await clickText('Filtrlarni tozalash');
   await wait('document.querySelectorAll(".history-event").length===20');
-  await browser.evaluate(`(()=>{const select=document.querySelector('select[aria-label="Tarix davri"]');select.value='today';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+  await browser.evaluate('document.querySelector("[aria-label=\\"Tarix davri\\"][aria-haspopup]").click()');
+  await wait('Boolean(document.querySelector(".custom-select-menu input"))');
+  await fill('.custom-select-menu input','Bugun');
+  await wait('document.querySelectorAll(".custom-select-menu [role=option]").length===1');
+  await browser.evaluate('document.querySelector(".custom-select-menu [role=option]").click()');
   await wait('document.querySelectorAll(".history-event").length===4');
   // The route retains no open detail when the owner switches shops.
   await browser.evaluate('historyQA.holdDetail=true;document.querySelector(".history-event").click()');

@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTenant } from '../context/TenantContext';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Modal from '../components/common/Modal';
+import CustomSelect from '../components/common/CustomSelect';
 import Pagination from '../components/common/Pagination';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
@@ -160,7 +161,7 @@ export default function History() {
 
     <section className="glass-card history-filter-card" aria-label="Tarix filtrlari">
       <div className="history-filter-top"><div className="history-search"><Search size={18} /><input aria-label="Tarixdan qidirish" value={search} onChange={e => setSearch(e.target.value)} placeholder="Tovar, chek yoki xodimni qidiring…" />{search && <button aria-label="Qidiruvni tozalash" onClick={() => setSearch('')}><X size={15} /></button>}</div>
-        <select aria-label="Tarix davri" value={period} onChange={e => setPeriod(e.target.value)}><option value="all">Barcha vaqt</option><option value="today">Bugun</option><option value="yesterday">Kecha</option><option value="week">Oxirgi 7 kun</option><option value="month">Shu oy</option><option value="custom">Sanani tanlash</option></select>
+        <CustomSelect className="history-period" aria-label="Tarix davri" value={period} onChange={setPeriod} options={[{ value: 'all', label: 'Barcha vaqt' }, { value: 'today', label: 'Bugun' }, { value: 'yesterday', label: 'Kecha' }, { value: 'week', label: 'Oxirgi 7 kun' }, { value: 'month', label: 'Shu oy' }, { value: 'custom', label: 'Sanani tanlash' }]} />
         <button className="btn btn-secondary history-refresh" onClick={refresh} disabled={list.loading} aria-label="Tarixni yangilash">{list.loading ? <IlbiLoader size={24} inline decorative /> : <RefreshCw size={16} />} <span>Yangilash</span></button>
       </div>
       {(isAdmin || period === 'custom') && <div className="history-extra-filters">{isAdmin && <RemoteTenantSelect allowAll value={tenantId} onChange={setTenantId} />}{period === 'custom' && <><label>Boshlanish<input aria-label="Boshlanish sanasi" type="date" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} /></label><label>Tugash<input aria-label="Tugash sanasi" type="date" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} /></label></>}</div>}

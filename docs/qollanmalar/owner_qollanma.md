@@ -1,6 +1,6 @@
 # Do‘kon egasi: vakolatlar va ish qoidalari
 
-Yangilangan: **2026-10-14**. Tugmalar va rasmli qadamlar uchun **Owner: Amaliy Yo‘riqnoma**ni oching. Bu hujjat kundalik qarorlar va cheklovlarni tushuntiradi.
+Yangilangan: **2026-10-19**. Tugmalar va rasmli qadamlar uchun **Owner: Amaliy Yo‘riqnoma**ni oching. Bu hujjat kundalik qarorlar va cheklovlarni tushuntiradi.
 
 ## 1. Do‘kon va sotuvchi
 
@@ -25,6 +25,10 @@ Mahsulot varianti uchun sotuv, minimal va hamkor narxlari yuritiladi. Tannarx om
 
 Hozirgi chakana POS faqat **UZS** bilan ishlaydi. USD kalkulyatori hisoblash uchun; u valyuta to‘lovi yoki ikkinchi chek yaratmaydi.
 
+**Sozlamalar → Valyuta & Kurs** bo‘limida **CBU kursidan avtomatik foydalanish**ni yoqib, saqlasangiz, shu do‘kon USD hisoblashlarida Markaziy bankning amal qilayotgan kursidan foydalanadi. Qo‘lda kurs kiritish bloklanadi. O‘chirib saqlasangiz, avval saqlagan ichki kursingiz qaytadi va uni tahrirlash mumkin bo‘ladi. Har bir do‘kon bu rejimni alohida tanlaydi.
+
+USD, EUR va RUB rasmiy kurslari yonida amal qilish sanasi va oxirgi muvaffaqiyatli tekshiruv vaqti ko‘rsatiladi; EUR/RUB ma’lumot uchun. CBU bilan aloqa uzilsa, oxirgi olingan kurs qoladi. Hali USD kursi olinmagan bo‘lsa, avtomatik rejim yoqilmaydi. Kurs o‘zgarishi avvalgi operatsiyalarni qayta hisoblamaydi.
+
 Sotuvchi tasdiqlanishi va ochiq smena talab etiladi. **Hozir production savdosi fiskal provayder integratsiyasi tayyor bo‘lmagani sabab server tomonidan yopilgan.** Rasmli qo‘llanmadagi savdolar alohida demo muhitiga tegishli. Ichki chekni fiskal chek sifatida taqdim etmang.
 
 Naqd, karta va nasiya to‘lovlari farqlanadi. Nasiya uchun kontragent kerak. Hamkor narxi rejimida tovarlarning tegishli narxlari to‘ldirilgan bo‘lishi lozim.
@@ -47,7 +51,15 @@ Bloklash hisobga kirishni cheklaydi; ishdan bo‘shatish do‘kondagi a’zolikn
 
 **Xizmatlar & Sozlamalar**da Telegram hisobotlari manzili, hisobot vaqti va bildirishnoma tanlovlarini tekshiring. Telegramga xabar borishi bot ulanishi, tanlangan manzil va xizmatlar ishlashiga bog‘liq. Guruhga yuboradigan ma’lumotlar tarkibini tekshirib tanlang.
 
-## 6. Yordam
+## 6. Tarix
+
+Sidebar’dagi **Tarix** bo‘limi tanlangan do‘kondagi sotuvlar, tovar kirimi va ombor harakatlari, katalog o‘zgarishlari, qarz to‘lovlari, kassa kirim-chiqimlari, smena va audit amallarini bir joyda ko‘rsatadi. Eng yangi yozuv birinchi turadi; qidiruv, amal turi va sana bilan saralash mumkin. Har bir yozuvda bajargan shaxs va Toshkent vaqti ko‘rinadi.
+
+Sotuv yozuvini bossangiz, cheklar bo‘limidagi kabi chek ochiladi: 58/80 mm, chop etish va A4 ko‘rinishi mavjud. Kirimda miqdor, tannarx va izoh; tahrirda esa oldingi va yangi qiymatlar ko‘rsatiladi. Tarixdan ma’lumotni o‘zgartirish yoki o‘chirish bajarilmaydi.
+
+Mavjud sotuv va ombor yozuvlari ham ko‘rinadi. Katalog qo‘shish/tahrirlash/arxivlash/tiklash/o‘chirish qaydlari imkoniyat joriy etilgandan boshlab saqlanadi; oldin qayd etilmagan tahrirlar tiklanmaydi. Egasi faqat tanlangan do‘kon tarixini ko‘radi. Barcha do‘konlarni saralash platforma administratoriga tegishli; umumiy tarix oddiy xodimlarga ochilmaydi.
+
+## 7. Yordam
 
 **Yordam markazi**dagi murojaatlaringiz faqat sizga va platforma operatorlariga ko‘rinadi; bir do‘konda ishlaydigan boshqa xodimlarga avtomatik ochilmaydi. Suhbat do‘kon tanlangan holda ochilsa, operator shu kontekstni ko‘radi. Parol va OTP kodini yubormang.
 

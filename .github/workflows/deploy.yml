@@ -15,7 +15,7 @@ jobs:
     if: >-
       vars.DEPLOY_ENABLED == 'true' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     environment: production
@@ -65,7 +65,14 @@ jobs:
           tags: ${{ steps.image.outputs.prefix }}/bot:${{ steps.image.outputs.tag }}
           cache-from: type=gha,scope=bot
           cache-to: type=gha,mode=max,scope=bot
+      - name: Check the tested commit is still main
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: bash ops/check_deploy_target.sh
       - name: Configure SSH
+        if: steps.target.outputs.current == 'true'
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -81,11 +88,13 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           printf 'Host production\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_ed25519\n  BatchMode yes\n  StrictHostKeyChecking yes\n' "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
       - name: Transfer reviewed operations files
+        if: steps.target.outputs.current == 'true'
         run: |
           rsync -a ops/ production:/srv/ilbi/ops/
           rsync -a scripts/data_backup.py production:/srv/ilbi/scripts/
           rsync -a docker-compose.prod.yml production:/srv/ilbi/
       - name: Deploy commit images
+        if: steps.target.outputs.current == 'true'
         env:
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY_USER: ${{ github.actor }}

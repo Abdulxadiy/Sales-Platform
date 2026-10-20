@@ -1,17 +1,16 @@
 # Lightsail serverini boshqarish
 
-2026-10-20 holati: **v1.0.0**, Ubuntu 24.04, 4 GB RAM, 2 GB swap. Ilova `/srv/ilbi`da.
+2026-10-20 holati: Ubuntu 24.04, 4 GB RAM, 2 GB swap. Ilova `/srv/ilbi`da.
 Backend, frontend, PostgreSQL, Redis, Celery worker/beat va Telegram bot ishga tushirilgan.
 Eski baza va media ko‘chirilmagan. Vaqtinchalik production domeni **`new-dev.site`**;
 asosiy `ilbi.uz` keyin ulanadi. Backend va frontend manzili serverdagi `.env.production`ning
 `PUBLIC_HOST` qiymatidan olinadi. Ushbu domen almashinuvi uchun application imagelari qayta yig‘ilmadi.
 
-2026-10-20 tekshiruvida `new-dev.site`ning nameserverlari `launch1.spaceship.net` va
-`launch2.spaceship.net`, lekin A/AAAA yozuvlari yo‘q edi. DNS hali serverga yo‘naltirilmagani
-uchun haqiqiy HTTPS va ommaviy kirish faollashtirilmagan.
+2026-10-20 qayta tekshiruvida `https://new-dev.site/` haqiqiy TLS tekshiruvi bilan HTTP 200 qaytardi.
+Frontend ommaviy 80/443 portlarida ishlayapti; backend readiness `ready`.
 
-Serverga o‘rnatilgan backend/frontend/bot versiyalari `1.0.0`ga mos.
-Production image nomlari: `ilbi-backend:1.0.0`, `ilbi-frontend:1.0.0`, `ilbi-bot:1.0.0`.
+Boshlang‘ich o‘rnatma `1.0.0` edi. Avtodeploy GHCR’dagi `sha-<commit>` imagelarini ishlatadi;
+oxirgi sog‘lom chiqarishning uchta image manzili `/srv/ilbi/.deployed-images`da saqlanadi.
 Git tag yoki GitHub Release ushbu server yangilanishi bilan avtomatik yaratilmaydi;
 ular tekshirilgan manba `main`ga chiqarilganda mavjud publish tartibi orqali yuritiladi.
 
@@ -74,13 +73,13 @@ Yo‘l `./ops/compose.sh` — `./ops.compose.sh` emas.
 - Ko‘rilgan dastlabki real servis loglarida ERROR/CRITICAL topilmadi, konteynerlarning restart soni 0 edi.
 
 Bu natija tekshirilgan konfiguratsiya, testlar va shu kundagi advisory bazasiga tegishli.
-Internetdan haqiqiy HTTPS va real administrator/2FA oqimi DNSdan keyin tekshiriladi.
+Internetdan HTTPS tekshirildi. Haqiqiy administrator/2FA oqimi operator tomonidan tekshiriladi.
 Kunlik avtomatik data backup, muntazam tashqi nusxa va xatolik/sertifikat alertlari hali yoqilmagan.
 
-## DNS va HTTPSni keyin yoqish
+## Domen almashtirish va HTTPS
 
-Hozir frontend faqat `127.0.0.1:80` va `127.0.0.1:443`da tinglaydi.
-Ichki tekshiruv vaqtinchalik self-signed sertifikat bilan o‘tkazilgan; ommaviy HTTPS hali yoqilmagan.
+`new-dev.site` hozir ommaviy HTTPS bilan ishlaydi. Quyidagi tartib yangi domenni ulash uchun qo‘llanadi.
+Yangi sertifikat ommaviy bindingdan oldin yopiq HTTPS ulanishida tekshiriladi.
 
 1. Lightsail **Networking**da Static IPv4 biriktirilganini tekshiring. Hozirgi IP `3.106.193.2`.
    Yangi Static IP boshqacha bo‘lsa, `.env.production`dagi `EXPECTED_PUBLIC_IPV4` va GitHub
@@ -160,7 +159,7 @@ sxema va bo‘sh foydalanuvchilar bazasi tasdiqlandi, sinov resurslari tozalandi
 CI backend va frontend testlariga qo‘shimcha ravishda HTTPS chegarasi, aktivatsiya xatolari
 va backupdan keyingi qayta ishga tushirishni tekshiradi.
 
-`deploy.yml` muvaffaqiyatli **main push CI** natijasidan keyin uchta `linux/amd64` production imagelarini
+`deploy.yml` muvaffaqiyatli **main CI** natijasidan keyin uchta `linux/amd64` production imagelarini
 GitHub’da yig‘ib, GHCR’ga `sha-<commit>` bilan joylaydi. Serverda pull → shifrlangan backup →
 migratsiya/start → healthcheck bajariladi. Serverda har safar build qilish talab etilmaydi.
 Ilova ichida tahrirlanadigan `docs/` CD orqali ustidan yozilmaydi.
@@ -169,13 +168,15 @@ GitHub’da `production` muhiti va maxsus SSH kaliti sozlangan:
 
 - Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`.
 - Muhit variables: `DEPLOY_HOST`, `DEPLOY_USER`.
-- Repo variable: **`DEPLOY_ENABLED=false`** — hozir avtomatik deploy o‘chiq.
+- Repo variable: **`DEPLOY_ENABLED=true`** — avtomatik deploy yoqilgan.
 
-GitHub sozlamasi 2026-10-20 kuni API orqali qayta tekshirildi: `DEPLOY_ENABLED=false`.
-`v1.2.0` manbalarini `main`ga chiqarishning o‘zi serverdagi `1.0.0` o‘rnatmani yangilamaydi.
-Avtomatik deploy uchun repo variable `DEPLOY_ENABLED=true` bo‘lishi kerak;
-keyingi muvaffaqiyatli main push CI deployni boshlaydi. Tag yoki GitHub Release yaratish
-deploy triggeri emas. Ushbu chiqarishda deploy sozlamasi o‘zgartirilmagan.
+Oddiy `main` push CI’ni boshlaydi. Navbatdagi chiqarish `GITHUB_TOKEN` bilan push qilgani uchun
+publisher yangi commit yuborilganidan keyin CI’ni `workflow_dispatch` orqali alohida boshlaydi.
+Ikkala yo‘l ham testlar muvaffaqiyatli tugagach deployga ulanadi; PR, quruq sinov va o‘zgarmagan
+navbat serverni yangilamaydi. Tag yoki GitHub Release yaratish deploy triggeri emas.
+Serverga o‘tishdan oldin testdan o‘tgan commit hali ham `main` ekanligi tekshiriladi;
+kech tugagan eski CI yangi chiqarishning ustidan yozmaydi. `backup/` va `queue/` branchlari
+serverga chiqarilmaydi. Favqulodda to‘xtatish: repo variable `DEPLOY_ENABLED=false`.
 
 Image yuklashda ishlatiladigan GHCR token serverga stdin orqali uzatiladi;
 vaqtinchalik Docker credential katalogi SSH sessiyasi tugaganda o‘chiriladi.

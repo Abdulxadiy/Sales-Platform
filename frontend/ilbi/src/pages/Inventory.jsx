@@ -1,3 +1,4 @@
+import { useWorkspaceAction } from '../hooks/useWorkspaceAction';
 import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteVariantSelect from '../components/common/RemoteVariantSelect';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
@@ -121,6 +122,14 @@ export default function Inventory() {
     setSelectedBatch('');
     setFormNote('');
   };
+
+  useWorkspaceAction(({ action, search }) => {
+    if (search !== null) setInventoryFilters(previous => ({ ...previous, stockSearch: search }));
+    if (action === 'intake' && (activeTenant?.is_owner || activeTenant?.permissions?.includes('inventory.add_stock_intake'))) {
+      setSelectedVariantForIntake(null); setIntakeModalOpen(true);
+    }
+    if (action === 'low_stock') { setActiveTab('stock'); setInventoryFilters(previous => ({ ...previous, stockSort: 'qty_asc', stockSearch: '', stockCategory: 'all' })); }
+  });
 
   const handleQuickIntake = (variantId) => {
     setSelectedVariantForIntake(variantId);

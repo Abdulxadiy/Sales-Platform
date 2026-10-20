@@ -1,3 +1,4 @@
+import { useWorkspaceAction } from '../hooks/useWorkspaceAction';
 import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -131,20 +132,27 @@ export default function Sales() {
   }, [listError, toast]);
 
   // Open Sale Detail
-  const handleOpenDetail = async (sale) => {
+  const handleOpenDetail = async (sale, signal) => {
     setSelectedSaleDetail(null);
     setDetailModalOpen(true);
     setLoadingDetail(true);
     try {
-      const detail = await salesApi.getSaleDetail(sale.id);
+      const detail = await salesApi.getSaleDetail(sale.id, { signal });
+      if (signal?.aborted) return;
       setSelectedSaleDetail(detail);
     } catch {
+      if (signal?.aborted) return;
       toast.error('Chek tafsilotlarini yuklab bo‘lmadi');
       setDetailModalOpen(false);
     } finally {
-      setLoadingDetail(false);
+      if (!signal?.aborted) setLoadingDetail(false);
     }
   };
+
+  useWorkspaceAction(({ search, id, signal }) => {
+    if (search !== null) setSalesFilters(previous => ({ ...DEFAULT_SALES_FILTERS, search }));
+    if (id) handleOpenDetail({ id }, signal);
+  });
 
   // Open A4 Invoice Modal
   const handleOpenInvoice = async (sale) => {

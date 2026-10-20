@@ -1,3 +1,4 @@
+import { useWorkspaceAction } from '../hooks/useWorkspaceAction';
 import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
@@ -155,6 +156,19 @@ export default function Debts() {
     setPaymentRequestKey(crypto.randomUUID());
     setDebtModalOpen(true);
   };
+
+  useWorkspaceAction(({ action, search, id, signal }) => {
+    if (search !== null) { setCounterpartySearch(search); setCounterpartyFilter('all'); }
+    if (action === 'new_customer' && canManageCp) {
+      setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpCode(''); setNewCpModalOpen(true);
+    }
+    if (action === 'import' && canManageCp) setImportModalOpen(true);
+    if (id) salesApi.getCounterparty(id, { signal }).then(cp => {
+      if (signal.aborted) return;
+      if (action === 'debt_payment') handleOpenDebtPayment(cp);
+      else handleOpenCounterpartyPurchases(cp);
+    }).catch(error => { if (!signal.aborted) toast.error(error.message); });
+  });
 
   const handleConfirmDebtPayment = async (e) => {
     e.preventDefault();

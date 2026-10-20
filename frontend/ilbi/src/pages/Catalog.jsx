@@ -1,3 +1,4 @@
+import { useWorkspaceAction } from '../hooks/useWorkspaceAction';
 import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -497,6 +498,11 @@ export default function Catalog() {
   useEffect(() => {
     if (variantError) toast.error(variantError.message || 'Katalogni yuklab bo‘lmadi.');
   }, [variantError, toast]);
+
+  useWorkspaceAction(({ action, search }) => {
+    if (search !== null) { setSearch(search); setActiveTab('active'); setSelectedCat(''); }
+    if (action === 'import' && canImport) setImportOpen(true);
+  });
 
   useEffect(() => {
     if (searchParams.get('new') === '1' || searchParams.get('action') === 'new_product') {

@@ -2,6 +2,7 @@ from apps.core.readiness import readiness
 from django.urls import include, path
 
 urlpatterns = [
+    path('workspace/', include('api.v1.workspace')),
     path('internal/health/ready/', readiness, name='internal-readiness'),
     path('support/', include('api.v1.support.urls')),
     path('', include('api.v1.accounts.urls')),

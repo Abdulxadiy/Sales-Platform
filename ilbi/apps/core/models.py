@@ -10,6 +10,18 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class WorkspaceReminder(BaseModel):
+    title = models.CharField(max_length=200)
+    due_at = models.DateTimeField()
+    created_by = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='created_workspace_reminders')
+    assigned_to = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='workspace_reminders')
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['due_at', 'pk']
+        indexes = [models.Index(fields=['tenant', 'assigned_to', 'completed_at', 'due_at'], name='workspace_reminder_due_idx')]
+
+
 class AuditAction(models.TextChoices):
     CATALOG_CREATE = "catalog_create", "Katalogga qo‘shildi"
     CATALOG_UPDATE = "catalog_update", "Katalog tahrirlandi"

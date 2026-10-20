@@ -55,6 +55,9 @@ jobs:
   publish:
     needs: plan
     if: needs.plan.outputs.due == 'true'
+    permissions:
+      contents: write
+      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -102,3 +105,7 @@ jobs:
           arguments=()
           if [ "$QUEUE_DRY_RUN" = "true" ]; then arguments+=(--dry-run); fi
           python3 scripts/commit_queue.py publish "${arguments[@]}"
+      - name: Start CI for the published main commit
+        env:
+          QUEUE_DRY_RUN: ${{ inputs.dry_run || false }}
+        run: bash scripts/dispatch_published_ci.sh

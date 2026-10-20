@@ -35,6 +35,13 @@ Zaxira branchi repozitoriy bilan bir xil ochiqlikda. `.env`, maxfiy kalit, ma’
 
 Har paket avtomatizatsiya integratsion testlari, backend testlari, API sxemasi, frontend testlari, lint va builddan o‘tadi. Birortasi muvaffaqiyatsiz bo‘lsa `main`, tag va navbat holati oldinga siljimaydi.
 
+Navbat publisheri yangi `main` commitini yuborgach CI workflow’ini alohida dispatch qiladi:
+`GITHUB_TOKEN` bilan qilingan push boshqa push workflow’ini o‘zi boshlamaydi
+([GitHub token qoidasi](https://docs.github.com/en/actions/concepts/security/github_token)).
+Quruq sinovda yoki `main` o‘zgarmaganda dispatch qilinmaydi. CI muvaffaqiyatli tugasa,
+`DEPLOY_ENABLED=true` holatida production deploy ishlaydi. Buning uchun shaxsiy GitHub tokenini
+qo‘shimcha secret sifatida saqlash kerak emas; publisher jobiga `actions: write` berilgan.
+
 ```bash
 python3 scripts/commit_queue.py backup
 python3 scripts/commit_queue.py status

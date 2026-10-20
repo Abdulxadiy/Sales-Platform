@@ -161,6 +161,8 @@ class PublisherTests(unittest.TestCase):
         for value in (
             ".env",
             "ilbi/.env.test",
+            "ilbi/.env.production",
+            "ilbi/.env.production.previous",
             ".git/config",
             "../private",
             "media/customer.png",
@@ -173,6 +175,9 @@ class PublisherTests(unittest.TestCase):
         for value in (
             ".env.example",
             "ilbi/.env.example",
+            ".env.production.example",
+            "ilbi/.env.production.example",
+            "telegram_bot_sms/.env.production.example",
             "branding/new logo.png",
             "frontend/ilbi/package-lock.json",
         ):

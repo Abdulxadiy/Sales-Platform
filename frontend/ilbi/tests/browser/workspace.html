@@ -1,0 +1,45 @@
+<!doctype html><html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import { ThemeProvider } from '/src/context/ThemeContext.jsx';
+import { TenantProvider, useTenant } from '/src/context/TenantContext.jsx';
+import { ToastProvider } from '/src/context/ToastContext.jsx';
+import { ConfirmProvider } from '/src/context/ConfirmContext.jsx';
+import Layout from '/src/components/layout/Layout.jsx';
+import Dashboard from '/src/pages/Dashboard.jsx';
+import POS from '/src/pages/POS.jsx';
+import Catalog from '/src/pages/Catalog.jsx';
+import Inventory from '/src/pages/Inventory.jsx';
+import Debts from '/src/pages/Debts.jsx';
+import Sales from '/src/pages/Sales.jsx';
+import '/src/index.css';
+const seed=await(await fetch('/__workspace-qa/seed')).json();
+const who=new URLSearchParams(location.search).get('role')||sessionStorage.getItem('workspace_qa_role')||'owner';
+sessionStorage.setItem('workspace_qa_role',who);
+const session=seed[who],user=session.user;
+localStorage.setItem('ilbi_access_token',session.access);localStorage.setItem('ilbi_refresh_token',session.refresh);
+localStorage.setItem('ilbi_user',JSON.stringify(user));
+if(user.tenants.length&&!localStorage.getItem(`ilbi_active_tenant:${user.id}`))localStorage.setItem(`ilbi_active_tenant:${user.id}`,String(user.tenants[0].id));
+const native=window.fetch.bind(window);
+window.workspaceQA={requests:[],pending:0,seed,who};
+window.fetch=async(input,options={})=>{
+ const path=new URL(input,location.origin).pathname;
+ if(path.startsWith('/api/'))workspaceQA.requests.push({path,method:options.method||'GET',tenant:options.headers?.['X-Tenant-ID'],at:performance.now()});
+ workspaceQA.pending++;try{return await native(input,options);}finally{workspaceQA.pending--;}
+};
+function Controls(){const {selectTenant,tenants}=useTenant();workspaceQA.selectTenant=id=>selectTenant(tenants.find(item=>item.id===id));return null;}
+function Placeholder(){return React.createElement('p',null,'Qo‘shimcha bo‘lim — navigatsiya sinovi');}
+createRoot(document.getElementById('root')).render(
+ React.createElement(AuthContext.Provider,{value:{user,isOwner:who==='owner',isAdmin:who==='admin',role:user.role,isAuthenticated:true,logout(){workspaceQA.loggedOut=true;}}},
+ React.createElement(ThemeProvider,null,React.createElement(TenantProvider,null,
+ React.createElement(ToastProvider,null,React.createElement(ConfirmProvider,null,
+ React.createElement(BrowserRouter,null,React.createElement(Controls),React.createElement(Routes,null,
+ React.createElement(Route,{element:React.createElement(Layout)},
+ ...Object.entries({'/dashboard':Dashboard,'/pos':POS,'/catalog':Catalog,'/inventory':Inventory,'/debts':Debts,'/sales':Sales}).map(([path,component])=>React.createElement(Route,{key:path,path,element:React.createElement(component)})),
+ React.createElement(Route,{path:'*',element:React.createElement(Placeholder)}),
+ ))),
+ )))),
+));
+</script></body></html>

@@ -691,6 +691,9 @@ export const salesApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getCounterpartyImportTemplate: () => request('/sales/counterparties/import/template/', { responseType: 'blob' }),
+  previewCounterpartyImport: (body) => request('/sales/counterparties/import/preview/', { method: 'POST', body }),
+  commitCounterpartyImport: (id) => request(`/sales/counterparties/import/${id}/commit/`, { method: 'POST' }),
   updateCounterparty: (id, data) =>
     request(`/sales/counterparties/${id}/`, {
       method: 'PATCH',
@@ -799,4 +802,3 @@ export const auditApi = {
     return request(`/audit/logs/${qs ? `?${qs}` : ''}`);
   },
 };
-

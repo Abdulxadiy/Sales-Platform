@@ -1,30 +1,37 @@
 import { createVisiblePoller } from '../../utils/visiblePolling';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Shield, Menu, Store } from 'lucide-react';
+import { Clock, Shield, Menu } from 'lucide-react';
 import { cashboxApi } from '../../api/client';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
-import CustomSelect from '../common/CustomSelect';
+import TenantSwitcher from './TenantSwitcher';
+import { useWorkspace } from '../../context/WorkspaceContext';
+const WorkspaceNavbar = React.lazy(() => import('./WorkspaceNavbar'));
 
 export default function Header({
   title,
   subtitle,
   onOpenShiftModal,
   onOpenMobileMenu,
+  onOpenNotifications,
+  unreadCount,
+  notifications,
 }) {
   const navigate = useNavigate();
-  const { isAdmin, isOwner } = useAuth();
-  const { tenants, activeTenant, selectTenant } = useTenant();
+  const { isAdmin } = useAuth();
+  const { mode } = useWorkspace();
+  const { activeTenant } = useTenant();
   const canViewCashbox = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.view_cashbox");
   const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.manage_shift");
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(() => new Date());
   const [shift, setShift] = useState(null);
 
   useEffect(() => {
+    if (mode === 'fast') return;
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     setShift(null);
@@ -38,81 +45,7 @@ export default function Header({
 
   const isShiftOpen = Boolean(shift?.is_open ?? (shift?.status === 'OPEN'));
 
-  return (
-    <header className="app-header">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {onOpenMobileMenu && (
-          <button
-            type="button"
-            className="mobile-menu-trigger"
-            onClick={onOpenMobileMenu}
-            aria-label="Menyuni ochish"
-            title="Asosiy menyu"
-          >
-            <Menu size={20} />
-          </button>
-        )}
-        <div style={{ minWidth: 0 }}>
-          <h1 className="header-page-title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="header-page-subtitle" style={{ fontSize: 13, color: 'var(--text-muted)', margin: '3px 0 0' }}>
-              {subtitle}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="header-actions-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {!isAdmin && tenants.length > 0 && (
-          isOwner && (tenants.length > 1 || !activeTenant) ? (
-            <CustomSelect
-              value={activeTenant?.id ?? ''}
-              onChange={(newTenantId) => {
-                const selected = tenants.find((tenant) => String(tenant.id) === String(newTenantId));
-                if (selected) selectTenant(selected);
-              }}
-              options={tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))}
-              placeholder="Do‘konni tanlang"
-              icon={Store}
-              size="sm"
-              title="Do‘konni tanlash"
-              style={{
-                borderRadius: 10,
-                background: 'var(--bg-chip)',
-                border: '1px solid var(--border-subtle)',
-                fontSize: 12.5,
-              }}
-              menuStyle={{
-                minWidth: 230,
-                right: 0,
-                left: 'auto',
-              }}
-            />
-          ) : activeTenant ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '5px 12px',
-                borderRadius: 999,
-                background: 'var(--bg-chip)',
-                border: '1px solid var(--border-subtle)',
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-              }}
-              title={`Faol do‘kon: ${activeTenant.name}`}
-            >
-              <Store size={14} color="var(--primary)" />
-              <span>{activeTenant.name}</span>
-            </div>
-          ) : null
-        )}
-
-        {isAdmin ? (
+  const statusControl = <>{isAdmin ? (
           <div
             style={{
               display: 'flex',
@@ -138,7 +71,10 @@ export default function Header({
             </span>
           </div>
         ) : canViewCashbox ? (
-          <div
+          <div role="button" tabIndex={0}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+            }}
             onClick={() => {
               if (isShiftOpen && canManageShift && onOpenShiftModal) {
                 onOpenShiftModal();
@@ -189,7 +125,41 @@ export default function Header({
               {isShiftOpen ? 'Smena Ochiq' : 'Smena Yopiq'}
             </span>
           </div>
-        ) : null}
+        ) : null}</>;
+  if (mode === 'fast') return <React.Suspense fallback={<div className="workspace-navbar workspace-navbar-loading">Ish stoli ochilmoqda…</div>}>
+    <WorkspaceNavbar statusControl={statusControl} unreadCount={unreadCount} notifications={notifications} onOpenNotifications={onOpenNotifications} />
+  </React.Suspense>;
+
+  return (
+    <header className="app-header">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {onOpenMobileMenu && (
+          <button
+            type="button"
+            className="mobile-menu-trigger"
+            onClick={onOpenMobileMenu}
+            aria-label="Menyuni ochish"
+            title="Asosiy menyu"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+        <div style={{ minWidth: 0 }}>
+          <h1 className="header-page-title" style={{ fontSize: 20, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="header-page-subtitle" style={{ fontSize: 13, color: 'var(--text-muted)', margin: '3px 0 0' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="header-actions-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <TenantSwitcher />
+
+        {statusControl}
 
         {/* Live Clock with Synthetic Lime Accent */}
         <div

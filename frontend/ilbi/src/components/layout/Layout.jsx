@@ -15,9 +15,12 @@ import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import NotificationCard from '../notifications/NotificationCard';
 import FloatingNotificationToast from '../notifications/FloatingNotificationToast';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { WorkspaceProvider, useWorkspace } from '../../context/WorkspaceContext';
+import '../../styles/workspace.css';
 import { platformApi } from '../../api/platform';
 
-export default function Layout({ children }) {
+function LayoutContent({ children }) {
+  const { mode } = useWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
@@ -334,7 +337,7 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className={`app-layout ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
+    <div className={`app-layout workspace-${mode} ${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'}`}>
       {/* Mobile Drawer Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -345,14 +348,14 @@ export default function Layout({ children }) {
       )}
 
       {/* Floating Collapsible Sidebar */}
-      <Sidebar
+      {mode !== 'fast' && <Sidebar
         onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
         unreadCount={unreadCount}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
-      />
+      />}
 
       {/* Main Content Area */}
       <div className="main-content">
@@ -361,8 +364,12 @@ export default function Layout({ children }) {
           subtitle={subtitle}
           onOpenShiftModal={() => setShiftModalOpen(true)}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
+          unreadCount={unreadCount}
+          notifications={notifications}
         />
         <main style={{ marginTop: 24, position: 'relative', zIndex: 1 }}>
+          {mode === 'fast' && location.pathname !== '/dashboard' && <div className="workspace-page-heading"><h1>{title}</h1><p>{subtitle}</p></div>}
           <React.Suspense fallback={null}>
             <div className="animate-fade-in" key={location.pathname}>
             {!isAdmin && !activeTenant && !['/my-tenants', '/profile', '/docs', '/support'].includes(location.pathname)
@@ -642,4 +649,8 @@ export default function Layout({ children }) {
       </Modal>
     </div>
   );
+}
+
+export default function Layout({ children }) {
+  return <WorkspaceProvider><LayoutContent>{children}</LayoutContent></WorkspaceProvider>;
 }

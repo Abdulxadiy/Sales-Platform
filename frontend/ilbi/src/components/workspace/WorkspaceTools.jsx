@@ -63,7 +63,10 @@ export default function WorkspaceTools({ tool, onClose, navItems = [], favorites
     {tool === 'favorites' && <div className="workspace-form"><p>Tezkor qator uchun 6 tagacha bo‘lim tanlang.</p>
       {navItems.map(item => <label className="workspace-favorite-choice" key={item.to}>
         <input type="checkbox" checked={favorites.includes(item.to)} disabled={favorites.length >= 6 && !favorites.includes(item.to)}
-          onChange={() => setFavorites(current => current.includes(item.to) ? current.filter(path => path !== item.to) : [...current, item.to].slice(0, 6))} />
+          onChange={() => setFavorites(current => {
+            const paths = Array.isArray(current) ? current : [];
+            return paths.includes(item.to) ? paths.filter(path => path !== item.to) : [...paths, item.to].slice(0, 6);
+          })} />
         <Star size={16} />{item.label}</label>)}
     </div>}
     {tool === 'imports' && <div className="workspace-search-results">

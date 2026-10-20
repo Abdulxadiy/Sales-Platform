@@ -121,6 +121,36 @@ uv run pytest apps/accounts/tests/test_terms_and_docs_views.py apps/core/tests/t
 
 Bu to‘plam ruxsat/tahrir sinovi bilan birga boshqa moduldagi ommaviy qo‘llanma va rasm o‘qilishini ham tekshiradi; testdagi docs root almashtirilishi keyingi modullarga tarqalmaydi. Test DB tranzaksiyasi haqiqiy disk faylini qaytarmaydi, shuning uchun ajratish aynan test fixture’ida bajarilgan. Ilovaning normal docs root qidiruvi o‘zgartirilmagan.
 
+## Desktop workspace browser test
+
+API/unit tests use the standard isolated test settings:
+
+```bash
+uv run pytest apps/core/tests/test_workspace.py -q
+cd ../frontend/ilbi
+npm test
+```
+
+The live browser suite needs a separate PostgreSQL database named **`ilbi_workspace_qa`**. Never point it at an application database. Create a local settings module outside the repository that imports `config.settings_test`, sets `DATABASES['default']` to this QA database, and uses locmem caches. Keep the existing test database separate. `tests/seed_workspace_browser.py` checks the exact database name before creating its synthetic shops/accounts, products, stock, sales and reminders. Each seed uses unique account/shop names. It writes short-lived synthetic session tokens to `/tmp/ilbi-workspace-seed.json` with owner-only file access.
+
+From `ilbi/`, with the QA settings module available on `PYTHONPATH`:
+
+```bash
+DJANGO_SETTINGS_MODULE=workspace_qa_settings uv run python tests/seed_workspace_browser.py
+DJANGO_SETTINGS_MODULE=workspace_qa_settings uv run python manage.py runserver 127.0.0.1:55441 --noreload
+```
+
+In another terminal:
+
+```bash
+cd frontend/ilbi
+ILBI_WORKSPACE_SEED=/tmp/ilbi-workspace-seed.json ILBI_WORKSPACE_API=http://127.0.0.1:55441 npm run test:workspace
+```
+
+The suite uses Chrome and a temporary Vite server/profile. It clicks actual React pages against real Django endpoints and writes screenshots to a newly created `/tmp/ilbi-workspace-browser-*` directory. It verifies every sidebar route exists in the navbar; repeated animated switches retain the mounted form and POS cart; shift/notification requests are not duplicated; reminder data is reused; search opens products/customers/receipts; quick actions/imports work; reminders can be created/completed/deleted; calculator/favorites/reload, tenant/account/role isolation, desktop widths, mobile fallback and reduced-motion/no-View-Transitions behavior work. Existing modules beyond the six operational pages use navigation placeholders in this focused fixture; their own suites cover the full pages.
+
+Stop the QA Django/PostgreSQL processes afterwards and remove the temporary token file when no longer needed. The seed does not send messages or create real transactions in an application database.
+
 ## Ilovaning tayyorligi
 
 ```bash

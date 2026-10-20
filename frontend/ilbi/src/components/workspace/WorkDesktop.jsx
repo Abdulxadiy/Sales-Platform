@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, ShoppingCart, CreditCard, Package, ArrowUpRight, History, RefreshCw } from 'lucide-react';
-import RevenueCostAnalyticsChart from '../dashboard/RevenueCostAnalyticsChart';
+import CompactSalesChart from './CompactSalesChart';
 import Reminders from './Reminders';
 import { workspaceApi } from '../../api/workspace';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../hooks/useAuth';
 import { canUse } from '../../utils/workspace';
 
-export default function WorkDesktop({ data, loading, period, setPeriod, currencyRate }) {
+export default function WorkDesktop({ data, loading, period, setPeriod }) {
   const navigate = useNavigate();
   const { activeTenant } = useTenant();
   const { isOwner } = useAuth();
@@ -44,15 +44,13 @@ export default function WorkDesktop({ data, loading, period, setPeriod, currency
     </div>
     {overview?.error && <div className="workspace-error" role="alert">{overview.error}<button onClick={() => setRetry(value => value + 1)} type="button"><RefreshCw size={14} />Qayta yuklash</button></div>}
     <div className="workspace-middle-grid"><section className="workspace-card workspace-chart"><div className="workspace-card-heading"><h2><BarChart3 size={18} />Savdo dinamikasi</h2></div>
-      {currencyRate > 0 ? <RevenueCostAnalyticsChart chartData={data?.sales_chart || []} period={period} currencyRate={currencyRate}
-        formatUZS={value => `${money(value)} UZS`} formatUSD={value => `${money(value)} USD`} />
-        : <p className="workspace-empty">Grafikni ko‘rish uchun do‘konning USD kursini sozlang.</p>}
+      <CompactSalesChart rows={data?.sales_chart || []} />
     </section><Reminders compact /></div>
     <section className="workspace-card"><div className="workspace-card-heading"><h2><History size={18} />So‘nggi savdolar</h2>
       <button type="button" className="workspace-text-button" onClick={() => navigate(isOwner ? '/history' : '/sales')}>Barchasini ko‘rish <ArrowUpRight size={15} /></button></div>
       <div className="table-responsive"><table className="workspace-activity-table"><thead><tr><th>Vaqt</th><th>Chek</th><th>Mijoz</th><th>Summa</th><th>Holat</th><th>Mas’ul</th></tr></thead>
         <tbody>{overview?.recent_sales?.map(row => <tr key={row.id}>
-          <td>{new Date(row.created_at).toLocaleString('uz-UZ', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+          <td>{new Date(row.created_at).toLocaleString('uz-UZ', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
           <td><button type="button" className="workspace-text-button" onClick={() => navigate(`/sales?workspace_id=${row.id}`)}>{row.receipt_number}</button></td>
           <td>{row.customer}</td><td>{money(row.total_amount)} {row.currency}</td><td><span className="workspace-status-chip">{row.status}</span></td><td>{row.cashier}</td>
         </tr>)}</tbody></table></div>

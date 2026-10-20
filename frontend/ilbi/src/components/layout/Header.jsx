@@ -24,7 +24,7 @@ export default function Header({
   const { activeTenant } = useTenant();
   const canViewCashbox = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.view_cashbox");
   const canManageShift = activeTenant?.is_owner || activeTenant?.permissions?.includes("cashbox.manage_shift");
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(() => new Date());
   const [shift, setShift] = useState(null);
 
   useEffect(() => {
@@ -71,7 +71,10 @@ export default function Header({
             </span>
           </div>
         ) : canViewCashbox ? (
-          <div
+          <div role="button" tabIndex={0}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+            }}
             onClick={() => {
               if (isShiftOpen && canManageShift && onOpenShiftModal) {
                 onOpenShiftModal();

@@ -33,6 +33,9 @@ export default function WorkspaceSearch({ onClose, navItems }) {
     type: 'page', title: item.label, url: item.to, icon: item.icon,
   }));
   const rows = [...(current?.results || []), ...pages];
+  useEffect(() => {
+    document.getElementById(`workspace-result-${index}`)?.scrollIntoView({ block: 'nearest' });
+  }, [index]);
   function open(row) {
     const params = new URLSearchParams();
     if (row.search) params.set('workspace_search', row.search);

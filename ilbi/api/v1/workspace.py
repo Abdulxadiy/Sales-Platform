@@ -3,7 +3,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -41,6 +42,7 @@ class ReminderInputSerializer(serializers.Serializer):
 class ReminderOutputSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.SerializerMethodField()
     completed = serializers.SerializerMethodField()
+    overdue = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkspaceReminder
@@ -53,6 +55,7 @@ class ReminderOutputSerializer(serializers.ModelSerializer):
             "created_by_id",
             "completed",
             "completed_at",
+            "overdue",
         ]
 
     def get_assigned_to_name(self, obj) -> str:
@@ -60,6 +63,20 @@ class ReminderOutputSerializer(serializers.ModelSerializer):
 
     def get_completed(self, obj) -> bool:
         return obj.completed_at is not None
+
+    def get_overdue(self, obj) -> bool:
+        return obj.completed_at is None and obj.due_at <= timezone.now()
+
+
+class ReminderListOutputSerializer(serializers.Serializer):
+    results = ReminderOutputSerializer(many=True)
+    count = serializers.IntegerField()
+    overdue_count = serializers.IntegerField()
+
+
+class WorkspaceMemberSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
 
 
 def reminder_assignee(view, data):
@@ -71,15 +88,21 @@ def reminder_assignee(view, data):
 
 
 class ReminderListView(WorkspaceView):
-    @extend_schema(responses=ReminderOutputSerializer(many=True))
+    @extend_schema(
+        responses=ReminderListOutputSerializer,
+        parameters=[OpenApiParameter("page", int), OpenApiParameter("completed", str)],
+    )
     def get(self, request):
         rows = self.reminders()
         status = request.query_params.get("completed", "false")
         if status != "all":
             rows = rows.filter(completed_at__isnull=status != "true")
+        page = serializers.IntegerField(min_value=1, max_value=100000).run_validation(
+            request.query_params.get("page", 1)
+        )
         return Response(
             {
-                "results": ReminderOutputSerializer(rows[:50], many=True).data,
+                "results": ReminderOutputSerializer(rows[(page - 1) * 50 : page * 50], many=True).data,
                 "count": rows.count(),
                 "overdue_count": self.reminders().filter(completed_at__isnull=True, due_at__lte=timezone.now()).count(),
             }
@@ -128,6 +151,7 @@ class ReminderDetailView(WorkspaceView):
 
 
 class WorkspaceMembersView(WorkspaceView):
+    @extend_schema(responses=WorkspaceMemberSerializer(many=True))
     def get(self, request):
         memberships = Employee.objects.filter(tenant=self.tenant, is_active=True).select_related("user")
         if not self.is_owner:
@@ -141,15 +165,16 @@ class WorkspaceMembersView(WorkspaceView):
 
 
 class WorkspaceSearchView(WorkspaceView):
+    @extend_schema(responses={200: OpenApiTypes.OBJECT}, parameters=[OpenApiParameter("q", str)])
     def get(self, request):
         query = request.query_params.get("q", "").strip()[:100]
         if len(query) < 2:
             return Response({"results": []})
         results = []
+
         def permitted(*codes):
-            return any(
-                    PermissionService.has_permission(request.user, code, tenant=self.tenant) for code in codes
-                )
+            return any(PermissionService.has_permission(request.user, code, tenant=self.tenant) for code in codes)
+
         if permitted("catalog.view_product", "sales.add_sale"):
             rows = (
                 ProductVariant.objects.filter(tenant=self.tenant, is_active=True, product__is_active=True)
@@ -202,9 +227,11 @@ class WorkspaceSearchView(WorkspaceView):
 
 
 class WorkspaceOverviewView(WorkspaceView):
+    @extend_schema(responses={200: OpenApiTypes.OBJECT})
     def get(self, request):
         def allowed(code):
             return PermissionService.has_permission(request.user, code, tenant=self.tenant)
+
         low_stock = None
         if allowed("inventory.view_stock"):
             low_stock = (

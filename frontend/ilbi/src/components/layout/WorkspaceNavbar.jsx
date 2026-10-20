@@ -14,6 +14,7 @@ import { getNavigation } from './navigation';
 import WorkspaceSwitch from './WorkspaceSwitch';
 import TenantSwitcher from './TenantSwitcher';
 import IlbiLogo from '../common/IlbiLogo';
+import { resolveAvatarUrl } from '../../api/client';
 
 const WorkspaceSearch = lazy(() => import('../workspace/WorkspaceSearch'));
 const WorkspaceTools = lazy(() => import('../workspace/WorkspaceTools'));
@@ -32,6 +33,7 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
   const [searchOpen, setSearchOpen] = useState(false);
   const [tool, setTool] = useState(null);
   const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement));
+  const [brokenAvatar, setBrokenAvatar] = useState(null);
   const [favorites, setFavorites] = usePersistedState(`ilbi_workspace_favorites:${user?.id}:${activeTenant?.id || 'platform'}`, ['/debts', '/inventory', '/sales']);
   const [recent, setRecent] = usePersistedState(`ilbi_workspace_recent:${user?.id}:${activeTenant?.id || 'platform'}`, []);
   const navItems = getNavigation({ user, isOwner, isAdmin });
@@ -42,6 +44,8 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
   const more = navItems.filter(item => !primaryPaths.includes(item.to));
   const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || 'Foydalanuvchi';
   const initials = displayName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  const avatar = resolveAvatarUrl(user?.avatar_url || user?.avatar);
+  const notificationCount = Number(unreadCount || 0) + Number(reminders?.overdue_count || 0);
   const closeMenus = () => root.current?.querySelectorAll('details[open]').forEach(menu => { menu.open = false; });
   useEffect(() => {
     const path = location.pathname;
@@ -57,10 +61,12 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
     };
     const clickAway = event => root.current?.querySelectorAll('details[open]').forEach(menu => { if (!menu.contains(event.target)) menu.open = false; });
     const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
+    const openReminders = () => setTool('reminders');
     document.addEventListener('keydown', keydown);
     document.addEventListener('pointerdown', clickAway);
     document.addEventListener('fullscreenchange', updateFullscreen);
-    return () => { document.removeEventListener('keydown', keydown); document.removeEventListener('pointerdown', clickAway); document.removeEventListener('fullscreenchange', updateFullscreen); };
+    window.addEventListener('workspace_open_reminders', openReminders);
+    return () => { document.removeEventListener('keydown', keydown); document.removeEventListener('pointerdown', clickAway); document.removeEventListener('fullscreenchange', updateFullscreen); window.removeEventListener('workspace_open_reminders', openReminders); };
   }, []);
   useEffect(() => { setSearchOpen(false); setTool(null); closeMenus(); }, [activeTenant?.id]);
   function openTool(next) { closeMenus(); setTool(next); }
@@ -88,7 +94,7 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
       <div className="workspace-utility-actions">
         <WorkspaceSwitch className="workspace-icon-button" />
         <button type="button" className="workspace-icon-button" title="Mavzuni almashtirish" aria-label="Mavzuni almashtirish" onClick={toggleTheme}>{isDark ? <Sun size={18} /> : <Moon size={18} />}</button>
-        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-icon-button" title="Xabarnomalar" aria-label="Xabarnomalar"><Bell size={18} />{unreadCount > 0 && <span className="workspace-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}</summary>
+        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-icon-button" title="Xabarnomalar" aria-label="Xabarnomalar"><Bell size={18} />{notificationCount > 0 && <span className="workspace-badge">{notificationCount > 99 ? '99+' : notificationCount}</span>}</summary>
           <div className="workspace-dropdown-panel workspace-notifications-menu"><strong>Bildirishnomalar</strong>
             {(notifications || []).slice(0, 3).map(row => <button key={row.id} type="button" onClick={() => { closeMenus(); onOpenNotifications(); }}><Bell size={16} /><span>{row.title}</span></button>)}
             {!isAdmin && activeTenant && <button type="button" onClick={() => openTool('reminders')}><BellRing size={17} /><span>Eslatmalar</span>{reminders?.overdue_count > 0 && <b className="workspace-count">{reminders.overdue_count}</b>}</button>}
@@ -104,7 +110,7 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
             }}>{fullscreen ? <Minimize size={17} /> : <Maximize size={17} />}{fullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekran'}</button>
             <button type="button" onClick={() => openTool('shortcuts')}><Keyboard size={17} />Klaviatura yordamchisi</button>
           </div></details>
-        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-avatar" title={displayName} aria-label="Profil va chiqish">{initials}</summary>
+        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-avatar" title={displayName} aria-label="Profil va chiqish">{avatar && avatar !== brokenAvatar ? <img src={avatar} alt="" onError={() => setBrokenAvatar(avatar)} /> : initials}</summary>
           <div className="workspace-dropdown-panel"><strong>{displayName}</strong><NavLink to="/profile" onClick={closeMenus}><User size={17} />Mening profilim</NavLink>
             <button type="button" onClick={async () => {
               closeMenus();

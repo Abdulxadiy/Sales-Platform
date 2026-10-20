@@ -17,13 +17,22 @@ export function WorkspaceProvider({ children }) {
   const mode = desktop && savedMode === 'fast' ? 'fast' : 'classic';
   const [reminderState, setReminderState] = useState(null);
   const reminderPoller = useRef(null);
+  const reminderCache = useRef(null);
   useEffect(() => {
     if (mode !== 'fast' || !activeTenant?.id || user?.role === 'platform_admin') return;
     const tenantId = activeTenant.id;
+    let initial = true;
     const poller = createVisiblePoller(async signal => {
+      if (initial) {
+        initial = false;
+        if (reminderCache.current?.tenantId === tenantId && Date.now() - reminderCache.current.fetchedAt < 60000) return;
+      }
       try {
         const data = await workspaceApi.reminders('false', signal);
-        if (!signal.aborted) setReminderState({ tenantId, ...data, error: null });
+        if (!signal.aborted) {
+          reminderCache.current = { tenantId, fetchedAt: Date.now() };
+          setReminderState({ tenantId, ...data, error: null });
+        }
       } catch (error) {
         if (!signal.aborted) setReminderState(previous => ({
           ...(previous?.tenantId === tenantId ? previous : {}), tenantId, error: error.message,
@@ -51,7 +60,7 @@ export function WorkspaceProvider({ children }) {
   }, [setSavedMode]);
   const reminders = reminderState?.tenantId === activeTenant?.id ? reminderState : null;
   return <WorkspaceContext.Provider value={{ mode, toggleMode, reminders,
-    refreshReminders: () => reminderPoller.current?.refresh() }}>{children}</WorkspaceContext.Provider>;
+    refreshReminders: () => { reminderCache.current = null; return reminderPoller.current?.refresh(); } }}>{children}</WorkspaceContext.Provider>;
 }
 
 export const useWorkspace = () => useContext(WorkspaceContext);

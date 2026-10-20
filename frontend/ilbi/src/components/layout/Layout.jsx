@@ -369,6 +369,7 @@ function LayoutContent({ children }) {
           notifications={notifications}
         />
         <main style={{ marginTop: 24, position: 'relative', zIndex: 1 }}>
+          {mode === 'fast' && location.pathname !== '/dashboard' && <div className="workspace-page-heading"><h1>{title}</h1><p>{subtitle}</p></div>}
           <React.Suspense fallback={null}>
             <div className="animate-fade-in" key={location.pathname}>
             {!isAdmin && !activeTenant && !['/my-tenants', '/profile', '/docs', '/support'].includes(location.pathname)

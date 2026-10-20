@@ -138,3 +138,20 @@ def test_reminder_validation_anonymous_and_platform_admin(client, platform_admin
     assert client.get(ROOT + "reminders/").status_code == 403
     client.force_authenticate(None)
     assert client.get(ROOT + "search/?q=Anvar").status_code == 401
+
+
+def test_reminder_list_is_bounded_and_paginated(client, tenant, owner):
+    WorkspaceReminder.objects.bulk_create(
+        [
+            WorkspaceReminder(
+                tenant=tenant, created_by=owner, assigned_to=owner, title=f"Vazifa {index}", due_at=timezone.now()
+            )
+            for index in range(53)
+        ]
+    )
+    first = client.get(ROOT + "reminders/?page=1").data
+    second = client.get(ROOT + "reminders/?page=2").data
+    assert first["count"] == second["count"] == 53
+    assert len(first["results"]) == 50 and len(second["results"]) == 3
+    assert not ({row["id"] for row in first["results"]} & {row["id"] for row in second["results"]})
+    assert client.get(ROOT + "reminders/?page=0").status_code == 400

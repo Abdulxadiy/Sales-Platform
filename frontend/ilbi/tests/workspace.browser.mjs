@@ -13,7 +13,7 @@ const artifacts = await mkdtemp(join(tmpdir(), 'ilbi-workspace-browser-'));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 let server, browser;
 try {
-  server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), logLevel: 'error',
+  server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), cacheDir: 'node_modules/.vite-workspace-qa', logLevel: 'error',
     plugins: [{ name: 'workspace-qa', configureServer(instance) {
       instance.middlewares.use('/__workspace-qa/seed', (_request, response) => {
         response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify(seed));
@@ -37,7 +37,7 @@ try {
   };
   const settled = () => wait('Boolean(window.workspaceQA)&&workspaceQA.pending===0');
   const click = async text => {
-    await browser.evaluate(`(()=>{const node=[...document.querySelectorAll('button,summary,a')].find(node=>node.getClientRects().length&&node.textContent.trim()===${JSON.stringify(text)});if(!node)throw Error('Missing control: '+${JSON.stringify(text)});node.click();})()`);
+    await browser.evaluate(`(()=>{const node=[...document.querySelectorAll('button,summary,a')].find(node=>node.getClientRects().length&&(node.textContent.trim()===${JSON.stringify(text)}||node.querySelector('strong')?.textContent.trim()===${JSON.stringify(text)}));if(!node)throw Error('Missing control: '+${JSON.stringify(text)});node.click();})()`);
     await delay(80);
   };
   const setInput = async (selector, value) => {
@@ -50,8 +50,11 @@ try {
   };
   const shot = async name => writeFile(join(artifacts, name + '.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
   const toggle = async fast => {
+    const started = await browser.evaluate('performance.now()');
     await browser.evaluate('document.querySelector("button[aria-label=\\\"Ish stolini almashtirish\\\"]").click()');
     await wait(fast ? 'Boolean(document.querySelector(".workspace-navbar .workspace-top-row"))' : 'Boolean(document.querySelector(".sidebar"))');
+    const elapsed = await browser.evaluate('performance.now()') - started;
+    assert.ok(elapsed < 2000, `Shell switch took ${elapsed}ms before animation`);
     await delay(500);
   };
   const quick = async label => { await click('Yangi'); await click(label); await wait('Boolean(document.querySelector("dialog[open]"))'); };
@@ -78,6 +81,7 @@ try {
   assert.equal(duplicated, 0, 'Switching layouts must not restart the page, shift or notification requests');
   await shot('fast-debts');
   for (let i = 0; i < 4; i++) { await toggle(false); await toggle(true); }
+  assert.equal(await browser.evaluate('workspaceQA.requests.filter(row=>row.path==="/api/v1/workspace/reminders/").length'), 1, 'Fresh reminder data is reused while switching layouts');
   assert.equal(await browser.evaluate('keptInput===document.querySelector("input[placeholder=\\\"Mijoz nomi yoki telefoni...\\\"]")'), true);
   await click('Bosh sahifa'); await wait('Boolean(document.querySelector(".work-desktop"))'); await settled();
   await shot('fast-dashboard-light');
@@ -85,13 +89,20 @@ try {
   for (const width of [1280, 1024]) {
     await browser.resize(width, 1000); await delay(150);
     assert.equal(await browser.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), true, `No horizontal overflow at ${width}px`);
+    assert.equal(await browser.evaluate('(()=>{const box=document.querySelector(".workspace-utility-actions").getBoundingClientRect();return box.right<=innerWidth&&box.left>=0;})()'), true, `Navbar utilities fit ${width}px`);
     await shot('fast-' + width);
   }
   await browser.resize(1536, 1100);
 
   await search('Anvar');
   await wait('[...document.querySelectorAll("#workspace-search-results button")].some(node=>node.textContent.includes("Anvar Abdullayev"))');
-  await browser.evaluate('[...document.querySelectorAll("#workspace-search-results button")].find(node=>node.textContent.includes("Anvar Abdullayev")).click()');
+  const customerIndex = await browser.evaluate('[...document.querySelectorAll("#workspace-search-results button")].findIndex(node=>node.textContent.includes("Anvar Abdullayev"))');
+  for (let i = 0; i < customerIndex; i++) {
+    await browser.call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 });
+    await browser.call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 });
+  }
+  await browser.call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+  await browser.call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
   await wait('location.pathname==="/debts"&&Boolean(document.querySelector("dialog[open]"))'); await settled(); await close();
   await search('Anvar un');
   await wait('[...document.querySelectorAll("#workspace-search-results button")].some(node=>node.textContent.includes("Anvar un"))');
@@ -104,7 +115,7 @@ try {
   await quick('Yangi mijoz');
   const nameSelector = 'dialog[open] input[type=text]';
   await setInput(nameSelector, 'Almashishda saqlanadigan qoralama');
-  await browser.evaluate('window.keptForm=document.querySelector("dialog[open] input[type=text]")');
+  await browser.evaluate('void(window.keptForm=document.querySelector("dialog[open] input[type=text]"))');
   await toggle(false);
   assert.equal(await browser.evaluate('keptForm===document.querySelector("dialog[open] input[type=text]")&&keptForm.value.includes("qoralama")'), true, 'Open form and dialog must survive layout changes');
   await toggle(true); await close();
@@ -112,6 +123,7 @@ try {
   await quick('XLSX import'); await click('Mijozlar va nasiya importi'); await wait('Boolean(document.querySelector("dialog[open] .import-dropzone"))'); await close();
   await quick('XLSX import'); await click('Tovarlar importi'); await wait('Boolean(document.querySelector("dialog[open] .import-dropzone"))'); await close();
   await quick('Qarz to‘lovi'); await settled();
+  await wait('[...document.querySelectorAll("dialog[open] .workspace-search-results button")].some(node=>node.textContent.includes("Anvar"))');
   await browser.evaluate('[...document.querySelectorAll("dialog[open] .workspace-search-results button")].find(node=>node.textContent.includes("Anvar")).click()');
   await wait('Boolean(document.querySelector("dialog[open]"))&&document.querySelector("dialog[open]").textContent.includes("Qarz To‘lovini")');
   await settled(); await close();
@@ -122,6 +134,19 @@ try {
   await click('Moslashtirish');
   await browser.evaluate('[...document.querySelectorAll(".workspace-favorite-choice")].find(node=>node.textContent.includes("B2B")).querySelector("input").click()');
   await close(); assert.equal(await browser.evaluate('document.querySelector(".workspace-favorites-row").textContent.includes("B2B")'), true);
+
+  await browser.evaluate(`document.querySelector('summary[aria-label="Tezkor yordamchilar"]').click()`); await click('Klaviatura yordamchisi'); await close();
+  if (await browser.evaluate('document.fullscreenEnabled')) {
+    await browser.evaluate(`document.querySelector('summary[aria-label="Tezkor yordamchilar"]').click()`); await click('To‘liq ekran');
+    await wait('Boolean(document.fullscreenElement)');
+    await browser.evaluate(`document.querySelector('summary[aria-label="Tezkor yordamchilar"]').click()`); await click('To‘liq ekrandan chiqish');
+    await wait('!document.fullscreenElement');
+  }
+  await browser.evaluate(`document.querySelector('summary[aria-label="Profil va chiqish"]').click()`); await click('Chiqish');
+  await wait('Boolean(document.querySelector("dialog[open]"))'); await click('Bekor qilish');
+  assert.equal(await browser.evaluate('Boolean(workspaceQA.loggedOut)'), false, 'Cancelling logout keeps the account active');
+  await browser.evaluate(`document.querySelector('.workspace-shift-control [role="button"]').click()`);
+  await wait('Boolean(document.querySelector("dialog[open]"))'); await settled(); await close();
 
   await quick('Eslatma'); await settled();
   await setInput('dialog[open] input[placeholder^="Masalan:"]', 'QA yangi eslatma');
@@ -139,16 +164,28 @@ try {
   await click('Kassa'); await settled();
   await wait('Boolean(document.querySelector("input[placeholder^=\\\"Shtrix-kod,\\\"]"))');
   await setInput('input[placeholder^="Shtrix-kod,"]', 'Anvar'); await delay(400); await settled();
-  await browser.evaluate('window.keptPos=document.querySelector("input[placeholder^=\\\"Shtrix-kod,\\\"]")');
+  await wait('[...document.querySelectorAll(".glass-card.interactive")].some(node=>node.textContent.includes("Anvar un"))');
+  await browser.evaluate('[...document.querySelectorAll(".glass-card.interactive")].find(node=>node.textContent.includes("Anvar un")).click()');
+  await wait('Boolean(document.querySelector("input[title=\\\"Soni (qo‘lda kiritish mumkin)\\\"]"))');
+  await setInput('input[title="Soni (qo‘lda kiritish mumkin)"]', '3');
+  await browser.evaluate('void(window.keptPos=document.querySelector("input[placeholder^=\\\"Shtrix-kod,\\\"]"))');
   await toggle(false); await toggle(true);
   assert.equal(await browser.evaluate('keptPos===document.querySelector("input[placeholder^=\\\"Shtrix-kod,\\\"]")&&keptPos.value==="Anvar"'), true);
-  await browser.call('Page.reload'); await wait('Boolean(document.querySelector(".workspace-navbar .workspace-top-row"))'); await settled();
+  assert.equal(await browser.evaluate('document.querySelector("input[title=\\\"Soni (qo‘lda kiritish mumkin)\\\"]").value'), '3', 'POS cart quantity survives switching');
+  await browser.evaluate('window.workspaceBeforeReload=true');
+  await browser.call('Page.reload');
+  await wait('Boolean(window.workspaceQA)&&!window.workspaceBeforeReload&&Boolean(document.querySelector(".workspace-navbar .workspace-top-row"))'); await settled();
+  assert.equal(await browser.evaluate('document.querySelector("input[title=\\\"Soni (qo‘lda kiritish mumkin)\\\"]").value'), '3', 'POS cart quantity survives reload');
   assert.equal(await browser.evaluate('document.querySelector(".workspace-favorites-row").textContent.includes("B2B")'), true);
   await browser.evaluate(`workspaceQA.selectTenant(${seed.second_tenant})`); await settled();
   await wait('document.querySelector(".workspace-store-control").textContent.includes("Yunusobod")');
   assert.equal(await browser.evaluate('document.body.textContent.includes("Anvar un")'), false, 'Switching tenant clears tenant page data');
   await browser.resize(390, 844); await delay(200); assert.equal(await browser.evaluate('Boolean(document.querySelector(".sidebar"))&&!document.querySelector(".workspace-navbar")'), true);
   await browser.resize(1536, 1100); await wait('Boolean(document.querySelector(".workspace-navbar"))');
+  // Reduced-motion users and older browsers keep an immediate, working switch.
+  await browser.call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await browser.evaluate('document.startViewTransition=undefined');
+  await toggle(false); await toggle(true);
 
   // Each account has its own preference, and limited staff never requests owners' data.
   await browser.call('Page.navigate', { url: origin + '/debts?role=staff' });

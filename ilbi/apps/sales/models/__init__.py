@@ -1,4 +1,5 @@
 from .counterparty_model import Counterparty
+from .import_model import CounterpartyImportJob
 from .debt_payment_model import DebtPayment
 from .sale_model import Sale, SaleRefund
 from .sale_item_model import SaleItem
@@ -13,6 +14,7 @@ from .b2b_return_receipt_model import (
 
 __all__ = [
     'Counterparty',
+    'CounterpartyImportJob',
     'DebtPayment',
     'Sale',
     'SaleRefund',

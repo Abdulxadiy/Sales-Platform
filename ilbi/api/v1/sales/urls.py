@@ -21,6 +21,11 @@ from api.v1.sales.views.notification_views import (
     NotificationReadView,
     NotificationReadAllView,
 )
+from api.v1.sales.views.import_views import (
+    CounterpartyImportCommitView,
+    CounterpartyImportPreviewView,
+    CounterpartyImportTemplateView,
+)
 from api.v1.sales.views.sale_views import (
     PublicReceiptDetailView,
     SaleDetailView,
@@ -33,6 +38,9 @@ from api.v1.sales.views.sale_views import (
 urlpatterns = [
     path("export/", SalesExportView.as_view(), name="sales-export"),
     path("counterparties/export/", CounterpartyExportView.as_view(), name="counterparties-export"),
+    path("counterparties/import/template/", CounterpartyImportTemplateView.as_view(), name="counterparty-import-template"),
+    path("counterparties/import/preview/", CounterpartyImportPreviewView.as_view(), name="counterparty-import-preview"),
+    path("counterparties/import/<int:job_id>/commit/", CounterpartyImportCommitView.as_view(), name="counterparty-import-commit"),
     # Sales
     path("", SaleListCreateView.as_view(), name="sale-list-create"),
     path("public/receipt/<str:token>/", PublicReceiptDetailView.as_view(), name="public-receipt-detail"),

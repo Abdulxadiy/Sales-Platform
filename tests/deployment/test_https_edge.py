@@ -37,20 +37,38 @@ def command(*args):
 
 
 class ProductionComposeTests(unittest.TestCase):
-    def test_settings_environment_and_private_network_boundary(self):
-        result = command(
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory(prefix="ilbi-compose-test-")
+        self.addCleanup(self.scratch.cleanup)
+        self.compose_root = Path(self.scratch.name)
+        shutil.copy2(ROOT / "docker-compose.prod.yml", self.compose_root / "docker-compose.prod.yml")
+        shutil.copy2(ROOT / ".env.production.example", self.compose_root / ".env.production.example")
+        # Compose 2.38 checks env_file existence even with --no-env-resolution.
+        # Use only checked-in examples in an isolated tree, never operator secrets.
+        for folder in ("ilbi", "telegram_bot_sms"):
+            destination = self.compose_root / folder / ".env.production"
+            destination.parent.mkdir()
+            shutil.copyfile(ROOT / folder / ".env.production.example", destination)
+            destination.chmod(0o600)
+
+    def compose_config(self, *options):
+        return command(
             "docker",
             "compose",
             "--env-file",
-            str(ROOT / ".env.production.example"),
+            str(self.compose_root / ".env.production.example"),
             "-f",
-            str(ROOT / "docker-compose.prod.yml"),
+            str(self.compose_root / "docker-compose.prod.yml"),
             "config",
             "--no-env-resolution",
-            "--format",
-            "json",
+            *options,
         )
-        services = json.loads(result)["services"]
+
+    def test_settings_environment_and_private_network_boundary(self):
+        services = json.loads(self.compose_config("--format", "json"))["services"]
+        # Older Compose omits env_file and false bind flags from the resolved
+        # model. Inspect those declared policies separately without interpolation.
+        declared = json.loads(self.compose_config("--no-interpolate", "--format", "json"))["services"]
         for name in ("ilbi", "celery_worker", "celery_beat"):
             with self.subTest(service=name):
                 env = services[name]["environment"]
@@ -58,7 +76,7 @@ class ProductionComposeTests(unittest.TestCase):
                 self.assertEqual(env["GUNICORN_RELOAD"], "False")
                 self.assertEqual(env["DJANGO_DEBUG"], "False")
                 self.assertEqual(env["LOCAL_DEMO_LOGIN_ENABLED"], "False")
-                self.assertTrue(services[name]["env_file"][0]["path"].endswith("/ilbi/.env.production"))
+                self.assertTrue(declared[name]["env_file"][0]["path"].endswith("/ilbi/.env.production"))
         for name in ("ilbi", "celery_worker", "celery_beat", "postgres", "redis", "bot"):
             self.assertNotIn("ports", services[name])
         self.assertEqual(services["ilbi"]["healthcheck"]["test"], ["CMD", "python", "-B", "healthcheck.py"])
@@ -71,7 +89,8 @@ class ProductionComposeTests(unittest.TestCase):
         self.assertEqual(template_filter, "^(PUBLIC_HOST|SECURE_HSTS_SECONDS)$")
         mount = next(volume for volume in edge["volumes"] if volume["target"] == "/etc/nginx/tls")
         self.assertTrue(mount["read_only"])
-        self.assertFalse(mount["bind"]["create_host_path"])
+        declared_mount = next(volume for volume in declared["frontend"]["volumes"] if volume["target"] == "/etc/nginx/tls")
+        self.assertFalse(declared_mount["bind"]["create_host_path"])
 
     def test_compose_requires_public_domain_and_existing_certificate_directory_setting(self):
         for missing in ("PUBLIC_HOST", "TLS_CERT_DIR"):
@@ -81,9 +100,9 @@ class ProductionComposeTests(unittest.TestCase):
                         DOCKER,
                         "compose",
                         "--env-file",
-                        str(ROOT / ".env.production.example"),
+                        str(self.compose_root / ".env.production.example"),
                         "-f",
-                        str(ROOT / "docker-compose.prod.yml"),
+                        str(self.compose_root / "docker-compose.prod.yml"),
                         "config",
                         "--no-env-resolution",
                         "-q",

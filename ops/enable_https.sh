@@ -16,7 +16,10 @@ import sys
 
 host, expected = sys.argv[1:]
 ipaddress.IPv4Address(expected)
-addresses = set(socket.gethostbyname_ex(host)[2])
+try:
+    addresses = set(socket.gethostbyname_ex(host)[2])
+except socket.gaierror:
+    raise SystemExit(f"DNS is not ready: create an A record for {host} pointing to {expected}.") from None
 if addresses != {expected}:
     raise SystemExit(f"DNS is not ready: {host} must resolve only to {expected}.")
 PY
@@ -54,7 +57,7 @@ sudo certbot certonly --standalone --non-interactive --agree-tos \
     --post-hook "$(pwd)/ops/certbot_frontend_hook.sh start"
 sudo ./ops/renew_tls.sh
 # Verify the issued chain and hostname while the bootstrap edge is still private.
-./ops/compose.sh up -d --no-build --wait --wait-timeout 240 frontend
+./ops/compose.sh up -d --no-build --wait --wait-timeout 240 ilbi celery_worker celery_beat frontend
 curl --fail --silent --show-error --resolve "$public_host:443:127.0.0.1" \
     "https://$public_host/" -o /dev/null
 binding_changed=1

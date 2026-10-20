@@ -14,10 +14,12 @@ import {
   Receipt,
   Clock,
   FileText,
+  Upload,
 } from 'lucide-react';
 import { salesApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import ExcelExportButton from '../components/common/ExcelExportButton';
+import CounterpartyImportModal from '../components/common/CounterpartyImportModal';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import PriceInput from '../components/common/PriceInput';
@@ -33,6 +35,7 @@ export default function Debts() {
   const confirm = useConfirm();
   const canManageCp = activeTenant?.is_owner || activeTenant?.permissions?.includes("sales.manage_counterparty");
   const [editingCp, setEditingCp] = useState(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const [counterpartyFilter, setCounterpartyFilter] = useState('all'); // 'all' | 'debtors' | 'credit' | 'settled'
   const [counterpartySearch, setCounterpartySearch] = useState('');
@@ -432,6 +435,9 @@ export default function Debts() {
           </div>
 
           <ExcelExportButton endpoint="/sales/counterparties/export/" params={listParams} filename="ilbi-qarzlar.xlsx" disabled={loading} />
+          {canManageCp && <button type="button" className="btn btn-secondary" onClick={() => setImportModalOpen(true)}>
+            <Upload size={15} /> <span>Fayldan yuklash</span>
+          </button>}
           <button
             type="button"
             onClick={() => { setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpCode(''); setNewCpModalOpen(true); }}
@@ -454,6 +460,9 @@ export default function Debts() {
           </button>
         </div>
       </div>
+
+      {importModalOpen && <CounterpartyImportModal key={activeTenant?.id}
+        onClose={() => setImportModalOpen(false)} onSuccess={loadCounterparties} />}
 
       {/* Counterparties Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -643,7 +652,7 @@ export default function Debts() {
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 800, color: 'var(--accent-emerald)', fontSize: 13.5 }}>
-                                +{Number(cp.last_payment.amount).toLocaleString()} {cp.last_payment.currency}
+                                {cp.last_payment.is_correction ? 'Tuzatish: ' : '+'}{Number(cp.last_payment.amount).toLocaleString()} {cp.last_payment.currency}
                               </span>
                               {cp.last_payment.currency === 'USD' && (
                                 <span
@@ -912,7 +921,7 @@ export default function Debts() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent-emerald)' }}>
-                  +{Number(selectedCp.last_payment.amount).toLocaleString()} {selectedCp.last_payment.currency}
+                  {selectedCp.last_payment.is_correction ? 'Tuzatish: ' : '+'}{Number(selectedCp.last_payment.amount).toLocaleString()} {selectedCp.last_payment.currency}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {new Date(selectedCp.last_payment.paid_at).toLocaleString('uz-UZ')}
@@ -1285,7 +1294,7 @@ export default function Debts() {
               {selectedCpDetail?.last_payment ? (
                 <>
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent-emerald)', marginTop: 3 }}>
-                    +{Number(selectedCpDetail.last_payment.amount).toLocaleString()} {selectedCpDetail.last_payment.currency}
+                    {selectedCpDetail.last_payment.is_correction ? 'Tuzatish: ' : '+'}{Number(selectedCpDetail.last_payment.amount).toLocaleString()} {selectedCpDetail.last_payment.currency}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                     {new Date(selectedCpDetail.last_payment.paid_at).toLocaleDateString('uz-UZ')}
@@ -1599,7 +1608,7 @@ export default function Debts() {
                           </td>
                           <td style={{ padding: '10px 14px', color: 'var(--text-muted)' }}>{p.note || '—'}</td>
                           <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 700, color: 'var(--accent-emerald)', whiteSpace: 'nowrap' }}>
-                            +{Number(p.amount).toLocaleString()} {p.currency}
+                            {p.is_correction ? 'Tuzatish: ' : '+'}{Number(p.amount).toLocaleString()} {p.currency}
                           </td>
                         </tr>
                       ))}

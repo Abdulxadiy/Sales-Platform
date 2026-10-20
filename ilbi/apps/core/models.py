@@ -19,6 +19,7 @@ class AuditAction(models.TextChoices):
     ACCOUNT_IDENTITY_UPDATE = "account_identity_update", "Login va Telegram yangilandi"
     SUPPORT_TELEGRAM_SETTINGS = "support_telegram_settings", "Yordam bildirishnomalari sozlandi"
     CATALOG_IMPORT = "catalog_import", "Catalog import"
+    COUNTERPARTY_IMPORT = "counterparty_import", "Mijozlar fayldan yuklandi"
     BARCODE_GENERATE = "barcode_generate", "Barcode generated"
     PRICE_CHANGE = "price_change", "Price Change"
     EMPLOYEE_HIRE = "employee_hire", "Employee Hire"

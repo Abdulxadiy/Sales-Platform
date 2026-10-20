@@ -17,7 +17,7 @@ CATALOG = Q(target_model__in=["Product", "ProductVariant", "Category", "ProductI
 SALES = Q(target_model__in=["Sale", "SaleItem"]) | Q(action__startswith="b2b_")
 INVENTORY = Q(target_model__in=["StockMovement", "Stock", "TenantTransfer"]) | Q(action__startswith="tenant_transfer_")
 TEAM = Q(action__startswith="employee_") | Q(action=AuditAction.OWNER_TRANSFER)
-FINANCE = Q(action=AuditAction.CASH_DISCREPANCY) | Q(
+FINANCE = Q(action__in=[AuditAction.CASH_DISCREPANCY, AuditAction.COUNTERPARTY_IMPORT]) | Q(
     target_model__in=["CashShift", "DailyCashReport", "CashIncome", "CashExpense", "DebtPayment"],
 )
 AUDIT_GROUPS = {
@@ -37,6 +37,7 @@ ACTION_LABELS = {
     "catalog_delete": "Tovar o‘chirildi",
     "price_change": "Narx o‘zgartirildi",
     "catalog_import": "Katalog fayldan yuklandi",
+    "counterparty_import": "Mijozlar fayldan yuklandi",
     "barcode_generate": "Shtrix-kod yaratildi",
     "void_sale": "Sotuv qaytarildi",
     "stock_adjustment": "Ombor qoldig‘i tuzatildi",

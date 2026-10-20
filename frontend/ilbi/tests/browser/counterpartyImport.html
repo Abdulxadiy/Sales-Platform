@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head>
+<body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import AuthContext from '/src/context/authContext.js';
+import { ThemeProvider } from '/src/context/ThemeContext.jsx';
+import { TenantProvider } from '/src/context/TenantContext.jsx';
+import { ToastProvider } from '/src/context/ToastContext.jsx';
+import { ConfirmProvider } from '/src/context/ConfirmContext.jsx';
+import Debts from '/src/pages/Debts.jsx';
+import CatalogImportModal from '/src/components/common/CatalogImportModal.jsx';
+import '/src/index.css';
+
+const live = new URLSearchParams(location.search).has('live');
+const tenant = { id:7, name:'Import sinov do‘koni', is_owner:true, permissions:['*'] };
+const seed = live ? await (await fetch('/__import-qa/seed')).json() : {
+  user:{id:51,role:'owner',first_name:'Sinov',last_name:'Egasi',tenants:[tenant]},
+  access:`fixture.${btoa(JSON.stringify({user_id:51}))}.fixture`,
+};
+localStorage.setItem(`ilbi_active_tenant:${seed.user.id}`, String(seed.user.tenants[0].id));
+localStorage.setItem('ilbi_access_token', seed.access);
+if(seed.refresh) localStorage.setItem('ilbi_refresh_token',seed.refresh);
+window.importQA = {requests:[], records:[], jobs:new Map(), catalogSaved:false};
+const nativeFetch=window.fetch.bind(window);
+const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
+window.fetch=async(input,options={})=>{
+  const url=new URL(input,location.origin),path=url.pathname;
+  if(!path.startsWith('/api/'))return nativeFetch(input,options);
+  importQA.requests.push({path,method:options.method||'GET',tenant:options.headers?.['X-Tenant-ID']});
+  if(live)return nativeFetch(input,options);
+  if(path.endsWith('/import/template/'))return new Response('synthetic template',{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}});
+  if(path.endsWith('/import/preview/')){
+    const file=options.body.get('file'), body=await file.text();
+    const catalog=path.includes('/catalog/');
+    const rows=body.trim().split('\n').slice(1).map((line,index)=>{
+      const [name,phone,amount='0',usd='0']=line.split(',');
+      return {row_number:index+2,data:catalog?{name,category:phone,price_recommended:amount}:{name,phone_number:phone,debt_balance_uzs:amount,debt_balance_usd:usd},errors:Number(amount)<0?{debt_balance_uzs:'Manfiy summa kiritmang.'}:{}};
+    });
+    if(importQA.records.length&&!catalog)rows[0].errors.phone_number='Bu telefonli mijoz mavjud.';
+    const job={id:importQA.jobs.size+1,rows};importQA.jobs.set(job.id,job);return json(job,201);
+  }
+  if(path.endsWith('/commit/')){
+    const id=Number(path.split('/').at(-3)),job=importQA.jobs.get(id);
+    if(path.includes('/catalog/'))importQA.catalogSaved=true;
+    else importQA.records=job.rows.map((row,index)=>({...row.data,id:index+1,is_active:true,last_payment:null}));
+    return json({created_count:job.rows.length});
+  }
+  if(path==='/api/v1/sales/counterparties/')return json({count:importQA.records.length,results:importQA.records,summary:{total_count:importQA.records.length,debtors_count:importQA.records.length?1:0,settled_count:importQA.records.length?1:0,total_debt_uzs:'1250000.50',total_debt_usd:'75.25'}});
+  throw Error('Unexpected import fixture request: '+path);
+};
+function Page(){
+  const[catalog,setCatalog]=React.useState(false);
+  return React.createElement(React.Fragment,null,
+    React.createElement('button',{onClick:()=>setCatalog(true),id:'catalog-regression'},'Katalog import sinovi'),
+    React.createElement('main',{style:{padding:20}},React.createElement(Debts)),
+    catalog&&React.createElement(CatalogImportModal,{onClose:()=>setCatalog(false),onSuccess:()=>{importQA.catalogSaved=true;}}));
+}
+createRoot(document.getElementById('root')).render(
+  React.createElement(AuthContext.Provider,{value:{user:seed.user,isOwner:true,isAdmin:false,isAuthenticated:true}},
+    React.createElement(ThemeProvider,null,React.createElement(TenantProvider,null,
+      React.createElement(ToastProvider,null,React.createElement(ConfirmProvider,null,
+        React.createElement(MemoryRouter,null,React.createElement(Page)),
+      )),
+    )),
+  ),
+);
+</script></body></html>

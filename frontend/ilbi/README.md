@@ -1,6 +1,6 @@
 # ILBI frontend
 
-React/Vite interface for the ILBI sales platform. Updated: 2026-10-16.
+React/Vite interface for the ILBI sales platform. Updated: 2026-10-20.
 
 ## Development
 
@@ -28,6 +28,16 @@ npm run build
 `npm run test:auth-session` drives the actual app in an isolated Chrome profile with synthetic API responses. It covers login/chat privacy, password plus OTP, failed session verification and retry, late responses, logout/storage events, POS cart/payment drafts, shop switching and product form/image restoration. It never sends a real OTP, support message or sale.
 
 Camera capture requires HTTPS (or localhost for development) and browser camera permission. The shared scanner releases its stream and closes as soon as it reads a code; its decoder loads only when the camera is opened.
+
+## Desktop workspaces
+
+The separate layout icon beside the theme control switches between the original sidebar and the fast top navbar. The choice is stored per account. Both layouts share the same mounted route, cart, form state, shop selection, shift controller and notifications. The fast layout loads its search, tools and dashboard on demand; smaller screens use the existing sidebar without losing the desktop preference. Transitions respect reduced-motion preferences and work without the View Transitions API.
+
+The navbar contains every sidebar destination, favorites/recent pages, permission-aware quick actions, search (`Ctrl/⌘+K`), calculator, fullscreen, theme, profile and logout. Search opens real product/customer/receipt records through the existing pages. Reminders are stored on the server per shop: owners can assign active members, while staff can see their assigned or self-created tasks. Deadline indicators refresh while the app is open; external push/email/Telegram reminders are not configured by this feature. Apply backend migrations before using reminders.
+
+Actual browser captures with synthetic QA data: [light workspace](../../docs/rasmlar/workspace-fast-light.png), [dark workspace](../../docs/rasmlar/workspace-fast-dark.png).
+
+`npm run test:workspace` runs the real UI against an isolated Django/PostgreSQL QA database. Setup is documented in [README_TESTS.md](../../ilbi/README_TESTS.md#desktop-workspace-browser-test). The test checks route parity, repeated layout switches, request reuse, POS cart/form preservation, search, quick actions/imports, reminders CRUD, tenant/role isolation, reload persistence, reduced motion and screen sizes. It creates synthetic records only.
 
 ## Routes and access
 

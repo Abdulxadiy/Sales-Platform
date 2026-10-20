@@ -1,5 +1,7 @@
 # ILBI Platform
 
+Current platform release: [v1.2.0](docs/releases/v1.2.0.md).
+
 ILBI is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
 
 ---

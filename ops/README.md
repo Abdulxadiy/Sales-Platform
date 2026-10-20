@@ -10,7 +10,7 @@ asosiy `ilbi.uz` keyin ulanadi. Backend va frontend manzili serverdagi `.env.pro
 `launch2.spaceship.net`, lekin A/AAAA yozuvlari yo‘q edi. DNS hali serverga yo‘naltirilmagani
 uchun haqiqiy HTTPS va ommaviy kirish faollashtirilmagan.
 
-Backend/frontend/bot loyiha versiyalari va lock fayllari `1.0.0`ga mos.
+Serverga o‘rnatilgan backend/frontend/bot versiyalari `1.0.0`ga mos.
 Production image nomlari: `ilbi-backend:1.0.0`, `ilbi-frontend:1.0.0`, `ilbi-bot:1.0.0`.
 Git tag yoki GitHub Release ushbu server yangilanishi bilan avtomatik yaratilmaydi;
 ular tekshirilgan manba `main`ga chiqarilganda mavjud publish tartibi orqali yuritiladi.
@@ -171,11 +171,11 @@ GitHub’da `production` muhiti va maxsus SSH kaliti sozlangan:
 - Muhit variables: `DEPLOY_HOST`, `DEPLOY_USER`.
 - Repo variable: **`DEPLOY_ENABLED=false`** — hozir avtomatik deploy o‘chiq.
 
-Joriy ishchi daraxtda ko‘plab oldingi o‘zgarishlar bor. Ular bu deployment davomida commit/push qilinmadi.
-CDni yoqishdan oldin joriy ILBI manbalari, Dockerfile, production Compose, `ops/`, backup skripti,
-testlar va workflow’lar mavjud review/publish tartibi orqali `main`ga chiqarilishi kerak.
-So‘ng repo variable `DEPLOY_ENABLED=true` qilinadi. Keyingi muvaffaqiyatli main push CI deploy qiladi.
-CD GitHub’da hali biror marta bajarilmagan.
+GitHub sozlamasi 2026-10-20 kuni API orqali qayta tekshirildi: `DEPLOY_ENABLED=false`.
+`v1.2.0` manbalarini `main`ga chiqarishning o‘zi serverdagi `1.0.0` o‘rnatmani yangilamaydi.
+Avtomatik deploy uchun repo variable `DEPLOY_ENABLED=true` bo‘lishi kerak;
+keyingi muvaffaqiyatli main push CI deployni boshlaydi. Tag yoki GitHub Release yaratish
+deploy triggeri emas. Ushbu chiqarishda deploy sozlamasi o‘zgartirilmagan.
 
 Image yuklashda ishlatiladigan GHCR token serverga stdin orqali uzatiladi;
 vaqtinchalik Docker credential katalogi SSH sessiyasi tugaganda o‘chiriladi.

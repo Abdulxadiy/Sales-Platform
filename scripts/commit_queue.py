@@ -105,7 +105,7 @@ def path_allowed(value):
     ):
         return False
     name = path.name.lower()
-    if name.startswith(".env") and name != ".env.example":
+    if name.startswith(".env") and name not in {".env.example", ".env.production.example"}:
         return False
     if name in {
         ".envrc",

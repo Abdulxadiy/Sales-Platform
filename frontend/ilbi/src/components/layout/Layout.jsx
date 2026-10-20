@@ -654,4 +654,3 @@ function LayoutContent({ children }) {
 export default function Layout({ children }) {
   return <WorkspaceProvider><LayoutContent>{children}</LayoutContent></WorkspaceProvider>;
 }
-

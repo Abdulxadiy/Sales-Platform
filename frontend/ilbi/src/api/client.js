@@ -351,7 +351,7 @@ export const docsApi = {
 };
 
 export const analyticsApi = {
-  getDashboard: (period = 'today', startDate = null, endDate = null, tenantId = null) => {
+  getDashboard: (period = 'today', startDate = null, endDate = null, tenantId = null, options = {}) => {
     let q = `?period=${period}`;
     if (period === 'custom' && startDate && endDate) {
       q += `&start_date=${startDate}&end_date=${endDate}`;
@@ -359,7 +359,7 @@ export const analyticsApi = {
     if (tenantId) {
       q += `&tenant_id=${tenantId}`;
     }
-    return request(`/analytics/dashboard/${q}`);
+    return request(`/analytics/dashboard/${q}`, options);
   },
 };
 

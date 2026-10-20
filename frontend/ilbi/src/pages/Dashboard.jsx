@@ -1,3 +1,4 @@
+import { useWorkspace } from '../context/WorkspaceContext';
 import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
@@ -38,7 +39,10 @@ import { InlineCardSparkline } from '../components/dashboard/MiniVisualizers';
 import PhoneInput from '../components/common/PhoneInput';
 import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
+const WorkDesktop = React.lazy(() => import('../components/workspace/WorkDesktop'));
+
 function TenantDashboard() {
+  const { mode } = useWorkspace();
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
@@ -105,26 +109,28 @@ function TenantDashboard() {
 
   // Fetch financial dashboard for store owners & permitted staff (never called for platform_admin)
   const fetchDashboard = useCallback(
-    async (selectedPeriod) => {
+    async (selectedPeriod, signal) => {
       if (isAdmin || !canViewDashboard) return;
 
       setLoading(true);
       try {
-        const res = await analyticsApi.getDashboard(selectedPeriod);
-        setData(res);
+        const res = await analyticsApi.getDashboard(selectedPeriod, null, null, null, { signal });
+        if (!signal?.aborted) setData(res);
       } catch (err) {
-        toast.error(err.message || 'Dashboard ma’lumotlarini yuklashda xatolik');
+        if (!signal?.aborted) toast.error(err.message || 'Dashboard ma’lumotlarini yuklashda xatolik');
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [isAdmin, canViewDashboard, toast]
   );
 
   useEffect(() => {
+    const controller = new AbortController();
     if (!isAdmin && canViewDashboard) {
-      fetchDashboard(period);
+      fetchDashboard(period, controller.signal);
     }
+    return () => controller.abort();
   }, [period, isAdmin, canViewDashboard, fetchDashboard]);
 
   const handleCreateTenant = async (e) => {
@@ -750,6 +756,9 @@ function TenantDashboard() {
   const costUSD = kpi.total_cost_usd !== undefined
     ? Number(kpi.total_cost_usd)
     : Math.max(0, Number(kpi.total_sales_usd || kpi.total_revenue_usd || 0) - Number(kpi.net_profit_usd || 0));
+
+  if (mode === 'fast') return <React.Suspense fallback={<IlbiLoader />}><WorkDesktop data={data} loading={loading}
+    period={period} setPeriod={setPeriod} currencyRate={currencyRate} /></React.Suspense>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>

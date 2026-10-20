@@ -1,6 +1,6 @@
 # ILBI frontend
 
-React/Vite interface for the ILBI sales platform. Updated: 2026-10-16.
+React/Vite interface for the ILBI sales platform. Updated: 2026-10-20.
 
 ## Development
 

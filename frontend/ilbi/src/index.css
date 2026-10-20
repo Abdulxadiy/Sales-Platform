@@ -1206,7 +1206,7 @@ dialog.custom-dialog[open] .dialog-content {
   }
 
   /* Hide modal header, title, and close button in print */
-  #dialog-modal-title,
+  .dialog-modal-title,
   .custom-dialog h3,
   .custom-dialog button {
     display: none !important;

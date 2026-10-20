@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
 export default function Modal({ isOpen, onClose, title, children, maxWidth = 560 }) {
   const dialogRef = useRef(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -61,7 +62,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
       ref={dialogRef}
       className="custom-dialog"
       closedby="any"
-      aria-labelledby="dialog-modal-title"
+      aria-labelledby={titleId}
       style={{
         width: `min(calc(100vw - 24px), ${maxWidth}px)`,
         maxWidth: `min(calc(100vw - 24px), ${maxWidth}px)`,
@@ -102,7 +103,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
             background: 'var(--bg-modal, var(--bg-surface))',
           }}
         >
-          <h3 id="dialog-modal-title" style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
+          <h3 id={titleId} className="dialog-modal-title" style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>
             {title}
           </h3>
           <button

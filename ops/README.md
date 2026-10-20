@@ -1,10 +1,16 @@
 # Lightsail serverini boshqarish
 
-2026-10-19 holati: **v1.0.0**, Ubuntu 24.04, 4 GB RAM, 2 GB swap. Ilova `/srv/ilbi`da.
+2026-10-20 holati: **v1.0.0**, Ubuntu 24.04, 4 GB RAM, 2 GB swap. Ilova `/srv/ilbi`da.
 Backend, frontend, PostgreSQL, Redis, Celery worker/beat va Telegram bot ishga tushirilgan.
-Eski baza va media ko‘chirilmagan. Domen uchun production konfiguratsiyasi `ilbi.uz`.
+Eski baza va media ko‘chirilmagan. Vaqtinchalik production domeni **`new-dev.site`**;
+asosiy `ilbi.uz` keyin ulanadi. Backend va frontend manzili serverdagi `.env.production`ning
+`PUBLIC_HOST` qiymatidan olinadi. Ushbu domen almashinuvi uchun application imagelari qayta yig‘ilmadi.
 
-Backend/frontend/bot loyiha versiyalari va lock fayllari `1.0.0`ga mos.
+2026-10-20 tekshiruvida `new-dev.site`ning nameserverlari `launch1.spaceship.net` va
+`launch2.spaceship.net`, lekin A/AAAA yozuvlari yo‘q edi. DNS hali serverga yo‘naltirilmagani
+uchun haqiqiy HTTPS va ommaviy kirish faollashtirilmagan.
+
+Serverga o‘rnatilgan backend/frontend/bot versiyalari `1.0.0`ga mos.
 Production image nomlari: `ilbi-backend:1.0.0`, `ilbi-frontend:1.0.0`, `ilbi-bot:1.0.0`.
 Git tag yoki GitHub Release ushbu server yangilanishi bilan avtomatik yaratilmaydi;
 ular tekshirilgan manba `main`ga chiqarilganda mavjud publish tartibi orqali yuritiladi.
@@ -37,7 +43,8 @@ cd /srv/ilbi
 
 O‘zingizning shaxsiy Telegram chat ID, telefon raqami, username va kuchli parolni kiriting.
 `@ilbi_bot`ga `/start` yuboring. Parolni chat yoki buyruq qatori argumentiga yozmang.
-Production demo login o‘chiq. Administrator yaratish va haqiqiy 2FA login hali operator tomonidan bajariladi.
+Production demo login o‘chiq. 2026-10-20 tekshiruvida administrator mavjudligi tasdiqlandi;
+shu serverda uni qayta yaratish kerak emas. Haqiqiy 2FA login DNS/HTTPS yoqilgach operator tomonidan tekshiriladi.
 Yo‘l `./ops/compose.sh` — `./ops.compose.sh` emas.
 
 ## Xavfsizlik tekshiruvi
@@ -78,15 +85,21 @@ Ichki tekshiruv vaqtinchalik self-signed sertifikat bilan o‘tkazilgan; ommaviy
 1. Lightsail **Networking**da Static IPv4 biriktirilganini tekshiring. Hozirgi IP `3.106.193.2`.
    Yangi Static IP boshqacha bo‘lsa, `.env.production`dagi `EXPECTED_PUBLIC_IPV4` va GitHub
    production muhitidagi `DEPLOY_HOST`ni ham yangilang.
-2. Ahost orqali domenning `@` A yozuvini yakuniy IPv4ga yo‘naltiring.
+2. `new-dev.site` DNS panelida (joriy nameserverlar Spaceship’da) quyidagi yozuvni yarating:
+
+| Type | Host/Name | Value | TTL |
+| --- | --- | --- | --- |
+| A | `@` | `3.106.193.2` | `300` yoki panel defaulti |
+
+   Static IP o‘zgargan bo‘lsa, Value uchun yangi IP ishlatiladi.
    Ishlamaydigan AAAA yozuvi qolmasin; domen NS delegatsiyasi ham ishlashi kerak.
    `www` hozir alohida sozlanmagan.
 3. Lightsail firewall’da TCP **80** va **443**ni oching.
 4. DNS tarqalishini serverdagi `dig` bilan tekshiring:
 
 ```bash
-dig +short @1.1.1.1 A ilbi.uz
-dig +short @1.1.1.1 AAAA ilbi.uz
+dig +short @1.1.1.1 A new-dev.site
+dig +short @1.1.1.1 AAAA new-dev.site
 ```
 
 A javobi yakuniy Static IPv4 bo‘lsin. IPv6 frontend hali yoqilmagani uchun AAAA javobi bo‘sh bo‘lishi kerak.
@@ -107,8 +120,12 @@ Let's Encrypt sertifikati olingach, avtomatik yangilanishni tekshiring:
 ```bash
 sudo certbot renew --dry-run
 systemctl status certbot.timer --no-pager
-curl -I https://ilbi.uz
+curl -I https://new-dev.site
 ```
+
+Keyin `ilbi.uz`ga o‘tishda uning A yozuvi serverga yo‘naltiriladi va serverdagi
+`.env.production`da `PUBLIC_HOST=ilbi.uz` belgilanadi. `enable_https.sh` yangi sertifikatni
+olib, backend, Celery va frontendning domen sozlamalarini birga yangilaydi.
 
 ## Zaxira va tiklash
 
@@ -154,11 +171,11 @@ GitHub’da `production` muhiti va maxsus SSH kaliti sozlangan:
 - Muhit variables: `DEPLOY_HOST`, `DEPLOY_USER`.
 - Repo variable: **`DEPLOY_ENABLED=false`** — hozir avtomatik deploy o‘chiq.
 
-Joriy ishchi daraxtda ko‘plab oldingi o‘zgarishlar bor. Ular bu deployment davomida commit/push qilinmadi.
-CDni yoqishdan oldin joriy ILBI manbalari, Dockerfile, production Compose, `ops/`, backup skripti,
-testlar va workflow’lar mavjud review/publish tartibi orqali `main`ga chiqarilishi kerak.
-So‘ng repo variable `DEPLOY_ENABLED=true` qilinadi. Keyingi muvaffaqiyatli main push CI deploy qiladi.
-CD GitHub’da hali biror marta bajarilmagan.
+GitHub sozlamasi 2026-10-20 kuni API orqali qayta tekshirildi: `DEPLOY_ENABLED=false`.
+`v1.2.0` manbalarini `main`ga chiqarishning o‘zi serverdagi `1.0.0` o‘rnatmani yangilamaydi.
+Avtomatik deploy uchun repo variable `DEPLOY_ENABLED=true` bo‘lishi kerak;
+keyingi muvaffaqiyatli main push CI deployni boshlaydi. Tag yoki GitHub Release yaratish
+deploy triggeri emas. Ushbu chiqarishda deploy sozlamasi o‘zgartirilmagan.
 
 Image yuklashda ishlatiladigan GHCR token serverga stdin orqali uzatiladi;
 vaqtinchalik Docker credential katalogi SSH sessiyasi tugaganda o‘chiriladi.

@@ -43,7 +43,8 @@ cd /srv/ilbi
 
 O‘zingizning shaxsiy Telegram chat ID, telefon raqami, username va kuchli parolni kiriting.
 `@ilbi_bot`ga `/start` yuboring. Parolni chat yoki buyruq qatori argumentiga yozmang.
-Production demo login o‘chiq. Administrator yaratish va haqiqiy 2FA login hali operator tomonidan bajariladi.
+Production demo login o‘chiq. 2026-10-20 tekshiruvida administrator mavjudligi tasdiqlandi;
+shu serverda uni qayta yaratish kerak emas. Haqiqiy 2FA login DNS/HTTPS yoqilgach operator tomonidan tekshiriladi.
 Yo‘l `./ops/compose.sh` — `./ops.compose.sh` emas.
 
 ## Xavfsizlik tekshiruvi

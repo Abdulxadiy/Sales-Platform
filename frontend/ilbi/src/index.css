@@ -1845,6 +1845,28 @@ dialog.doc-image-dialog .doc-image-scroll img.is-zoomed {
   gap: 16px;
 }
 
+.import-info-note {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--primary-light);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.import-row-details {
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--bg-input);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
 .import-guide-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);

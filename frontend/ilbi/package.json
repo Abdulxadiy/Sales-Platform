@@ -17,6 +17,7 @@
     "test:currency": "node tests/currencySettings.browser.mjs",
     "test:history": "node tests/history.browser.mjs",
     "test:counterparty-import": "node tests/counterpartyImport.browser.mjs",
+    "test:workspace": "node tests/workspace.browser.mjs",
     "test:selections": "node tests/selectionDialogs.browser.mjs",
     "test:catalog-fiscal": "node tests/catalogFiscal.browser.mjs",
     "test:theme": "node tests/theme.browser.mjs",

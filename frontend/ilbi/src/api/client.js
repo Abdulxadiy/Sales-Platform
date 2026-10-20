@@ -661,7 +661,7 @@ export const salesApi = {
     }
     return request(`/sales/?${query}`, typeof search === 'object' ? search : options);
   },
-  getSaleDetail: (id) => request(`/sales/${id}/`),
+  getSaleDetail: (id, options = {}) => request(`/sales/${id}/`, options),
   rotateReceiptToken: (id) => request(`/sales/${id}/receipt-token/rotate/`, { method: 'POST' }),
   getPublicReceipt: (token) =>
     request(`/sales/public/receipt/${encodeURIComponent(token)}/`),
@@ -694,6 +694,7 @@ export const salesApi = {
   getCounterpartyImportTemplate: () => request('/sales/counterparties/import/template/', { responseType: 'blob' }),
   previewCounterpartyImport: (body) => request('/sales/counterparties/import/preview/', { method: 'POST', body }),
   commitCounterpartyImport: (id) => request(`/sales/counterparties/import/${id}/commit/`, { method: 'POST' }),
+  getCounterparty: (id, options = {}) => request(`/sales/counterparties/${id}/`, options),
   updateCounterparty: (id, data) =>
     request(`/sales/counterparties/${id}/`, {
       method: 'PATCH',

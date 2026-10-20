@@ -1,0 +1,131 @@
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Search, Plus, ChevronDown, Star, SlidersHorizontal, Calculator, Maximize, Minimize,
+  Sun, Moon, Bell, BellRing, Keyboard, LogOut, User, ShoppingCart, PackagePlus, Package, CreditCard, FileSpreadsheet, UserPlus } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { useTenant } from '../../context/TenantContext';
+import { useTheme } from '../../context/ThemeContext';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import { useConfirm } from '../../context/ConfirmContext';
+import { useToast } from '../../context/ToastContext';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { canUse } from '../../utils/workspace';
+import { getNavigation } from './navigation';
+import WorkspaceSwitch from './WorkspaceSwitch';
+import TenantSwitcher from './TenantSwitcher';
+import IlbiLogo from '../common/IlbiLogo';
+
+const WorkspaceSearch = lazy(() => import('../workspace/WorkspaceSearch'));
+const WorkspaceTools = lazy(() => import('../workspace/WorkspaceTools'));
+const SHORT_LABELS = { '/dashboard': 'Bosh sahifa', '/pos': 'Kassa', '/catalog': 'Katalog', '/inventory': 'Ombor', '/debts': 'Mijozlar', '/sales': 'Savdolar', '/shifts': 'Kassa va smena' };
+
+export default function WorkspaceNavbar({ statusControl, unreadCount, notifications, onOpenNotifications }) {
+  const { user, isOwner, isAdmin, logout } = useAuth();
+  const { activeTenant } = useTenant();
+  const { isDark, toggleTheme } = useTheme();
+  const { reminders } = useWorkspace();
+  const confirm = useConfirm();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const root = useRef(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [tool, setTool] = useState(null);
+  const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement));
+  const [favorites, setFavorites] = usePersistedState(`ilbi_workspace_favorites:${user?.id}:${activeTenant?.id || 'platform'}`, ['/debts', '/inventory', '/sales']);
+  const [recent, setRecent] = usePersistedState(`ilbi_workspace_recent:${user?.id}:${activeTenant?.id || 'platform'}`, []);
+  const navItems = getNavigation({ user, isOwner, isAdmin });
+  const favoritePaths = Array.isArray(favorites) ? favorites.filter(path => navItems.some(item => item.to === path)).slice(0, 6) : [];
+  const recentPaths = Array.isArray(recent) ? recent.filter(path => navItems.some(item => item.to === path) && !favoritePaths.includes(path)).slice(0, 2) : [];
+  const primaryPaths = isAdmin ? ['/dashboard', '/accounts', '/tenants', '/seller-profiles/review'] : ['/dashboard', '/pos', '/catalog', '/inventory', '/debts', '/sales', '/shifts'];
+  const primary = navItems.filter(item => primaryPaths.includes(item.to));
+  const more = navItems.filter(item => !primaryPaths.includes(item.to));
+  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || 'Foydalanuvchi';
+  const initials = displayName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase();
+  const closeMenus = () => root.current?.querySelectorAll('details[open]').forEach(menu => { menu.open = false; });
+  useEffect(() => {
+    const path = location.pathname;
+    setRecent(previous => [path, ...(Array.isArray(previous) ? previous : []).filter(item => item !== path)].slice(0, 8));
+    closeMenus();
+  }, [location.pathname, setRecent]);
+  useEffect(() => {
+    const keydown = event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !document.querySelector('dialog[open]')) {
+        event.preventDefault(); setSearchOpen(true); closeMenus();
+      }
+      if (event.key === 'Escape') closeMenus();
+    };
+    const clickAway = event => root.current?.querySelectorAll('details[open]').forEach(menu => { if (!menu.contains(event.target)) menu.open = false; });
+    const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('keydown', keydown);
+    document.addEventListener('pointerdown', clickAway);
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    return () => { document.removeEventListener('keydown', keydown); document.removeEventListener('pointerdown', clickAway); document.removeEventListener('fullscreenchange', updateFullscreen); };
+  }, []);
+  useEffect(() => { setSearchOpen(false); setTool(null); closeMenus(); }, [activeTenant?.id]);
+  function openTool(next) { closeMenus(); setTool(next); }
+  function go(url) { closeMenus(); navigate(url); }
+  const actions = [
+    { label: 'Yangi sotuv', icon: ShoppingCart, url: '/pos', allowed: canUse(activeTenant, 'sales.add_sale') },
+    { label: 'Tovar kirimi', icon: PackagePlus, url: '/inventory?workspace_action=intake', allowed: canUse(activeTenant, 'inventory.add_stock_intake') },
+    { label: 'Yangi tovar', icon: Package, url: '/catalog?new=1', allowed: canUse(activeTenant, 'catalog.add_product') },
+    { label: 'Yangi mijoz', icon: UserPlus, url: '/debts?workspace_action=new_customer', allowed: canUse(activeTenant, 'sales.manage_counterparty') },
+    { label: 'Qarz to‘lovi', icon: CreditCard, tool: 'debt_payment', allowed: canUse(activeTenant, 'sales.record_debt_payment') },
+    { label: 'XLSX import', icon: FileSpreadsheet, tool: 'imports', allowed: canUse(activeTenant, 'catalog.add_product', 'sales.manage_counterparty') },
+    { label: 'Eslatma', icon: BellRing, tool: 'new_reminder', allowed: Boolean(activeTenant) },
+  ].filter(item => !isAdmin && item.allowed);
+  const link = (item, compact = false) => <NavLink key={item.to} to={item.to} end={item.to === '/dashboard'} onClick={closeMenus}
+    className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{compact ? SHORT_LABELS[item.to] || item.label : item.label}</span></NavLink>;
+  return <header className="workspace-navbar" ref={root} aria-label="Tezkor ish stoli">
+    <div className="workspace-top-row">
+      <NavLink to="/dashboard" aria-label="ILBI bosh sahifa" className="workspace-brand"><IlbiLogo size={30} showText /></NavLink>
+      <button type="button" className="workspace-search-trigger" onClick={() => setSearchOpen(true)}><Search size={18} /><span>Tovar, mijoz yoki chek qidirish…</span><kbd>Ctrl K</kbd></button>
+      {actions.length > 0 && <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-create-button"><Plus size={18} /><span>Yangi</span><ChevronDown size={13} /></summary>
+        <div className="workspace-dropdown-panel workspace-actions-menu">{actions.map(action => <button key={action.label} type="button" onClick={() => action.tool ? openTool(action.tool) : go(action.url)}><action.icon size={17} />{action.label}</button>)}</div>
+      </details>}
+      <div className="workspace-store-control"><TenantSwitcher /></div>
+      <div className="workspace-shift-control">{statusControl}</div>
+      <div className="workspace-utility-actions">
+        <WorkspaceSwitch className="workspace-icon-button" />
+        <button type="button" className="workspace-icon-button" title="Mavzuni almashtirish" aria-label="Mavzuni almashtirish" onClick={toggleTheme}>{isDark ? <Sun size={18} /> : <Moon size={18} />}</button>
+        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-icon-button" title="Xabarnomalar" aria-label="Xabarnomalar"><Bell size={18} />{unreadCount > 0 && <span className="workspace-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}</summary>
+          <div className="workspace-dropdown-panel workspace-notifications-menu"><strong>Bildirishnomalar</strong>
+            {(notifications || []).slice(0, 3).map(row => <button key={row.id} type="button" onClick={() => { closeMenus(); onOpenNotifications(); }}><Bell size={16} /><span>{row.title}</span></button>)}
+            {!isAdmin && activeTenant && <button type="button" onClick={() => openTool('reminders')}><BellRing size={17} /><span>Eslatmalar</span>{reminders?.overdue_count > 0 && <b className="workspace-count">{reminders.overdue_count}</b>}</button>}
+            <button type="button" onClick={() => { closeMenus(); onOpenNotifications(); }}>Barcha xabarnomalarni ko‘rish</button>
+          </div></details>
+        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-icon-button" title="Tezkor yordamchilar" aria-label="Tezkor yordamchilar"><Calculator size={18} /></summary>
+          <div className="workspace-dropdown-panel">
+            <button type="button" onClick={() => openTool('calculator')}><Calculator size={17} />Kalkulyator</button>
+            <button type="button" onClick={async () => {
+              closeMenus();
+              try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+              catch { toast.error('To‘liq ekran rejimini ochib bo‘lmadi.'); }
+            }}>{fullscreen ? <Minimize size={17} /> : <Maximize size={17} />}{fullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekran'}</button>
+            <button type="button" onClick={() => openTool('shortcuts')}><Keyboard size={17} />Klaviatura yordamchisi</button>
+          </div></details>
+        <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-avatar" title={displayName} aria-label="Profil va chiqish">{initials}</summary>
+          <div className="workspace-dropdown-panel"><strong>{displayName}</strong><NavLink to="/profile" onClick={closeMenus}><User size={17} />Mening profilim</NavLink>
+            <button type="button" onClick={async () => {
+              closeMenus();
+              if (await confirm({ title: 'Tizimdan chiqish', message: 'Haqiqatan ham tizimdan chiqmoqchimisiz?', confirmText: 'Chiqish', cancelText: 'Bekor qilish', type: 'warning' })) logout();
+            }}><LogOut size={17} />Chiqish</button>
+          </div></details>
+      </div>
+    </div>
+    <nav className="workspace-nav-row" aria-label="Asosiy menyu">
+      {primary.map(item => link(item, true))}
+      <details className="workspace-dropdown workspace-more" name="workspace-menu"><summary>Ko‘proq <ChevronDown size={14} /></summary>
+        <div className="workspace-dropdown-panel">{more.map(item => link(item))}</div></details>
+    </nav>
+    <div className="workspace-favorites-row"><span className="workspace-favorites-label"><Star size={15} />Sevimlilar</span>
+      {favoritePaths.map(path => link(navItems.find(item => item.to === path), true))}
+      {recentPaths.length > 0 && <span className="workspace-recent-label">Oxirgi:</span>}{recentPaths.map(path => link(navItems.find(item => item.to === path), true))}
+      <button type="button" className="workspace-customize" onClick={() => openTool('favorites')}><SlidersHorizontal size={15} /><span>Moslashtirish</span></button>
+    </div>
+    <Suspense fallback={null}>
+      {searchOpen && <WorkspaceSearch key={activeTenant?.id || 'platform'} navItems={navItems} onClose={() => setSearchOpen(false)} />}
+      {tool && <WorkspaceTools key={`${activeTenant?.id}:${tool}`} tool={tool} navItems={navItems} favorites={favoritePaths} setFavorites={setFavorites} onClose={() => setTool(null)} />}
+    </Suspense>
+  </header>;
+}

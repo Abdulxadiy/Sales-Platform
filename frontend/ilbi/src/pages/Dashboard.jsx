@@ -1,3 +1,5 @@
+import { useWorkspace } from '../context/WorkspaceContext';
+const WorkDesktop = React.lazy(() => import('../components/workspace/WorkDesktop'));
 import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
@@ -39,6 +41,7 @@ import PhoneInput from '../components/common/PhoneInput';
 import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
 function TenantDashboard() {
+  const { mode } = useWorkspace();
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
@@ -750,6 +753,9 @@ function TenantDashboard() {
   const costUSD = kpi.total_cost_usd !== undefined
     ? Number(kpi.total_cost_usd)
     : Math.max(0, Number(kpi.total_sales_usd || kpi.total_revenue_usd || 0) - Number(kpi.net_profit_usd || 0));
+
+  if (mode === 'fast') return <React.Suspense fallback={<IlbiLoader />}><WorkDesktop data={data} loading={loading}
+    period={period} setPeriod={setPeriod} currencyRate={currencyRate} /></React.Suspense>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>

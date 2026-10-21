@@ -147,8 +147,9 @@ Retail POS intentionally rejects sales with `DEBUG=False` until the platform's
 fiscal integration is implemented. Desktop packaging does not remove this gate.
 The automated retail-sale scenarios use isolated synthetic test settings; this
 is not evidence that a production fiscal provider or a physical receipt printer
-works. Native Windows startup, installation/update/uninstallation, real LAN
-registers, printers and fiscal/payment hardware still require acceptance testing.
+works. CI checks native Windows startup and installer installation/uninstallation.
+Real Windows desktop interaction, updates over an existing store, LAN registers,
+printers and fiscal/payment hardware still require acceptance testing.
 
 Initial setup:
 
@@ -198,10 +199,11 @@ Pinned Python/PostgreSQL/MSVC archives are checked by SHA-256. Dependency wheels
 are checked against `uv.lock` and `desktop/windows-wheel-lock.json`. Deployment
 `.env` files, cloud database contents and development dependencies are excluded.
 The output is `desktop/ilbi/release/ILBI-Setup-1.2.0-x64.exe`. The build verifies
-that the installer contains its application payload. The manual GitHub Actions
-workflow **ILBI Windows desktop** also runs a native Windows Python/PostgreSQL
-startup check and uploads the installer; it must be run in the connected repo
-before treating a build as Windows-validated.
+that the installer contains its application payload. Main CI calls the
+**ILBI Windows desktop** workflow, starts the native Windows Python/PostgreSQL
+service, installs the built package, tests its installed service and uninstalls it.
+A successful production deployment publishes that exact verified CI artifact.
+The desktop workflow can also be run manually to inspect an installer separately.
 
 The public download page is `/download`, linked from the landing page and both
 workspace menus. It reads `/downloads/releases.json`; unpublished Windows/mobile
@@ -217,9 +219,10 @@ python desktop/export_downloads.py
 
 This verifies the installer hash, copies it to `desktop/downloads` and atomically
 writes `releases.json`. Its default channel is `preview`, shown as **Sinov
-nusxasi** on the page. It does not upload or deploy anything. Copy that directory
-to the server before deploying the matching frontend; production Compose mounts
-it read-only at Nginx's `/var/www/downloads`. The directory is public and contains
+nusxasi** on the page. This local export command does not upload anything.
+Main CI and production deploy automatically build, verify and transfer the installer
+and feed; no manual file copy is needed for that flow. Production Compose mounts
+the release directory read-only at Nginx's `/var/www/downloads`. It is public and contains
 release files only. Nginx supports resumed/range downloads, returns 404 for absent
 files and does not cache the feed. After release acceptance, export with
 `--channel stable`. A future mobile release can be added under the feed's

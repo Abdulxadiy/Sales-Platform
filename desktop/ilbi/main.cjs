@@ -4,7 +4,7 @@ const { createServer: httpsServer, request: httpsRequest } = require('node:https
 const { readFile, writeFile, mkdir } = require('node:fs/promises');
 const { join, extname } = require('node:path');
 const { networkInterfaces } = require('node:os');
-const { randomBytes } = require('node:crypto');
+const { randomBytes, createHash } = require('node:crypto');
 const { validateServer, validatePairing, safePath, equalKey, startHost } = require('./runtime.cjs');
 
 let window, localHost, lanServer, webServer, origin, configuration, secrets;
@@ -40,7 +40,8 @@ function proxy(request, response, target, secure = false) {
 async function launchRuntime() {
   if (configuration.mode === 'host') {
     localHost = await startHost({ resources, dataDir, secrets, bridgeKey, server: configuration.server,
-      executable: join(resources, 'backend', 'ilbi-runtime', 'ilbi-runtime' + (process.platform === 'win32' ? '.exe' : '')) });
+      executable: process.platform === 'win32' ? join(resources, 'backend/python/python.exe') : join(resources, 'backend/ilbi-runtime/ilbi-runtime'),
+      runtimeArguments: process.platform === 'win32' ? [join(resources, 'backend/runtime.py')] : [] });
     lanServer = httpsServer({ cert: await readFile(join(dataDir, 'lan.crt')), key: await readFile(join(dataDir, 'lan.key')) }, (req, res) => {
       if (!equalKey(req.headers['x-ilbi-desktop-key'], secrets.pairingKey) || !/^\/(api\/v1\/|desktop\/|media\/)/.test(req.url)) { res.writeHead(403); res.end(); return; }
       proxy(req, res, { host: '127.0.0.1', port: localHost.port });
@@ -88,8 +89,14 @@ else {
           let path = setup ? join(__dirname, url.pathname === '/setup' ? 'setup.html' : url.pathname.slice(1)) : safePath(uiRoot, url.pathname);
           let body;
           try { body = await readFile(path); } catch { if (setup || extname(path)) { res.writeHead(404); res.end(); return; } path = join(uiRoot, 'index.html'); body = await readFile(path); }
+          let scriptHashes = '';
+          if (extname(path) === '.html') {
+            const markup = body.toString('utf8').replace(/<link\b[^>]*(?:fonts\.googleapis\.com|fonts\.gstatic\.com)[^>]*>/g, '');
+            scriptHashes = [...markup.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => ` 'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`).join('');
+            body = Buffer.from(markup);
+          }
           const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json' }[extname(path)] || 'application/octet-stream';
-          res.writeHead(200, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" });
+          res.writeHead(200, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': `default-src 'self'; script-src 'self'${scriptHashes}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'` });
           res.end(body);
         } catch { res.writeHead(500); res.end('ILBI local service error'); }
       });
@@ -117,7 +124,8 @@ else {
       });
       ipcMain.handle('ilbi:pairing', exportPairing);
       session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(permission === 'media' && contents.getURL().startsWith(origin + '/')));
-      window = new BrowserWindow({ title: 'ILBI', width: 1440, height: 960, minWidth: 900, minHeight: 650,
+      app.setAppUserModelId('uz.ilbi.desktop');
+      window = new BrowserWindow({ title: 'ILBI', icon: join(__dirname, 'icon.ico'), width: 1440, height: 960, minWidth: 900, minHeight: 650,
         webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true } });
       window.webContents.on('will-navigate', (event, url) => { if (!url.startsWith(origin + '/')) event.preventDefault(); });
       window.webContents.setWindowOpenHandler(({ url }) => {

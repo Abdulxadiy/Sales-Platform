@@ -1,15 +1,6 @@
 name: ILBI Windows desktop
 on:
-  workflow_dispatch:
-    inputs:
-      postgres_url:
-        description: Verified EDB PostgreSQL 16 Windows x64 binaries ZIP HTTPS URL
-        required: true
-        type: string
-      postgres_sha256:
-        description: SHA256 of the verified PostgreSQL ZIP
-        required: true
-        type: string
+  workflow_dispatch: {}
 permissions:
   contents: read
 jobs:
@@ -22,21 +13,9 @@ jobs:
           node-version: '24'
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Install Python desktop dependencies
-        run: python desktop/install_build_dependencies.py
-      - name: Download verified PostgreSQL binaries
-        env:
-          POSTGRES_URL: ${{ inputs.postgres_url }}
-          POSTGRES_SHA256: ${{ inputs.postgres_sha256 }}
-        shell: pwsh
-        run: |
-          $source = [Uri]$env:POSTGRES_URL
-          if ($source.Scheme -ne 'https' -or $source.Host -notin @('get.enterprisedb.com', 'sbp.enterprisedb.com')) { throw 'Use the official EDB download host' }
-          Invoke-WebRequest -Uri $source -OutFile postgres.zip
-          python desktop/stage_postgres.py postgres.zip --sha256 $env:POSTGRES_SHA256
-      - name: Build isolated backend
-        run: python desktop/build_backend.py
+          python-version: '3.13'
+      - name: Stage verified Python, PostgreSQL and application wheels
+        run: python desktop/build_windows_runtime.py
       - name: Install frontend
         run: npm ci --prefix frontend/ilbi
       - name: Install desktop build tools

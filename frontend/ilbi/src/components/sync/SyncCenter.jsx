@@ -35,13 +35,14 @@ export default function SyncCenter() {
     return () => { stopped = true; clearTimeout(timer); };
   }, [desktop, open, cloudSession]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open && !dialog.current.open) dialog.current.showModal();
-    if (!open && dialog.current?.open) dialog.current.close();
+    if (!open && dialog.current?.open) { dialog.current.close(); trigger.current?.focus(); }
   }, [open]);
 
   const order = state?.operations?.map(row => row.id).join(',') || '';
   useLayoutEffect(() => {
+    if (!open) { positions.current = new Map(); return; }
     const next = new Map();
     for (const [id, node] of rows.current) {
       const top = node.getBoundingClientRect().top;
@@ -53,7 +54,7 @@ export default function SyncCenter() {
       }
     }
     positions.current = next;
-  }, [order]);
+  }, [order, open]);
 
   if (!desktop) return null;
   const close = () => { setOpen(false); trigger.current?.focus(); };
@@ -96,6 +97,7 @@ export default function SyncCenter() {
       </form> : <>
         <div className="sync-summary"><span>{operations.length} ta operatsiya</span><span>{state.last_sync ? `Oxirgi: ${new Date(state.last_sync).toLocaleString('uz-UZ')}` : 'Dastlabki sinxronlash'}</span></div>
         {state.error && <p className="sync-notice">{state.error}</p>}
+        {(state.error || operations.some(row => row.status === 'error')) && <p className="sync-footnote"><a href="/login">Serverga qayta kirish</a> — qurilmani ulagan owner hisobi bilan ruxsatni yangilash mumkin.</p>}
         <ol className="sync-queue" aria-label="Sinxronlash navbati">
           {operations.map(row => {
             const running = row.status === 'active';

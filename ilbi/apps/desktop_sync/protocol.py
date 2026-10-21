@@ -1,4 +1,5 @@
 """Versioned command protocol. Local and cloud runtimes use the same business APIs."""
+
 import hashlib
 import json
 import re
@@ -7,7 +8,9 @@ from contextvars import ContextVar
 
 from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models.fields.files import FieldFile
 from django.db.models.signals import post_delete, post_save, pre_save
+
 from apps.core.event_clock import event_time
 
 PROTOCOL = 1
@@ -23,6 +26,9 @@ ROUTES = [
     (r"catalog/categories/(?:\d+/(?:archive/)?)?", {"POST", "PATCH", "DELETE"}),
     (r"catalog/products/(?:\d+/(?:archive/|unarchive/)?)?", {"POST", "PATCH", "DELETE"}),
     (r"catalog/products/\d+/variants/", {"POST"}),
+    (r"catalog/products/\d+/images/(?:\d+/)?", {"POST", "DELETE"}),
+    (r"catalog/import/(?:preview/|\d+/commit/)", {"POST"}),
+    (r"sales/counterparties/import/(?:preview/|\d+/commit/)", {"POST"}),
     (r"catalog/variants/(?:\d+/(?:archive/|unarchive/|barcode/)?)?", {"POST", "PATCH", "DELETE"}),
     (r"sales/", {"POST"}),
     (r"sales/\d+/void/", {"POST"}),
@@ -40,11 +46,19 @@ def allowed(method, path):
 
 
 def digest(value):
-    return hashlib.sha256(json.dumps(value, cls=DjangoJSONEncoder, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, cls=DjangoJSONEncoder, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def json_value(value):
-    return json.loads(json.dumps(value, cls=DjangoJSONEncoder))
+    class Encoder(DjangoJSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, FieldFile):
+                return str(obj)
+            return super().default(obj)
+
+    return json.loads(json.dumps(value, cls=Encoder))
 
 
 def state(instance):
@@ -115,11 +129,16 @@ def preconditions(ctx):
             continue
         current = apps.get_model(label).objects.filter(pk=pk).first()
         if current is None:
-            fields = {k: v for k, v in previous.items() if k not in excluded and not k.startswith(("debt_", "last_notified_"))}
+            fields = {
+                k: v for k, v in previous.items() if k not in excluded and not k.startswith(("debt_", "last_notified_"))
+            }
         else:
             now = state(current)
-            fields = {k: v for k, v in previous.items() if k not in excluded and now.get(k) != v
-                      and not k.startswith(("debt_", "last_notified_"))}
+            fields = {
+                k: v
+                for k, v in previous.items()
+                if k not in excluded and now.get(k) != v and not k.startswith(("debt_", "last_notified_"))
+            }
         if fields:
             result.append({"model": label, "id": int(pk), "fields": fields})
     return result
@@ -134,9 +153,13 @@ def title_for(path, method):
         return "Smenani ochish"
     if path.startswith("cashbox/shift/close"):
         return "Smenani yopish"
-    for prefix, title in [("cashbox/expenses", "Kassa chiqimi"), ("cashbox/income", "Kassa kirimi"),
-                          ("sales/counterparties", "Mijoz ma’lumoti"), ("catalog/", "Katalog o‘zgarishi"),
-                          ("inventory/", "Ombor operatsiyasi")]:
+    for prefix, title in [
+        ("cashbox/expenses", "Kassa chiqimi"),
+        ("cashbox/income", "Kassa kirimi"),
+        ("sales/counterparties", "Mijoz ma’lumoti"),
+        ("catalog/", "Katalog o‘zgarishi"),
+        ("inventory/", "Ombor operatsiyasi"),
+    ]:
         if path.startswith(prefix):
             return title
     return "Ma’lumotni yangilash"

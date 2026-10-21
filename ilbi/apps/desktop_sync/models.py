@@ -59,3 +59,8 @@ class LocalOperation(models.Model):
 class LocalState(models.Model):
     key = models.CharField(max_length=80, primary_key=True)
     value = models.JSONField(default=dict)
+
+
+class TenantSyncRevision(models.Model):
+    tenant_id = models.BigIntegerField(primary_key=True)
+    revision = models.PositiveBigIntegerField(default=0)

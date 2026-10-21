@@ -21,13 +21,13 @@
     "productName": "ILBI",
     "artifactName": "ILBI-Setup-${version}-${arch}.${ext}",
     "directories": { "output": "release" },
-    "files": ["main.cjs", "runtime.cjs", "preload.cjs", "setup.html", "setup.js", "setup.css"],
+    "files": ["main.cjs", "runtime.cjs", "preload.cjs", "setup.html", "setup.js", "setup.css", "icon.ico"],
     "extraResources": [
       { "from": "../../frontend/ilbi/dist", "to": "ui" },
       { "from": "resources/backend", "to": "backend" },
       { "from": "resources/postgres", "to": "postgres" }
     ],
-    "win": { "target": "nsis", "requestedExecutionLevel": "asInvoker" },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false }
+    "win": { "target": "nsis", "requestedExecutionLevel": "asInvoker", "signAndEditExecutable": false, "icon": "icon.ico" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false, "installerIcon": "icon.ico", "uninstallerIcon": "icon.ico" }
   }
 }

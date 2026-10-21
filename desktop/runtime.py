@@ -1,4 +1,4 @@
-"""Frozen Windows entry point. All runtime state is outside the install directory."""
+"""Bundled Windows entry point. All runtime state is outside the install directory."""
 import os
 import sys
 from pathlib import Path

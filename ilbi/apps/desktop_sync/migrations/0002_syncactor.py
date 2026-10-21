@@ -5,22 +5,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('desktop_sync', '0001_initial'),
+        ("desktop_sync", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SyncActor',
+            name="SyncActor",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('user_id', models.BigIntegerField()),
-                ('token_version', models.PositiveIntegerField()),
-                ('device', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='desktop_sync.syncdevice')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("user_id", models.BigIntegerField()),
+                ("token_version", models.PositiveIntegerField()),
+                (
+                    "device",
+                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="desktop_sync.syncdevice"),
+                ),
             ],
             options={
-                'constraints': [models.UniqueConstraint(fields=('device', 'user_id'), name='sync_actor_device_user')],
+                "constraints": [models.UniqueConstraint(fields=("device", "user_id"), name="sync_actor_device_user")],
             },
         ),
     ]

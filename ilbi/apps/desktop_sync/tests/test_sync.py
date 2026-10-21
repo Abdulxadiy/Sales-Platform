@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 from uuid import uuid4
 
@@ -11,8 +10,8 @@ from rest_framework.test import APIClient
 
 from apps.desktop_sync.cloud import SyncConflict, apply_operation, rewrite
 from apps.desktop_sync.local import enqueue, next_operation, ordered_operations, prioritize
-from apps.desktop_sync.models import LocalOperation, LocalState, SyncDevice, SyncReceipt
-from apps.desktop_sync.protocol import LOCAL_ID_START, allowed, record_changes
+from apps.desktop_sync.models import LocalOperation, SyncDevice, SyncReceipt
+from apps.desktop_sync.protocol import LOCAL_ID_START, allowed
 from apps.desktop_sync.snapshots import export_snapshot, import_snapshot
 from tests.factories import CounterpartyFactory, EmployeeFactory, ProductVariantFactory, StaffFactory, TenantFactory
 
@@ -21,15 +20,32 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture
 def device(owner, tenant):
-    return SyncDevice.objects.create(user_id=owner.pk, tenant_id=tenant.pk, name="Test desktop",
-                                     token_version=owner.token_version, lease_until=timezone.now() + timedelta(days=7))
+    return SyncDevice.objects.create(
+        user_id=owner.pk,
+        tenant_id=tenant.pk,
+        name="Test desktop",
+        token_version=owner.token_version,
+        lease_until=timezone.now() + timedelta(days=7),
+    )
 
 
 def command(device, path="sales/counterparties/", body=None, **extra):
-    ticket = signing.dumps({"device_id": str(device.pk), "user_id": device.user_id,
-                            "token_version": device.token_version}, salt="ilbi-offline-actor", compress=True)
-    return {"id": str(uuid4()), "path": path, "method": "POST", "body": body or {"name": "Offline mijoz"},
-            "created": [], "dependencies": [], "actor_ticket": ticket, "occurred_at": timezone.now().isoformat(), **extra}
+    ticket = signing.dumps(
+        {"device_id": str(device.pk), "user_id": device.user_id, "token_version": device.token_version},
+        salt="ilbi-offline-actor",
+        compress=True,
+    )
+    return {
+        "id": str(uuid4()),
+        "path": path,
+        "method": "POST",
+        "body": body or {"name": "Offline mijoz", "phone_number": "+998901234567"},
+        "created": [],
+        "dependencies": [],
+        "actor_ticket": ticket,
+        "occurred_at": timezone.now().isoformat(),
+        **extra,
+    }
 
 
 def local_row(tenant, owner, **values):
@@ -42,6 +58,7 @@ def test_lost_ack_replay_is_exactly_once(owner, tenant, device):
     second = apply_operation(owner, device.pk, payload)
     assert first == second
     from apps.sales.models import Counterparty
+
     assert Counterparty.objects.filter(tenant=tenant, name="Offline mijoz").count() == 1
     assert SyncReceipt.objects.filter(device=device).count() == 1
     assert first["id_map"][str(LOCAL_ID_START)] < LOCAL_ID_START
@@ -57,20 +74,31 @@ def test_changed_duplicate_is_rejected(owner, device):
 
 def test_dependency_and_created_id_remapping(owner, tenant, device):
     first = command(device, created=[{"model": "sales.counterparty", "id": LOCAL_ID_START, "fields": {}}])
-    second = command(device, path=f"sales/counterparties/{LOCAL_ID_START}/", method="PATCH",
-                     body={"name": "Yangi ism"}, dependencies=[first["id"]])
+    second = command(
+        device,
+        path=f"sales/counterparties/{LOCAL_ID_START}/",
+        method="PATCH",
+        body={"name": "Yangi ism"},
+        dependencies=[first["id"]],
+    )
     with pytest.raises(SyncConflict):
         apply_operation(owner, device.pk, second)
     result = apply_operation(owner, device.pk, first)
     apply_operation(owner, device.pk, second)
     from apps.sales.models import Counterparty
+
     assert Counterparty.objects.get(pk=result["id_map"][str(LOCAL_ID_START)]).name == "Yangi ism"
 
 
 def test_web_edit_conflict_does_not_erase_data(owner, tenant, device):
     cp = CounterpartyFactory(tenant=tenant, name="Webdagi yangi ism")
-    payload = command(device, path=f"sales/counterparties/{cp.pk}/", method="PATCH", body={"name": "Offline ism"},
-                      preconditions=[{"model": "sales.counterparty", "id": cp.pk, "fields": {"name": "Eski ism"}}])
+    payload = command(
+        device,
+        path=f"sales/counterparties/{cp.pk}/",
+        method="PATCH",
+        body={"name": "Offline ism"},
+        preconditions=[{"model": "sales.counterparty", "id": cp.pk, "fields": {"name": "Eski ism"}}],
+    )
     with pytest.raises(SyncConflict):
         apply_operation(owner, device.pk, payload)
     cp.refresh_from_db()
@@ -89,8 +117,11 @@ def test_revoked_actor_is_rejected(owner, tenant, device):
     staff = StaffFactory()
     employee = EmployeeFactory(user=staff, tenant=tenant)
     payload = command(device)
-    payload["actor_ticket"] = signing.dumps({"device_id": str(device.pk), "user_id": staff.pk,
-                                              "token_version": staff.token_version}, salt="ilbi-offline-actor", compress=True)
+    payload["actor_ticket"] = signing.dumps(
+        {"device_id": str(device.pk), "user_id": staff.pk, "token_version": staff.token_version},
+        salt="ilbi-offline-actor",
+        compress=True,
+    )
     employee.is_active = False
     employee.save()
     with pytest.raises(PermissionDenied):
@@ -101,8 +132,11 @@ def test_actor_permissions_are_not_replaced_by_owners(owner, tenant, device):
     staff = StaffFactory()
     EmployeeFactory(user=staff, tenant=tenant)
     payload = command(device)
-    payload["actor_ticket"] = signing.dumps({"device_id": str(device.pk), "user_id": staff.pk,
-                                              "token_version": staff.token_version}, salt="ilbi-offline-actor", compress=True)
+    payload["actor_ticket"] = signing.dumps(
+        {"device_id": str(device.pk), "user_id": staff.pk, "token_version": staff.token_version},
+        salt="ilbi-offline-actor",
+        compress=True,
+    )
     with pytest.raises(SyncConflict):
         apply_operation(owner, device.pk, payload)
     assert not SyncReceipt.objects.exists()
@@ -134,9 +168,30 @@ def test_priority_brings_dependency_first(owner, tenant):
 
 
 def test_shared_stock_dependency_is_automatic(owner, tenant):
-    first = enqueue(user_id=owner.pk, tenant_id=tenant.pk, payload={}, resources={"inventory.stock:1"}, references=set(), title="Savdo")
-    second = enqueue(user_id=owner.pk, tenant_id=tenant.pk, payload={}, resources={"inventory.stock:1"}, references=set(), title="Qaytarish")
-    third = enqueue(user_id=owner.pk, tenant_id=tenant.pk, payload={}, resources={"catalog.product:2"}, references=set(), title="Tahrir")
+    first = enqueue(
+        user_id=owner.pk,
+        tenant_id=tenant.pk,
+        payload={},
+        resources={"inventory.stock:1"},
+        references=set(),
+        title="Savdo",
+    )
+    second = enqueue(
+        user_id=owner.pk,
+        tenant_id=tenant.pk,
+        payload={},
+        resources={"inventory.stock:1"},
+        references=set(),
+        title="Qaytarish",
+    )
+    third = enqueue(
+        user_id=owner.pk,
+        tenant_id=tenant.pk,
+        payload={},
+        resources={"catalog.product:2"},
+        references=set(),
+        title="Tahrir",
+    )
     assert second.dependencies == [str(first.id)]
     assert third.dependencies == []
 
@@ -172,20 +227,39 @@ def test_snapshot_import_retains_queue_and_reserved_ids(owner, tenant):
         import_snapshot(snapshot)
     assert LocalOperation.objects.filter(id=row.id, status="done").exists()
     from apps.sales.models import Counterparty
+
     new = Counterparty.objects.create(tenant_id=tenant.pk, name="Local")
     assert new.pk >= LOCAL_ID_START
 
 
 def test_forbidden_replay_routes():
-    for path in ["auth/change-password/", "internal/shop/orders/", "platform/accounts/", "sales/b2b/1/accept/", "../tenants/1/"]:
+    for path in [
+        "auth/change-password/",
+        "internal/shop/orders/",
+        "platform/accounts/",
+        "sales/b2b/1/accept/",
+        "../tenants/1/",
+    ]:
         assert not allowed("POST", path)
     assert allowed("POST", "catalog/products/1000000000000/variants/")
 
 
 def test_id_rewrite_preserves_money_and_barcode():
-    result = rewrite({"category": LOCAL_ID_START, "amount": LOCAL_ID_START, "barcode": str(LOCAL_ID_START),
-                      "items": [{"product_variant_id": LOCAL_ID_START}]}, {str(LOCAL_ID_START): 17})
-    assert result == {"category": 17, "amount": LOCAL_ID_START, "barcode": str(LOCAL_ID_START), "items": [{"product_variant_id": 17}]}
+    result = rewrite(
+        {
+            "category": LOCAL_ID_START,
+            "amount": LOCAL_ID_START,
+            "barcode": str(LOCAL_ID_START),
+            "items": [{"product_variant_id": LOCAL_ID_START}],
+        },
+        {str(LOCAL_ID_START): 17},
+    )
+    assert result == {
+        "category": 17,
+        "amount": LOCAL_ID_START,
+        "barcode": str(LOCAL_ID_START),
+        "items": [{"product_variant_id": 17}],
+    }
 
 
 def test_one_primary_per_store_but_independent_stores_can_enroll(owner, tenant):
@@ -193,16 +267,23 @@ def test_one_primary_per_store_but_independent_stores_can_enroll(owner, tenant):
     client.force_authenticate(owner)
     first = client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json")
     assert first.status_code == 200, first.data
-    assert client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 400
+    assert (
+        client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 400
+    )
 
 
 def test_cash_income_replay_keeps_historical_time(owner, tenant, device):
     from apps.cashbox.models import CashIncome
+
     instant = timezone.now() - timedelta(minutes=1)
     device.created_at = instant - timedelta(minutes=1)
     device.save(update_fields=["created_at"])
-    payload = command(device, path="cashbox/income/", body={"amount": "15000", "currency": "UZS", "source": "Offline kirim"},
-                      occurred_at=instant.isoformat())
+    payload = command(
+        device,
+        path="cashbox/income/",
+        body={"amount": "15000", "currency": "UZS", "source": "Offline kirim"},
+        occurred_at=instant.isoformat(),
+    )
     apply_operation(owner, device.pk, payload)
     income = CashIncome.objects.get(tenant=tenant)
     assert income.created_at == instant

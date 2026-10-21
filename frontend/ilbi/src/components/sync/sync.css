@@ -1,6 +1,6 @@
 .sync-status{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-subtle);border-radius:999px;padding:7px 12px;background:var(--bg-card);color:var(--text-primary);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
 .sync-status b{min-width:18px;padding:1px 5px;border-radius:10px;background:var(--primary-light);color:var(--primary)}
-.sync-dialog{width:min(720px,calc(100vw - 28px));max-height:85dvh;padding:0;border:1px solid var(--border-subtle);border-radius:22px;background:var(--bg-card);color:var(--text-primary);box-shadow:0 24px 100px #0005;overflow:auto}
+.sync-dialog{width:min(720px,calc(100vw - 28px));max-height:85dvh;margin:auto;padding:0;border:1px solid var(--border-subtle);border-radius:22px;background:var(--bg-card);color:var(--text-primary);box-shadow:0 24px 100px #0005;overflow:auto}
 .sync-dialog::backdrop{background:#10182480;backdrop-filter:blur(4px)}
 .sync-heading{display:flex;justify-content:space-between;align-items:flex-start;padding:24px;gap:12px;border-bottom:1px solid var(--border-subtle)}
 .sync-heading h2{margin:0 0 5px;font-size:21px}.sync-heading p,.sync-footnote,.sync-empty p{margin:0;color:var(--text-secondary);font-size:13px;line-height:1.6}

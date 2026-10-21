@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from uuid import uuid4
 
 import requests
 from django.conf import settings
@@ -13,6 +14,7 @@ from rest_framework.exceptions import APIException
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .authentication import DesktopJWTAuthentication
+from .files import cache_media
 from .local import get_state, prioritize, queue_status, set_state, wake_worker
 from .models import LocalOperation
 from .snapshots import import_snapshot
@@ -54,7 +56,9 @@ def endpoint(request, path):
                     set_state("unlock_blocked_until", (timezone.now() + timedelta(minutes=5)).isoformat())
                 return JsonResponse({"detail": "Login yoki offline parol noto‘g‘ri."}, status=401)
             if not device or timezone.now() >= parse_datetime(device["lease_until"]):
-                return JsonResponse({"detail": "Offline ruxsat muddati tugadi. Internet orqali qayta tasdiqlang."}, status=401)
+                return JsonResponse(
+                    {"detail": "Offline ruxsat muddati tugadi. Internet orqali qayta tasdiqlang."}, status=401
+                )
             user = get_user_model().objects.get(pk=selected["user_id"], is_active=True)
             set_state("unlock_failures", 0)
             set_state("unlock_blocked_until", "")
@@ -73,37 +77,70 @@ def endpoint(request, path):
             if path == "enroll/":
                 if device:
                     raise ValueError("Bu kompyuter allaqachon tayyorlangan. Offline parol bilan kiring.")
-                response = requests.post(server + "/api/v1/sync/devices/", headers=headers,
-                                         json={"protocol": 1, "tenant_id": data.get("tenant_id"), "name": "ILBI Desktop"},
-                                         timeout=(5, 90), allow_redirects=False)
+                installation_id = get_state("installation_id") or str(uuid4())
+                set_state("installation_id", installation_id)
+                response = requests.post(
+                    server + "/api/v1/sync/devices/",
+                    headers=headers,
+                    json={
+                        "protocol": 1,
+                        "tenant_id": data.get("tenant_id"),
+                        "name": "ILBI Desktop",
+                        "installation_id": installation_id,
+                    },
+                    timeout=(5, 90),
+                    allow_redirects=False,
+                )
             elif path == "actor/":
                 if not device:
                     raise ValueError("Avval do‘kon egasi offline bazani tayyorlasin.")
-                response = requests.post(server + "/api/v1/sync/actors/", headers=headers,
-                                         json={"device_id": device["device_id"]}, timeout=(5, 20), allow_redirects=False)
+                response = requests.post(
+                    server + "/api/v1/sync/actors/",
+                    headers=headers,
+                    json={"device_id": device["device_id"]},
+                    timeout=(5, 20),
+                    allow_redirects=False,
+                )
             else:
                 if not device or user_data["id"] != device["user_id"]:
                     raise ValueError("Ushbu qurilmani ulagan owner hisobi kerak.")
-                Vault().write({"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")})
+                Vault().write(
+                    {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}
+                )
                 wake_worker.set()
                 return JsonResponse({"connected": True})
             if not response.ok:
                 return JsonResponse({"detail": response.text[:2000]}, status=response.status_code)
             result = response.json()
+            if path == "enroll/":
+                cache_media(result["snapshot"], server)
             with transaction.atomic():
                 if path == "enroll/":
                     import_snapshot(result["snapshot"])
                     device = {k: result[k] for k in ("device_id", "user_id", "lease_until")}
                     device["tenant_id"] = result["snapshot"]["tenant_id"]
                     set_state("device", device)
-                    Vault().write({"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")})
+                    set_state("revision", result["snapshot"].get("revision", 0))
+                    Vault().write(
+                        {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}
+                    )
                 user = get_user_model().objects.filter(pk=result["user_id"]).first()
                 if user is None:
                     raise ValueError("Xodim yangi qo‘shilgan. Owner navbatni sinxronlab bo‘lgach qayta urinib ko‘ring.")
                 actors = get_state("actors", {})
-                actors[str(user.pk)] = {"user_id": user.pk, "username": user.username,
-                                       "pin_hash": make_password(pin), "actor_ticket": result["actor_ticket"]}
+                actors[str(user.pk)] = {
+                    "user_id": user.pk,
+                    "username": user.username,
+                    "pin_hash": make_password(pin),
+                    "actor_ticket": result["actor_ticket"],
+                }
                 set_state("actors", actors)
+                if path == "actor/" and user.pk == device["user_id"]:
+                    Vault().write(
+                        {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}
+                    )
+                    device["lease_until"] = result["lease_until"]
+                    set_state("device", device)
             wake_worker.set()
             return JsonResponse(local_tokens(user, device))
         user = authenticated(request)

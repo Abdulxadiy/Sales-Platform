@@ -1,4 +1,5 @@
 """Bounded HTTPS transport; a completed upload is distinct from cloud acceptance."""
+
 import json
 import os
 from pathlib import Path
@@ -46,7 +47,7 @@ class UploadBody:
 
     def __iter__(self):
         for offset in range(0, len(self.data), 32768):
-            chunk = self.data[offset:offset + 32768]
+            chunk = self.data[offset : offset + 32768]
             activity["progress"] = round(min(len(self.data), offset + len(chunk)) / len(self.data) * 100)
             yield chunk
         activity["stage"] = "confirming"
@@ -57,19 +58,23 @@ def cloud_request(method, path, *, body=None, progress=False, headers=None):
     credentials = vault.read()
     base = server_url(credentials["server"])
     auth = {"Authorization": "Bearer " + credentials["access"], **(headers or {})}
-    kwargs = {"timeout": (5, 45), "allow_redirects": False, "headers": auth}
+    kwargs = {"allow_redirects": False, "headers": auth}
     if body is not None:
         data = json.dumps(body, cls=DjangoJSONEncoder).encode()
         kwargs["data"] = UploadBody(data) if progress else data
         kwargs["headers"]["Content-Type"] = "application/json"
         kwargs["headers"]["Content-Length"] = str(len(data))
-    response = requests.request(method, base + "/api/v1/" + path, **kwargs)
+    response = requests.request(method, base + "/api/v1/" + path, timeout=(5, 45), **kwargs)
     if response.status_code == 401 and credentials.get("refresh"):
-        refreshed = requests.post(base + "/api/v1/auth/token/refresh/", json={"refresh": credentials["refresh"]},
-                                  timeout=(5, 20), allow_redirects=False)
+        refreshed = requests.post(
+            base + "/api/v1/auth/token/refresh/",
+            json={"refresh": credentials["refresh"]},
+            timeout=(5, 20),
+            allow_redirects=False,
+        )
         if refreshed.ok:
             credentials.update(refreshed.json())
             vault.write(credentials)
             kwargs["headers"]["Authorization"] = "Bearer " + credentials["access"]
-            response = requests.request(method, base + "/api/v1/" + path, **kwargs)
+            response = requests.request(method, base + "/api/v1/" + path, timeout=(5, 45), **kwargs)
     return response

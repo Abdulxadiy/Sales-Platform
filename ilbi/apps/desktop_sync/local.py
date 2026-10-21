@@ -1,6 +1,6 @@
 """Desktop-only durable outbox and dependency-aware, non-preemptive scheduler."""
+
 import threading
-from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -86,8 +86,14 @@ def enqueue(*, user_id, tenant_id, payload, resources, references, title):
         if overlap:
             dependencies.append(str(previous.id))
             seen.update(overlap)
-    row = LocalOperation.objects.create(user_id=user_id, tenant_id=tenant_id, title=title,
-                                         payload=payload, resources=sorted(resources), dependencies=dependencies)
+    row = LocalOperation.objects.create(
+        user_id=user_id,
+        tenant_id=tenant_id,
+        title=title,
+        payload=payload,
+        resources=sorted(resources),
+        dependencies=dependencies,
+    )
     row.payload.update(id=str(row.id), dependencies=dependencies)
     row.save(update_fields=["payload"])
     transaction.on_commit(wake_worker.set)
@@ -100,9 +106,23 @@ def queue_status():
     result = []
     for row in rows:
         blocked = any(dep in ids and ids[dep].status in {"error", "blocked"} for dep in row.dependencies)
-        result.append({"id": str(row.id), "title": row.title, "status": "blocked" if blocked else row.status,
-                       "priority": row.priority, "sequence": row.sequence, "error": row.error,
-                       "dependencies": row.dependencies, "created_at": row.created_at.isoformat(),
-                       "attempts": row.attempts})
-    return {**activity, "operations": result, "last_sync": get_state("last_sync"),
-            "enrolled": bool(get_state("device")), "protocol": 1}
+        result.append(
+            {
+                "id": str(row.id),
+                "title": row.title,
+                "status": "blocked" if blocked else row.status,
+                "priority": row.priority,
+                "sequence": row.sequence,
+                "error": row.error,
+                "dependencies": row.dependencies,
+                "created_at": row.created_at.isoformat(),
+                "attempts": row.attempts,
+            }
+        )
+    return {
+        **activity,
+        "operations": result,
+        "last_sync": get_state("last_sync"),
+        "enrolled": bool(get_state("device")),
+        "protocol": 1,
+    }

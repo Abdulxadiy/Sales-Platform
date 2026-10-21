@@ -25,6 +25,7 @@ dependencies = [
 ]
 
 [dependency-groups]
+desktop = ["waitress==3.0.2"]
 dev = [
     "djangorestframework-stubs>=3.17.1",
     "factory-boy>=3.3.3",

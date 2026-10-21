@@ -18,15 +18,53 @@
     "External Telegram/payment/fiscal actions stay explicit about network/provider requirements.",
     "Test offline/restart/reconnection/lost ACK/priority/dependencies/conflicts/account isolation and full integrated workflows.",
     "Mark each phase complete only after its checks pass; retain evidence and report unverified platform/device limitations honestly.",
-    "Delete this temporary tracker only after every required phase is actually complete."
+    "Delete this temporary tracker only after every required phase is actually complete.",
+    "Support independent stores and 1/2/3+ registers per store through a shared LAN primary with pinned TLS pairing and per-actor offline grants."
   ],
   "phases": [
-    {"id": "audit", "status": "in_progress", "checks": []},
-    {"id": "local_runtime_and_storage", "status": "pending", "checks": []},
-    {"id": "server_sync_and_conflicts", "status": "pending", "checks": []},
-    {"id": "desktop_and_animated_queue", "status": "pending", "checks": []},
-    {"id": "workflow_integration", "status": "pending", "checks": []},
-    {"id": "windows_packaging", "status": "pending", "checks": []},
-    {"id": "end_to_end_verification", "status": "pending", "checks": []}
+    {
+      "id": "audit",
+      "status": "complete",
+      "checks": [
+        "Existing stack/API/permissions/transactions audited",
+        "Single shared replica per store selected for multiple registers; independent stores isolated"
+      ]
+    },
+    {
+      "id": "local_runtime_and_storage",
+      "status": "in_progress",
+      "checks": []
+    },
+    {
+      "id": "server_sync_and_conflicts",
+      "status": "in_progress",
+      "checks": [
+        "17 synchronization tests passed: lost ACK, duplicate mismatch, dependency remapping, permissions, store isolation, conflicts, priorities and snapshot import"
+      ]
+    },
+    {
+      "id": "desktop_and_animated_queue",
+      "status": "in_progress",
+      "checks": [
+        "Frontend production build passed",
+        "58 existing frontend tests passed",
+        "3 desktop-shell validation tests passed"
+      ]
+    },
+    {
+      "id": "workflow_integration",
+      "status": "in_progress",
+      "checks": []
+    },
+    {
+      "id": "windows_packaging",
+      "status": "in_progress",
+      "checks": []
+    },
+    {
+      "id": "end_to_end_verification",
+      "status": "in_progress",
+      "checks": []
+    }
   ]
 }

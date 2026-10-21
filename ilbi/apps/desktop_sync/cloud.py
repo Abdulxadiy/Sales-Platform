@@ -11,10 +11,12 @@ from django.test import RequestFactory
 from django.urls import resolve
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from apps.core.event_clock import event_time
 from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 from rest_framework.test import force_authenticate
 
+from apps.core.event_clock import event_time
+
+from .files import decode_body
 from .models import SyncDevice, SyncReceipt
 from .protocol import LOCAL_ID_START, allowed, digest, json_value, receipt_hint, record_changes, replaying
 from .snapshots import authorize
@@ -36,16 +38,30 @@ def device_for(user, device_id, *, lock=False):
     return device
 
 
-def rewrite(value, mapping):
+def rewrite(value, mapping, strict=True):
     if isinstance(value, dict):
-        return {k: rewrite(v, mapping) if k in {"id", "category", "parent", "product", "product_variant", "counterparty", "assigned_to", "branch"} or k.endswith(("_id", "_ids")) or isinstance(v, (dict, list)) else v
-                for k, v in value.items()}
+        return {
+            k: rewrite(v, mapping, strict)
+            if k in {"id", "category", "parent", "product", "product_variant", "counterparty", "assigned_to", "branch"}
+            or k.endswith(("_id", "_ids"))
+            or isinstance(v, (dict, list))
+            else v
+            for k, v in value.items()
+        }
     if isinstance(value, list):
-        return [rewrite(v, mapping) for v in value]
+        return [rewrite(v, mapping, strict) for v in value]
     if type(value) is int and value >= LOCAL_ID_START:
         if str(value) not in mapping:
+            if not strict:
+                return value
             raise SyncConflict("Bog‘liq operatsiya hali serverga yuborilmagan.")
         return mapping[str(value)]
+    if isinstance(value, str) and value.isdecimal() and int(value) >= LOCAL_ID_START:
+        if value not in mapping:
+            if not strict:
+                return value
+            raise SyncConflict("Bog‘liq operatsiya hali serverga yuborilmagan.")
+        return str(mapping[value])
     return value
 
 
@@ -53,9 +69,10 @@ def rewrite(value, mapping):
 def apply_operation(user, device_id, payload):
     device = device_for(user, device_id, lock=True)
     try:
-        grant = signing.loads(payload["actor_ticket"], salt="ilbi-offline-actor", max_age=7 * 86400)
+        grant = signing.loads(payload["actor_ticket"], salt="ilbi-offline-actor")
         actor = get_user_model().objects.get(pk=grant["user_id"], is_active=True, token_version=grant["token_version"])
         from apps.accounts.services.tenant_context_service import resolve_active_context
+
         context = resolve_active_context(actor, str(device.tenant_id))
         if grant["device_id"] != str(device.pk) or context.tenant is None:
             raise ValueError("actor scope")
@@ -76,7 +93,9 @@ def apply_operation(user, device_id, payload):
             raise SyncConflict("Operatsiya identifikatori boshqa ma’lumot uchun ishlatilgan.")
         return previous.result
     dependencies = payload.get("dependencies", [])
-    if len(dependencies) > 5000 or SyncReceipt.objects.filter(device=device, operation_id__in=dependencies).count() != len(set(dependencies)):
+    if len(dependencies) > 5000 or SyncReceipt.objects.filter(
+        device=device, operation_id__in=dependencies
+    ).count() != len(set(dependencies)):
         raise SyncConflict("Bog‘liq operatsiyalar avval yuborilishi kerak.")
     mapping = {}
     for result in SyncReceipt.objects.filter(device=device).values_list("result", flat=True):
@@ -87,25 +106,38 @@ def apply_operation(user, device_id, payload):
         label = condition.get("model")
         if label not in {"catalog.category", "catalog.product", "catalog.productvariant", "sales.counterparty"}:
             raise ValidationError("Noto‘g‘ri versiya sharti.")
-        obj = apps.get_model(label).objects.select_for_update().filter(
-            pk=rewrite(condition["id"], mapping), tenant_id=device.tenant_id
-        ).first()
+        obj = (
+            apps.get_model(label)
+            .objects.select_for_update()
+            .filter(pk=rewrite(condition["id"], mapping), tenant_id=device.tenant_id)
+            .first()
+        )
         expected = rewrite(condition["fields"], mapping)
         if obj is None or any(json_value(getattr(obj, k, None)) != v for k, v in expected.items()):
             raise SyncConflict("Shu ma’lumot web yoki boshqa kassada o‘zgargan. Tekshirish kerak.")
-    request = RequestFactory().generic(method, "/api/v1/" + path,
-                                      data=__import__("json").dumps(body), content_type="application/json",
-                                      HTTP_X_TENANT_ID=str(device.tenant_id))
+    encoded, content_type = decode_body(body)
+    request = RequestFactory().generic(
+        method, "/api/v1/" + path, data=encoded, content_type=content_type, HTTP_X_TENANT_ID=str(device.tenant_id)
+    )
     force_authenticate(request, user=actor)
     match = resolve(request.path)
     occurred = parse_datetime(payload.get("occurred_at", ""))
-    if occurred is None or timezone.is_naive(occurred) or occurred < device.created_at - timedelta(minutes=5) or occurred > timezone.now() + timedelta(minutes=5):
+    if (
+        occurred is None
+        or timezone.is_naive(occurred)
+        or occurred < device.created_at - timedelta(minutes=5)
+        or occurred > timezone.now() + timedelta(minutes=5)
+    ):
         raise ValidationError("Operatsiya vaqti noto‘g‘ri.")
+    if grant.get("lease_until") and occurred > parse_datetime(grant["lease_until"]):
+        raise PermissionDenied("Operatsiya offline ruxsat muddatidan tashqarida bajarilgan.")
     token = replaying.set(True)
     clock_token = event_time.set(occurred)
     sale_hint = next((row["fields"] for row in payload.get("created", []) if row["model"] == "sales.sale"), None)
-    if sale_hint and (not re.fullmatch(r"O" + device.id.hex[:6] + r"-\d{8}-\d{4,}", sale_hint.get("receipt_number", ""))
-                      or not re.fullmatch(r"[A-Za-z0-9_-]{40,64}", sale_hint.get("public_token", ""))):
+    if sale_hint and (
+        not re.fullmatch(r"O" + device.id.hex[:6] + r"-\d{8}-\d{4,}", sale_hint.get("receipt_number", ""))
+        or not re.fullmatch(r"[A-Za-z0-9_-]{40,64}", sale_hint.get("public_token", ""))
+    ):
         replaying.reset(token)
         event_time.reset(clock_token)
         raise ValidationError("Offline chek identifikatori noto‘g‘ri.")

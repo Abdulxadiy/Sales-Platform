@@ -6,6 +6,7 @@ import requests
 from django.db import close_old_connections
 from django.utils import timezone
 
+from .files import cache_media
 from .local import activity, get_state, next_operation, runtime_lock, set_state, wake_worker
 from .models import LocalOperation
 from .snapshots import import_snapshot
@@ -27,8 +28,12 @@ def sync_once():
             activity.update(active=str(row.id), progress=0, stage="uploading")
     try:
         if row:
-            response = cloud_request("POST", "sync/push/", body={"protocol": 1, "device_id": device["device_id"],
-                                                                   "operation": row.payload}, progress=True)
+            response = cloud_request(
+                "POST",
+                "sync/push/",
+                body={"protocol": 1, "device_id": device["device_id"], "operation": row.payload},
+                progress=True,
+            )
             activity["online"] = True
             with runtime_lock:
                 if response.ok:
@@ -54,10 +59,29 @@ def sync_once():
         # command exists. It remains durable and visible for resolution.
         if LocalOperation.objects.exclude(status="done").exists():
             return False
+        probe = cloud_request("GET", "sync/changes/?device_id=" + device["device_id"])
+        if not probe.ok:
+            activity.update(online=probe.status_code < 500, error="Server yoki qurilma ruxsatini tekshiring.")
+            return False
+        activity["online"] = True
+        last_lease_refresh = get_state("lease_refreshed", "")
+        from django.utils.dateparse import parse_datetime
+
+        lease_refresh = parse_datetime(last_lease_refresh) if last_lease_refresh else None
+        if (
+            probe.json().get("revision") == get_state("revision")
+            and lease_refresh
+            and timezone.now() - lease_refresh < timedelta(hours=6)
+        ):
+            activity["error"] = ""
+            return False
         response = cloud_request("GET", "sync/snapshot/?device_id=" + device["device_id"])
         activity["online"] = response.status_code < 500
         if response.ok:
             data = response.json()
+            from django.conf import settings
+
+            missing_media = cache_media(data["snapshot"], settings.DESKTOP_SERVER)
             with runtime_lock:
                 if not LocalOperation.objects.exclude(status="done").exists():
                     import_snapshot(data["snapshot"])
@@ -70,8 +94,14 @@ def sync_once():
                             actors[key]["actor_ticket"] = data["actors"][key]
                     set_state("actors", actors)
                     set_state("device", device)
+                    set_state("revision", data["snapshot"].get("revision", 0))
+                    set_state("lease_refreshed", timezone.now().isoformat())
                     set_state("last_sync", timezone.now().isoformat())
-            activity["error"] = ""
+            activity["error"] = (
+                f"{len(missing_media)} ta rasm hali yuklanmadi. Keyingi ulanishda qayta uriniladi."
+                if missing_media
+                else ""
+            )
         else:
             activity["error"] = "Server bilan sinxronlash tasdiqlanmadi. Hisob yoki qurilma ruxsatini tekshiring."
         return False
@@ -98,7 +128,9 @@ def run_worker(stop):
         except Exception:
             log.exception("Desktop sync paused after unexpected failure; outbox retained")
             # A failed worker must never leave a forever-active operation.
-            LocalOperation.objects.filter(status="active").update(status="error", error="Sinxronlashda xatolik. Qayta urinib ko‘ring.")
+            LocalOperation.objects.filter(status="active").update(
+                status="error", error="Sinxronlashda xatolik. Qayta urinib ko‘ring."
+            )
             more = False
         if not more:
             wake_worker.wait(10)

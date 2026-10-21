@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { join } = require('node:path');
+const { tmpdir } = require('node:os');
 const { validateServer, validatePairing, safePath, equalKey } = require('../runtime.cjs');
 
 test('cloud URL validation excludes insecure or credential-bearing remote URLs', () => {
@@ -14,8 +16,9 @@ test('LAN pairing requires a private address, pinned certificate and strong key'
   assert.throws(() => validatePairing({ ...value, key: 'guessable' }));
 });
 test('local asset serving rejects encoded traversal', () => {
-  assert.equal(safePath('/tmp/ui', '/assets/test.js'), '/tmp/ui/assets/test.js');
-  assert.throws(() => safePath('/tmp/ui', '/%2e%2e/secret'));
+  const root = join(tmpdir(), 'ilbi-ui');
+  assert.equal(safePath(root, '/assets/test.js'), join(root, 'assets/test.js'));
+  assert.throws(() => safePath(root, '/%2e%2e/secret'));
   assert.equal(equalKey('abc', 'abc'), true);
   assert.equal(equalKey('', 'abc'), false);
 });

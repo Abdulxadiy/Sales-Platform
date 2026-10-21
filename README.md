@@ -116,7 +116,7 @@ The cloud origin is fixed to `https://new-dev.site` in the packaged application 
 
 Linux selects Secret Service automatically on Hyprland/Sway and retains KDE's native wallet selection. Plaintext storage is refused. Failed secure saves leave setup retryable; backend startup failures preserve the encrypted vault and database for another attempt. Public download metadata is fetched directly from the fixed official origin before any store is configured, using the desktop network stack without cookies, account tokens or redirects. Package tests reproduce Hyprland without a `--password-store` workaround, exercise secure-store failure twice, open Downloads before setup, recover a failed download request, and then start and reopen the encrypted store normally.
 
-Native Linux x64 uses the same Electron UI and offline backend as Windows. Download the `.tar.gz` on [Downloads](https://new-dev.site/download), extract it and run `bash install.sh` inside `ILBI/` as your normal user. The installer creates an application menu entry and `~/.local/bin/ilbi`; no Wine, VM, system Python or PostgreSQL service is required. GNOME Keyring or KWallet must be available and unlocked. App data stays under `${XDG_CONFIG_HOME:-~/.config}/ILBI`; program files live in `${XDG_DATA_HOME:-~/.local/share}/ilbi-app`. Close ILBI before rerunning the installer to update; the data folder is preserved. AUR/pacman repositories are not published, so `yay -S ilbi` / `pacman -S ilbi` are not installation methods yet.
+Native Linux x64 uses the same Electron UI and offline backend as Windows. Download the `.tar.gz` on [Downloads](https://new-dev.site/download), extract it and run `bash install.sh` inside `ILBI/` as your normal user. The installer creates an application menu entry and `~/.local/bin/ilbi`; no Wine, VM, system Python or PostgreSQL service is required. GNOME Keyring or KWallet must be available and unlocked. App data stays under `${XDG_CONFIG_HOME:-~/.config}/ILBI`; program files live in `${XDG_DATA_HOME:-~/.local/share}/ilbi-app`. Older installations without update support must be closed once before installing this package; subsequent updates support closing and reopening automatically. The data folder is preserved. AUR/pacman repositories are not published, so `yay -S ilbi` / `pacman -S ilbi` are not installation methods yet.
 
 Linux releases are built on Ubuntu 22.04 and target glibc x86_64 desktops (Ubuntu 22.04+, Arch). They bundle verified Astral standalone Python 3.13.16, hashed application wheels and PostgreSQL 16.15 compiled from verified upstream source without optional external runtime libraries. Build tools: Python 3.13+, uv, Node 24, GCC/make, bison/flex. Run `python3 desktop/build_linux_runtime.py` then `npm run dist:linux --prefix desktop/ilbi -- --runtime-ready`. `dbus-run-session -- bash desktop/test_linux_package.sh` installs into disposable XDG directories and tests the actual package, encrypted vault, database startup/restart and updates. CI uses Xvfb on Ubuntu; Arch must also be checked locally. Native Windows-specific checks remain separate. Both artifacts must pass CI before their combined download feed is published.
 
@@ -166,8 +166,8 @@ Initial setup:
 1. Deploy the matching backend code and migrations to the HTTPS server first.
    The usual backend `manage.py migrate --noinput` includes `desktop_sync`.
    Do not switch the cloud deployment to `config.settings_desktop`.
-2. Install the Windows x64 package and choose **Asosiy kompyuter** on the primary.
-   Enter the HTTPS server origin, sign in online as the store owner, select the
+2. Install the Windows x64 package and choose **Ishni boshlash** on the primary.
+   The official HTTPS server is already selected. Sign in online as the store owner, select the
    store and open **Offline tayyorlash** to download its database and set a local
    password of at least eight characters.
 3. Each cashier signs in online once and uses **Hisobni kassaga ulash** to set
@@ -186,14 +186,34 @@ Initial setup:
    stays on disk. Cloud permission changes may reject older queued commands;
    they are retained for review rather than silently discarded.
 
-Program updates use a new installer after closing ILBI. The installer preserves
-`%APPDATA%\ILBI`, including the database, encrypted cloud credentials and outbox;
+Desktop updates are checked at startup and every 15 minutes against the fixed
+official release feed. Both workspaces show an update notice; an unfocused app
+also sends a native notification. **ILBI → Yangilanishni tekshirish** opens the
+update window manually. One action downloads the platform package with real
+progress, checks its size and SHA-256, waits for active requests and synchronization
+to finish, then opens the installer. Windows stages files before gracefully
+closing ILBI and replacing them; Linux uses a separate progress window and an
+atomic installation. Both reopen ILBI automatically. Save unsaved forms and pause
+other registers before updating their primary computer.
+
+Build metadata embeds the Git commit and its timestamp, allowing newer builds
+with the same displayed version while refusing older releases. Downloads accept
+only immutable package paths at the official HTTPS origin, without credentials
+or redirects. Interrupted downloads can be retried. The first upgrade from an
+older app without this mechanism still requires downloading a package manually.
+Native package acceptance downloads a real artifact through the actual UI,
+installs it while ILBI is running, and verifies automatic relaunch plus preservation
+of a durable outbox row, the encrypted vault and browser storage in an isolated
+unenrolled profile.
+
+The installer preserves `%APPDATA%\ILBI` (Linux: `${XDG_CONFIG_HOME:-~/.config}/ILBI`),
+including the database, encrypted cloud credentials and outbox;
 uninstalling also preserves it. Back up this directory while ILBI is closed.
 The encrypted device vault belongs to its Windows account; a folder copy is not
 a supported migration to another Windows account/computer. Do not delete or
 replace the primary while it contains unsent work. A replacement primary needs
 the old cloud device explicitly revoked after its pending work has been resolved.
-This release has no automatic updater or code-signing certificate configured.
+No code-signing certificate is configured.
 
 To build locally (requires a development Python with pip, Node/npm and internet):
 

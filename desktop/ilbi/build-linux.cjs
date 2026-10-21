@@ -13,6 +13,7 @@ async function run(executable, args, cwd) {
 }
 
 async function main() {
+  const buildInfo = require('./build-info.cjs').writeBuildInfo();
   if (process.platform !== 'linux' || process.arch !== 'x64') throw Error('Linux x64 builder required');
   const temporaryDirectory = join(__dirname, 'build/tmp-linux');
   await mkdir(temporaryDirectory, { recursive: true });
@@ -35,7 +36,7 @@ async function main() {
   for await (const chunk of createReadStream(artifact)) hash.update(chunk);
   await writeFile(join(__dirname, 'release-linux/linux-build-manifest.json'), JSON.stringify({
     version, platform: 'linux', arch: 'x64', artifact: name, bytes: (await stat(artifact)).size,
-    sha256: hash.digest('hex'), nativeLinuxVerified: false, sourceCommit: process.env.GITHUB_SHA || null,
+    sha256: hash.digest('hex'), nativeLinuxVerified: false, sourceCommit: process.env.GITHUB_SHA || null, buildTimestamp: buildInfo.buildTimestamp,
   }, null, 2) + '\n');
   console.log(`Built Linux application: ${artifact}`);
 }

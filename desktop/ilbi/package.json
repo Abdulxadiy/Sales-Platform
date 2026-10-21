@@ -22,21 +22,89 @@
     "appId": "uz.ilbi.desktop",
     "productName": "ILBI",
     "artifactName": "ILBI-Setup-${version}-${arch}.${ext}",
-    "directories": { "output": "release" },
-    "files": ["main.cjs", "runtime.cjs", "services.cjs", "document-sharing.cjs", "preload.cjs", "setup.html", "setup.js", "setup.css", "icon.ico"],
-    "extraResources": [
-      { "from": "../../frontend/ilbi/dist", "to": "ui" }
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "runtime.cjs",
+      "services.cjs",
+      "document-sharing.cjs",
+      "preload.cjs",
+      "setup.html",
+      "setup.js",
+      "setup.css",
+      "icon.ico",
+      "application.cjs",
+      "updater.cjs",
+      "build-info.json",
+      "linux-update-helper.cjs",
+      "update-helper-preload.cjs",
+      "apply-linux-update.py",
+      "update.html",
+      "update.css",
+      "update-window.js"
     ],
-    "win": { "target": "nsis", "requestedExecutionLevel": "asInvoker", "signExecutable": false, "icon": "icon.ico", "extraResources": [
-      { "from": "icon.ico", "to": "ilbi-desktop-rounded.ico" },
-      { "from": "resources/backend", "to": "backend" },
-      { "from": "resources/postgres", "to": "postgres" }
-    ] },
-    "linux": { "target": "dir", "executableName": "ilbi", "category": "Office", "icon": "../../frontend/ilbi/public/brand/ilbi-desktop-512.png", "extraResources": [
-      { "from": "../../frontend/ilbi/public/brand/ilbi-desktop-512.png", "to": "ilbi-desktop.png" },
-      { "from": "resources-linux/backend", "to": "backend" },
-      { "from": "resources-linux/postgres", "to": "postgres" }
-    ] },
-    "nsis": { "script": "installer.nsi", "installerLanguages": ["en_US"], "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false, "installerIcon": "icon.ico", "uninstallerIcon": "icon.ico" }
+    "extraResources": [
+      {
+        "from": "../../frontend/ilbi/dist",
+        "to": "ui"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "requestedExecutionLevel": "asInvoker",
+      "signExecutable": false,
+      "icon": "icon.ico",
+      "extraResources": [
+        {
+          "from": "icon.ico",
+          "to": "ilbi-desktop-rounded.ico"
+        },
+        {
+          "from": "resources/backend",
+          "to": "backend"
+        },
+        {
+          "from": "resources/postgres",
+          "to": "postgres"
+        }
+      ]
+    },
+    "linux": {
+      "target": "dir",
+      "executableName": "ilbi",
+      "category": "Office",
+      "icon": "../../frontend/ilbi/public/brand/ilbi-desktop-512.png",
+      "extraResources": [
+        {
+          "from": "../../frontend/ilbi/public/brand/ilbi-desktop-512.png",
+          "to": "ilbi-desktop.png"
+        },
+        {
+          "from": "resources-linux/backend",
+          "to": "backend"
+        },
+        {
+          "from": "resources-linux/postgres",
+          "to": "postgres"
+        }
+      ]
+    },
+    "nsis": {
+      "script": "installer.nsi",
+      "installerLanguages": [
+        "en_US"
+      ],
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico"
+    },
+    "asarUnpack": [
+      "apply-linux-update.py"
+    ]
   }
 }

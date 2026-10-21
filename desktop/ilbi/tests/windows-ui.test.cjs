@@ -133,12 +133,6 @@ test('default installed launch opens downloads before setup, recovers a failed r
     await waitFor(() => guide.evaluate('location.pathname === "/desktop-guide" && Boolean(document.querySelector(".desktop-guide-header button"))'), 'return from downloads to illustrated guide');
     await guide.evaluate('setTimeout(()=>document.querySelector(".desktop-guide-header button").click(),50);true');
     await waitFor(async () => !(await targets()).some(item => item.type === 'page' && item.url.includes('/desktop-guide')));
-    if (process.platform === 'linux') {
-      const { spawnSync } = require('node:child_process');
-      const update = spawnSync('bash', [process.env.ILBI_LINUX_INSTALLER], { encoding: 'utf8' });
-      assert.equal(update.status, 1, 'Updating a running Linux register is refused');
-      assert.match(update.stderr, /Avval ILBI oynalarini yoping/);
-    }
     // An injected input cannot replace the internal official destination.
     await setup.evaluate('document.querySelector("#host").insertAdjacentHTML("beforeend",\'<input type="hidden" name="server" value="https://evil.example">\');document.querySelector("#host>button").click()');
     await waitFor(() => setup.evaluate('location.pathname === "/login"'), 'default keyring selection and encrypted database setup');

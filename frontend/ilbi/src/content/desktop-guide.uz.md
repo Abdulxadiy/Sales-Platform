@@ -56,7 +56,7 @@ Internet qaytganda dastur ishlarni avtomatik yuboradi. Har safar alohida tugma b
 
 Davom etayotgan ish to‘xtatilmaydi. Tanlangan qator silliq siljib, uning tagiga joylashadi va **Keyingi bajariladi** deb ko‘rinadi. Aylanuvchi strelkalar bilan ajratiladi. Unga zarur bog‘liq ishlar bo‘lsa, dastur avval ularni yuboradi.
 
-**Barcha operatsiyalar yuborilgan** yozuvi va bo‘sh navbat — mahalliy ishlar serverga yetganini bildiradi. Kun oxirida yoki ilovani yangilashdan oldin shu holatni tekshirib oling.
+**Barcha operatsiyalar yuborilgan** yozuvi va bo‘sh navbat — mahalliy ishlar serverga yetganini bildiradi. Kun oxirida shu holatni tekshirib oling. Ilova yangilanganda yuborilmagan navbat ham saqlanadi.
 
 ![Xatoni tekshirish: 1 — sabab yozilgan qator, 2 — tuzatgandan keyingi Qayta urinish.](desktop-guide/06-retry.png)
 
@@ -82,9 +82,17 @@ Ulanmasa, bir xil mahalliy tarmoq va Windows’dagi ILBI uchun xususiy tarmoq ru
 
 ## 6. Ilovani yangilash va yordam
 
-Yangi versiyani [yuklab olish sahifasidan](/download) oling. Avval yuborilmagan navbatni tekshiring, do‘kondagi ILBI oynalarini yoping va yangi o‘rnatuvchini ishga tushiring. Bu versiyada yangilanish avtomatik o‘rnatilmaydi.
+Internet borida yangi yangilanish haqida ilova ichida xabar chiqadi. ILBI oynasi oldinda bo‘lmasa, tizim bildirishnomasi ham ko‘rsatiladi. Istalgan payt **ILBI → Yangilanishni tekshirish** menyusi orqali tekshirishingiz mumkin. Bu imkoniyat Klassik va Tezkor ish stolida ham ishlaydi.
 
-O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. Ular Windows’da `%APPDATA%\ILBI`, Linux’da esa odatda `~/.config/ILBI` papkasida turadi (`XDG_CONFIG_HOME` belgilangan bo‘lsa, o‘sha joydagi `ILBI` papkasida). Linux’da yangilash uchun yangi arxivni ochib, uning `install.sh` faylini yana ishga tushiring. Zaxira olishda barcha kassalarni to‘xtatib, asosiy ILBI’ni yoping va ma’lumotlar papkasining nusxasini oling. Papka yoki `device.vault` faylini muammoni tuzatish uchun o‘chirmang. Kalitlar tizim hisobingiz va parollar omboriga bog‘liq; boshqa hisob yoki yangi kompyuterga o‘tishni yordam bilan rejalashtiring.
+1. Hali saqlanmagan shakllarni saqlang. Asosiy kompyuterni yangilayotgan bo‘lsangiz, boshqa kassalarda ham ishni vaqtincha to‘xtating.
+2. Xabardagi **Yuklab olish va yangilash** tugmasini bosing. Alohida oyna ochilib, yuklash foizini ko‘rsatadi. Paket yuklanib, tekshirilguncha ishlashda davom etishingiz mumkin.
+3. Yuklash tugagach, ilova davom etayotgan amallar tugashini kutadi va o‘rnatuvchini o‘zi ochadi. ILBI yopiladi, dastur fayllari yangilanadi va ILBI avtomatik qayta ochiladi. Yuborilmagan ishlar o‘z navbatida qoladi.
+
+Internet uzilsa yoki yuklash tugamasa, oynadagi xabarni o‘qing va **Qayta urinish**ni bosing. Tekshirilmagan paket o‘rnatilmaydi. Hozir yangilash qulay bo‘lmasa, xabarni keyinga qoldirishingiz mumkin.
+
+**Eski ilovadan birinchi o‘tish:** yangilanish xabari hali yo‘q bo‘lgan nusxani bir marta [yuklab olish sahifasidagi](/download) yangi paket bilan yangilang. Windows’da yangi `.exe` faylni oching; Linux’da eski ILBI’ni yopib, yangi arxivdagi `bash install.sh` buyrug‘ini bajaring. Keyingi yangilanishlar yuqoridagi xabar orqali olinadi.
+
+O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. Ular Windows’da `%APPDATA%\ILBI`, Linux’da esa odatda `~/.config/ILBI` papkasida turadi (`XDG_CONFIG_HOME` belgilangan bo‘lsa, o‘sha joydagi `ILBI` papkasida). Zaxira olishda barcha kassalarni to‘xtatib, asosiy ILBI’ni yoping va ma’lumotlar papkasining nusxasini oling. Papka yoki `device.vault` faylini muammoni tuzatish uchun o‘chirmang. Kalitlar tizim hisobingiz va parollar omboriga bog‘liq; boshqa hisob yoki yangi kompyuterga o‘tishni yordam bilan rejalashtiring.
 
 Qo‘llanma **ILBI → Ilovani sozlash (rasmli qo‘llanma)** menyusidan ham ochiladi. Uning matni va rasmlari ilova ichida saqlanadi, shuning uchun internet kerak emas. Rasm ustiga bossangiz kattalashadi; `Esc` bilan yoping.
 

@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('ilbiDesktop', Object.freeze({
   exportPairing: () => invoke('ilbi:pairing'),
   openGuide: () => invoke('ilbi:guide'),
   openDownloads: () => invoke('ilbi:downloads'),
+  getUpdateStatus: () => invoke('ilbi:update-status'),
+  checkForUpdates: () => invoke('ilbi:update-check'),
+  openUpdates: () => invoke('ilbi:update-window'),
+  updateApp: () => invoke('ilbi:update-run'),
+  onUpdateStatus: callback => { const listener = (_event, status) => callback(status); ipcRenderer.on('ilbi:update-status', listener); return () => ipcRenderer.removeListener('ilbi:update-status', listener); },
   saveDocumentPDF: document => invoke('ilbi:document-pdf', document),
   receiptShareLinks: tokens => invoke('ilbi:receipt-share-links', tokens),
 }));

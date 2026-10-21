@@ -29,6 +29,7 @@ def main():
     directory.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(artifact, directory / name)
     release = {"version": version, "sourceCommit": args.release_id, "url": f"/downloads/{args.release_id}/{name}", "bytes": manifest["bytes"], "sha256": digest, "channel": "preview"}
+    release['buildTimestamp'] = manifest.get('buildTimestamp', 0)
     (args.output / "releases-linux.json").write_text(json.dumps({"schema": 1, "linux": release}, indent=2) + "\n")
     print("Exported", name)
 

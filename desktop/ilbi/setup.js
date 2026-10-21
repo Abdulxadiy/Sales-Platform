@@ -12,6 +12,7 @@ async function openGuide() {
   catch (error) { showStatus('error', error.message); }
 }
 document.querySelector('#guide').addEventListener('click', openGuide);
+document.querySelector('#updates').addEventListener('click', () => { void window.ilbiDesktop.openUpdates().then(() => window.ilbiDesktop.checkForUpdates()).catch(error => showStatus('error', error.message)); });
 document.querySelector('#status-guide').addEventListener('click', openGuide);
 async function perform(action) {
   document.querySelectorAll('button').forEach(button => { button.disabled = true; });

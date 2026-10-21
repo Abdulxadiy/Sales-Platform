@@ -8,6 +8,7 @@ import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppLoadingScreen, { AppLoadingProvider } from './components/common/AppLoadingScreen';
 import SessionRecovery from './components/auth/SessionRecovery';
+import DesktopUpdateNotice from './components/sync/DesktopUpdateNotice';
 const Layout = lazy(() => import('./components/layout/Layout'));
 const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
 const Landing = lazy(() => import('./pages/Landing'));
@@ -103,6 +104,7 @@ export default function App() {
   return (
     <BrowserRouter useTransitions={false}>
       <ThemeProvider>
+        <DesktopUpdateNotice />
         <AppLoadingProvider>
         <AuthProvider>
           <TenantProvider>

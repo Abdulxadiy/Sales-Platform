@@ -13,6 +13,22 @@ from .snapshots import import_snapshot
 from .transport import cloud_request
 
 log = logging.getLogger(__name__)
+update_paused = threading.Event()
+cycle_lock = threading.Lock()
+
+
+def pause_for_update(timeout=65):
+    update_paused.set()
+    if not cycle_lock.acquire(timeout=timeout):
+        update_paused.clear()
+        return False
+    cycle_lock.release()
+    return True
+
+
+def resume_after_update():
+    update_paused.clear()
+    wake_worker.set()
 
 
 def error_message(value):
@@ -144,7 +160,8 @@ def run_worker(stop):
     while not stop.is_set():
         close_old_connections()
         try:
-            more = sync_once()
+            with cycle_lock:
+                more = False if update_paused.is_set() else sync_once()
         except Exception:
             log.exception("Desktop sync paused after unexpected failure; outbox retained")
             activity["error"] = (

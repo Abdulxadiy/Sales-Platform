@@ -12,6 +12,7 @@ async function run(executable, args, cwd) {
   });
 }
 async function main() {
+  const buildInfo = require('./build-info.cjs').writeBuildInfo();
   const assetCache = join(require('node:os').tmpdir(), 'ilbi-windows-assets');
   // NSIS may need more scratch space than a small tmpfs provides.
   const temporaryDirectory = join(__dirname, 'build/tmp');
@@ -47,7 +48,7 @@ async function main() {
   await writeFile(join(__dirname, 'release/desktop-build-manifest.json'), JSON.stringify({
     version, platform: 'win32', arch: 'x64', installerBytes: output.size, payloadBytes,
     sha256: hash.digest('hex'), nativeWindowsServiceVerified: false,
-    sourceCommit: process.env.GITHUB_SHA || null,
+    sourceCommit: process.env.GITHUB_SHA || null, buildTimestamp: buildInfo.buildTimestamp,
   }, null, 2) + '\n');
   console.log(`Verified installer payload: ${installer} (${output.size} bytes)`);
 }

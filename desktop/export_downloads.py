@@ -45,6 +45,7 @@ def main():
         "schema": 1,
         "windows": {
             "version": version,
+            "buildTimestamp": manifest.get("buildTimestamp", 0),
             "url": "/downloads/" + (args.release_id + "/" if args.release_id else "") + name,
             "sourceCommit": args.release_id,
             "bytes": manifest["installerBytes"],

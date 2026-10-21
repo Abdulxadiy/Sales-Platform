@@ -46,7 +46,7 @@ async function command(executable, args, options = {}) {
   });
 }
 async function exists(path) { try { await access(path); return true; } catch { return false; } }
-async function startHost({ resources, dataDir, secrets, bridgeKey, server, executable, runtimeArguments = [] }) {
+async function startHost({ resources, dataDir, secrets, bridgeKey, server, executable, runtimeArguments = [], updateKey = randomBytes(32).toString('hex') }) {
   server = validateServer(server);
   await mkdir(dataDir, { recursive: true });
   const pgRoot = join(resources, 'postgres');
@@ -75,7 +75,7 @@ async function startHost({ resources, dataDir, secrets, bridgeKey, server, execu
     const apiPort = await freePort();
     const environment = { ...process.env, ILBI_DESKTOP_DATA: dataDir, ILBI_DESKTOP_SECRET: secrets.djangoSecret,
       ILBI_DESKTOP_VAULT_KEY: secrets.vaultKey, ILBI_DESKTOP_BRIDGE_KEY: bridgeKey, ILBI_DESKTOP_SERVER: server,
-      ILBI_DESKTOP_DB_PASSWORD: secrets.databasePassword, ILBI_DESKTOP_DB_PORT: String(port), ILBI_DESKTOP_API_PORT: String(apiPort) };
+      ILBI_DESKTOP_DB_PASSWORD: secrets.databasePassword, ILBI_DESKTOP_DB_PORT: String(port), ILBI_DESKTOP_API_PORT: String(apiPort), ILBI_DESKTOP_UPDATE_KEY: updateKey };
     await command(executable, [...runtimeArguments, '--prepare'], { env: environment });
     processHandle = spawn(executable, runtimeArguments, { env: environment, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
     const log = require('node:fs').createWriteStream(join(dataDir, 'desktop.log'), { flags: 'a', mode: 0o600 });

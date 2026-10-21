@@ -19,15 +19,35 @@ if [[ ! -x "$source_directory/ilbi" || ! -f "$source_directory/resources/ilbi-de
 fi
 mkdir -p "$installation_root/releases" "$binary_directory" "${XDG_DATA_HOME:-$HOME/.local/share}/applications" "${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/512x512/apps"
 # Do not overwrite a running installation or remove its supporting resources.
-if pgrep -u "$(id -u)" -f -- "$installation_root/(current|releases/[^/]+)/ilbi([[:space:]]|$)" >/dev/null; then
-  printf '%s\n' 'Avval ILBI oynalarini yoping, keyin o‘rnatuvchini qayta oching.' >&2
-  exit 1
+restart_application=0
+installed_running() {
+  # The separate updater and Chromium subprocesses use the same executable.
+  # Only the main store application must close; the updater stays visible.
+  pgrep -u "$(id -u)" -af -- "$installation_root/(current|releases/[^/]+)/ilbi([[:space:]]|$)" |
+    awk '!/--ilbi-update-helper=|--type=/ {found=1} END {exit !found}'
+}
+if installed_running; then
+  if [[ ! -f "$installation_root/current/.ilbi-auto-update" ]]; then
+    printf '%s\n' 'Avval eski ILBI oynalarini yoping. Bu yangilanishdan keyin ilova o‘zi yopilib, qayta ochiladi.' >&2
+    exit 1
+  fi
+  "$installation_root/current/ilbi" --ilbi-quit-for-update >/dev/null 2>&1 &
+  for ((attempt=0; attempt<600; attempt++)); do
+    if ! installed_running; then break; fi
+    sleep 0.3
+  done
+  if installed_running; then
+    printf '%s\n' 'ILBI hali ishni tugatmoqda. Ilova va ma’lumotlar o‘zgartirilmadi. Keyinroq qayta urinib ko‘ring.' >&2
+    exit 1
+  fi
+  restart_application=1
 fi
 destination=$(mktemp -d "$installation_root/releases/build-XXXXXXXX")
 trap 'rm -rf -- "$destination"' ERR
 cp -a "$source_directory/." "$destination/"
 chmod u+x "$destination/ilbi" "$destination/install.sh"
 printf '%s\n' "$application_id" > "$destination/.ilbi-installation"
+printf '%s\n' '1' > "$destination/.ilbi-auto-update"
 # A wrapper preserves paths with spaces and passes arguments without eval.
 python_command=python3
 if ! command -v "$python_command" >/dev/null; then
@@ -52,3 +72,6 @@ ln -s "$destination" "$installation_root/.current-$$"
 mv -Tf "$installation_root/.current-$$" "$installation_root/current"
 trap - ERR
 printf '%s\n' 'ILBI o‘rnatildi. Ilovalar menyusidan ILBI’ni oching.' "Yoki: $binary_directory/ilbi"
+if [[ "$restart_application" == 1 ]]; then
+  "$binary_directory/ilbi" --ilbi-updated >/dev/null 2>&1 &
+fi

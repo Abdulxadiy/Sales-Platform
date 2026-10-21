@@ -26,6 +26,19 @@ class DesktopMiddleware:
         if not hmac.compare_digest(request.headers.get("X-ILBI-Desktop-Key", ""), settings.DESKTOP_BRIDGE_KEY):
             return JsonResponse({"detail": "Desktop ulanishi tasdiqlanmadi."}, status=403)
         if request.path.startswith("/desktop/"):
+            if request.path in {"/desktop/update/prepare/", "/desktop/update/resume/"}:
+                key = getattr(settings, 'DESKTOP_UPDATE_KEY', '')
+                if not key or request.method != 'POST' or not hmac.compare_digest(request.headers.get('X-ILBI-Update-Key', ''), key):
+                    return JsonResponse({'detail': 'Yangilash so‘rovi tasdiqlanmadi.'}, status=403)
+                from .worker import pause_for_update, resume_after_update
+                if request.path.endswith('/resume/'):
+                    resume_after_update()
+                    return JsonResponse({'ready': False})
+                # Do not hold runtime_lock while a network sync needs to finish.
+                if not pause_for_update():
+                    return JsonResponse({'detail': 'Sinxronlash hali tugamadi. Birozdan keyin yangilang.'}, status=409)
+                with runtime_lock:
+                    return JsonResponse({'ready': True})
             with runtime_lock:
                 return endpoint(request, request.path[len("/desktop/") :])
         if not request.path.startswith("/api/v1/"):

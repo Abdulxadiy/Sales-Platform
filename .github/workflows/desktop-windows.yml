@@ -59,9 +59,13 @@ jobs:
             $env:ILBI_DESKTOP_INSTALLED_EXE = Join-Path $destination 'ILBI.exe'
             node --test desktop/ilbi/tests/windows-ui.test.cjs
             if ($LASTEXITCODE -ne 0) { throw 'Installed guide UI failed' }
+            $env:ILBI_DESKTOP_UPDATE_PACKAGE = $installer.FullName
+            node desktop/ilbi/tests/update-acceptance.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Installed update/relaunch/durability failed' }
           } finally {
             Remove-Item Env:ILBI_DESKTOP_TEST_RESOURCES -ErrorAction SilentlyContinue
             Remove-Item Env:ILBI_DESKTOP_INSTALLED_EXE -ErrorAction SilentlyContinue
+            Remove-Item Env:ILBI_DESKTOP_UPDATE_PACKAGE -ErrorAction SilentlyContinue
             Start-Process "$destination/Uninstall ILBI.exe" -ArgumentList '/S' -Wait
           }
           $deadline = (Get-Date).AddSeconds(60)

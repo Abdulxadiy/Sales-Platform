@@ -30,4 +30,6 @@ bash "$test_directory/unpacked space/ILBI/install.sh"
 test "$vault_before" = "$(sha256sum "$XDG_CONFIG_HOME/ILBI/device.vault")"
 # Relaunch after update: decrypt the existing vault and restart its saved cluster.
 node "$repository/desktop/ilbi/tests/linux-relaunch.cjs"
+export ILBI_DESKTOP_UPDATE_PACKAGE="$package"
+node "$repository/desktop/ilbi/tests/update-acceptance.cjs"
 printf '%s\n' 'Installed Linux application, encrypted setup, update and restart verified.'

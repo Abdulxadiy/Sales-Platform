@@ -1,0 +1,12 @@
+<!doctype html><html lang="uz"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {ThemeProvider} from '/src/context/ThemeContext.jsx';
+import DesktopUpdateNotice from '/src/components/sync/DesktopUpdateNotice.jsx';
+import '/src/index.css';
+const listeners=new Set();
+window.updateQA={calls:0,send(value){for(const listener of listeners)listener(value);},listeners};
+window.ilbiDesktop={getUpdateStatus:async()=>({phase:'available',message:'ILBI uchun yangi yangilanish bor.',bytes:200000000}),onUpdateStatus(callback){listeners.add(callback);return()=>listeners.delete(callback)},checkForUpdates:async()=>{},updateApp:async()=>{updateQA.calls++;updateQA.send({phase:'downloading',progress:42,message:'Yangilanish yuklanmoqda…'});}};
+const root=createRoot(document.getElementById('root'));updateQA.unmount=()=>root.unmount();
+root.render(React.createElement(ThemeProvider,null,React.createElement(DesktopUpdateNotice)));
+</script></body></html>

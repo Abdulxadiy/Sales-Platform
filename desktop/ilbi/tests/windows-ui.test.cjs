@@ -40,23 +40,24 @@ test('installed app opens the complete offline guide and preserves the setup win
   processHandle.stderr.on('data', data => { log = (log + data.toString()).slice(-5000); });
   const sockets = [];
   const targets = async () => (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  async function waitFor(action) {
+  async function waitFor(action, description = 'app UI') {
     for (let i = 0; i < 200; i++) { try { const value = await action(); if (value) return value; } catch {} await pause(150); }
-    throw Error('Installed app UI did not become ready: ' + log);
+    throw Error(`Installed ${description} did not become ready: ${log}`);
   }
   try {
     const setupTarget = await waitFor(async () => (await targets()).find(item => item.type === 'page' && item.url.endsWith('/setup')));
     const setup = await connect(setupTarget); sockets.push(setup.socket);
-    assert.equal(await setup.evaluate('Boolean(document.querySelector("#guide")) && typeof window.ilbiDesktop.openGuide === "function"'), true);
+    // CDP exposes a new page before its HTML and isolated preload have loaded.
+    await waitFor(() => setup.evaluate('document.readyState === "complete" && Boolean(document.querySelector("#guide")) && typeof window.ilbiDesktop?.openGuide === "function"'), 'setup document and native bridge');
     await setup.evaluate('window.ilbiDesktop.openGuide()');
     const guideTarget = await waitFor(async () => (await targets()).find(item => item.type === 'page' && item.url.includes('/desktop-guide')));
     const guide = await connect(guideTarget); sockets.push(guide.socket);
-    await waitFor(() => guide.evaluate('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash"'));
+    await waitFor(() => guide.evaluate('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash" && !document.querySelector(".ilbi-loading")'), 'guide content');
     assert.equal(await guide.evaluate('document.querySelectorAll(".doc-focus-trigger img").length'), 7);
     await guide.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
     assert.equal(await guide.evaluate('[...document.querySelectorAll(".doc-focus-trigger img")].every(img=>img.naturalWidth>0)'), true);
     await guide.evaluate('document.querySelector(".doc-focus-trigger").click()');
-    assert.equal(await guide.evaluate('Boolean(document.querySelector("dialog[open]"))'), true);
+    await waitFor(() => guide.evaluate('Boolean(document.querySelector("dialog[open]"))'), 'enlarged guide image');
     await guide.evaluate('document.querySelector("dialog[open] button[aria-label=Yopish]").click()');
     await guide.evaluate('setTimeout(()=>document.querySelector(".desktop-guide-header button").click(),100);true');
     await waitFor(async () => !(await targets()).some(item => item.type === 'page' && item.url.includes('/desktop-guide')));

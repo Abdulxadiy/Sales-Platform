@@ -17,8 +17,8 @@ from rest_framework.test import force_authenticate
 from apps.core.event_clock import event_time
 
 from .files import decode_body
-from .models import SyncDevice, SyncReceipt
-from .protocol import LOCAL_ID_START, allowed, digest, json_value, receipt_hint, record_changes, replaying
+from .models import SyncDevice, SyncObjectMap, SyncReceipt
+from .protocol import LOCAL_ID_START, allowed, digest, json_value, receipt_hint, record_changes, reference_ids, replaying
 from .snapshots import authorize
 
 
@@ -69,6 +69,16 @@ def rewrite(value, mapping, strict=True):
 def apply_operation(user, device_id, payload):
     device = device_for(user, device_id, lock=True)
     try:
+        operation_id = UUID(str(payload["id"]))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ValidationError("Operatsiya identifikatori noto‘g‘ri.") from exc
+    fingerprint = digest(payload)
+    previous = SyncReceipt.objects.filter(device=device, operation_id=operation_id).first()
+    if previous:
+        if previous.fingerprint != fingerprint:
+            raise SyncConflict("Operatsiya identifikatori boshqa ma’lumot uchun ishlatilgan.")
+        return previous.result
+    try:
         grant = signing.loads(payload["actor_ticket"], salt="ilbi-offline-actor")
         actor = get_user_model().objects.get(pk=grant["user_id"], is_active=True, token_version=grant["token_version"])
         from apps.accounts.services.tenant_context_service import resolve_active_context
@@ -86,21 +96,14 @@ def apply_operation(user, device_id, payload):
         raise ValidationError("Operatsiya formati noto‘g‘ri.") from exc
     if not allowed(method, path):
         raise ValidationError("Bu amal uchun jonli server aloqasi kerak.")
-    fingerprint = digest(payload)
-    previous = SyncReceipt.objects.filter(device=device, operation_id=operation_id).first()
-    if previous:
-        if previous.fingerprint != fingerprint:
-            raise SyncConflict("Operatsiya identifikatori boshqa ma’lumot uchun ishlatilgan.")
-        return previous.result
     dependencies = payload.get("dependencies", [])
     if len(dependencies) > 5000 or SyncReceipt.objects.filter(
         device=device, operation_id__in=dependencies
     ).count() != len(set(dependencies)):
         raise SyncConflict("Bog‘liq operatsiyalar avval yuborilishi kerak.")
-    mapping = {}
-    for result in SyncReceipt.objects.filter(device=device).values_list("result", flat=True):
-        mapping.update(result.get("id_map", {}))
-    path = re.sub(r"\d+", lambda match: str(rewrite(int(match[0]), mapping)), path)
+    needed = reference_ids([path.split('/'), payload.get('body', {}), payload.get('preconditions', [])])
+    mapping = {str(local): remote for local, remote in SyncObjectMap.objects.filter(device=device, local_id__in=needed).values_list('local_id', 'remote_id')}
+    path = re.sub(r"(?<=/)\d+(?=/|$)", lambda match: str(rewrite(int(match[0]), mapping)), path)
     body = rewrite(payload.get("body", {}), mapping)
     for condition in payload.get("preconditions", []):
         label = condition.get("model")
@@ -163,6 +166,7 @@ def apply_operation(user, device_id, payload):
         if not candidates:
             raise SyncConflict("Operatsiya natijasi mahalliy yozuvga mos kelmadi.")
         id_map[str(row["id"])] = candidates.pop(0)
+        SyncObjectMap.objects.create(device=device, local_id=row['id'], remote_id=id_map[str(row['id'])], model=row['model'])
     result = {"id": str(operation_id), "id_map": id_map, "response": json_value(getattr(response, "data", {}))}
     SyncReceipt.objects.create(device=device, operation_id=operation_id, fingerprint=fingerprint, result=result)
     return result

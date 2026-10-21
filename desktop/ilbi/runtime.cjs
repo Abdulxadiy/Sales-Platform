@@ -56,6 +56,10 @@ async function startHost({ resources, dataDir, secrets, bridgeKey, server, execu
     try { await command(binary('initdb'), ['-D', cluster, '-U', 'ilbi_desktop', '--auth=scram-sha-256', '--encoding=UTF8', '--no-locale', '--pwfile', passwordFile]); }
     finally { await require('node:fs/promises').rm(passwordFile, { force: true }); }
   }
+  // Recover an orphaned database process after a power loss or forced app exit.
+  let wasRunning = false;
+  try { await command(binary('pg_ctl'), ['-D', cluster, 'status']); wasRunning = true; } catch {}
+  if (wasRunning) await command(binary('pg_ctl'), ['-D', cluster, '-m', 'fast', '-w', 'stop']);
   await command(binary('pg_ctl'), ['-D', cluster, '-l', join(dataDir, 'postgres.log'), '-o', `-p ${port} -h 127.0.0.1`, '-w', 'start']);
   let processHandle;
   try {

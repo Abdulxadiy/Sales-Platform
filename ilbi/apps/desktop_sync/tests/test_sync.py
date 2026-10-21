@@ -1,5 +1,6 @@
 from datetime import timedelta
 from uuid import uuid4
+from types import SimpleNamespace
 
 import pytest
 from django.core import signing
@@ -9,7 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.test import APIClient
 
 from apps.desktop_sync.cloud import SyncConflict, apply_operation, rewrite
-from apps.desktop_sync.local import enqueue, next_operation, ordered_operations, prioritize
+from apps.desktop_sync.local import enqueue, next_operation, ordered_operations, prioritize, queue_status
 from apps.desktop_sync.models import LocalOperation, SyncDevice, SyncReceipt
 from apps.desktop_sync.protocol import LOCAL_ID_START, allowed
 from apps.desktop_sync.snapshots import export_snapshot, import_snapshot
@@ -288,3 +289,38 @@ def test_cash_income_replay_keeps_historical_time(owner, tenant, device):
     income = CashIncome.objects.get(tenant=tenant)
     assert income.created_at == instant
     assert str(income.amount) == "15000.00"
+
+
+def test_thousands_of_prioritized_dependencies_do_not_overflow_stack():
+    rows = []
+    for index in range(2500):
+        rows.append(SimpleNamespace(id=str(index), dependencies=[str(index - 1)] if index else [],
+                                    priority=1 if index == 2499 else 0, status="waiting"))
+    assert [row.id for row in ordered_operations(rows)] == [str(index) for index in range(2500)]
+
+
+def test_transitive_blocked_and_promoted_rows_are_visible(owner, tenant):
+    first = local_row(tenant, owner, status="error")
+    second = local_row(tenant, owner, dependencies=[str(first.id)])
+    third = local_row(tenant, owner, dependencies=[str(second.id)], priority=1)
+    rows = {row["id"]: row for row in queue_status()["operations"]}
+    assert rows[str(second.id)]["status"] == rows[str(third.id)]["status"] == "blocked"
+    assert all(row["promoted"] for row in rows.values())
+
+
+def test_expired_primary_requires_explicit_revocation(owner, tenant, device):
+    device.lease_until = timezone.now() - timedelta(days=1)
+    device.save()
+    client = APIClient()
+    client.force_authenticate(owner)
+    assert client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 400
+    assert client.post(f"/api/v1/sync/devices/{device.pk}/revoke/", {}, format="json").status_code == 200
+    assert client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 200
+
+
+def test_malformed_sync_payload_is_a_client_error(owner, device):
+    client = APIClient()
+    client.force_authenticate(owner)
+    response = client.post("/api/v1/sync/push/", {"protocol": 1, "device_id": str(device.pk), "operation": {}}, format="json")
+    assert response.status_code == 400
+    assert not SyncReceipt.objects.exists()

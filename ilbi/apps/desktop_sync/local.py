@@ -3,9 +3,11 @@
 import threading
 
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
-from .models import LocalOperation, LocalState
+from .models import LocalAlias, LocalOperation, LocalState
+from .protocol import reference_ids
 
 runtime_lock = threading.RLock()
 wake_worker = threading.Event()
@@ -28,18 +30,22 @@ def ordered_operations(rows):
     ordered, visited, visiting = [], set(), set()
 
     def visit(row):
-        key = str(row.id)
-        if key in visiting:
-            raise ValueError("Operatsiyalar bog‘liqligida sikl bor.")
-        if key in visited:
-            return
-        visiting.add(key)
-        for dependency in row.dependencies:
-            if dependency in by_id:
-                visit(by_id[dependency])
-        visiting.remove(key)
-        visited.add(key)
-        ordered.append(row)
+        pending = [(row, False)]
+        while pending:
+            current, expanded = pending.pop()
+            key = str(current.id)
+            if key in visited:
+                continue
+            if expanded:
+                visiting.remove(key)
+                visited.add(key)
+                ordered.append(current)
+                continue
+            if key in visiting:
+                raise ValueError("Operatsiyalar bog‘liqligida sikl bor.")
+            visiting.add(key)
+            pending.append((current, True))
+            pending.extend((by_id[dependency], False) for dependency in reversed(current.dependencies) if dependency in by_id)
 
     for row in rows:
         if row.status == "active":
@@ -59,19 +65,20 @@ def prioritize(operation_id):
     if row.status in {"active", "done"}:
         return
     if not row.priority:
-        maximum = max(LocalOperation.objects.values_list("priority", flat=True), default=0)
+        maximum = LocalOperation.objects.exclude(status="done").aggregate(value=Max("priority"))["value"] or 0
         row.priority = maximum + 1
     row.save(update_fields=["priority"])
     wake_worker.set()
 
 
 def next_operation():
-    rows = ordered_operations(LocalOperation.objects.exclude(status="done"))
-    done = {str(value) for value in LocalOperation.objects.filter(status="done").values_list("id", flat=True)}
+    rows = ordered_operations(LocalOperation.objects.exclude(status="done").defer("payload", "result"))
+    required = {dependency for row in rows for dependency in row.dependencies}
+    done = {str(value) for value in LocalOperation.objects.filter(id__in=required, status="done").values_list("id", flat=True)}
     for row in rows:
         if row.status == "waiting" and all(dependency in done for dependency in row.dependencies):
             if row.next_attempt_at is None or row.next_attempt_at <= timezone.now():
-                return row
+                return LocalOperation.objects.get(pk=row.pk)
     return None
 
 
@@ -81,7 +88,7 @@ def enqueue(*, user_id, tenant_id, payload, resources, references, title):
     # Latest writer per aggregate preserves cash-shift, stock and customer
     # causality without making unrelated catalog changes wait for every sale.
     seen = set()
-    for previous in LocalOperation.objects.exclude(status="done").order_by("-sequence"):
+    for previous in LocalOperation.objects.exclude(status="done").only("id", "resources").order_by("-sequence"):
         overlap = needed.intersection(previous.resources) - seen
         if overlap:
             dependencies.append(str(previous.id))
@@ -101,17 +108,27 @@ def enqueue(*, user_id, tenant_id, payload, resources, references, title):
 
 
 def queue_status():
-    rows = ordered_operations(LocalOperation.objects.exclude(status="done"))
+    rows = ordered_operations(LocalOperation.objects.exclude(status="done").defer("payload", "result"))
     ids = {str(row.id): row for row in rows}
     result = []
+    blocked_ids, promoted = set(), set()
+    pending = [str(row.id) for row in rows if row.priority]
+    while pending:
+        key = pending.pop()
+        if key not in promoted and key in ids:
+            promoted.add(key)
+            pending.extend(ids[key].dependencies)
     for row in rows:
-        blocked = any(dep in ids and ids[dep].status in {"error", "blocked"} for dep in row.dependencies)
+        blocked = any(dep in blocked_ids or (dep in ids and ids[dep].status == "error") for dep in row.dependencies)
+        if blocked:
+            blocked_ids.add(str(row.id))
         result.append(
             {
                 "id": str(row.id),
                 "title": row.title,
                 "status": "blocked" if blocked else row.status,
                 "priority": row.priority,
+                "promoted": str(row.id) in promoted,
                 "sequence": row.sequence,
                 "error": row.error,
                 "dependencies": row.dependencies,
@@ -126,3 +143,8 @@ def queue_status():
         "enrolled": bool(get_state("device")),
         "protocol": 1,
     }
+
+
+def aliases_for(value):
+    needed = reference_ids(value)
+    return {str(local): remote for local, remote in LocalAlias.objects.filter(active=True, local_id__in=needed).values_list("local_id", "remote_id")}

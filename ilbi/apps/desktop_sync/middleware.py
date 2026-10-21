@@ -9,10 +9,11 @@ from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 
 from .cloud import rewrite
-from .desktop_api import endpoint
-from .files import encode_request
-from .local import enqueue, get_state, runtime_lock
+from .desktop_api import authenticated, endpoint
+from .files import decode_body, encode_request
+from .local import aliases_for, enqueue, get_state, runtime_lock
 from .protocol import allowed, preconditions, record_changes, title_for
+from .transport import cloud_request
 
 
 class DesktopMiddleware:
@@ -36,11 +37,12 @@ class DesktopMiddleware:
                 return self.proxy(request, path)
             if not device:
                 return self.proxy(request, path)
-            aliases = get_state("aliases", {})
+            identifiers = [path.split('/'), [part for value in request.GET.values() for part in value.split(',')]]
+            aliases = aliases_for(identifiers)
             if aliases:
                 # Forms and open receipts may retain their local IDs after a pull.
                 # Translate only identifiers already acknowledged and imported.
-                path = re.sub(r"\d+", lambda match: str(aliases.get(match[0], match[0])), path)
+                path = re.sub(r"(?<=/)\d+(?=/|$)", lambda match: str(aliases.get(match[0], match[0])), path)
                 request.path = request.path_info = "/api/v1/" + path
                 query = request.GET.copy()
                 for key in query:
@@ -72,7 +74,7 @@ class DesktopMiddleware:
             if remote_only or (request.method not in {"GET", "HEAD", "OPTIONS"} and not allowed(request.method, path)):
                 from .models import LocalOperation
 
-                if LocalOperation.objects.exclude(status="done").exists():
+                if request.method not in {"GET", "HEAD", "OPTIONS"} and LocalOperation.objects.exclude(status="done").exists():
                     return JsonResponse(
                         {"detail": "Bu amal jonli serverda bajariladi. Avval mahalliy navbatni sinxronlang."},
                         status=409,
@@ -82,9 +84,12 @@ class DesktopMiddleware:
                 return self.get_response(request)
             try:
                 body = encode_request(request)
-                if aliases and request.content_type == "application/json":
+                aliases.update(aliases_for(body))
+                if aliases and request.content_type in {"application/json", "multipart/form-data"}:
                     body = rewrite(body, aliases, strict=False)
-                    request._body = json.dumps(body).encode()
+                    encoded, content_type = decode_body(body)
+                    request._body = encoded.encode() if isinstance(encoded, str) else encoded
+                    request.META["CONTENT_TYPE"] = content_type
                     request.META["CONTENT_LENGTH"] = str(len(request._body))
             except ValueError as exc:
                 return JsonResponse({"detail": str(exc)}, status=400)
@@ -126,30 +131,41 @@ class DesktopMiddleware:
     def proxy(self, request, path, enrolled=False):
         try:
             if enrolled:
-                # Never substitute the owner's cloud credentials for a cashier's
-                # privileged live action. Each user must log in online for it.
-                return JsonResponse(
-                    {"detail": "Bu amal uchun web orqali hisobingizga kiring. Offline ishlar saqlangan."}, status=409
-                )
-            base = settings.DESKTOP_SERVER.rstrip("/")
-            headers = {
-                key: value
-                for key, value in request.headers.items()
-                if key.lower() in {"authorization", "content-type", "x-tenant-id"}
-            }
-            remote = requests.request(
-                request.method,
-                base + request.get_full_path(),
-                data=request.body,
-                headers=headers,
-                timeout=(5, 30),
-                allow_redirects=False,
-            )
+                # Live actions use this cashier's own encrypted credentials.
+                # They never inherit the primary owner's permissions.
+                from rest_framework.exceptions import APIException
+                try:
+                    user = authenticated(request)
+                    remote = cloud_request(request.method, request.get_full_path()[len('/api/v1/'):],
+                        user_id=user.pk, raw=request.body, headers={
+                            "Content-Type": request.headers.get("Content-Type", "application/json"),
+                            "X-Tenant-ID": str(get_state("device")["tenant_id"]),
+                        })
+                except (KeyError, APIException):
+                    return JsonResponse({"detail": "Jonli amal uchun internet orqali hisobingizga qayta kiring."}, status=409)
+                if remote.status_code == 401:
+                    return JsonResponse({"detail": "Jonli sessiya tugagan. Internet orqali qayta kiring; offline ishlar saqlangan."}, status=409)
+                if request.method not in {"GET", "HEAD", "OPTIONS"} and remote.ok:
+                    from .local import set_state, wake_worker
+                    set_state("revision", -1)
+                    wake_worker.set()
+            else:
+                base = settings.DESKTOP_SERVER.rstrip("/")
+                headers = {
+                    key: value
+                    for key, value in request.headers.items()
+                    if key.lower() in {"authorization", "content-type", "x-tenant-id"}
+                }
+                remote = requests.request(request.method, base + request.get_full_path(), data=request.body,
+                                          headers=headers, timeout=(5, 30), allow_redirects=False)
             response = HttpResponse(
                 remote.content,
                 status=remote.status_code,
                 content_type=remote.headers.get("Content-Type", "application/json"),
             )
+            for name in ("Content-Disposition", "Retry-After"):
+                if name in remote.headers:
+                    response[name] = remote.headers[name]
             return response
         except requests.RequestException:
             return JsonResponse(

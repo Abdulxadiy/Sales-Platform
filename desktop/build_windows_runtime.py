@@ -21,19 +21,41 @@ EXCLUDED = {"ilbi", "gunicorn", "gevent", "greenlet", "psycopg2", "ruff", "facto
             "djangorestframework-stubs"}
 
 
-def extract(archive, destination):
+def extract(archive, destination, postgres=False):
     destination.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(archive) as source:
         for name in source.namelist():
             if not (destination / name).resolve().is_relative_to(destination.resolve()):
                 raise ValueError("Unsafe ZIP path")
-        source.extractall(destination)
+            parts = Path(name).parts
+            if postgres and len(parts) > 1 and parts[1] not in {"bin", "lib", "share"} and not name.endswith(".txt"):
+                continue
+            source.extract(name, destination)
+
+
+def stage_source(backend):
+    app = backend / "app"
+    if app.exists():
+        shutil.rmtree(app)
+    for directory in ("apps", "api", "config", "data"):
+        shutil.copytree(ROOT / "ilbi" / directory, app / directory,
+                        ignore=shutil.ignore_patterns("__pycache__", "tests", "test_*.py", ".env*"))
+    shutil.copy(ROOT / "ilbi/pyproject.toml", app / "pyproject.toml")
+    shutil.copy(ROOT / "desktop/runtime.py", backend / "runtime.py")
+    docs = backend / "docs"
+    if docs.exists():
+        shutil.rmtree(docs)
+    shutil.copytree(ROOT / "docs", docs, ignore=shutil.ignore_patterns("rasmlar", "releases"))
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path, default=Path(tempfile.gettempdir()) / "ilbi-windows-assets")
+    parser.add_argument("--code-only", action="store_true", help="Refresh source in an already staged runtime")
     args = parser.parse_args()
+    if args.code_only:
+        stage_source(ROOT / "desktop/ilbi/resources/backend")
+        return
     args.cache.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((ROOT / "desktop/runtime-assets.json").read_text())
     archives = {}
@@ -84,18 +106,12 @@ def main():
     subprocess.run([sys.executable, "-m", "pip", "install", "--target", str(backend / "python/Lib/site-packages"),
                     "--platform", "win_amd64", "--python-version", "3.13", "--implementation", "cp", "--only-binary=:all:",
                     "--no-deps", "--no-compile", "--require-hashes", "-r", str(requirements_path)], check=True)
-    app = backend / "app"
-    for directory in ("apps", "api", "config", "data"):
-        shutil.copytree(ROOT / "ilbi" / directory, app / directory,
-                        ignore=shutil.ignore_patterns("__pycache__", "tests", "test_*.py", ".env*"))
-    shutil.copy(ROOT / "ilbi/pyproject.toml", app / "pyproject.toml")
-    shutil.copy(ROOT / "desktop/runtime.py", backend / "runtime.py")
-    shutil.copytree(ROOT / "docs", backend / "docs", ignore=shutil.ignore_patterns("rasmlar", "releases"))
+    stage_source(backend)
     postgres = resources / "postgres"
     if not postgres.exists():
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=resources) as directory:
             temporary = Path(directory)
-            extract(archives["postgres"], temporary)
+            extract(archives["postgres"], temporary, postgres=True)
             source = next(temporary.rglob("initdb.exe")).parent.parent
             shutil.copytree(source, postgres)
     required = [backend / "python/python.exe", postgres / "bin/initdb.exe", postgres / "bin/pg_ctl.exe",

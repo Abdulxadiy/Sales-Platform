@@ -4,6 +4,8 @@ from uuid import UUID, uuid4
 from django.core import signing
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -29,6 +31,7 @@ def actor_ticket(device, actor):
     )
 
 
+@extend_schema(tags=["Desktop sync"], request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 class DeviceEnrollView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -48,7 +51,7 @@ class DeviceEnrollView(APIView):
         if (
             not existing
             and SyncDevice.objects.filter(
-                tenant_id=tenant.pk, revoked_at__isnull=True, lease_until__gt=timezone.now()
+                tenant_id=tenant.pk, revoked_at__isnull=True
             ).exists()
         ):
             raise ValidationError(
@@ -76,6 +79,7 @@ class DeviceEnrollView(APIView):
         )
 
 
+@extend_schema(tags=["Desktop sync"], responses={200: OpenApiTypes.OBJECT})
 class SnapshotView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -101,6 +105,7 @@ class SnapshotView(APIView):
         )
 
 
+@extend_schema(tags=["Desktop sync"], responses={200: OpenApiTypes.OBJECT})
 class ChangesView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -109,6 +114,7 @@ class ChangesView(APIView):
         return Response({"revision": revision_for(device.tenant_id)})
 
 
+@extend_schema(tags=["Desktop sync"], request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 class ActorGrantView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -138,20 +144,29 @@ class ActorGrantView(APIView):
         )
 
 
+@extend_schema(tags=["Desktop sync"], request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 class PushView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if request.data.get("protocol") != PROTOCOL:
             raise ValidationError("Dastur va server versiyasi mos emas.")
+        from .serializers import OperationSerializer
+
+        operation = OperationSerializer(data=request.data.get("operation", {}))
+        operation.is_valid(raise_exception=True)
         return Response(apply_operation(request.user, request.data.get("device_id"), request.data.get("operation", {})))
 
 
+@extend_schema(tags=["Desktop sync"], request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 class DeviceRevokeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, device_id):
-        device = device_for(request.user, device_id)
+        device = SyncDevice.objects.filter(pk=device_id, revoked_at__isnull=True).first()
+        if device is None:
+            raise ValidationError("Qurilma topilmadi.")
+        authorize(request.user, device.tenant_id)
         device.revoked_at = timezone.now()
         device.save(update_fields=["revoked_at"])
         return Response({"revoked": True})

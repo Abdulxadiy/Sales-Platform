@@ -104,9 +104,8 @@ def endpoint(request, path):
             else:
                 if not device or user_data["id"] != device["user_id"]:
                     raise ValueError("Ushbu qurilmani ulagan owner hisobi kerak.")
-                Vault().write(
-                    {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}
-                )
+                Vault().put_user(user_data["id"],
+                    {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}, primary=True)
                 wake_worker.set()
                 return JsonResponse({"connected": True})
             if not response.ok:
@@ -121,9 +120,6 @@ def endpoint(request, path):
                     device["tenant_id"] = result["snapshot"]["tenant_id"]
                     set_state("device", device)
                     set_state("revision", result["snapshot"].get("revision", 0))
-                    Vault().write(
-                        {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}
-                    )
                 user = get_user_model().objects.filter(pk=result["user_id"]).first()
                 if user is None:
                     raise ValueError("Xodim yangi qo‘shilgan. Owner navbatni sinxronlab bo‘lgach qayta urinib ko‘ring.")
@@ -135,10 +131,9 @@ def endpoint(request, path):
                     "actor_ticket": result["actor_ticket"],
                 }
                 set_state("actors", actors)
+                Vault().put_user(user.pk, {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")},
+                                 primary=user.pk == device["user_id"])
                 if path == "actor/" and user.pk == device["user_id"]:
-                    Vault().write(
-                        {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}
-                    )
                     device["lease_until"] = result["lease_until"]
                     set_state("device", device)
             wake_worker.set()

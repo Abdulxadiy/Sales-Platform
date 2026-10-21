@@ -2,6 +2,7 @@
 
 import json
 import os
+import threading
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -24,18 +25,31 @@ def server_url(value):
 
 
 class Vault:
+    lock = threading.RLock()
     def __init__(self):
         self.path = Path(settings.DESKTOP_DATA_DIR) / "cloud.credentials"
         self.cipher = Fernet(os.environ["ILBI_DESKTOP_VAULT_KEY"].encode())
 
     def read(self):
-        return json.loads(self.cipher.decrypt(self.path.read_bytes())) if self.path.exists() else {}
+        with self.lock:
+            return json.loads(self.cipher.decrypt(self.path.read_bytes())) if self.path.exists() else {}
 
     def write(self, value):
-        temporary = self.path.with_suffix(".new")
-        temporary.write_bytes(self.cipher.encrypt(json.dumps(value).encode()))
-        temporary.chmod(0o600)
-        temporary.replace(self.path)
+        with self.lock:
+            temporary = self.path.with_suffix(".new")
+            temporary.write_bytes(self.cipher.encrypt(json.dumps(value).encode()))
+            temporary.chmod(0o600)
+            temporary.replace(self.path)
+
+    def put_user(self, user_id, value, primary=False):
+        with self.lock:
+            current = self.read()
+            current.setdefault("actors", {})[str(user_id)] = value
+            current["server"] = value["server"]
+            if primary:
+                current.update(value)
+                current["primary_user"] = user_id
+            self.write(current)
 
 
 class UploadBody:
@@ -53,12 +67,15 @@ class UploadBody:
         activity["stage"] = "confirming"
 
 
-def cloud_request(method, path, *, body=None, progress=False, headers=None):
+def cloud_request(method, path, *, body=None, progress=False, headers=None, user_id=None, raw=None):
     vault = Vault()
-    credentials = vault.read()
-    base = server_url(credentials["server"])
+    stored = vault.read()
+    credentials = stored if user_id is None else stored.get("actors", {})[str(user_id)]
+    base = server_url(stored["server"])
     auth = {"Authorization": "Bearer " + credentials["access"], **(headers or {})}
     kwargs = {"allow_redirects": False, "headers": auth}
+    if raw is not None:
+        kwargs["data"] = raw
     if body is not None:
         data = json.dumps(body, cls=DjangoJSONEncoder).encode()
         kwargs["data"] = UploadBody(data) if progress else data
@@ -74,7 +91,9 @@ def cloud_request(method, path, *, body=None, progress=False, headers=None):
         )
         if refreshed.ok:
             credentials.update(refreshed.json())
-            vault.write(credentials)
+            actor_id = stored["primary_user"] if user_id is None else user_id
+            vault.put_user(actor_id, {"server": base, "access": credentials["access"], "refresh": credentials["refresh"]},
+                           primary=actor_id == stored["primary_user"])
             kwargs["headers"]["Authorization"] = "Bearer " + credentials["access"]
             response = requests.request(method, base + "/api/v1/" + path, timeout=(5, 45), **kwargs)
     return response

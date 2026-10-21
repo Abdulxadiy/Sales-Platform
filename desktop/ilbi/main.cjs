@@ -100,7 +100,8 @@ else {
           res.end(body);
         } catch { res.writeHead(500); res.end('ILBI local service error'); }
       });
-      await new Promise(ok => webServer.listen(0, '127.0.0.1', ok));
+      // A stable origin preserves account drafts and session storage across restarts.
+      await new Promise((ok, fail) => { webServer.once('error', fail); webServer.listen(49244, '127.0.0.1', ok); });
       origin = `http://127.0.0.1:${webServer.address().port}`;
       ipcMain.handle('ilbi:setup', async (event, value) => {
         validSender(event, true);
@@ -135,6 +136,14 @@ else {
       });
       Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'ILBI', submenu: [
         { label: 'Boshqa kassani ulash', click: () => exportPairing({ senderFrame: { url: origin + '/' } }).catch(error => dialog.showErrorBox('ILBI', error.message)) },
+        { label: 'Ulanish faylini yangilash', enabled: configuration?.mode === 'client', click: async () => {
+          try {
+            const result = await dialog.showOpenDialog(window, { properties: ['openFile'], filters: [{ name: 'ILBI pairing', extensions: ['ilbi'] }] });
+            if (result.canceled) return;
+            configuration = { mode: 'client', pairing: validatePairing(JSON.parse(await readFile(result.filePaths[0], 'utf8'))) };
+            await saveVault(); await window.loadURL(origin + '/login');
+          } catch (error) { dialog.showErrorBox('ILBI', error.message); }
+        } },
         { label: 'Dastur haqida', click: () => dialog.showMessageBox(window, { message: `ILBI ${app.getVersion()}`, detail: 'Yangilash uchun yangi ILBI installerini ishga tushiring. Mahalliy baza va yuborilmagan ishlar saqlanadi.' }) },
         { type: 'separator' }, { role: 'quit', label: 'Chiqish' },
       ] }, { label: 'Ko‘rinish', submenu: [{ role: 'reload' }, { role: 'togglefullscreen' }, { role: 'resetzoom' }, { role: 'zoomin' }, { role: 'zoomout' }] }]));

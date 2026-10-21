@@ -9,7 +9,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from apps.accounts.services.tenant_context_service import resolve_active_context
 
-from .protocol import LOCAL_ID_START, PROTOCOL
+from .protocol import LOCAL_ID_START, PROTOCOL, digest
 
 LABELS = [
     "accounts.user",
@@ -42,6 +42,15 @@ LABELS = [
     "catalog.catalogimportjob",
     "sales.counterpartyimportjob",
 ]
+
+
+def schema_signature():
+    return digest(
+        {
+            label: [(field.name, field.get_internal_type(), field.null) for field in apps.get_model(label)._meta.fields]
+            for label in LABELS
+        }
+    )
 
 
 def authorize(user, tenant_id):
@@ -100,11 +109,17 @@ def export_snapshot(tenant):
                 groups=[],
                 user_permissions=[],
             )
-            row["fields"]["password"] = "!desktop-no-cloud-password"
+            row["fields"]["password"] = "!desktop-no-cloud-password"  # noqa: S105 -- unusable hash, no cloud password
             row["fields"].pop("terms_accepted_ip", None)
         if row["model"] == "tenants.sellerprofile":
             row["fields"]["reviewed_by"] = None
-    return {"protocol": PROTOCOL, "tenant_id": tenant.pk, "revision": snapshot_revision, "rows": rows}
+    return {
+        "protocol": PROTOCOL,
+        "schema": schema_signature(),
+        "tenant_id": tenant.pk,
+        "revision": snapshot_revision,
+        "rows": rows,
+    }
 
 
 @transaction.atomic
@@ -113,15 +128,16 @@ def import_snapshot(snapshot):
 
     if not getattr(settings, "DESKTOP_MODE", False):
         raise RuntimeError("Snapshot import is restricted to the isolated desktop database")
-    if snapshot.get("protocol") != PROTOCOL or any(row["model"] not in LABELS for row in snapshot["rows"]):
+    if (
+        snapshot.get("protocol") != PROTOCOL
+        or snapshot.get("schema") != schema_signature()
+        or any(row["model"] not in LABELS for row in snapshot["rows"])
+    ):
         raise ValueError("Dastur va server versiyalari mos emas.")
-    from .models import LocalOperation, LocalState
+    from .models import LocalAlias, LocalOperation
 
     if LocalOperation.objects.exclude(status="done").exists():
         raise ValueError("Yuborilmagan operatsiyalar bor; mahalliy baza almashtirilmadi.")
-    aliases = {}
-    for result in LocalOperation.objects.filter(status="done").values_list("result", flat=True):
-        aliases.update(result.get("id_map", {}))
     # Deferrable FKs allow cyclic sale/stock/accounting references to be restored
     # atomically, without business signals or deletion of the durable outbox.
     with connection.cursor() as cursor:
@@ -147,4 +163,4 @@ def import_snapshot(snapshot):
                     f"ALTER TABLE {table} ALTER COLUMN {column} SET DEFAULT nextval('desktop_object_id_seq')"
                 )
         cursor.execute("SET CONSTRAINTS ALL DEFERRED")
-    LocalState.objects.update_or_create(key="aliases", defaults={"value": aliases})
+    LocalAlias.objects.filter(active=False).update(active=True)

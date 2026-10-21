@@ -3,16 +3,29 @@ import threading
 from datetime import timedelta
 
 import requests
-from django.db import close_old_connections
+from django.db import close_old_connections, transaction
 from django.utils import timezone
 
 from .files import cache_media
 from .local import activity, get_state, next_operation, runtime_lock, set_state, wake_worker
-from .models import LocalOperation
+from .models import LocalAlias, LocalOperation
 from .snapshots import import_snapshot
 from .transport import cloud_request
 
 log = logging.getLogger(__name__)
+
+
+def error_message(value):
+    if isinstance(value, str):
+        return value[:1500]
+    if isinstance(value, list):
+        return "; ".join(error_message(item) for item in value)[:1500]
+    if isinstance(value, dict):
+        for key in ("reason", "detail", "details", "error", "message"):
+            if key in value:
+                return error_message(value[key])
+        return "; ".join(error_message(item) for item in value.values())[:1500]
+    return "Operatsiyani tekshirish kerak."
 
 
 def sync_once():
@@ -35,13 +48,15 @@ def sync_once():
                 progress=True,
             )
             activity["online"] = True
-            with runtime_lock:
+            with runtime_lock, transaction.atomic():
                 if response.ok:
                     result = response.json()
                     if result.get("id") != str(row.id):
                         raise ValueError("Server noto‘g‘ri operatsiyani tasdiqladi.")
                     row.status, row.result, row.completed_at = "done", result, timezone.now()
                     row.error = ""
+                    LocalAlias.objects.bulk_create([LocalAlias(local_id=int(local), remote_id=remote)
+                                                    for local, remote in result.get("id_map", {}).items()], ignore_conflicts=True)
                 elif response.status_code in {408, 425, 429} or response.status_code >= 500:
                     row.status = "waiting"
                     row.error = "Server vaqtincha band. Qayta yuboriladi."
@@ -50,7 +65,7 @@ def sync_once():
                 else:
                     row.status = "error"
                     try:
-                        row.error = str(response.json())[:2000]
+                        row.error = error_message(response.json())
                     except ValueError:
                         row.error = f"Server javobi: {response.status_code}"
                 row.save()
@@ -127,6 +142,9 @@ def run_worker(stop):
             more = sync_once()
         except Exception:
             log.exception("Desktop sync paused after unexpected failure; outbox retained")
+            activity["error"] = (
+                "Sinxronlash to‘xtadi. Dastur versiyasini va ulanishni tekshiring; ishlaringiz saqlangan."
+            )
             # A failed worker must never leave a forever-active operation.
             LocalOperation.objects.filter(status="active").update(
                 status="error", error="Sinxronlashda xatolik. Qayta urinib ko‘ring."

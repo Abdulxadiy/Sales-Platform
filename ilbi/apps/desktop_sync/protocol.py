@@ -9,7 +9,7 @@ from contextvars import ContextVar
 from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models.fields.files import FieldFile
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 
 from apps.core.event_clock import event_time
 
@@ -43,6 +43,21 @@ ROUTES = [
 
 def allowed(method, path):
     return any(method in methods and re.fullmatch(pattern, path) for pattern, methods in ROUTES)
+
+
+def reference_ids(value):
+    found, pending = set(), [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, (list, tuple)):
+            pending.extend(item)
+        elif type(item) is int and item >= LOCAL_ID_START:
+            found.add(item)
+        elif isinstance(item, str) and item.isdecimal() and int(item) >= LOCAL_ID_START:
+            found.add(int(item))
+    return found
 
 
 def digest(value):
@@ -111,6 +126,7 @@ def record_changes():
     ctx = {"before": {}, "created": [], "resources": set(), "references": set()}
     token = capture.set(ctx)
     pre_save.connect(before_save, weak=False, dispatch_uid="desktop-before")
+    pre_delete.connect(before_save, weak=False, dispatch_uid="desktop-before-delete")
     post_save.connect(after_save, weak=False, dispatch_uid="desktop-after")
     post_delete.connect(after_delete, weak=False, dispatch_uid="desktop-delete")
     try:

@@ -64,3 +64,19 @@ class LocalState(models.Model):
 class TenantSyncRevision(models.Model):
     tenant_id = models.BigIntegerField(primary_key=True)
     revision = models.PositiveBigIntegerField(default=0)
+
+
+class SyncObjectMap(models.Model):
+    device = models.ForeignKey(SyncDevice, on_delete=models.PROTECT)
+    local_id = models.BigIntegerField()
+    remote_id = models.BigIntegerField()
+    model = models.CharField(max_length=80)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["device", "local_id"], name="sync_map_device_local_id")]
+
+
+class LocalAlias(models.Model):
+    local_id = models.BigIntegerField(primary_key=True)
+    remote_id = models.BigIntegerField()
+    active = models.BooleanField(default=False)

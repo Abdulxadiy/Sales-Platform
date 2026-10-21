@@ -11,6 +11,8 @@ import subprocess
 import sys
 import tempfile
 import time
+from io import BytesIO
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
@@ -91,7 +93,7 @@ def main():
             for name in (cloud_db, local_db):
                 cursor.execute(f'CREATE DATABASE "{name}"')
         (temporary / "qa_cloud.py").write_text(
-            "from config.settings_test import *\nDEBUG=True\nDATABASES['default']['NAME']=" + repr(cloud_db) + "\n")
+            "from config.settings_test import *\nDEBUG=True\nDATABASES['default']['NAME']=" + repr(cloud_db) + "\nMEDIA_ROOT=Path(" + repr(str(temporary / "cloud-media")) + ")\n")
         (temporary / "qa_local.py").write_text(
             "from config.settings_desktop import *\nDEBUG=True\n"
             "DATABASES['default'].update(NAME=" + repr(local_db) + ",USER='ilbi_test')\n")
@@ -105,7 +107,8 @@ def main():
         run("migrate", "--noinput", settings="qa_local")
         seed_code = '''
 import json
-from tests.factories import OwnerFactory, TenantFactory, EmployeeFactory, ProductVariantFactory
+from tests.factories import OwnerFactory, StaffFactory, TenantFactory, EmployeeFactory, ProductVariantFactory
+from apps.permissions.models import Permission
 from apps.inventory.services import StockService
 from rest_framework_simplejwt.tokens import RefreshToken
 from decimal import Decimal
@@ -116,6 +119,13 @@ variant=ProductVariantFactory(product__category__tenant=tenant)
 StockService.intake(tenant=tenant,product_variant=variant,quantity=Decimal("100"),cost_price=Decimal("8000"),created_by=owner)
 token=RefreshToken.for_user(owner);token["token_version"]=owner.token_version
 seed={"tenant_id":tenant.pk,"owner_id":owner.pk,"variant_id":variant.pk,"product_id":variant.product_id,"access":str(token.access_token),"refresh":str(token)}
+seed["cashiers"]=[]
+for index in range(2):
+ staff=StaffFactory(username="offline-qa-cashier-"+str(index))
+ employee=EmployeeFactory(user=staff,tenant=tenant,hired_by=owner)
+ employee.permissions.set(Permission.objects.filter(category="sales",codename__in=["add_sale","view_sale"]))
+ token=RefreshToken.for_user(staff);token["token_version"]=staff.token_version
+ seed["cashiers"].append({"username":staff.username,"access":str(token.access_token),"refresh":str(token)})
 open(SEED_PATH,"w").write(json.dumps(seed))
 '''.replace("SEED_PATH", repr(str(temporary / "seed.json")))
         run("shell", "-c", seed_code)
@@ -126,6 +136,11 @@ open(SEED_PATH,"w").write(json.dumps(seed))
                      headers={"Authorization": "Bearer " + seed["access"]})
         auth = {"Authorization": "Bearer " + local["access"], "X-Tenant-ID": str(seed["tenant_id"])}
         assert call("/api/v1/auth/me/", headers=auth)["id"] == seed["owner_id"]
+        registers = [auth]
+        for cashier in seed["cashiers"]:
+            registered = call("/desktop/actor/", {"pin": "offline-cashier-pass", "refresh": cashier["refresh"]},
+                              headers={"Authorization": "Bearer " + cashier["access"]})
+            registers.append({"Authorization": "Bearer " + registered["access"], "X-Tenant-ID": str(seed["tenant_id"])})
         stop(cloud_process)
         cp = call("/api/v1/sales/counterparties/", {"name": "Offline QA mijoz", "phone_number": "+998901234567"}, headers=auth)
         cp_id = cp["id"]
@@ -135,11 +150,22 @@ open(SEED_PATH,"w").write(json.dumps(seed))
         call(f"/api/v1/sales/counterparties/{cp_id}/payments/", {"amount": "6000", "currency": "UZS", "payment_type": "cash", "idempotency_key": uuid4().hex}, headers=auth)
         call("/api/v1/cashbox/expenses/", {"amount": "1000", "currency": "UZS", "category": "QA xarajat"}, headers=auth)
         call("/api/v1/cashbox/income/", {"amount": "500", "currency": "UZS", "source": "QA kirim"}, headers=auth)
-        call("/api/v1/cashbox/shift/close/", {"actual_cash_uzs": "5500", "actual_cash_usd": "0"}, headers=auth)
+        def register_sale(credentials):
+            return call("/api/v1/sales/", {"items": [{"product_variant_id": seed["variant_id"], "quantity": "1", "unit_price": "12000"}],
+                                          "payment_type": "cash", "idempotency_key": uuid4().hex}, headers=credentials)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            assert len(list(pool.map(register_sale, registers))) == 3
+        from PIL import Image
+        image = BytesIO()
+        Image.new("RGB", (10, 10), "#336699").save(image, format="PNG")
+        upload = requests.post(local_origin + f"/api/v1/catalog/products/{seed['product_id']}/images/",
+                               files={"image": ("offline-qa.png", image.getvalue(), "image/png")}, headers={**local_headers, **auth}, timeout=30)
+        assert upload.status_code == 201, upload.text[:2000]
+        call("/api/v1/cashbox/shift/close/", {"actual_cash_uzs": "41500", "actual_cash_usd": "0"}, headers=auth)
         call(f"/api/v1/catalog/products/{seed['product_id']}/", {"name": "Offline QA yangilangan"}, method="PATCH", headers=auth)
         time.sleep(1)
         queue = call("/desktop/queue/", headers=auth)
-        assert len(queue["operations"]) == 7, queue
+        assert len(queue["operations"]) == 11, queue
         promoted = next(row["id"] for row in queue["operations"] if row["title"] == "Katalog o‘zgarishi")
         call("/desktop/priority/", {"id": promoted}, headers=auth)
         queue = call("/desktop/queue/", headers=auth)
@@ -148,7 +174,7 @@ open(SEED_PATH,"w").write(json.dumps(seed))
         local_process = start("qa_local", local_port)
         unlocked = call("/desktop/unlock/", {"username": "offline-qa-owner", "pin": "offline-test-pass"})
         auth["Authorization"] = "Bearer " + unlocked["access"]
-        assert len(call("/desktop/queue/", headers=auth)["operations"]) == 7
+        assert len(call("/desktop/queue/", headers=auth)["operations"]) == 11
         local_cp = call(f"/api/v1/sales/counterparties/{cp_id}/", headers=auth)
         assert local_cp["debt_balance_uzs"] == "18000.00", local_cp
         cloud_process = start("qa_cloud", cloud_port)
@@ -163,6 +189,9 @@ open(SEED_PATH,"w").write(json.dumps(seed))
             raise AssertionError(queue)
         # An already open form/receipt can continue using its original local ID.
         assert call(f"/api/v1/sales/counterparties/{cp_id}/", headers=auth)["debt_balance_uzs"] == "18000.00"
+        forbidden = requests.patch(local_origin + f"/api/v1/tenants/{seed['tenant_id']}/", json={"description": "must not change"},
+                                   headers={**local_headers, **registers[1]}, timeout=20)
+        assert forbidden.status_code == 403, forbidden.text[:2000]
         verify_code = '''
 from apps.sales.models import Counterparty, Sale
 from apps.inventory.models import Stock
@@ -170,14 +199,17 @@ from apps.cashbox.models import DailyCashReport
 from apps.desktop_sync.models import SyncReceipt
 from decimal import Decimal
 assert Counterparty.objects.get(name="Offline QA mijoz").debt_balance_uzs == Decimal("18000")
-sale=Sale.objects.get(); assert sale.total_amount == Decimal("24000")
-assert sale.receipt_number.startswith("O")
-assert Stock.objects.get().quantity == Decimal("98")
-assert DailyCashReport.objects.get().expected_cash_uzs == Decimal("5500")
-assert SyncReceipt.objects.count()==7
+assert Sale.objects.count()==4
+assert Sale.objects.filter(payment_type="debt").get().total_amount == Decimal("24000")
+assert all(sale.receipt_number.startswith("O") for sale in Sale.objects.all())
+assert Stock.objects.get().quantity == Decimal("95")
+assert DailyCashReport.objects.get().expected_cash_uzs == Decimal("41500")
+assert SyncReceipt.objects.count()==11
+from apps.catalog.models import ProductImage
+assert ProductImage.objects.count()==1
 '''
         run("shell", "-c", verify_code)
-        print(json.dumps({"passed": True, "scenarios": ["enrollment", "offline sale", "debt payment", "cash income/expense", "shift close", "priority", "process restart", "offline unlock", "automatic reconnect", "two-way replica refresh"], "operations": 7, "artifacts": str(temporary)}))
+        print(json.dumps({"passed": True, "scenarios": ["enrollment", "offline sale", "debt payment", "cash income/expense", "three concurrent registers", "staff permissions", "per-user live credentials", "offline image upload", "shift close", "priority", "process restart", "offline unlock", "automatic reconnect", "two-way replica refresh", "open-form ID aliases"], "operations": 11, "artifacts": str(temporary)}))
     finally:
         for process in processes:
             if process.poll() is None:

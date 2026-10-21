@@ -60,7 +60,7 @@ export default function SyncCenter() {
   const close = () => { setOpen(false); trigger.current?.focus(); };
   const operations = state?.operations || [];
   const active = operations.find(row => row.status === 'active');
-  const nextPriority = operations.find(row => row.status === 'waiting' && (row.priority || operations.some(parent => parent.priority && parent.dependencies.includes(row.id))));
+  const nextPriority = operations.find(row => row.status === 'waiting' && (row.promoted || row.priority || operations.some(parent => parent.priority && parent.dependencies.includes(row.id))));
   const label = !state ? 'Sinxronlash holati' : !state.enrolled ? 'Offline tayyorlash' : cloudSession ? 'Hisobni kassaga ulash'
     : active ? 'Sinxronlanmoqda' : operations.some(row => row.status === 'error' || row.status === 'blocked') ? 'Tekshirish kerak'
       : !state.online ? 'Offline' : operations.length ? `Kutilmoqda: ${operations.length}` : 'Sinxronlangan';

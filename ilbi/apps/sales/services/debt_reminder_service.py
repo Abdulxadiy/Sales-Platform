@@ -5,6 +5,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.sales.models import Counterparty, Notification
+from apps.tenants.models import Tenant
 
 UNSET = object()
 
@@ -29,17 +30,22 @@ def notify_due_debts(*, tenant_id=None):
     if tenant_id is not None:
         due = due.filter(tenant_id=tenant_id)
     count = 0
-    for pk in due.order_by('pk').values_list('pk', flat=True).iterator(chunk_size=200):
+    for pk, shop_id in due.order_by('pk').values_list('pk', 'tenant_id').iterator(chunk_size=200):
         # The scheduler and an owner's notification poll may run simultaneously.
         with transaction.atomic():
-            cp = due.select_for_update(of=('self',)).select_related('tenant').filter(pk=pk).first()
+            # Financial services lock the shop before the customer. Keep that
+            # order so reminder FK checks cannot deadlock a concurrent payment.
+            shop = Tenant.objects.select_for_update().filter(pk=shop_id, is_active=True).first()
+            if shop is None:
+                continue
+            cp = due.select_for_update(of=('self',)).filter(pk=pk).first()
             if cp is None:
                 continue
             balances = [f'{amount:,.2f} {currency}' for amount, currency in (
                 (cp.debt_balance_uzs, 'UZS'), (cp.debt_balance_usd, 'USD'),
             ) if amount > 0]
             Notification.objects.create(
-                tenant_id=cp.tenant_id, recipient_id=cp.tenant.owner_id,
+                tenant_id=cp.tenant_id, recipient_id=shop.owner_id,
                 type=Notification.TYPE_DEBT_DUE, title='Qarzni qaytarish sanasi keldi',
                 message=(f'{cp.name} ({cp.phone_number})\n'
                          f'Qaytarish sanasi: {cp.debt_due_date:%d.%m.%Y}\n'

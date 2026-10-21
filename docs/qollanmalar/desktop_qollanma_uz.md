@@ -1,4 +1,4 @@
-# ILBI Windows ilovasini sozlash
+# ILBI Windows va Linux ilovasini sozlash
 
 To‘liq rasmli qo‘llanma: **https://new-dev.site/desktop-guide**.
 

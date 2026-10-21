@@ -239,7 +239,9 @@ staticfiles/
 node_modules/
 desktop/ilbi/resources/backend/
 desktop/ilbi/resources/postgres/
+desktop/ilbi/resources-linux/
 desktop/ilbi/release/
+desktop/ilbi/release-linux/
 desktop/downloads/*
 !desktop/downloads/.gitkeep
 dist/

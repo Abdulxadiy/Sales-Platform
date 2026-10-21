@@ -1,0 +1,52 @@
+name: ILBI Linux desktop
+on:
+  workflow_dispatch: {}
+  workflow_call: {}
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.12.x'
+      - name: Install Linux build and desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bison flex pkg-config patchelf libgtk-3-0 libnss3 libasound2 libgbm1 libsecret-1-0 gnome-keyring dbus-x11 xvfb desktop-file-utils
+      - uses: actions/cache@v4
+        with:
+          path: desktop/ilbi/build/linux-cache
+          key: ilbi-linux-ubuntu2204-v1-${{ hashFiles('desktop/linux-runtime-assets.json') }}
+      - name: Stage verified Linux Python, PostgreSQL and locked application wheels
+        run: python3 desktop/build_linux_runtime.py
+      - run: npm ci --prefix frontend/ilbi
+      - run: npm ci --prefix desktop/ilbi
+      - name: Build native Linux package
+        run: npm run dist:linux --prefix desktop/ilbi -- --runtime-ready
+      - name: Install and test the actual Linux package
+        run: xvfb-run -a dbus-run-session -- bash desktop/test_linux_package.sh
+      - name: Mark native Linux acceptance and export download
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          python3 -c "import json,pathlib;p=pathlib.Path('desktop/ilbi/release-linux/linux-build-manifest.json');m=json.loads(p.read_text());m['nativeLinuxVerified']=True;p.write_text(json.dumps(m,indent=2)+'\n')"
+          python3 desktop/export_linux_downloads.py --release-id "$RELEASE_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ILBI-Linux-x64
+          path: |
+            desktop/downloads/**/*.tar.gz
+            desktop/downloads/releases-linux.json
+            desktop/ilbi/release-linux/linux-build-manifest.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1

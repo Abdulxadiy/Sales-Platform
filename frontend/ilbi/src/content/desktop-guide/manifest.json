@@ -7,44 +7,44 @@
       "source": "desktop/ilbi/setup.html + setup.css: primary computer form",
       "crop": {
         "x": 136,
-        "y": 288.96875,
+        "y": 302.96875,
         "width": 648,
-        "height": 302.078125
+        "height": 308.28125
       },
       "arrows": [
         {
-          "selector": "#host input",
+          "selector": "#host button",
           "number": 1,
-          "x": 0.82,
-          "y": 0,
-          "dx": 0,
-          "dy": -40
+          "x": 1,
+          "y": 0.5,
+          "dx": 60,
+          "dy": 0
         },
         {
-          "selector": "#host button",
+          "selector": "#server-settings summary",
           "number": 2,
-          "x": 1,
+          "x": 0.29,
           "y": 0.5,
           "dx": 60,
           "dy": 0
         }
       ],
-      "sha256": "19277f5860a3f7251c0bedb49315b63f4e66d698932c901764a2533a25c31243"
+      "sha256": "51460706144706c24b3d722f8e3a171af5d6a0834b95804376a9cd18c81bf894"
     },
     {
       "file": "07-extra-register.png",
       "source": "desktop/ilbi/setup.html + setup.css: extra register",
       "crop": {
         "x": 136,
-        "y": 579.046875,
+        "y": 599.25,
         "width": 648,
-        "height": 261.171875
+        "height": 234.765625
       },
       "arrows": [
         {
-          "selector": "section h2",
+          "selector": "#join-details summary",
           "number": 1,
-          "x": 0.55,
+          "x": 0.33,
           "y": 0,
           "dx": 20,
           "dy": -18
@@ -58,7 +58,7 @@
           "dy": 0
         }
       ],
-      "sha256": "c755ca3acb437fdcd45a9fa11279bf8bad7552722f14f06a1ed3cbd0200cc2df"
+      "sha256": "825e567a218a4051ff147029ae1ba719eb6027c80eb536afdb3657043a840581"
     },
     {
       "file": "02-prepare.png",
@@ -132,7 +132,7 @@
           "dy": 0
         }
       ],
-      "sha256": "556174ff529e2db03e03815ef3487cc4f43b55bae1b8c56fee106dea775025bd"
+      "sha256": "93cd17fc4009c7539fceac325472606fcd92dbdd1907485868345ebbe5627460"
     },
     {
       "file": "04-queue.png",
@@ -161,7 +161,7 @@
           "dy": 0
         }
       ],
-      "sha256": "6647937c448f19ed19dd8a2d3b1cc7b6a112bcda3123ae63afe6b8c9c7b02ace"
+      "sha256": "c4865e00f09fa9a695024bb7565d559182cadef905508d2d34436467d6e2b5b6"
     },
     {
       "file": "05-priority.png",
@@ -219,7 +219,7 @@
           "dy": 0
         }
       ],
-      "sha256": "db3114babd74feee77647a0b0e7ada8203441e2c2936efef64e1707fad37f2d2"
+      "sha256": "f566592eeb9dfbe364452d39684ebf82604d19a0d73c7cad90ff6613a8cedcf6"
     }
   ]
 }

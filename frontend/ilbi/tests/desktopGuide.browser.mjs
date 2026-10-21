@@ -35,6 +35,7 @@ try {
   await wait('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash"');
   await wait('!document.querySelector(".ilbi-loading")');
   assert.equal(await browser.evaluate('document.querySelectorAll(".desktop-guide-toc a").length'), 6);
+  assert.equal(await browser.evaluate('document.querySelector(".desktop-guide-article").textContent.includes("Arch Linux uchun qadamlar") && document.querySelector(".desktop-guide-article").textContent.includes("bash install.sh")'), true);
   assert.equal(await browser.evaluate('document.querySelectorAll(".doc-focus-trigger img").length'), 7);
   await browser.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
   assert.equal(await browser.evaluate('[...document.querySelectorAll(".doc-focus-trigger img")].every(img=>img.naturalWidth>0&&!img.src.includes("undefined"))'), true);

@@ -16,6 +16,10 @@ jobs:
     needs: [automation, dependency-security, bot, production-edge, backend, frontend]
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/desktop-windows.yml
+  desktop-linux:
+    needs: [automation, dependency-security, bot, production-edge, backend, frontend]
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/desktop-linux.yml
   dependency-security:
     runs-on: ubuntu-latest
     steps:
@@ -49,6 +53,7 @@ jobs:
           python3 -m unittest discover -s tests/deployment -p 'test_operations.py' -v
           python3 -m unittest discover -s tests/deployment -p 'test_ci_handoff.py' -v
           python3 -m unittest discover -s tests/deployment -p 'test_download_activation.py' -v
+          python3 -m unittest discover -s tests/deployment -p 'test_linux_downloads.py' -v
       - name: Fetch isolated test images
         run: |
           docker pull nginx:alpine

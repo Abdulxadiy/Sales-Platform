@@ -2,7 +2,7 @@
 
 Current platform release: [v1.2.0](docs/releases/v1.2.0.md).
 
-Push ready changes to main with Git or IDE Source Control. Passing CI automatically builds the Windows package and deploys the platform and downloads to production; saving a local file does not push it. Details: [CI and automatic deployment](automation/README.md).
+Push ready changes to main with Git or IDE Source Control. Passing CI automatically builds the Windows and Linux packages and deploys the platform and downloads to production; saving a local file does not push it. Details: [CI and automatic deployment](automation/README.md).
 
 ILBI is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
 
@@ -110,7 +110,11 @@ These browser checks use synthetic API responses and never sign in to or write t
 
 ---
 
-## Windows desktop and offline stores
+## Windows / Linux desktop and offline stores
+
+Native Linux x64 uses the same Electron UI and offline backend as Windows. Download the `.tar.gz` on [Downloads](https://new-dev.site/download), extract it and run `bash install.sh` inside `ILBI/` as your normal user. The installer creates an application menu entry and `~/.local/bin/ilbi`; no Wine, VM, system Python or PostgreSQL service is required. GNOME Keyring or KWallet must be available and unlocked. App data stays under `${XDG_CONFIG_HOME:-~/.config}/ILBI`; program files live in `${XDG_DATA_HOME:-~/.local/share}/ilbi-app`. Close ILBI before rerunning the installer to update; the data folder is preserved. AUR/pacman repositories are not published, so `yay -S ilbi` / `pacman -S ilbi` are not installation methods yet.
+
+Linux releases are built on Ubuntu 22.04 and target glibc x86_64 desktops (Ubuntu 22.04+, Arch). They bundle verified Astral standalone Python 3.13.16, hashed application wheels and PostgreSQL 16.15 compiled from verified upstream source without optional external runtime libraries. Build tools: Python 3.13+, uv, Node 24, GCC/make, bison/flex. Run `python3 desktop/build_linux_runtime.py` then `npm run dist:linux --prefix desktop/ilbi -- --runtime-ready`. `dbus-run-session -- bash desktop/test_linux_package.sh` installs into disposable XDG directories and tests the actual package, encrypted vault, database startup/restart and updates. CI uses Xvfb on Ubuntu; Arch must also be checked locally. Native Windows-specific checks remain separate. Both artifacts must pass CI before their combined download feed is published.
 
 Illustrated setup guide: [`/desktop-guide`](https://new-dev.site/desktop-guide), also linked from Downloads, first-run setup and the app's **ILBI → Ilovani sozlash (rasmli qo‘llanma)** menu. Its seven annotated screenshots and text are bundled for offline reading. The rounded Windows icon uses transparent corners and separate DPI sizes; reinstall the latest package to update desktop/Start shortcuts.
 

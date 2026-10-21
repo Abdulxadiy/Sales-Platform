@@ -1,4 +1,4 @@
-"""Bundled Windows entry point. All runtime state is outside the install directory."""
+"""Bundled desktop entry point. Runtime state is outside the install directory."""
 
 import os
 import sys
@@ -6,7 +6,8 @@ from datetime import UTC
 from pathlib import Path
 
 if not getattr(sys, "frozen", False):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ilbi"))
+    bundled_app = Path(__file__).resolve().parent / "app"
+    sys.path.insert(0, str(bundled_app if bundled_app.is_dir() else Path(__file__).resolve().parents[1] / "ilbi"))
 os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings_desktop"
 
 

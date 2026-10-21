@@ -29,6 +29,19 @@ def activate(directory, staged_feed, commit, *, keep=3):
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
     if digest != release["sha256"] or installer.stat().st_size != release["bytes"]:
         raise ValueError("Installer integrity verification failed; current feed preserved")
+    linux = feed.get("linux")
+    if linux is not None:
+        linux_name = f"ILBI-{version}-linux-x64.tar.gz"
+        if (linux.get("version") != version or linux.get("sourceCommit") != commit
+                or linux.get("url") != f"/downloads/{commit}/{linux_name}"):
+            raise ValueError("Linux release does not match the deployed commit")
+        linux_artifact = directory / commit / linux_name
+        if linux_artifact.is_symlink():
+            raise ValueError("Linux release must be a regular archive")
+        with linux_artifact.open("rb") as stream:
+            linux_digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        if linux_digest != linux["sha256"] or linux_artifact.stat().st_size != linux["bytes"]:
+            raise ValueError("Linux archive integrity verification failed; current feed preserved")
     published = directory / "releases.json"
     if published.exists() and feed.get("mobile") is None:
         previous = json.loads(published.read_text())

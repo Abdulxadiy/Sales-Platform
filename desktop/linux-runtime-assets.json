@@ -1,0 +1,12 @@
+{
+  "python": {
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261020/cpython-3.13.16%2B20261020-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+    "sha256": "f326b7a386bf22def82e55dc3b95d2bef8b7c938b4c98ec32dd65433e7720b50",
+    "file": "python-linux-3.13.16.tar.gz"
+  },
+  "postgres": {
+    "url": "https://ftp.postgresql.org/pub/source/v16.15/postgresql-16.15.tar.bz2",
+    "sha256": "c1575341fa7bd40f5274ea465b34390f4dc64cdd0770af327005caaeb9f6b7ed",
+    "file": "postgresql-16.15.tar.bz2"
+  }
+}

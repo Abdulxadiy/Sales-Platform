@@ -38,8 +38,10 @@ export default function Downloads() {
     return () => { alive = false; controller.abort(); };
   }, [attempt]);
   const windows = state.manifest?.windows;
+  const linux = state.manifest?.linux;
   const mobile = state.manifest?.mobile;
   const windowsURL = releaseURL(windows?.url, state.origin);
+  const linuxURL = releaseURL(linux?.url, state.origin);
   const mobileURL = releaseURL(mobile?.url, state.origin);
   return <div className="downloads-page">
     <header className="downloads-header"><Link to="/" aria-label="ILBI bosh sahifa"><IlbiLogo size={38} showText /></Link>
@@ -60,6 +62,16 @@ export default function Downloads() {
           {windowsURL && windows?.channel === 'preview' && <small>Sinov nusxasi. Ishlab chiqarishdagi POS savdosi fiskal integratsiya tayyor bo‘lgach ochiladi.</small>}
           {windows?.sha256 && <details className="downloads-checksum"><summary>Faylning SHA-256 qiymati</summary><code>{windows.sha256}</code></details>}
         </article>
+        <article className="downloads-card" data-platform="linux"><div className="downloads-platform-icon"><img src="/brand/ilbi-desktop.svg" width="52" height="52" alt="ILBI Linux ilovasi belgisi" /></div>
+          <div className="downloads-card-heading"><h2>Linux uchun ILBI</h2><span>v{linux?.version || version}</span></div>
+          <p>Arch Linux va Ubuntu 22.04+ uchun. Python va mahalliy baza ilovaning ichida; virtual mashina kerak emas.</p>
+          <div className="downloads-details"><span>Linux · x86_64</span>{releaseSize(linux?.bytes) && <span>{releaseSize(linux.bytes)}</span>}{linuxURL && linux?.channel === 'preview' && <span className="downloads-preview">Sinov nusxasi</span>}</div>
+          {linuxURL ? <a className="btn btn-primary downloads-button" href={linuxURL} target="_blank" rel="noopener noreferrer"><Download size={18} />Linux uchun yuklab olish</a>
+            : <button type="button" className="btn btn-primary downloads-button" disabled>{state.loading ? 'Tekshirilmoqda…' : 'Linux yuklamasi hali ochilmagan'}</button>}
+          <small>Arxiv va oddiy o‘rnatuvchi. <a href="#linux-install">Linux’da o‘rnatish — 4 qadam</a></small>
+          {linuxURL && linux?.channel === 'preview' && <small>Sinov nusxasi. POS savdosiga mavjud fiskal integratsiya cheklovi amal qiladi.</small>}
+          {linux?.sha256 && <details className="downloads-checksum"><summary>Faylning SHA-256 qiymati</summary><code>{linux.sha256}</code></details>}
+        </article>
         <article className="downloads-card"><div className="downloads-platform-icon"><Smartphone size={27} /></div>
           <div className="downloads-card-heading"><h2>Mobil ilova</h2><span>{mobileURL ? `v${mobile.version}` : 'Hozircha mavjud emas'}</span></div>
           <p>Mobil ilova chiqarilganda uning rasmiy yuklab olish havolasi ham shu sahifada bo‘ladi.</p>
@@ -68,9 +80,17 @@ export default function Downloads() {
             : <button type="button" className="btn btn-secondary downloads-button" disabled>Mobil ilova hali joylanmagan</button>}
         </article>
       </div>
+      <section className="downloads-linux-install" id="linux-install" aria-labelledby="linux-install-heading"><h2 id="linux-install-heading">Linux’da o‘rnatish — 4 qadam</h2><ol>
+        <li>Yuklangan <code>.tar.gz</code> arxivni papkaga oching.</li>
+        <li>Ichidagi <strong>ILBI</strong> papkasida o‘ng tugma → <strong>Terminalda ochish</strong>.</li>
+        <li><code>bash install.sh</code> yozib, Enter bosing. <code>sudo</code> kerak emas.</li>
+        <li>Ilovalar menyusidan <strong>ILBI</strong>ni oching.</li>
+      </ol><p>Menyuda ko‘rinmasa: <code>~/.local/bin/ilbi</code>. <Link to="/desktop-guide">Arch va boshqa Linux’lar uchun batafsil yo‘riqnoma</Link></p>
+        <p>Paket Linux x86_64 uchun. GNOME Keyring yoki KWallet ochiq bo‘lsin. Yangilashda ILBI’ni yoping va yangi arxivdagi <code>install.sh</code> faylini yana ishga tushiring — ma’lumotlar saqlanadi.</p>
+      </section>
       <section className="downloads-help" aria-labelledby="download-start"><h2 id="download-start">Birinchi ishga tushirish</h2>
-        <ol><li>ILBI’ni o‘rnating va asosiy kompyuterni tanlang.</li><li>Internet orqali do‘kon egasi hisobiga kirib, offline ishlashni tayyorlang.</li><li>Qo‘shimcha kassalarni asosiy kompyuterga mahalliy tarmoq orqali ulang.</li></ol>
-        <p>Qo‘shimcha kassalar uchun asosiy kompyuter yoqilgan bo‘lishi kerak. Offline ruxsat internet orqali yangilanib turadi; uning muddati 7 kun.</p>
+        <ol><li>ILBI’ni o‘rnating va <strong>Ishni boshlash</strong> tugmasini bosing.</li><li>Internet orqali do‘kon egasi hisobiga kirib, offline ishlashni tayyorlang.</li><li>Bitta kompyuter uchun shu yetarli. Keyinroq boshqa kassa kerak bo‘lsa, <strong>ILBI → Boshqa kassani ulash</strong> menyusidan qo‘shing.</li></ol>
+        <p>Bir nechta kassa ishlatilganda asosiy kompyuter va undagi ILBI ochiq turadi. Offline ruxsat internet orqali yangilanib turadi; uning muddati 7 kun.</p>
         <Link className="downloads-guide-link" to="/desktop-guide"><BookOpen size={19} /><span><strong>Ilovani sozlash — rasmli qo‘llanma</strong><small>Birinchi kirish, offline parol, sinxronlash va qo‘shimcha kassalar.</small></span><ArrowLeft size={17} style={{ transform: 'rotate(180deg)' }} /></Link>
       </section>
     </main>

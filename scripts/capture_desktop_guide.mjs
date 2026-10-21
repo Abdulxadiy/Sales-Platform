@@ -27,7 +27,7 @@ async function capture(name, selector, marks, context, padding = 65) {
   await browser.evaluate('document.querySelector("#guide-arrows")?.remove()');
   const bounds = await browser.evaluate(`(() => {
     const box = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();
-    return {x:Math.max(0,box.x-${padding}),y:Math.max(0,box.y-${padding}),width:Math.min(innerWidth,box.width+${padding * 2}),height:box.height+${padding * 2}};
+    return {x:Math.max(0,box.x-${padding})+scrollX,y:Math.max(0,box.y-${padding})+scrollY,width:Math.min(innerWidth,box.width+${padding * 2}),height:box.height+${padding * 2}};
   })()`);
   await browser.evaluate(`(() => {
     const overlay = document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -60,14 +60,17 @@ try {
   await browser.call('Page.navigate', { url: origin });
   await wait('document.readyState === "complete"');
   await browser.evaluate(`document.open();document.write(${JSON.stringify(html.replace('<link rel="stylesheet" href="/setup.css">', `<style>${css}</style>`).replace('<script src="/setup.js"></script>', ''))});document.close()`);
+  await browser.resize(920, 1000);
   await capture('01-primary-setup.png', '#host', [
-    { selector: '#host input', number: 1, x: .82, y: 0, dx: 0, dy: -40 },
-    { selector: '#host button', number: 2, x: 1, y: .5, dx: 60, dy: 0 },
+    { selector: '#host button', number: 1, x: 1, y: .5, dx: 60, dy: 0 },
+    { selector: '#server-settings summary', number: 2, x: .29, y: .5, dx: 60, dy: 0 },
   ], 'desktop/ilbi/setup.html + setup.css: primary computer form', 16);
-  await capture('07-extra-register.png', 'section', [
-    { selector: 'section h2', number: 1, x: .55, y: 0, dx: 20, dy: -18 },
+  await browser.evaluate('document.querySelector("#join-details").open=true');
+  await capture('07-extra-register.png', '#join-details', [
+    { selector: '#join-details summary', number: 1, x: .33, y: 0, dx: 20, dy: -18 },
     { selector: '#join', number: 2, x: 1, y: .5, dx: 65, dy: 0 },
   ], 'desktop/ilbi/setup.html + setup.css: extra register', 16);
+  await browser.resize(920, 720);
   for (const mode of ['prepare', 'login', 'queue', 'priority', 'retry']) {
     await browser.call('Page.navigate', { url: origin + '/tests/browser/desktopGuide.html?mode=' + mode });
     if (mode === 'login') {

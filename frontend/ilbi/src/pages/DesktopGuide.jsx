@@ -19,7 +19,7 @@ export default function DesktopGuide() {
       {separateWindow ? <button type="button" onClick={() => window.close()}><X size={16} />Qo‘llanmani yopish</button>
         : <Link to="/download"><ArrowLeft size={16} />Yuklab olish</Link>}
     </header>
-    <div className="desktop-guide-intro"><span>Windows ilovasi uchun rasmli qo‘llanma</span>
+    <div className="desktop-guide-intro"><span>Windows va Linux ilovasi uchun rasmli qo‘llanma</span>
       <h1>ILBI ilovasini sozlash</h1>
       <p>Bir marta sozlang. Internet bo‘lmasa ham ishlang. Ulanish qaytganda ishlaringiz serverga yuboriladi.</p>
     </div>

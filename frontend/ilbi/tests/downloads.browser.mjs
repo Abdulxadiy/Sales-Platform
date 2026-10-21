@@ -21,7 +21,7 @@ try {
       if(path==='/downloads/releases.json'){
         if(downloadsQA.mode==='offline')throw new TypeError('Offline');
         if(downloadsQA.mode==='missing')return new Response('',{status:404});
-        return new Response(JSON.stringify({schema:1,windows:{version:'1.2.0',url:'/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-Setup-1.2.0-x64.exe',bytes:196124625,channel:'preview',sha256:'a'.repeat(64)},mobile:null}),{status:200,headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schema:1,windows:{version:'1.2.0',url:'/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-Setup-1.2.0-x64.exe',bytes:196124625,channel:'preview',sha256:'a'.repeat(64)},linux:downloadsQA.mode==='legacy'?null:{version:'1.2.0',url:'/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-1.2.0-linux-x64.tar.gz',bytes:210000000,channel:'preview',sha256:'b'.repeat(64)},mobile:null}),{status:200,headers:{'Content-Type':'application/json'}});
       }
       if(path.startsWith('/api/'))return new Response('{}',{status:401,headers:{'Content-Type':'application/json'}});
       return originalFetch(input,options);
@@ -43,6 +43,8 @@ try {
   assert.equal(await browser.evaluate('document.querySelector(".downloads-button[href]").href'), origin + '/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-Setup-1.2.0-x64.exe');
   assert.equal(await browser.evaluate('document.querySelector(".downloads-preview").textContent'), 'Sinov nusxasi');
   assert.equal(await browser.evaluate('document.querySelectorAll(".downloads-card button:disabled").length'), 1);
+  assert.equal(await browser.evaluate('document.querySelector("[data-platform=linux] a.downloads-button").href'), origin + '/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-1.2.0-linux-x64.tar.gz');
+  assert.equal(await browser.evaluate('document.querySelector(".downloads-linux-install").textContent.includes("bash install.sh")'), true);
   await writeFile(join(artifacts, 'downloads-desktop.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
   await browser.resize(390, 844);
   assert.equal(await browser.evaluate('document.documentElement.scrollWidth<=innerWidth'), true);
@@ -57,7 +59,11 @@ try {
   await browser.evaluate('downloadsQA.mode="published";document.querySelector(".downloads-notice button").click()');
   await wait('Boolean(document.querySelector(".downloads-button[href]"))');
   assert.deepEqual(browser.errors, []);
-  console.log(JSON.stringify({ passed: true, scenarios: ['landing download link', 'anonymous download page', 'versioned Windows link', 'preview label', 'future mobile slot', 'mobile layout', 'missing release', 'offline and retry'], artifacts }));
+  await browser.evaluate('sessionStorage.setItem("download-mode","legacy");window.downloadBeforeReload=true');
+  await browser.call('Page.reload');
+  await wait('!window.downloadBeforeReload&&Boolean(document.querySelector("[data-platform=linux] button:disabled"))');
+  assert.equal(await browser.evaluate('document.querySelectorAll(".downloads-button[href]").length'), 1);
+  console.log(JSON.stringify({ passed: true, scenarios: ['landing download link', 'anonymous download page', 'versioned Windows and Linux links', 'Linux installation guide', 'preview label', 'future mobile slot', 'mobile layout', 'missing release', 'offline and retry', 'older feed without Linux'], artifacts }));
 } catch (error) {
   console.error('Browser errors:', browser?.errors);
   if (browser) console.error(await browser.evaluate('({body:document.body.innerText.slice(0,1500),url:location.href})'));

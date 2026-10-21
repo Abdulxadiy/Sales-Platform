@@ -4,12 +4,27 @@ ILBI ilovasida kundalik savdo va ombor ekranlari webdagidek ishlaydi. Bu qo‘ll
 
 [Yuklab olish sahifasidan](/download) Windows uchun ILBI’ni oling. Yuklangan `.exe` faylni oching va o‘rnatishni tugating. Ish stolida paydo bo‘lgan **ILBI** belgisini ikki marta bosing.
 
-Bitta do‘konda bitta kompyuterni **asosiy kassa** qilib tanlang. Shu do‘konning umumiy mahalliy bazasi unda saqlanadi. Yolg‘iz kompyuter ishlatsangiz ham u asosiy kassa bo‘ladi. Boshqa, mustaqil do‘konlar o‘z asosiy kompyuterini alohida sozlaydi.
+**Linux’da o‘rnatish:** shu sahifadagi **Linux uchun yuklab olish** tugmasidan `.tar.gz` arxivni oling. Arxivni oching, ichidagi **ILBI** papkasida terminal ochib `bash install.sh` buyrug‘ini bajaring. `sudo` ishlatmang. Keyin ilovalar menyusidan **ILBI**ni oching. VirtualBox, Wine, Docker, alohida Python yoki PostgreSQL kerak emas. Linux x86_64, grafik ish stoli va ochilgan GNOME Keyring yoki KWallet parollar ombori kerak; Arch Linux va Ubuntu 22.04+ uchun paket tayyorlanadi.
 
-![Asosiy kassani sozlash: 1 — platforma manzili, 2 — tayyorlash tugmasi.](desktop-guide/01-primary-setup.png)
+Linux’da birinchi ochishda maxfiy ma’lumotlar ombori ruxsat so‘rasa, shu foydalanuvchi uchun ruxsat bering. “Maxfiy ma’lumotlar ombori ochilmadi” chiqsa, GNOME Keyring yoki KWallet o‘rnatilganini va qulfdan ochilganini tekshiring. Bu ombor qurilma kalitlarini himoya qiladi. Windows va Linux’da qolgan sozlash qadamlari bir xil; quyidagi rasmlar ikkala nusxaga ham tegishli.
 
-1. **Platforma manzili** maydonidagi manzilni tekshiring. Hozir ishlayotgan server: `https://new-dev.site`. `ilbi.uz`ga ko‘chirilgani e’lon qilinmaguncha shu manzildan foydalaning.
-2. **Asosiy kassani tayyorlash** tugmasini bosing va kirish oynasi ochilishini kuting. Birinchi tayyorlash odatdagidan uzoqroq davom etishi mumkin.
+**Arch Linux uchun qadamlar:**
+
+1. **Linux uchun yuklab olish** tugmasini bosing. Fayl menejerida yuklangan `ILBI-1.2.0-linux-x64.tar.gz` arxivini ochib, bir papkaga chiqaring.
+2. Hosil bo‘lgan **ILBI** papkasiga kiring. Bo‘sh joyni o‘ng bosib **Terminalda ochish**ni tanlang.
+3. `bash install.sh` yozib, `Enter` bosing. O‘rnatish administrator parolisiz bajariladi. Ilovalar menyusida **ILBI** paydo bo‘ladi. Menyuda darhol ko‘rinmasa, `~/.local/bin/ilbi` buyrug‘i bilan oching.
+4. **Ishni boshlash**ni bosing va quyidagi 2-bo‘lim bo‘yicha do‘konni ulang.
+
+Agar ilova kutubxona yetishmayotganini aytib ochilmasa, Arch’ni yangilab, grafik kutubxonalarni o‘rnating: `sudo pacman -Syu --needed gtk3 nss alsa-lib libxss libxtst libsecret gnome-keyring`. GNOME/KDE’da parollar ombori odatda kirishda ochiladi; Hyprland kabi ish stollarida uning ishga tushishini va qulfdan ochilishini alohida sozlash kerak bo‘lishi mumkin. ILBI’ni `sudo` yoki `--no-sandbox` bilan ochmang.
+
+Hozir `yay -S ilbi` va `sudo pacman -S ilbi` orqali tarqatilmaydi: AUR yoki alohida paket repozitoriysida hali e’lon qilinmagan. Rasmiy yuklab olish sahifasidagi arxivdan foydalaning. Shu arxiv boshqa mos x86_64 Linux tizimlarida ham ishlaydi; Ubuntu 22.04+ va Arch uchun tekshiruv bor. ARM kompyuterlar va Alpine kabi musl tizimlari ushbu paketga kirmaydi.
+
+Bitta kompyuterda ishlasangiz, boshqa kassaga ulanish yoki fayl ko‘chirish kerak emas. Ilova ma’lumotlarni shu kompyuterda saqlaydi. Keyinchalik kassalar soni oshsa, boshqa kompyuterlarni shu tayyor kassaga ulashingiz mumkin; qayta sozlash talab qilinmaydi. Boshqa, mustaqil do‘konlar o‘z ilovasini alohida sozlaydi.
+
+![Bitta kompyuterda boshlash: 1 — Ishni boshlash, 2 — faqat zarur bo‘lganda ochiladigan Server sozlamalari.](desktop-guide/01-primary-setup.png)
+
+1. **Ishni boshlash** tugmasini bosing va kirish oynasi ochilishini kuting. Birinchi tayyorlash odatdagidan uzoqroq davom etishi mumkin.
+2. **Server sozlamalari** bo‘limini odatda ochish shart emas. Manzil oldindan `https://new-dev.site` qilib kiritilgan. Faqat `ilbi.uz`ga ko‘chirilgani e’lon qilinsa yoki yordam xizmati aytsa o‘zgartiring.
 
 ## 2. Do‘konni offline ishlashga tayyorlash
 
@@ -65,11 +80,11 @@ Barcha kassalar bitta mahalliy tarmoqqa — bir routerdagi Wi-Fi yoki kabelga ul
 
 1. Tayyorlangan asosiy kompyuterda ILBI’ni ochiq qoldiring. Yuqoridagi **ILBI → Boshqa kassani ulash** menyusini tanlang. Tarmoq tanlash so‘ralsa, boshqa kassalar ulangan Wi-Fi yoki kabel tarmog‘ini tanlang.
 2. `ILBI-kassa-ulanish.ilbi` faylini saqlang va shu do‘konning qo‘shimcha kompyuteriga, masalan, fleshka orqali olib o‘ting.
-3. Qo‘shimcha kompyuterga ham ILBI’ni o‘rnating. Birinchi oynadagi **Boshqa kassa allaqachon tayyorlangan** bo‘limidan foydalaning.
+3. Qo‘shimcha kompyuterga ham ILBI’ni o‘rnating. Birinchi oynadagi **Boshqa kassaga ulanish** bo‘limini oching. Birinchi, yolg‘iz kassangizda bu bo‘lim kerak emas.
 
 ![Qo‘shimcha kassa: 1 — tayyor kassaga ulanish bo‘limi, 2 — .ilbi faylini ochish.](desktop-guide/07-extra-register.png)
 
-4. **Ulanish faylini ochish**ni bosing va olib kelgan `.ilbi` faylini tanlang. Bu kompyuterda **Asosiy kassani tayyorlash**ni qayta bosmang.
+4. **Ulanish faylini ochish**ni bosing va olib kelgan `.ilbi` faylini tanlang. Qo‘shimcha kassada **Ishni boshlash** orqali alohida baza tayyorlash kerak emas.
 5. Kassir o‘z hisobi bilan kirsin. Uning offline hisobi hali tayyor bo‘lmasa, internet bor paytda 2-bo‘limdagi **Hisobni kassaga ulash** qadamini bajaring.
 
 > [!IMPORTANT]
@@ -81,7 +96,7 @@ Ulanmasa, bir xil mahalliy tarmoq va Windows’dagi ILBI uchun xususiy tarmoq ru
 
 Yangi versiyani [yuklab olish sahifasidan](/download) oling. Avval yuborilmagan navbatni tekshiring, do‘kondagi ILBI oynalarini yoping va yangi o‘rnatuvchini ishga tushiring. Bu versiyada yangilanish avtomatik o‘rnatilmaydi.
 
-O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. Ular Windows’dagi `%APPDATA%\ILBI` papkasida turadi. Zaxira olishda barcha kassalarni to‘xtatib, asosiy ILBI’ni yoping va shu papkaning nusxasini oling. Papka yoki `device.vault` faylini muammoni tuzatish uchun o‘chirmang. Boshqa Windows hisobi yoki yangi kompyuterga o‘tishni yordam bilan rejalashtiring.
+O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. Ular Windows’da `%APPDATA%\ILBI`, Linux’da esa odatda `~/.config/ILBI` papkasida turadi (`XDG_CONFIG_HOME` belgilangan bo‘lsa, o‘sha joydagi `ILBI` papkasida). Linux’da yangilash uchun yangi arxivni ochib, uning `install.sh` faylini yana ishga tushiring. Zaxira olishda barcha kassalarni to‘xtatib, asosiy ILBI’ni yoping va ma’lumotlar papkasining nusxasini oling. Papka yoki `device.vault` faylini muammoni tuzatish uchun o‘chirmang. Kalitlar tizim hisobingiz va parollar omboriga bog‘liq; boshqa hisob yoki yangi kompyuterga o‘tishni yordam bilan rejalashtiring.
 
 Qo‘llanma **ILBI → Ilovani sozlash (rasmli qo‘llanma)** menyusidan ham ochiladi. Uning matni va rasmlari ilova ichida saqlanadi, shuning uchun internet kerak emas. Rasm ustiga bossangiz kattalashadi; `Esc` bilan yoping.
 

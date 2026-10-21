@@ -69,6 +69,46 @@ class DownloadActivationTests(unittest.TestCase):
         self.assertTrue((self.folder / "mobile").exists())
         self.assertTrue((self.folder / "notes.txt").exists())
 
+    def add_linux(self):
+        name = "ILBI-1.2.0-linux-x64.tar.gz"
+        artifact = self.folder / self.commit / name
+        artifact.write_bytes(b"verified Linux archive fixture")
+        self.feed["linux"] = {"version": "1.2.0", "sourceCommit": self.commit,
+                              "url": f"/downloads/{self.commit}/{name}",
+                              "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+                              "bytes": artifact.stat().st_size}
+        self.pending.write_text(json.dumps(self.feed))
+        return artifact
+
+    def test_both_desktop_platforms_publish_together(self):
+        self.add_linux()
+        module.activate(self.folder, self.pending, self.commit)
+        published = json.loads(self.live.read_text())
+        self.assertEqual(published["linux"], self.feed["linux"])
+        self.assertEqual(published["windows"], self.feed["windows"])
+
+    def test_corrupt_linux_archive_cannot_replace_windows_or_mobile_feed(self):
+        artifact = self.add_linux()
+        artifact.write_bytes(b"truncated")
+        with self.assertRaisesRegex(ValueError, "integrity"):
+            module.activate(self.folder, self.pending, self.commit)
+        self.assertEqual(self.live.read_bytes(), self.previous)
+
+    def test_linux_wrong_commit_and_symlink_are_rejected(self):
+        artifact = self.add_linux()
+        self.feed["linux"]["sourceCommit"] = "b" * 40
+        self.pending.write_text(json.dumps(self.feed))
+        with self.assertRaisesRegex(ValueError, "commit"):
+            module.activate(self.folder, self.pending, self.commit)
+        self.feed["linux"]["sourceCommit"] = self.commit
+        self.pending.write_text(json.dumps(self.feed))
+        target = self.folder / "outside.tar.gz"
+        artifact.rename(target)
+        artifact.symlink_to(target)
+        with self.assertRaisesRegex(ValueError, "regular"):
+            module.activate(self.folder, self.pending, self.commit)
+        self.assertEqual(self.live.read_bytes(), self.previous)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@
     "test": "node --test tests/*.test.cjs",
     "build:ui": "npm --prefix ../../frontend/ilbi run build",
     "dist:win": "node build.cjs",
+    "dist:linux": "node build-linux.cjs",
     "pack": "npm run build:ui && electron-builder --dir"
   },
   "devDependencies": {
@@ -24,12 +25,18 @@
     "directories": { "output": "release" },
     "files": ["main.cjs", "runtime.cjs", "preload.cjs", "setup.html", "setup.js", "setup.css", "icon.ico"],
     "extraResources": [
+      { "from": "../../frontend/ilbi/dist", "to": "ui" }
+    ],
+    "win": { "target": "nsis", "requestedExecutionLevel": "asInvoker", "signExecutable": false, "icon": "icon.ico", "extraResources": [
       { "from": "icon.ico", "to": "ilbi-desktop-rounded.ico" },
-      { "from": "../../frontend/ilbi/dist", "to": "ui" },
       { "from": "resources/backend", "to": "backend" },
       { "from": "resources/postgres", "to": "postgres" }
-    ],
-    "win": { "target": "nsis", "requestedExecutionLevel": "asInvoker", "signExecutable": false, "icon": "icon.ico" },
+    ] },
+    "linux": { "target": "dir", "executableName": "ilbi", "category": "Office", "icon": "../../frontend/ilbi/public/brand/ilbi-desktop-512.png", "extraResources": [
+      { "from": "../../frontend/ilbi/public/brand/ilbi-desktop-512.png", "to": "ilbi-desktop.png" },
+      { "from": "resources-linux/backend", "to": "backend" },
+      { "from": "resources-linux/postgres", "to": "postgres" }
+    ] },
     "nsis": { "script": "installer.nsi", "installerLanguages": ["en_US"], "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false, "installerIcon": "icon.ico", "uninstallerIcon": "icon.ico" }
   }
 }

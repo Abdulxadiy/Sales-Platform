@@ -7,15 +7,17 @@ const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
 const { validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
 app.setName('ILBI');
+if (process.platform === 'linux') app.setDesktopName('uz.ilbi.desktop.desktop');
 
 let window, guideWindow, localHost, lanServer, webServer, origin, configuration, secrets;
 let quitting = false;
 const bridgeKey = randomBytes(32).toString('hex');
 const dataDir = app.getPath('userData');
-const resources = app.isPackaged ? process.resourcesPath : join(__dirname, 'resources');
+const resources = app.isPackaged ? process.resourcesPath : join(__dirname, process.platform === 'linux' ? 'resources-linux' : 'resources');
 const uiRoot = app.isPackaged ? join(resources, 'ui') : join(__dirname, '../../frontend/ilbi/dist');
 const vaultPath = join(dataDir, 'device.vault');
-const applicationIcon = app.isPackaged ? join(resources, 'ilbi-desktop-rounded.ico') : join(__dirname, 'icon.ico');
+const applicationIcon = app.isPackaged ? join(resources, process.platform === 'linux' ? 'ilbi-desktop.png' : 'ilbi-desktop-rounded.ico')
+  : process.platform === 'linux' ? join(__dirname, '../../frontend/ilbi/public/brand/ilbi-desktop-512.png') : join(__dirname, 'icon.ico');
 
 async function openGuide(event) {
   if (event) validSender(event);
@@ -35,7 +37,9 @@ async function openGuide(event) {
 }
 
 async function saveVault() {
-  if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')) throw Error('Tizimning maxfiy ma’lumotlar ombori ishlamayapti.');
+  if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')) throw Error(process.platform === 'linux'
+    ? 'Maxfiy ma’lumotlar ombori ochilmadi. Linux’da GNOME Keyring yoki KWallet’ni o‘rnating va tizimga kirishda qulfini oching.'
+    : 'Tizimning maxfiy ma’lumotlar ombori ishlamayapti.');
   const value = safeStorage.encryptString(JSON.stringify({ configuration, secrets }));
   await mkdir(dataDir, { recursive: true });
   await writeFile(vaultPath + '.new', value, { mode: 0o600 });
@@ -59,8 +63,8 @@ function proxy(request, response, target, secure = false) {
 async function launchRuntime() {
   if (configuration.mode === 'host') {
     localHost = await startHost({ resources, dataDir, secrets, bridgeKey, server: configuration.server,
-      executable: process.platform === 'win32' ? join(resources, 'backend/python/python.exe') : join(resources, 'backend/ilbi-runtime/ilbi-runtime'),
-      runtimeArguments: process.platform === 'win32' ? [join(resources, 'backend/runtime.py')] : [] });
+      executable: join(resources, process.platform === 'win32' ? 'backend/python/python.exe' : 'backend/python/bin/python3'),
+      runtimeArguments: [join(resources, 'backend/runtime.py')] });
     lanServer = httpsServer({ cert: await readFile(join(dataDir, 'lan.crt')), key: await readFile(join(dataDir, 'lan.key')) }, (req, res) => {
       if (!equalKey(req.headers['x-ilbi-desktop-key'], secrets.pairingKey) || !/^\/(api\/v1\/|desktop\/|media\/)/.test(req.url)) { res.writeHead(403); res.end(); return; }
       proxy(req, res, { host: '127.0.0.1', port: localHost.port });
@@ -106,7 +110,7 @@ else {
   app.whenReady().then(async () => {
     try {
       try { ({ configuration, secrets } = JSON.parse(safeStorage.decryptString(await readFile(vaultPath)))); }
-      catch (error) { if (error.code !== 'ENOENT') throw Error('Qurilma sozlamalarini ochib bo‘lmadi. device.vault faylini o‘chirmang; Windows hisobingizni tekshiring.'); }
+      catch (error) { if (error.code !== 'ENOENT') throw Error('Qurilma sozlamalarini ochib bo‘lmadi. device.vault faylini o‘chirmang; tizim hisobingiz va maxfiy ma’lumotlar omborini tekshiring.'); }
       if (configuration) await launchRuntime();
       webServer = httpServer(async (req, res) => {
         try {

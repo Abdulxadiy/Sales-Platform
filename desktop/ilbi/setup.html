@@ -1,1 +1,24 @@
-<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ILBI sozlash</title><link rel="stylesheet" href="/setup.css"></head><body><main><span class="brand">ILBI</span><h1>Do‘kon kassasini ulash</h1><p>Bitta do‘kondagi kassalar bir umumiy mahalliy bazadan foydalanadi. Internet o‘chsa ham savdolar shu bazada saqlanadi.</p><button id="guide" type="button">Rasmli sozlash qo‘llanmasi</button><form id="host"><h2>Bu do‘konning asosiy kompyuteri</h2><label>Platforma manzili<input name="server" type="url" value="https://new-dev.site" required></label><button>Asosiy kassani tayyorlash</button><small>Boshqa kassalar ishlaganda ushbu kompyuter yoqilgan bo‘lishi kerak.</small></form><section><h2>Boshqa kassa allaqachon tayyorlangan</h2><p>Asosiy kompyuterdagi ILBI menyusidan ulanish faylini oling va bu yerda oching.</p><button id="join">Ulanish faylini ochish</button></section><p id="status" role="status"></p></main><script src="/setup.js"></script></body></html>
+<!doctype html>
+<html lang="uz">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ILBI sozlash</title><link rel="stylesheet" href="/setup.css"></head>
+<body><main>
+  <span class="brand">ILBI</span>
+  <h1>ILBI’ni ishga tushirish</h1>
+  <p>Bitta kompyuterda ishlasangiz, ishni boshlash tugmasini bosing. Do‘koningizni hisobingizga kirgach tanlaysiz.</p>
+  <button id="guide" type="button">Rasmli sozlash qo‘llanmasi</button>
+  <form id="host">
+    <h2>Shu kompyuterda ishlash</h2>
+    <p>Internet bo‘lmasa ham ishlaringiz shu kompyuterda saqlanadi.</p>
+    <button type="submit">Ishni boshlash</button>
+    <small>Keyinroq boshqa kompyuter qo‘shsangiz, ILBI menyusidan ulaysiz.</small>
+    <details id="server-settings"><summary>Server sozlamalari</summary>
+      <label>Platforma manzili<input name="server" type="url" value="https://new-dev.site" required></label>
+      <small>Manzil tayyor kiritilgan. Uni faqat platforma yangi manzilga ko‘chganida yoki yordam xizmati aytganida o‘zgartiring.</small>
+    </details>
+  </form>
+  <details id="join-details"><summary>Boshqa kassaga ulanish</summary>
+    <p>Shu do‘konda ILBI boshqa kompyuterda allaqachon sozlangan bo‘lsa, o‘sha kompyuterdagi ILBI menyusidan ulanish faylini oling.</p>
+    <button id="join" type="button">Ulanish faylini ochish</button>
+  </details>
+  <p id="status" role="status"></p>
+</main><script src="/setup.js"></script></body></html>

@@ -1472,6 +1472,7 @@
   max-width: 320px;
   padding: 6px 2px;
 }
+.support-voice-player.error{flex-wrap:wrap;gap:10px;min-width:0;line-height:1.5}
 .support-voice-play-btn {
   width: 38px;
   height: 38px;

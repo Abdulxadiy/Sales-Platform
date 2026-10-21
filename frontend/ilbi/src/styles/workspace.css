@@ -80,8 +80,8 @@
 .workspace-text-button { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; border: 0; background: transparent; color: var(--text-primary); cursor: pointer; padding: 4px 0; text-align: left; }
 .workspace-text-button:hover { text-decoration: underline; }
 .workspace-empty { color: var(--text-muted); padding: 20px 18px; margin: 0; font-size: 12px; line-height: 1.6; }
-.workspace-error { display: flex; align-items: center; gap: 12px; padding: 12px; color: var(--accent-rose); font-size: 12px; }
-.workspace-error button { background: var(--bg-chip); border: 1px solid var(--border-subtle); border-radius: 6px; color: var(--text-primary); padding: 5px 8px; display: inline-flex; gap: 4px; cursor: pointer; }
+.work-desktop > .recovery-notice{margin-bottom:18px}
+.workspace-reminders > .recovery-notice{margin:0 18px 16px;padding:14px}
 .workspace-reminder-list { padding: 0 16px 12px; }
 .workspace-reminder { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border-subtle); padding: 14px 0; }
 .workspace-reminder > div { flex: 1; min-width: 0; }

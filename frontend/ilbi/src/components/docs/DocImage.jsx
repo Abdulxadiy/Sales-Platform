@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { X, ZoomIn, ZoomOut } from 'lucide-react';
 
-export default function DocImage({ src, caption = '' }) {
+export default function DocImage({ src, caption = '', width, height }) {
   const dialogRef = useRef(null);
   const cardRef = useRef(null);
   const [zoomed, setZoomed] = useState(false);
@@ -37,7 +37,7 @@ export default function DocImage({ src, caption = '' }) {
         title="Rasmni kattalashtirish"
         onClick={handleOpen}
       >
-        <img src={url} alt={caption || 'Qo‘llanma rasmi'} loading="lazy" />
+        <img src={url} alt={caption || 'Qo‘llanma rasmi'} width={width} height={height} loading="lazy" />
       </button>
 
       {caption && <figcaption>{caption}</figcaption>}

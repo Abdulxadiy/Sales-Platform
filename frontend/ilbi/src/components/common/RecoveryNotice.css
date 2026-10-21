@@ -1,0 +1,7 @@
+.recovery-notice{display:flex;align-items:center;flex-wrap:wrap;gap:16px;padding:18px 20px;border:1px solid var(--border-card);border-radius:14px;background:var(--bg-card);color:var(--text-primary);font-size:13px;line-height:1.6}
+.recovery-notice-icon{flex-shrink:0;color:var(--accent-rose)}.recovery-notice-body{flex:1;min-width:min(100%,180px);overflow-wrap:anywhere}.recovery-notice-body>strong{display:block;font-size:14px;font-weight:650}.recovery-notice-body>p{margin:5px 0 0;color:var(--text-secondary)}
+.recovery-notice-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.retry-button{min-height:40px;flex-shrink:0;white-space:normal;line-height:1.4;text-decoration:none}.retry-button svg{flex-shrink:0}.retry-button:focus-visible{outline:2px solid var(--primary);outline-offset:3px}.retry-button-spinner{animation:retry-button-spin 1.2s linear infinite}
+@keyframes retry-button-spin{to{transform:rotate(360deg)}}
+.retry-button-compact{min-height:36px;padding:7px 11px;font-size:12px}
+@media(max-width:520px){.recovery-notice{padding:16px;gap:12px}.recovery-notice-actions{width:100%}.recovery-notice-actions>.retry-button{flex:1}}
+@media(prefers-reduced-motion:reduce){.retry-button-spinner{animation:none}}

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, dialog, Menu, shell, session } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, dialog, Menu, shell, session, net } = require('electron');
 const { createServer: httpServer, request: httpRequest } = require('node:http');
 const { createServer: httpsServer, request: httpsRequest } = require('node:https');
 const { readFile, writeFile, mkdir } = require('node:fs/promises');
@@ -6,11 +6,14 @@ const { join, extname } = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
 const { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
+const { configureSecretStore, serveReleases } = require('./services.cjs');
+configureSecretStore(app);
 app.setName('ILBI');
 if (process.platform === 'linux') app.setDesktopName('uz.ilbi.desktop.desktop');
 
 let window, guideWindow, localHost, lanServer, webServer, origin, configuration, secrets;
 let quitting = false;
+let setupBusy = false;
 const bridgeKey = randomBytes(32).toString('hex');
 const dataDir = app.getPath('userData');
 const resources = app.isPackaged ? process.resourcesPath : join(__dirname, process.platform === 'linux' ? 'resources-linux' : 'resources');
@@ -21,7 +24,10 @@ const applicationIcon = app.isPackaged ? join(resources, process.platform === 'l
 
 async function openGuide(event) {
   if (event) validSender(event);
-  if (guideWindow && !guideWindow.isDestroyed()) { guideWindow.restore(); guideWindow.focus(); return true; }
+  if (guideWindow && !guideWindow.isDestroyed()) {
+    if (!guideWindow.webContents.getURL().startsWith(origin + '/desktop-guide')) await guideWindow.loadURL(origin + '/desktop-guide?desktop-window=1');
+    guideWindow.restore(); guideWindow.focus(); return true;
+  }
   guideWindow = new BrowserWindow({ parent: window, title: 'ILBI — Ilovani sozlash', icon: applicationIcon,
     width: 1140, height: 880, minWidth: 760, minHeight: 600,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true } });
@@ -36,14 +42,19 @@ async function openGuide(event) {
   return true;
 }
 
-async function saveVault() {
+async function saveVault(nextConfiguration = configuration, nextSecrets = secrets) {
   if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')) throw Error(process.platform === 'linux'
-    ? 'Maxfiy ma’lumotlar ombori ochilmadi. Linux’da GNOME Keyring yoki KWallet’ni o‘rnating va tizimga kirishda qulfini oching.'
+    ? 'Parollar omboriga ulanib bo‘lmadi. GNOME Keyring yoki KWallet qulfini oching va ILBI’ni qayta ishga tushiring. Batafsil qadamlar rasmli qo‘llanmada.'
     : 'Tizimning maxfiy ma’lumotlar ombori ishlamayapti.');
-  const value = safeStorage.encryptString(JSON.stringify({ configuration, secrets }));
+  const value = safeStorage.encryptString(JSON.stringify({ configuration: nextConfiguration, secrets: nextSecrets }));
   await mkdir(dataDir, { recursive: true });
   await writeFile(vaultPath + '.new', value, { mode: 0o600 });
   await require('node:fs/promises').rename(vaultPath + '.new', vaultPath);
+}
+async function stopRuntime() {
+  lanServer?.close(); lanServer = null;
+  const host = localHost; localHost = null;
+  await host?.stop();
 }
 function validSender(event, setupOnly = false) {
   const url = new URL(event.senderFrame.url);
@@ -105,7 +116,7 @@ app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if (quitting) return;
   event.preventDefault(); quitting = true;
-  Promise.resolve().then(async () => { lanServer?.close(); webServer?.close(); await localHost?.stop(); })
+  Promise.resolve().then(async () => { webServer?.close(); await stopRuntime(); })
     .catch(error => dialog.showErrorBox('ILBI yopilishi', error.message)).finally(() => app.quit());
 });
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -120,8 +131,12 @@ else {
         try {
           if (req.headers.origin && req.headers.origin !== origin) { res.writeHead(403); res.end(); return; }
           const url = new URL(req.url, 'http://localhost');
+          if (url.pathname === '/desktop/releases/') { await serveReleases(req, res, (...args) => net.fetch(...args)); return; }
           if (/^\/(api\/|desktop\/|media\/)/.test(url.pathname)) {
-            if (!configuration) { res.writeHead(503); res.end(); return; }
+            if (!configuration || (configuration.mode === 'host' && !localHost)) {
+              res.writeHead(503, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ detail: 'Avval ILBI sozlash oynasidagi Ishni boshlash tugmasini bosing.', code: 'setup_required' })); return;
+            }
             return configuration.mode === 'host' ? proxy(req, res, { host: '127.0.0.1', port: localHost.port })
               : proxy(req, res, { host: configuration.pairing.host, port: configuration.pairing.port }, true);
           }
@@ -145,26 +160,41 @@ else {
       origin = `http://127.0.0.1:${webServer.address().port}`;
       ipcMain.handle('ilbi:setup', async event => {
         validSender(event, true);
-        if (configuration) throw Error('Qurilma allaqachon sozlangan.');
-        configuration = { mode: 'host', server: OFFICIAL_SERVER, lanPort: 49243 };
-        secrets = { djangoSecret: randomBytes(48).toString('hex'), databasePassword: randomBytes(32).toString('hex'),
-          vaultKey: randomBytes(32).toString('base64url') + '=', pairingKey: randomBytes(32).toString('hex') };
-        await saveVault();
-        await launchRuntime();
-        await window.loadURL(origin + '/login');
+        if (setupBusy) throw Error('Kassa tayyorlanmoqda. Biroz kuting.');
+        if (configuration && (configuration.mode !== 'host' || localHost)) throw Error('Qurilma allaqachon sozlangan.');
+        setupBusy = true;
+        try {
+          if (!configuration) {
+            const nextConfiguration = { mode: 'host', server: OFFICIAL_SERVER, lanPort: 49243 };
+            const nextSecrets = { djangoSecret: randomBytes(48).toString('hex'), databasePassword: randomBytes(32).toString('hex'),
+              vaultKey: randomBytes(32).toString('base64url') + '=', pairingKey: randomBytes(32).toString('hex') };
+            // Commit in-memory state only after encrypted persistence succeeds.
+            await saveVault(nextConfiguration, nextSecrets);
+            configuration = nextConfiguration; secrets = nextSecrets;
+          }
+          try { await launchRuntime(); }
+          catch (error) { await stopRuntime().catch(() => {}); throw error; }
+          await window.loadURL(origin + '/login');
+        } finally { setupBusy = false; }
       });
       ipcMain.handle('ilbi:join', async event => {
         validSender(event, true);
+        if (setupBusy) throw Error('Kassa tayyorlanmoqda. Biroz kuting.');
         if (configuration) throw Error('Qurilma allaqachon sozlangan.');
-        const result = await dialog.showOpenDialog(window, { properties: ['openFile'], filters: [{ name: 'ILBI pairing', extensions: ['ilbi'] }] });
-        if (result.canceled) return false;
-        configuration = { mode: 'client', pairing: validatePairing(JSON.parse(await readFile(result.filePaths[0], 'utf8'))) };
-        await saveVault();
-        await window.loadURL(origin + '/login');
-        return true;
+        setupBusy = true;
+        try {
+          const result = await dialog.showOpenDialog(window, { properties: ['openFile'], filters: [{ name: 'ILBI pairing', extensions: ['ilbi'] }] });
+          if (result.canceled) return false;
+          const nextConfiguration = { mode: 'client', pairing: validatePairing(JSON.parse(await readFile(result.filePaths[0], 'utf8'))) };
+          await saveVault(nextConfiguration);
+          configuration = nextConfiguration;
+          await window.loadURL(origin + '/login');
+          return true;
+        } finally { setupBusy = false; }
       });
       ipcMain.handle('ilbi:pairing', exportPairing);
       ipcMain.handle('ilbi:guide', openGuide);
+      ipcMain.handle('ilbi:downloads', event => { validSender(event); return shell.openExternal(OFFICIAL_SERVER + '/download'); });
       session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(permission === 'media' && contents.getURL().startsWith(origin + '/')));
       app.setAppUserModelId('uz.ilbi.desktop');
       window = new BrowserWindow({ title: 'ILBI', icon: applicationIcon, width: 1440, height: 960, minWidth: 900, minHeight: 650,

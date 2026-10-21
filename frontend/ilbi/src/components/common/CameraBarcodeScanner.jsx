@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useId } from 'react';
 import { Camera, X, Zap, ZapOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { cameraErrorMessage, startCameraSession } from '../../utils/cameraScanner';
+import { RetryButton } from './RecoveryNotice';
 
 function playBeep() {
   try {
@@ -190,7 +191,7 @@ export default function CameraBarcodeScanner({
             <div role="alert" style={{ position: 'absolute', inset: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 12, background: '#141820', color: '#fff', padding: 16, borderRadius: 12 }}>
               <AlertCircle size={30} color="var(--accent-rose)" />
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>{errorMessage}</p>
-              <button type="button" className="btn btn-secondary" onClick={() => setAttempt(value => value + 1)}>Qayta urinish</button>
+              <RetryButton onClick={() => setAttempt(value => value + 1)} />
             </div>
           )}
         </div>

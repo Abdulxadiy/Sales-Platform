@@ -1,3 +1,4 @@
+import { RetryButton } from '../components/common/RecoveryNotice';
 import { useWorkspace } from '../context/WorkspaceContext';
 import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
@@ -438,7 +439,7 @@ function TenantDashboard() {
             </div>
           </div>
 
-          {tenantError && <div role="alert" style={{ padding: 16, color: 'var(--accent-rose)' }}>{tenantError} <button className="btn btn-secondary" onClick={loadTenants}>Qayta urinish</button></div>}
+          {tenantError && <div role="alert" style={{ padding: 16, color: 'var(--accent-rose)' }}>{tenantError} <RetryButton onClick={loadTenants} loading={tenantList.loading}>Qayta urinish</RetryButton></div>}
           {!tenantsLoaded ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}><IlbiLoader label="Do‘konlar yuklanmoqda..." /></div>
           ) : filteredTenants.length > 0 ? (

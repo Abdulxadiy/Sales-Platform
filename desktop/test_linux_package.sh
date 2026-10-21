@@ -7,6 +7,10 @@ test_directory=$(mktemp -d "${TMPDIR:-/tmp}/ilbi-linux-package-XXXXXXXX")
 # Chromium's singleton socket must fit the Linux UNIX socket path limit. Keep
 # its tiny temporary sockets in /tmp; the extracted package stays on disk.
 export TMPDIR=/tmp
+# Reproduce customers on Hyprland without supplying a password-store workaround.
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=Hyprland
+export DESKTOP_SESSION=hyprland
 export XDG_CONFIG_HOME="$test_directory/config"
 export XDG_DATA_HOME="$test_directory/data space"
 export ILBI_INSTALL_BIN_DIR="$test_directory/bin space"

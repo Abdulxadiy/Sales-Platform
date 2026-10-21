@@ -9,7 +9,7 @@ import { ConfirmProvider } from '/src/context/ConfirmContext.jsx';
 import POS from '/src/pages/POS.jsx';
 import Catalog from '/src/pages/Catalog.jsx';
 import Intake from '/src/components/inventory/RapidStockIntakeModal.jsx';
-import { catalogApi, tenantApi } from '/src/api/client.js';
+import { catalogApi, tenantApi, inventoryApi } from '/src/api/client.js';
 import './cameraFeed.js';
 const qa = window.cameraQA;
 qa.lookups = [];
@@ -25,6 +25,7 @@ catalogApi.getVariants = async params => {
   return { count: 1, results: [variant] };
 };
 catalogApi.getCategories = async () => [{ id: 1, name: 'Tests', currency: 'UZS', kod: '01', parent: null }];
+inventoryApi.getSuppliers = async () => [];
 tenantApi.getCurrentTenant = async () => ({ usd_rate: '12800' });
 const auth = { isAuthenticated: true, isAdmin: false, isOwner: true, role: 'owner', user: { id: 1, role: 'owner', permissions: ['*'], tenants: [{ id: 1, name: 'Camera tests', is_owner: true, permissions: ['*'] }] } };
 const screen = new URLSearchParams(location.search).get('screen');

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, ShoppingCart, CreditCard, Package, ArrowUpRight, History, RefreshCw } from 'lucide-react';
+import { BarChart3, ShoppingCart, CreditCard, Package, ArrowUpRight, History } from 'lucide-react';
+import RecoveryNotice, { RetryButton } from '../common/RecoveryNotice';
 import CompactSalesChart from './CompactSalesChart';
 import Reminders from './Reminders';
 import { workspaceApi } from '../../api/workspace';
@@ -42,7 +43,7 @@ export default function WorkDesktop({ data, loading, period, setPeriod }) {
       {metric('Jami nasiya', `${money(store.total_debt_uzs)} UZS`, `${money(store.total_debt_usd)} USD`, CreditCard, '/debts', 'debt')}
       {canUse(activeTenant, 'inventory.view_stock') && metric('Kam qolgan tovar', overview?.low_stock_count == null ? '…' : `${overview.low_stock_count} ta`, 'Qoldiq 5 birlik yoki undan kam', Package, '/inventory?workspace_action=low_stock')}
     </div>
-    {overview?.error && <div className="workspace-error" role="alert">{overview.error}<button onClick={() => setRetry(value => value + 1)} type="button"><RefreshCw size={14} />Qayta yuklash</button></div>}
+    {overview?.error && <RecoveryNotice title="Ish stoli ma’lumotlari ochilmadi" actions={<RetryButton onClick={() => setRetry(value => value + 1)}>Qayta yuklash</RetryButton>}>{overview.error}</RecoveryNotice>}
     <div className="workspace-middle-grid"><section className="workspace-card workspace-chart"><div className="workspace-card-heading"><h2><BarChart3 size={18} />Savdo dinamikasi</h2></div>
       <CompactSalesChart rows={data?.sales_chart || []} />
     </section><Reminders compact /></div>

@@ -4,9 +4,11 @@ import { ArrowLeft, Download, X } from 'lucide-react';
 import IlbiLogo from '../components/common/IlbiLogo';
 import MarkdownViewer, { createHeadingSlug } from '../components/docs/MarkdownViewer';
 import source from '../content/desktop-guide.uz.md?raw';
+import imageManifest from '../content/desktop-guide/manifest.json';
 import './DesktopGuide.css';
 
 const images = import.meta.glob('../content/desktop-guide/*.png', { eager: true, query: '?url', import: 'default' });
+const imageDimensions = Object.fromEntries(imageManifest.frames.map(frame => [images[`../content/desktop-guide/${frame.file}`], frame.dimensions]));
 const content = source.replace(/\(desktop-guide\/([^/)]+\.png)\)/g, (_, name) => `(${images[`../content/desktop-guide/${name}`]})`);
 const sections = [...source.matchAll(/^## (.+)$/gm)].map((match) => ({ title: match[1], id: createHeadingSlug(match[1]) }));
 
@@ -28,7 +30,7 @@ export default function DesktopGuide() {
         {sections.map(section => <a key={section.id} href={`#${section.id}`}>{section.title}</a>)}
         <small>Rasm ustiga bosing — kattalashtirib ko‘ring.</small>
       </nav>
-      <main className="desktop-guide-article"><MarkdownViewer content={content} /></main>
+      <main className="desktop-guide-article"><MarkdownViewer content={content} imageDimensions={imageDimensions} /></main>
     </div>
     <footer className="desktop-guide-footer"><span>Matn va rasmlar ilovada internetsiz ham ochiladi.</span>
       <Link to="/download"><Download size={15} />Ilovani yuklab olish</Link>

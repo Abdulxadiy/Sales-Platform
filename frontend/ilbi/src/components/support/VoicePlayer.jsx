@@ -1,4 +1,5 @@
 import IlbiLoader from '../common/IlbiLoader';
+import { RetryButton } from '../common/RecoveryNotice';
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, AlertCircle } from 'lucide-react';
 
@@ -150,13 +151,7 @@ export default function VoicePlayer({ api, conversationId, messageId, duration =
       <div className="support-voice-player error">
         <AlertCircle size={14} />
         <span>Ovozli xabar tinglab bo‘lmadi</span>
-        <button
-          type="button"
-          onClick={() => { setError(false); setAudioUrl(null); }}
-          style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 11, marginLeft: 6, textDecoration: 'underline' }}
-        >
-          Qayta urinish
-        </button>
+        <RetryButton className="retry-button-compact" onClick={() => { setError(false); setAudioUrl(null); }} />
       </div>
     );
   }

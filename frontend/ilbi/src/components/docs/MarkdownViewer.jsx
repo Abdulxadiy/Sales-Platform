@@ -200,7 +200,7 @@ function renderInline(text = '') {
   });
 }
 
-export default function MarkdownViewer({ content = '', className = '' }) {
+export default function MarkdownViewer({ content = '', className = '', imageDimensions = {} }) {
   useEffect(() => {
     if (!content) return;
     if (typeof window !== 'undefined' && window.location.hash) {
@@ -381,7 +381,7 @@ export default function MarkdownViewer({ content = '', className = '' }) {
     if (imgMatch) {
       const caption = imgMatch[1];
       const src = imgMatch[2];
-      elements.push(<DocImage key={`img-${i}`} src={src} caption={caption} />);
+      elements.push(<DocImage key={`img-${i}`} src={src} caption={caption} {...imageDimensions[src]} />);
       continue;
     }
 

@@ -21,7 +21,11 @@
           "dy": 0
         }
       ],
-      "sha256": "c73028d1b5ef7feeb0cd17643269a1919b4ec6b9146fb92c075de1f449f35243"
+      "sha256": "40a97884b35df2a240a1bd9b61da729f7c75bf3496016943d1632155b539eeec",
+      "dimensions": {
+        "width": 972,
+        "height": 372
+      }
     },
     {
       "file": "07-extra-register.png",
@@ -50,7 +54,11 @@
           "dy": 0
         }
       ],
-      "sha256": "e9eed5dfa0d677103d1ae38c4c7f4bf736a2d642e601e281a1c8c151fce0788e"
+      "sha256": "f9b36ffa2978ba29899b4958e0ddf725eab051901d4afff16acbb3228de64893",
+      "dimensions": {
+        "width": 972,
+        "height": 351
+      }
     },
     {
       "file": "02-prepare.png",
@@ -87,7 +95,11 @@
           "dy": 0
         }
       ],
-      "sha256": "0bb53a51bec6fedd1dc0c3cd0d8d86b67dbe429971db419aae9e265b6a32b56f"
+      "sha256": "e6e56f85529c486382aa7daed464f355322ebad4281d3e712f8f28b09cc4dddb",
+      "dimensions": {
+        "width": 1275,
+        "height": 761
+      }
     },
     {
       "file": "03-offline-login.png",
@@ -124,7 +136,11 @@
           "dy": 0
         }
       ],
-      "sha256": "29d2072ff7d1174ce2715017d126751d8624a3929df62229cabe6944b06992df"
+      "sha256": "93cd17fc4009c7539fceac325472606fcd92dbdd1907485868345ebbe5627460",
+      "dimensions": {
+        "width": 825,
+        "height": 644
+      }
     },
     {
       "file": "04-queue.png",
@@ -153,7 +169,11 @@
           "dy": 0
         }
       ],
-      "sha256": "71c5a0732d5a9bbd0cab747f56c458b45dcc75f518302233c21cd5349cefda06"
+      "sha256": "6647937c448f19ed19dd8a2d3b1cc7b6a112bcda3123ae63afe6b8c9c7b02ace",
+      "dimensions": {
+        "width": 1275,
+        "height": 990
+      }
     },
     {
       "file": "05-priority.png",
@@ -182,7 +202,11 @@
           "dy": 0
         }
       ],
-      "sha256": "c602db063c2a30373f2e2bcd9c97034deecc7dbc2e1b5af2a5702744db15e519"
+      "sha256": "c602db063c2a30373f2e2bcd9c97034deecc7dbc2e1b5af2a5702744db15e519",
+      "dimensions": {
+        "width": 1275,
+        "height": 990
+      }
     },
     {
       "file": "06-retry.png",
@@ -211,7 +235,11 @@
           "dy": 0
         }
       ],
-      "sha256": "f566592eeb9dfbe364452d39684ebf82604d19a0d73c7cad90ff6613a8cedcf6"
+      "sha256": "f0f6d89c09e93c4dfbcda2767f79b5b0e2706ac6b7ab2cd3ea7ea0617c94f50e",
+      "dimensions": {
+        "width": 1275,
+        "height": 794
+      }
     }
   ]
 }

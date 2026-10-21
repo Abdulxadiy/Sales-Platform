@@ -1,3 +1,4 @@
+import { RetryButton } from '../components/common/RecoveryNotice';
 import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -247,7 +248,7 @@ function TenantServices() {
         {isAdmin && (
           <RemoteTenantSelect autoSelect value={selectedTenantId || ''} onChange={value => setSelectedTenantId(Number(value))} />
         )}
-        {selectedTenantId && <button type="button" className="btn btn-secondary" onClick={loadTenantData} style={{ marginTop: 12 }}>Qayta urinish</button>}
+        {selectedTenantId && <RetryButton onClick={loadTenantData} loading={loading} style={{ marginTop: 12 }}>Qayta urinish</RetryButton>}
       </div>
     );
   }

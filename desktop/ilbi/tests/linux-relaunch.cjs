@@ -4,7 +4,7 @@ const { freePort } = require('../runtime.cjs');
 const pause = ms => new Promise(ok => setTimeout(ok, ms));
 (async () => {
   const port = await freePort();
-  const child = spawn(process.env.ILBI_DESKTOP_INSTALLED_EXE, [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1', '--password-store=gnome-libsecret'], { stdio: ['ignore','ignore','pipe'] });
+  const child = spawn(process.env.ILBI_DESKTOP_INSTALLED_EXE, [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1'], { stdio: ['ignore','ignore','pipe'] });
   let log = ''; child.stderr.on('data', data => { log = (log + data).slice(-6000); });
   let socket;
   try {

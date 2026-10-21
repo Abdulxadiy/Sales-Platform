@@ -1,3 +1,4 @@
+import { RetryButton } from '../components/common/RecoveryNotice';
 import AppLoadingScreen from '../components/common/AppLoadingScreen';
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -8,7 +9,6 @@ import {
   Share2,
   CreditCard,
   AlertTriangle,
-  RotateCcw,
   Store,
 } from 'lucide-react';
 import { salesApi } from '../api/client';
@@ -94,13 +94,7 @@ export default function PublicReceiptView() {
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 24 }}>
             {error || 'Kiritilgan raqam bo‘yicha tizimda elektron chek mavjud emas yoki muddati o‘tgan.'}
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)', color: 'var(--text-on-primary)', fontWeight: 600, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-          >
-            <RotateCcw size={16} />
-            <span>Qayta urinish</span>
-          </button>
+          <RetryButton variant="primary" onClick={() => window.location.reload()}>Qayta urinish</RetryButton>
         </div>
       </div>
     );

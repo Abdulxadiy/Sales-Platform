@@ -1,3 +1,4 @@
+import { RetryButton } from '../components/common/RecoveryNotice';
 import IlbiLoader from '../components/common/IlbiLoader';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Pagination from '../components/common/Pagination';
@@ -261,7 +262,7 @@ export default function Tenants() {
       </div>
 
       {/* Filter and Search Bar */}
-      {listError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{listError} <button className="btn btn-secondary" onClick={loadTenants}>Qayta urinish</button></div>}
+      {listError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{listError} <RetryButton onClick={loadTenants} loading={loading}>Qayta urinish</RetryButton></div>}
       <div
         style={{
           display: 'flex',

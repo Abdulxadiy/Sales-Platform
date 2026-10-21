@@ -1,3 +1,4 @@
+import { RetryButton } from '../components/common/RecoveryNotice';
 import IlbiLoader from '../components/common/IlbiLoader';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -160,7 +161,7 @@ export default function Audit() {
         </div>
       )}
 
-      {loadError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{loadError} <button className="btn btn-secondary" onClick={loadLogs}>Qayta urinish</button></div>}
+      {loadError && <div className="glass-card" role="alert" style={{ padding: 14, color: 'var(--accent-rose)' }}>{loadError} <RetryButton onClick={loadLogs} loading={loading}>Qayta urinish</RetryButton></div>}
 
       {/* Audit Log Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>

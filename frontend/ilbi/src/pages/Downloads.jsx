@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Download, RefreshCw, Smartphone } from 'lucide-react';
+import { ArrowLeft, BookOpen, Download, ExternalLink, Smartphone } from 'lucide-react';
 import IlbiLogo from '../components/common/IlbiLogo';
+import RecoveryNotice, { RetryButton } from '../components/common/RecoveryNotice';
 import { desktopRequest } from '../components/sync/desktopApi';
 import { useAuth } from '../hooks/useAuth';
 import { releaseSize, releaseURL } from '../utils/downloads';
@@ -16,22 +17,24 @@ export default function Downloads() {
     let alive = true;
     const controller = new AbortController();
     async function load() {
-      setState({ loading: true });
+      setState(previous => ({ ...previous, loading: true }));
       try {
         let manifest, origin = window.location.origin;
         if (window.ilbiDesktop) {
-          const result = await desktopRequest('releases');
+          const result = await desktopRequest('releases', undefined, { signal: controller.signal });
           manifest = result.release; origin = result.origin;
         } else {
           const response = await fetch('/downloads/releases.json', { signal: controller.signal, cache: 'no-store' });
           if (response.status === 404) { if (alive) setState({ loading: false, origin }); return; }
-          if (!response.ok) throw Error('release unavailable');
+          if (!response.ok) throw Error('Yuklab olish serveri vaqtincha javob bermayapti. Birozdan keyin qayta urinib ko‘ring.');
           manifest = await response.json();
         }
-        if (manifest?.schema !== 1) throw Error('release format');
+        if (manifest?.schema !== 1) throw Error('Yuklamalar ro‘yxatini o‘qib bo‘lmadi. Birozdan keyin qayta tekshiring.');
         if (alive) setState({ loading: false, origin, manifest });
       } catch (error) {
-        if (alive && error.name !== 'AbortError') setState({ loading: false, error: true });
+        if (alive && error.name !== 'AbortError') setState({ loading: false, error: error instanceof TypeError
+          ? 'Yuklab olish serveriga ulanib bo‘lmadi. Internet ishlayotgan bo‘lsa ham, server bilan ulanish vaqtincha uzilishi mumkin.'
+          : error.message || 'Yuklamalar ro‘yxatini ochib bo‘lmadi. Qayta urinib ko‘ring.' });
       }
     }
     void load();
@@ -50,8 +53,12 @@ export default function Downloads() {
     <main className="downloads-main">
       <span className="downloads-eyebrow">ILBI sizning qurilmangizda</span>
       <h1>Yuklab olish</h1><p className="downloads-intro">Do‘koningiz bilan kompyuterda ishlang. Internet qaytganda offline ishlaringiz server bilan sinxronlanadi.</p>
-      {state.error && <div className="downloads-notice" role="status">Yuklab olish ma’lumotlarini hozircha olib bo‘lmadi. Internetga ulanishni tekshiring.
-        <button type="button" onClick={() => setAttempt(value => value + 1)}><RefreshCw size={15} />Qayta tekshirish</button></div>}
+      {state.error && <RecoveryNotice className="downloads-notice" title="Yuklamalar ro‘yxati ochilmadi" actions={<>
+        <RetryButton loading={state.loading} onClick={() => setAttempt(value => value + 1)}>Qayta tekshirish</RetryButton>
+        {window.ilbiDesktop?.openDownloads && <button className="btn btn-secondary downloads-open-site" type="button" onClick={() => {
+          void window.ilbiDesktop.openDownloads().catch(() => setState(previous => ({ ...previous, error: 'Rasmiy saytni brauzerda ochib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.' })));
+        }}><ExternalLink size={16} aria-hidden="true" />Saytda ochish</button>}
+      </>}>{state.error}</RecoveryNotice>}
       <div className="downloads-grid">
         <article className="downloads-card"><div className="downloads-platform-icon"><img src="/brand/ilbi-desktop.svg" width="52" height="52" alt="ILBI ilovasi belgisi" /></div>
           <div className="downloads-card-heading"><h2>Windows uchun ILBI</h2><span>v{windows?.version || version}</span></div>
@@ -85,8 +92,9 @@ export default function Downloads() {
         <li>Ichidagi <strong>ILBI</strong> papkasida o‘ng tugma → <strong>Terminalda ochish</strong>.</li>
         <li><code>bash install.sh</code> yozib, Enter bosing. <code>sudo</code> kerak emas.</li>
         <li>Ilovalar menyusidan <strong>ILBI</strong>ni oching.</li>
-      </ol><p>Menyuda ko‘rinmasa: <code>~/.local/bin/ilbi</code>. <Link to="/desktop-guide">Arch va boshqa Linux’lar uchun batafsil yo‘riqnoma</Link></p>
+      </ol><p>Menyuda ko‘rinmasa: <code>~/.local/bin/ilbi</code>.</p>
         <p>Paket Linux x86_64 uchun. GNOME Keyring yoki KWallet ochiq bo‘lsin. Yangilashda ILBI’ni yoping va yangi arxivdagi <code>install.sh</code> faylini yana ishga tushiring — ma’lumotlar saqlanadi.</p>
+        <Link className="downloads-linux-guide" to="/desktop-guide#7-linux-uchun-batafsil-qollanma"><BookOpen size={18} aria-hidden="true" /><span>Linux uchun batafsil qo‘llanma<small>Arch, boshqa Linux’lar va parollar omborini sozlash.</small></span><ArrowLeft size={16} aria-hidden="true" style={{ transform: 'rotate(180deg)' }} /></Link>
       </section>
       <section className="downloads-help" aria-labelledby="download-start"><h2 id="download-start">Birinchi ishga tushirish</h2>
         <ol><li>ILBI’ni o‘rnating va <strong>Ishni boshlash</strong> tugmasini bosing.</li><li>Internet orqali do‘kon egasi hisobiga kirib, offline ishlashni tayyorlang.</li><li>Bitta kompyuter uchun shu yetarli. Keyinroq boshqa kassa kerak bo‘lsa, <strong>ILBI → Boshqa kassani ulash</strong> menyusidan qo‘shing.</li></ol>

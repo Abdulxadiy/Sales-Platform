@@ -31,10 +31,16 @@ try {
     for (let i = 0; i < 300; i++) { if (await browser.evaluate(expression)) return; await new Promise(ok => setTimeout(ok, 40)); }
     throw Error('Guide check timed out: ' + expression);
   };
+  await browser.call('Page.navigate', { url: origin + '/desktop-guide#7-linux-uchun-batafsil-qollanma' });
+  await wait('Boolean(document.getElementById("7-linux-uchun-batafsil-qollanma")) && !document.querySelector(".ilbi-loading")');
+  await wait('document.getElementById("7-linux-uchun-batafsil-qollanma").getBoundingClientRect().top >= 0 && document.getElementById("7-linux-uchun-batafsil-qollanma").getBoundingClientRect().top < innerHeight / 2');
+  assert.equal(await browser.evaluate('[...document.querySelectorAll(".doc-focus-trigger img")].every(image=>Number(image.getAttribute("width"))>0&&Number(image.getAttribute("height"))>0)'), true);
+  await browser.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(image=>{image.loading="eager";return image.decode()}))');
+  assert.equal(await browser.evaluate('document.getElementById("7-linux-uchun-batafsil-qollanma").getBoundingClientRect().top >= 0 && document.getElementById("7-linux-uchun-batafsil-qollanma").getBoundingClientRect().top < innerHeight / 2'), true);
   await browser.call('Page.navigate', { url: origin + '/desktop-guide' });
   await wait('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash"');
   await wait('!document.querySelector(".ilbi-loading")');
-  assert.equal(await browser.evaluate('document.querySelectorAll(".desktop-guide-toc a").length'), 6);
+  assert.equal(await browser.evaluate('document.querySelectorAll(".desktop-guide-toc a").length'), 7);
   assert.equal(await browser.evaluate('document.querySelector(".desktop-guide-article").textContent.includes("Arch Linux uchun qadamlar") && document.querySelector(".desktop-guide-article").textContent.includes("bash install.sh")'), true);
   assert.equal(await browser.evaluate('document.querySelectorAll(".doc-focus-trigger img").length'), 7);
   await browser.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
@@ -56,5 +62,5 @@ try {
   await wait('document.querySelectorAll(".doc-focus-trigger img").length===7');
   await browser.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
   assert.deepEqual(browser.errors, []);
-  console.log(JSON.stringify({ passed: true, scenarios: ['built guide without cloud/backend', 'all seven bundled images', 'image zoom and Escape', 'six section anchors', 'mobile layout', 'reload without internet'], artifacts }));
+  console.log(JSON.stringify({ passed: true, scenarios: ['built guide without cloud/backend', 'all seven bundled images', 'image zoom and Escape', 'seven section anchors with detailed Linux instructions last', 'direct Linux link without image layout jumps', 'mobile layout', 'reload without internet'], artifacts }));
 } finally { await browser?.close(); await new Promise(ok => server.close(ok)); }

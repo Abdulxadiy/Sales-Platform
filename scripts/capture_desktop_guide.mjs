@@ -51,7 +51,7 @@ async function capture(name, selector, marks, context, padding = 65) {
   const image = await browser.call('Page.captureScreenshot', { format: 'png', clip: { ...bounds, scale: 1.5 }, captureBeyondViewport: true });
   const png = Buffer.from(image.data, 'base64');
   await writeFile(new URL(name, destination), png);
-  manifest.frames.push({ file: name, source: context, crop: bounds, arrows: marks, sha256: createHash('sha256').update(png).digest('hex') });
+  manifest.frames.push({ file: name, source: context, crop: bounds, dimensions: { width: png.readUInt32BE(16), height: png.readUInt32BE(20) }, arrows: marks, sha256: createHash('sha256').update(png).digest('hex') });
 }
 try {
   // Serve the actual first-run HTML and stylesheet with a non-mutating Electron bridge.

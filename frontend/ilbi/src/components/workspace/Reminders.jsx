@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BellRing, Plus, Trash2, RotateCw } from 'lucide-react';
 import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
+import RecoveryNotice, { RetryButton } from '../common/RecoveryNotice';
 import Pagination from '../common/Pagination';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useTenant } from '../../context/TenantContext';
@@ -70,8 +71,7 @@ export default function Reminders({ compact = false, initiallyCreating = false }
   return <section className={`workspace-card workspace-reminders ${compact ? 'compact' : ''}`}>
     <div className="workspace-card-heading"><h2><BellRing size={18} /> Eslatmalar</h2>
       <button className="workspace-text-button" onClick={() => setCreating(true)} type="button"><Plus size={15} /> Eslatma</button></div>
-    {reminders?.error && <div role="alert" className="workspace-error">{reminders.error}
-      <button type="button" onClick={refreshReminders}>Qayta yuklash</button></div>}
+    {reminders?.error && <RecoveryNotice title="Eslatmalar ochilmadi" actions={<RetryButton onClick={refreshReminders}>Qayta yuklash</RetryButton>}>{reminders.error}</RecoveryNotice>}
     <div className="workspace-reminder-list">
       {rows.slice(0, compact ? 4 : 50).map(row => <div className="workspace-reminder" key={row.id}>
         <input type="checkbox" checked={row.completed} disabled={busy} onChange={() => update(row)} aria-label={`${row.title} — bajarildi`} />

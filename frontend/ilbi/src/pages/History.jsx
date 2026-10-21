@@ -1,3 +1,4 @@
+import { RetryButton } from '../components/common/RecoveryNotice';
 import IlbiLoader from '../components/common/IlbiLoader';
 import React, { useEffect, useState } from 'react';
 import {
@@ -79,7 +80,7 @@ function HistoryDetail({ event, data, loading, error, onRetry }) {
   const [paperWidth, setPaperWidth] = useState('58mm');
   const [invoice, setInvoice] = useState(false);
   if (loading) return <div className="history-detail-state"><IlbiLoader label="Tafsilotlar yuklanmoqda…" /></div>;
-  if (error) return <div className="history-detail-state" role="alert"><p>{error.message || 'Tafsilotlarni yuklab bo‘lmadi.'}</p><button className="btn btn-secondary" onClick={onRetry}>Qayta urinish</button></div>;
+  if (error) return <div className="history-detail-state" role="alert"><p>{error.message || 'Tafsilotlarni yuklab bo‘lmadi.'}</p><RetryButton onClick={onRetry}>Qayta urinish</RetryButton></div>;
   if (!data) return null;
   const details = data.details || {};
   const changes = Object.entries(details.changes || {});
@@ -170,7 +171,7 @@ export default function History() {
 
     <section className="history-feed" aria-label="Amallar ro‘yxati" aria-busy={list.loading}>
       <div className="history-feed-heading"><h3>Faoliyat lentasi</h3><span>{hasFilters ? 'Saralangan natijalar' : 'Barcha yo‘nalishlar'}</span></div>
-      {list.error ? <div className="glass-card history-empty" role="alert"><HistoryIcon size={32} /><h3>Tarixni yuklab bo‘lmadi</h3><p>{list.error.message}</p><button className="btn btn-secondary" onClick={refresh}>Qayta urinish</button></div>
+      {list.error ? <div className="glass-card history-empty" role="alert"><HistoryIcon size={32} /><h3>Tarixni yuklab bo‘lmadi</h3><p>{list.error.message}</p><RetryButton onClick={refresh} loading={list.loading}>Qayta urinish</RetryButton></div>
       : list.loading ? <div className="glass-card history-detail-state"><IlbiLoader label="Tarix yuklanmoqda..." /></div>
       : groups.length === 0 ? <div className="glass-card history-empty"><span className="history-empty-icon"><HistoryIcon size={32} /></span><h3>{hasFilters ? 'Mos amallar topilmadi' : 'Tarix shu yerdan boshlanadi'}</h3><p>{hasFilters ? 'Boshqa so‘z yoki davr bilan qidirib ko‘ring.' : 'Sotuvlar, tovar kirimlari va yangi o‘zgarishlar shu yerda ko‘rinadi.'}</p>{hasFilters && <button className="btn btn-secondary" onClick={clearFilters}>Filtrlarni tozalash</button>}</div>
       : groups.map(group => <div className="history-day" key={group.day}><div className="history-day-heading"><span className="history-day-dot" /><h4>{dayLabel(group.day)}</h4><span>{new Date(`${group.day}T12:00:00Z`).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span></div><div className="history-day-events">{group.events.map(item => {

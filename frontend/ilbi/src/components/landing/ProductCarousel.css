@@ -509,7 +509,11 @@
   border-radius: 7px;
   padding: 9px 14px;
   font-size: 11px;
+  font-family: inherit;
+  min-height: 36px;
+  cursor: pointer;
 }
+.pc-image-error button:focus-visible{outline:2px solid #f2f3f5;outline-offset:3px}
 .pc-sr-only {
   position: absolute !important;
   width: 1px;

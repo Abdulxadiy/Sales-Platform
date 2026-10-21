@@ -16,5 +16,10 @@
     <p>Shu do‘konda ILBI boshqa kompyuterda allaqachon sozlangan bo‘lsa, o‘sha kompyuterdagi ILBI menyusidan ulanish faylini oling.</p>
     <button id="join" type="button">Ulanish faylini ochish</button>
   </details>
-  <p id="status" role="status"></p>
+  <div id="status" class="setup-status" role="status" aria-live="polite" hidden>
+    <span class="status-symbol" aria-hidden="true"></span>
+    <div><strong id="status-title"></strong><p id="status-message"></p>
+      <button id="status-guide" type="button" class="help-link" hidden>Rasmli qo‘llanmadan yordam olish</button>
+    </div>
+  </div>
 </main><script src="/setup.js"></script></body></html>

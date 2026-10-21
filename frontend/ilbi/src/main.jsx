@@ -2,6 +2,7 @@ import React, { Component, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.jsx';
+import { RetryButton } from './components/common/RecoveryNotice';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -58,23 +59,7 @@ class ErrorBoundary extends Component {
             }}>
               {this.state.error?.message || String(this.state.error)}
             </pre>
-            <button
-              onClick={() => {
-                window.location.reload();
-              }}
-              style={{
-                background: 'var(--primary)',
-                color: 'var(--text-on-primary)',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Qayta yuklash
-            </button>
+            <RetryButton variant="primary" onClick={() => window.location.reload()}>Qayta yuklash</RetryButton>
           </div>
         </div>
       );

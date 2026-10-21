@@ -43,3 +43,13 @@ test('local asset serving rejects encoded traversal', () => {
   assert.equal(equalKey('abc', 'abc'), true);
   assert.equal(equalKey('', 'abc'), false);
 });
+test('native errors are presented without Electron transport wrappers', async () => {
+  const vm = require('node:vm');
+  const { readFileSync } = require('node:fs');
+  let bridge;
+  vm.runInNewContext(readFileSync(join(__dirname, '../preload.cjs'), 'utf8'), {
+    require: () => ({ contextBridge: { exposeInMainWorld: (_name, value) => { bridge = value; } },
+      ipcRenderer: { invoke: async () => { throw Error("Error invoking remote method 'ilbi:setup': Error: Parollar omboriga ulanib bo‘lmadi."); } } }),
+  });
+  await assert.rejects(bridge.setup(), error => error.message === 'Parollar omboriga ulanib bo‘lmadi.');
+});

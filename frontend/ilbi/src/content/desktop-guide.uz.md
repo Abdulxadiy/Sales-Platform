@@ -4,20 +4,7 @@ ILBI ilovasida kundalik savdo va ombor ekranlari webdagidek ishlaydi. Bu qo‘ll
 
 [Yuklab olish sahifasidan](/download) Windows uchun ILBI’ni oling. Yuklangan `.exe` faylni oching va o‘rnatishni tugating. Ish stolida paydo bo‘lgan **ILBI** belgisini ikki marta bosing.
 
-**Linux’da o‘rnatish:** shu sahifadagi **Linux uchun yuklab olish** tugmasidan `.tar.gz` arxivni oling. Arxivni oching, ichidagi **ILBI** papkasida terminal ochib `bash install.sh` buyrug‘ini bajaring. `sudo` ishlatmang. Keyin ilovalar menyusidan **ILBI**ni oching. VirtualBox, Wine, Docker, alohida Python yoki PostgreSQL kerak emas. Linux x86_64, grafik ish stoli va ochilgan GNOME Keyring yoki KWallet parollar ombori kerak; Arch Linux va Ubuntu 22.04+ uchun paket tayyorlanadi.
-
-Linux’da birinchi ochishda maxfiy ma’lumotlar ombori ruxsat so‘rasa, shu foydalanuvchi uchun ruxsat bering. “Maxfiy ma’lumotlar ombori ochilmadi” chiqsa, GNOME Keyring yoki KWallet o‘rnatilganini va qulfdan ochilganini tekshiring. Bu ombor qurilma kalitlarini himoya qiladi. Windows va Linux’da qolgan sozlash qadamlari bir xil; quyidagi rasmlar ikkala nusxaga ham tegishli.
-
-**Arch Linux uchun qadamlar:**
-
-1. **Linux uchun yuklab olish** tugmasini bosing. Fayl menejerida yuklangan `ILBI-1.2.0-linux-x64.tar.gz` arxivini ochib, bir papkaga chiqaring.
-2. Hosil bo‘lgan **ILBI** papkasiga kiring. Bo‘sh joyni o‘ng bosib **Terminalda ochish**ni tanlang.
-3. `bash install.sh` yozib, `Enter` bosing. O‘rnatish administrator parolisiz bajariladi. Ilovalar menyusida **ILBI** paydo bo‘ladi. Menyuda darhol ko‘rinmasa, `~/.local/bin/ilbi` buyrug‘i bilan oching.
-4. **Ishni boshlash**ni bosing va quyidagi 2-bo‘lim bo‘yicha do‘konni ulang.
-
-Agar ilova kutubxona yetishmayotganini aytib ochilmasa, Arch’ni yangilab, grafik kutubxonalarni o‘rnating: `sudo pacman -Syu --needed gtk3 nss alsa-lib libxss libxtst libsecret gnome-keyring`. GNOME/KDE’da parollar ombori odatda kirishda ochiladi; Hyprland kabi ish stollarida uning ishga tushishini va qulfdan ochilishini alohida sozlash kerak bo‘lishi mumkin. ILBI’ni `sudo` yoki `--no-sandbox` bilan ochmang.
-
-Hozir `yay -S ilbi` va `sudo pacman -S ilbi` orqali tarqatilmaydi: AUR yoki alohida paket repozitoriysida hali e’lon qilinmagan. Rasmiy yuklab olish sahifasidagi arxivdan foydalaning. Shu arxiv boshqa mos x86_64 Linux tizimlarida ham ishlaydi; Ubuntu 22.04+ va Arch uchun tekshiruv bor. ARM kompyuterlar va Alpine kabi musl tizimlari ushbu paketga kirmaydi.
+Linux’da [qisqa 4 qadamli o‘rnatish yo‘riqnomasidan](/download#linux-install) foydalaning. [Batafsil Linux qo‘llanmasi](#7-linux-uchun-batafsil-qollanma) shu qo‘llanmaning oxirida. Quyidagi asosiy sozlash qadamlari Windows va Linux uchun bir xil.
 
 Bitta kompyuterda ishlasangiz, boshqa kassaga ulanish yoki fayl ko‘chirish kerak emas. Ilova ma’lumotlarni shu kompyuterda saqlaydi. Keyinchalik kassalar soni oshsa, boshqa kompyuterlarni shu tayyor kassaga ulashingiz mumkin; qayta sozlash talab qilinmaydi. Boshqa, mustaqil do‘konlar o‘z ilovasini alohida sozlaydi.
 
@@ -101,7 +88,35 @@ O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. 
 
 Qo‘llanma **ILBI → Ilovani sozlash (rasmli qo‘llanma)** menyusidan ham ochiladi. Uning matni va rasmlari ilova ichida saqlanadi, shuning uchun internet kerak emas. Rasm ustiga bossangiz kattalashadi; `Esc` bilan yoping.
 
+Yuklab olish sahifasi do‘konni ulashdan oldin ham ochiladi. **Yuklamalar ro‘yxati ochilmadi** chiqsa, **Qayta tekshirish**ni bosing. Internet ishlayotgan bo‘lsa ham rasmiy server bilan ulanish vaqtincha uzilishi mumkin. Ilovadagi **Saytda ochish** tugmasi yuklab olish sahifasini odatiy brauzeringizda ochadi.
+
 Muammo qolsa, [Yordam markaziga](/support) murojaat qiling. Qaysi kompyuter asosiyligi, ekrandagi xato va sinxronlash navbatida yuborilmagan ish bor-yo‘qligini yozing.
 
 > [!NOTE]
 > Joriy yuklama sinov nusxasidir. Haqiqiy POS savdosi mavjud fiskal ulanish chekloviga bo‘ysunadi; ilovani o‘rnatish bu cheklovni olib tashlamaydi. Rasmlardagi do‘kon va operatsiyalar tushuntirish uchun yaratilgan namunalardir.
+
+## 7. Linux uchun batafsil qo‘llanma
+
+[Yuklab olish sahifasidan](/download) **Linux uchun yuklab olish** tugmasidan `.tar.gz` arxivni oling. Arxivni oching, ichidagi **ILBI** papkasida terminal ochib `bash install.sh` buyrug‘ini bajaring. `sudo` ishlatmang. Keyin ilovalar menyusidan **ILBI**ni oching. VirtualBox, Wine, Docker, alohida Python yoki PostgreSQL kerak emas. Linux x86_64, grafik ish stoli va ochilgan GNOME Keyring yoki KWallet parollar ombori kerak; Arch Linux va Ubuntu 22.04+ uchun paket tayyorlanadi.
+
+**Arch Linux uchun qadamlar:**
+
+1. **Linux uchun yuklab olish** tugmasini bosing. Fayl menejerida yuklangan `ILBI-1.2.0-linux-x64.tar.gz` arxivini ochib, bir papkaga chiqaring.
+2. Hosil bo‘lgan **ILBI** papkasiga kiring. Bo‘sh joyni o‘ng bosib **Terminalda ochish**ni tanlang.
+3. `bash install.sh` yozib, `Enter` bosing. O‘rnatish administrator parolisiz bajariladi. Ilovalar menyusida **ILBI** paydo bo‘ladi. Menyuda darhol ko‘rinmasa, `~/.local/bin/ilbi` buyrug‘i bilan oching.
+4. **Ishni boshlash**ni bosing va yuqoridagi 2-bo‘lim bo‘yicha do‘konni ulang.
+
+Agar ilova kutubxona yetishmayotganini aytib ochilmasa, Arch’ni yangilab, grafik kutubxonalarni o‘rnating: `sudo pacman -Syu --needed gtk3 nss alsa-lib libxss libxtst libsecret gnome-keyring`. GNOME/KDE’da parollar ombori odatda kirishda ochiladi; Hyprland kabi ish stollarida uning ishga tushishini va qulfdan ochilishini alohida sozlash kerak bo‘lishi mumkin. ILBI’ni `sudo` yoki `--no-sandbox` bilan ochmang.
+
+**Parollar va kalitlar** menyuda ko‘rinmasa, omborni boshqarish oynasini `sudo pacman -Syu --needed seahorse` orqali o‘rnating. Oynada **Login / Kirish** ustiga o‘ng bosib **Unlock / Qulfni ochish**ni tanlang.
+
+Linux’da birinchi ochishda parollar ombori ruxsat so‘rasa, shu foydalanuvchi uchun ruxsat bering. Bu ombor qurilma kalitlarini himoya qiladi. ILBI Hyprland va Sway’da ham mavjud GNOME Keyring’ni o‘zi tanlaydi; qo‘shimcha ishga tushirish buyrug‘i kerak emas. KDE’da KWallet ishlatiladi. Windows va Linux’da qolgan sozlash qadamlari bir xil; quyidagi rasmlar ikkala nusxaga ham tegishli.
+
+**“Parollar omboriga ulanib bo‘lmadi” chiqsa:**
+
+1. Ilovalar menyusidan **Parollar va kalitlar (Passwords and Keys)** yoki **KWallet Manager**ni oching.
+2. **Login / Kirish** omborini oching. Qulf so‘ralsa, tizim parollar ombori parolini kiriting.
+3. ILBI oynalarini yoping va ilovalar menyusidan qayta oching. **Ishni boshlash**ni yana bosing.
+4. Ombor dasturi umuman yo‘q bo‘lsa, quyidagi Arch buyrug‘i bilan GNOME Keyring’ni o‘rnating yoki yordam xizmatiga murojaat qiling. Ma’lumotlar papkasi va `device.vault` faylini o‘chirmang.
+
+Hozir `yay -S ilbi` va `sudo pacman -S ilbi` orqali tarqatilmaydi: AUR yoki alohida paket repozitoriysida hali e’lon qilinmagan. Rasmiy yuklab olish sahifasidagi arxivdan foydalaning. Shu arxiv boshqa mos x86_64 Linux tizimlarida ham ishlaydi; Ubuntu 22.04+ va Arch uchun tekshiruv bor. ARM kompyuterlar va Alpine kabi musl tizimlari ushbu paketga kirmaydi.

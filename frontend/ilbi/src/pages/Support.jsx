@@ -1,5 +1,6 @@
 import IlbiLoader from '../components/common/IlbiLoader';
 import AppLoadingScreen from '../components/common/AppLoadingScreen';
+import { RetryButton } from '../components/common/RecoveryNotice';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -389,7 +390,7 @@ function SupportCenter({ user, authenticated, operator }) {
 
       {!authenticated && <p className="support-note" style={{ marginBottom: 14 }}>{t.guest}</p>}
 
-      {error && <div className="support-error" role="alert">{error}<button className="btn btn-secondary" disabled={busy} onClick={() => { setError(''); listPollerRef.current?.retry(); messagePollerRef.current?.retry(); }}>{t.retry}</button></div>}
+      {error && <div className="support-error" role="alert">{error}<RetryButton loading={busy} onClick={() => { setError(''); listPollerRef.current?.retry(); messagePollerRef.current?.retry(); }}>{t.retry}</RetryButton></div>}
 
       {tab === 'guide' ? (
         <div className="support-docs-workspace">

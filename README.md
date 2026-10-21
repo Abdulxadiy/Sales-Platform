@@ -337,6 +337,8 @@ Existing media and database volumes must be retained or migrated when switching 
 
 Cash shifts now open explicitly. The previous counted balance is offered as the next opening balance; entering `0` starts an empty cashbox. Owners grant cashbox actions and purchase-cost visibility in the employee permissions form. Legacy debt payments whose cash/card tender was never recorded remain ledger corrections and are not guessed as cash income.
 
+Customer debt can have an optional **Qarzni qaytarish sanasi** in nasiya checkout or customer create/edit in **Qarzlar**. It applies to the customer's total outstanding UZS/USD balance. Leave it empty to keep the existing behavior. On that date (Asia/Tashkent), the owner receives one in-app notification with the remaining balance and a link to the customer. The server checks every five minutes; the desktop also checks when refreshing the owner's notification feed, including offline. Missed dates are caught up when the app is opened. Changing the date schedules a new reminder, clearing it cancels the schedule, and full repayment/void clears it automatically. Partial repayment keeps the date. Reading or deleting a notification does not send it again. Deadline edits participate in offline conflict detection. Apply sales migration `0019` and update desktop installations together with the server because the replica schema changes.
+
 ---
 
 ## Documentation

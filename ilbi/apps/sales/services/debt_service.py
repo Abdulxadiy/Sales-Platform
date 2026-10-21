@@ -212,7 +212,11 @@ class DebtService:
         else:
             counterparty.last_notified_debt_step_usd = 0
 
+        if counterparty.debt_balance_uzs <= 0 and counterparty.debt_balance_usd <= 0:
+            counterparty.debt_due_date = None
+            counterparty.last_notified_debt_due_date = None
         counterparty.save(update_fields=[
             'debt_balance_uzs', 'debt_balance_usd',
-            'last_notified_debt_step_uzs', 'last_notified_debt_step_usd'
+            'last_notified_debt_step_uzs', 'last_notified_debt_step_usd',
+            'debt_due_date', 'last_notified_debt_due_date',
         ])

@@ -21,6 +21,8 @@ class Counterparty(BaseModel):
     )
     last_notified_debt_step_uzs = models.IntegerField(default=0)
     last_notified_debt_step_usd = models.IntegerField(default=0)
+    debt_due_date = models.DateField(null=True, blank=True, db_index=True)
+    last_notified_debt_due_date = models.DateField(null=True, blank=True)
     note = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 

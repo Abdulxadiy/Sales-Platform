@@ -6,6 +6,12 @@ from apps.tg_bot.services import send_telegram_message
 logger = logging.getLogger(__name__)
 
 
+@shared_task(name='apps.sales.tasks.notify_due_debts_task')
+def notify_due_debts_task():
+    from apps.sales.services.debt_reminder_service import notify_due_debts
+    return notify_due_debts()
+
+
 @shared_task(name="apps.sales.tasks.auto_expire_transfers_task")
 def auto_expire_transfers_task():
     """

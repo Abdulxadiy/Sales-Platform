@@ -53,6 +53,44 @@ def local_row(tenant, owner, **values):
     return LocalOperation.objects.create(user_id=owner.pk, tenant_id=tenant.pk, title="Savdo", payload={}, **values)
 
 
+def test_optional_debt_date_survives_offline_replay_and_snapshot(owner, tenant, device):
+    from apps.sales.models import Counterparty
+    selected = (timezone.localdate() + timedelta(days=2)).isoformat()
+    payload = command(device, body={'name': 'Offline sana', 'phone_number': '+998900000110', 'debt_due_date': selected},
+                      created=[{'model': 'sales.counterparty', 'id': LOCAL_ID_START, 'fields': {}}])
+    first = apply_operation(owner, device.pk, payload)
+    assert apply_operation(owner, device.pk, payload) == first
+    pk = first['id_map'][str(LOCAL_ID_START)]
+    assert Counterparty.objects.get(pk=pk).debt_due_date.isoformat() == selected
+    row = next(row for row in export_snapshot(tenant)['rows'] if row['model'] == 'sales.counterparty' and row['pk'] == pk)
+    assert row['fields']['debt_due_date'] == selected
+    apply_operation(owner, device.pk, command(device, path=f'sales/counterparties/{pk}/', method='PATCH',
+                                            body={'debt_due_date': None}, preconditions=[{
+                                                'model': 'sales.counterparty', 'id': pk, 'fields': {'debt_due_date': selected},
+                                            }]))
+    assert Counterparty.objects.get(pk=pk).debt_due_date is None
+
+
+def test_offline_date_edits_protect_web_changes_but_ignore_notification_bookkeeping(owner, tenant, device):
+    from apps.sales.services import CounterpartyService
+    from apps.desktop_sync.protocol import preconditions, record_changes
+    old = timezone.localdate()
+    cp = CounterpartyFactory(tenant=tenant, debt_due_date=old, debt_balance_uzs=100)
+    with record_changes() as changes:
+        CounterpartyService.update(cp, debt_due_date=old + timedelta(days=1))
+    assert preconditions(changes) == [{'model': 'sales.counterparty', 'id': cp.pk, 'fields': {'debt_due_date': old.isoformat()}}]
+    payload = command(device, path=f'sales/counterparties/{cp.pk}/', method='PATCH',
+                      body={'debt_due_date': None}, preconditions=preconditions(changes))
+    with pytest.raises(SyncConflict):
+        apply_operation(owner, device.pk, payload)
+    cp.refresh_from_db()
+    assert cp.debt_due_date == old + timedelta(days=1)
+    with record_changes() as bookkeeping:
+        cp.last_notified_debt_due_date = cp.debt_due_date
+        cp.save(update_fields=['last_notified_debt_due_date'])
+    assert preconditions(bookkeeping) == []
+
+
 def test_lost_ack_replay_is_exactly_once(owner, tenant, device):
     payload = command(device, created=[{"model": "sales.counterparty", "id": LOCAL_ID_START, "fields": {}}])
     first = apply_operation(owner, device.pk, payload)

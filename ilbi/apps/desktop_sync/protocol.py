@@ -161,14 +161,14 @@ def preconditions(ctx):
         current = apps.get_model(label).objects.filter(pk=pk).first()
         if current is None:
             fields = {
-                k: v for k, v in previous.items() if k not in excluded and not k.startswith(("debt_", "last_notified_"))
+                k: v for k, v in previous.items() if k not in excluded and not k.startswith(("debt_balance_", "last_notified_"))
             }
         else:
             now = state(current)
             fields = {
                 k: v
                 for k, v in previous.items()
-                if k not in excluded and now.get(k) != v and not k.startswith(("debt_", "last_notified_"))
+                if k not in excluded and now.get(k) != v and not k.startswith(("debt_balance_", "last_notified_"))
             }
         if fields:
             result.append({"model": label, "id": int(pk), "fields": fields})

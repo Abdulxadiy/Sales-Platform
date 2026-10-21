@@ -9,6 +9,7 @@ class Notification(BaseModel):
     TYPE_B2B_REJECTED = 'b2b_transfer_rejected'
     TYPE_B2B_CANCELLED = 'b2b_transfer_cancelled'
     TYPE_DEBT_WARNING = 'debt_threshold_warning'
+    TYPE_DEBT_DUE = 'debt_due_reminder'
     TYPE_DAILY_Z_REPORT = 'daily_z_report'
     TYPE_LOW_STOCK_ALERT = 'low_stock_alert'
 
@@ -19,6 +20,7 @@ class Notification(BaseModel):
         (TYPE_B2B_REJECTED, 'B2B Rad etildi'),
         (TYPE_B2B_CANCELLED, 'B2B Bekor qilindi'),
         (TYPE_DEBT_WARNING, 'Qarz chegarasi ogohlantirishi'),
+        (TYPE_DEBT_DUE, 'Qarzni qaytarish sanasi'),
         (TYPE_DAILY_Z_REPORT, 'Kunlik Z-Hisobot'),
         (TYPE_LOW_STOCK_ALERT, 'Kamayib qolgan tovarlar ogohlantirishi'),
     ]

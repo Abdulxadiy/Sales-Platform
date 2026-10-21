@@ -139,7 +139,9 @@ try {
   if (await browser.evaluate('document.fullscreenEnabled')) {
     await browser.evaluate(`document.querySelector('summary[aria-label="Tezkor yordamchilar"]').click()`); await click('To‘liq ekran');
     await wait('Boolean(document.fullscreenElement)');
-    await browser.evaluate(`document.querySelector('summary[aria-label="Tezkor yordamchilar"]').click()`); await click('To‘liq ekrandan chiqish');
+    await browser.evaluate(`document.querySelector('summary[aria-label="Tezkor yordamchilar"]').click()`);
+    await wait('[...document.querySelectorAll("button")].some(node=>node.textContent.trim()==="To‘liq ekrandan chiqish")');
+    await click('To‘liq ekrandan chiqish');
     await wait('!document.fullscreenElement');
   }
   await browser.evaluate(`document.querySelector('summary[aria-label="Profil va chiqish"]').click()`); await click('Chiqish');
@@ -177,6 +179,54 @@ try {
   await wait('Boolean(window.workspaceQA)&&!window.workspaceBeforeReload&&Boolean(document.querySelector(".workspace-navbar .workspace-top-row"))'); await settled();
   assert.equal(await browser.evaluate('document.querySelector("input[title=\\\"Soni (qo‘lda kiritish mumkin)\\\"]").value'), '3', 'POS cart quantity survives reload');
   assert.equal(await browser.evaluate('document.querySelector(".workspace-favorites-row").textContent.includes("B2B")'), true);
+
+  // Optional debt date survives both shells and reload, then reaches the real ledger.
+  await click('To‘lovga O‘tish'); await settled(); await click('Nasiya / Qarz');
+  await browser.evaluate('document.querySelector("dialog[open] .custom-select-wrapper [role=button]").click()');
+  await wait('[...document.querySelectorAll("[role=option]")].some(node=>node.textContent.includes("Anvar Abdullayev"))');
+  await browser.evaluate('[...document.querySelectorAll("[role=option]")].find(node=>node.textContent.includes("Anvar Abdullayev")).click()');
+  await wait('Boolean(document.querySelector("input[name=debt_due_date]"))');
+  assert.equal(await browser.evaluate('document.querySelector("input[name=debt_due_date]").required'), false);
+  await setInput('input[name=debt_due_date]', '2035-03-15');
+  await toggle(false); await toggle(true);
+  assert.equal(await browser.evaluate('document.querySelector("input[name=debt_due_date]").value'), '2035-03-15');
+  await browser.resize(390, 844); await delay(150);
+  assert.equal(await browser.evaluate('(()=>{const box=document.querySelector("input[name=debt_due_date]").getBoundingClientRect();return box.left>=0&&box.right<=innerWidth})()'), true);
+  await shot('debt-date-mobile'); await browser.resize(1536, 1100); await close();
+  await browser.call('Page.reload'); await wait('Boolean(window.workspaceQA)&&Boolean(document.querySelector(".workspace-navbar"))'); await settled();
+  await click('To‘lovga O‘tish'); await settled();
+  assert.equal(await browser.evaluate('document.querySelector("input[name=debt_due_date]").value'), '2035-03-15');
+  await click('Sotuvni Tasdiqlash'); await settled();
+  await wait('document.querySelector("dialog[open]")?.textContent.includes("Sotuv Muvaffaqiyatli")'); await close();
+  await browser.evaluate('(async()=>{window.debtQAApi=(await import("/src/api/client.js")).salesApi;return true})()');
+  assert.equal(await browser.evaluate(`debtQAApi.getCounterparty(${seed.customer_id}).then(cp=>cp.debt_due_date)`), '2035-03-15');
+
+  // Reschedule in the customer form, then follow the owner's one-time reminder.
+  await search('Anvar'); await settled();
+  await browser.evaluate('[...document.querySelectorAll("#workspace-search-results button")].find(node=>node.textContent.includes("Anvar Abdullayev")).click()');
+  await wait('location.pathname==="/debts"&&Boolean(document.querySelector("dialog[open]"))'); await settled(); await close();
+  await browser.evaluate('[...document.querySelectorAll("tr")].find(row=>row.textContent.includes("Anvar Abdullayev")).querySelector("button").click()');
+  await wait('Boolean(document.querySelector("input[name=debt_due_date]"))');
+  assert.equal(await browser.evaluate('document.querySelector("input[name=debt_due_date]").value'), '2035-03-15');
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(new Date());
+  await setInput('input[name=debt_due_date]', today); await click('Saqlash'); await settled();
+  await wait('document.querySelector(".workspace-notifications-menu").textContent.includes("Qarzni qaytarish sanasi keldi")');
+  const due = await browser.evaluate('debtQAApi.getNotifications().then(rows=>rows.filter(row=>row.type==="debt_due_reminder"))');
+  assert.equal(due.length, 1); assert.equal(due[0].link, `/debts?workspace_id=${seed.customer_id}`);
+  await browser.evaluate('document.querySelector("summary[aria-label=Xabarnomalar]").click()');
+  await click('Qarzni qaytarish sanasi keldi');
+  await wait('Boolean(document.querySelector(".notif-card"))'); await shot('owner-debt-reminder');
+  await browser.evaluate(`document.querySelector('.notif-card button[title="Sahifaga o‘tish"]').click()`);
+  await wait('[...document.querySelectorAll("dialog[open]")].some(node=>node.textContent.includes("Mijoz Nasiya & Xarid Tarixi"))');
+  await settled();
+  assert.equal(await browser.evaluate('document.querySelectorAll("dialog[open]").length'), 1, 'Following a reminder closes the notification dialog');
+  await close();
+  assert.equal(await browser.evaluate('debtQAApi.getNotifications().then(rows=>rows.filter(row=>row.type==="debt_due_reminder").length)'), 1);
+  await browser.evaluate('[...document.querySelectorAll("tr")].find(row=>row.textContent.includes("Anvar Abdullayev")).querySelector("button").click()');
+  await wait('Boolean(document.querySelector("input[name=debt_due_date]"))');
+  await setInput('input[name=debt_due_date]', ''); await click('Saqlash'); await settled();
+  assert.equal(await browser.evaluate(`debtQAApi.getCounterparty(${seed.customer_id}).then(cp=>cp.debt_due_date)`), null);
+
   await browser.evaluate(`workspaceQA.selectTenant(${seed.second_tenant})`); await settled();
   await wait('document.querySelector(".workspace-store-control").textContent.includes("Yunusobod")');
   assert.equal(await browser.evaluate('document.body.textContent.includes("Anvar un")'), false, 'Switching tenant clears tenant page data');
@@ -202,7 +252,7 @@ try {
   await search('Hisoblar'); await settled();
   assert.equal(await browser.evaluate('workspaceQA.requests.some(row=>row.path.startsWith("/api/v1/workspace/"))'), false, 'Platform admin never queries tenant workspace records'); await close();
   assert.deepEqual(browser.errors, []);
-  console.log(`PASS live workspace: navigation parity, repeated animated switches without page/shift remounts, preserved inputs/forms, search for products/customers/receipts, quick actions/imports, reminders CRUD, calculator, favorites/reload, tenant/account/role isolation, 1024–1536px and mobile fallback. Screenshots: ${artifacts}`);
+  console.log(`PASS live workspace: navigation parity, repeated animated switches without page/shift remounts, preserved inputs/forms, search for products/customers/receipts, quick actions/imports, reminders CRUD, optional debt date in checkout/customer edit, owner reminder and customer link, calculator, favorites/reload, tenant/account/role isolation, 1024–1536px and mobile fallback. Screenshots: ${artifacts}`);
 } catch (error) {
   if (browser) {
     await writeFile(join(artifacts, 'failure.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));

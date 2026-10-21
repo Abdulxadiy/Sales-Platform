@@ -1,6 +1,7 @@
 from django.db import transaction
 from apps.sales.models import Counterparty
 from apps.tenants.models import Tenant
+from .debt_reminder_service import UNSET, set_debt_due_date
 
 
 
@@ -11,7 +12,7 @@ class CounterpartyServiceError(Exception):
 class CounterpartyService:
     @classmethod
     @transaction.atomic
-    def create(cls, *, tenant, name: str, phone_number: str, note: str = '', target_tenant_code: str = '') -> Counterparty:
+    def create(cls, *, tenant, name: str, phone_number: str, note: str = '', target_tenant_code: str = '', debt_due_date=None) -> Counterparty:
         Tenant.objects.select_for_update().get(pk=tenant.pk)
         phone_number = phone_number.strip()
         if not phone_number:
@@ -31,11 +32,12 @@ class CounterpartyService:
             phone_number=phone_number,
             target_tenant=target_tenant,
             note=note.strip(),
+            debt_due_date=debt_due_date,
         )
 
     @classmethod
     @transaction.atomic
-    def update(cls, counterparty: Counterparty, *, name: str = None, note: str = None, is_active: bool = None) -> Counterparty:
+    def update(cls, counterparty: Counterparty, *, name: str = None, note: str = None, is_active: bool = None, debt_due_date=UNSET) -> Counterparty:
         counterparty = Counterparty.objects.select_for_update().get(pk=counterparty.pk)
         if is_active is False and (counterparty.debt_balance_uzs != 0 or counterparty.debt_balance_usd != 0):
             raise CounterpartyServiceError("Avval mijozning qarzi yoki ortiqcha to‘lovini yakunlang.")
@@ -45,6 +47,7 @@ class CounterpartyService:
             counterparty.note = note.strip()
         if is_active is not None:
             counterparty.is_active = is_active
+        set_debt_due_date(counterparty, debt_due_date)
         counterparty.save()
         return counterparty
 

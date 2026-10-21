@@ -34,6 +34,7 @@ import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
 import Pagination from '../components/common/Pagination';
 import PriceInput from '../components/common/PriceInput';
+import DebtDueDateField from '../components/common/DebtDueDateField';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useTenant } from '../context/TenantContext';
@@ -102,6 +103,8 @@ export default function POS() {
   const counterparties = [...counterpartyList.items];
   if (selectedCounterpartyRow && !counterparties.some(row => row.id === selectedCounterpartyRow.id)) counterparties.unshift(selectedCounterpartyRow);
   const [selectedCounterparty, setSelectedCounterparty, resetCounterparty] = useAccountDraft('checkout_customer_id', '');
+  const [debtDueDateDraft, setDebtDueDate, resetDebtDueDate] = useAccountDraft('checkout_debt_due_date', null);
+  const debtDueDate = debtDueDateDraft ?? selectedCounterpartyRow?.debt_due_date ?? '';
   const [submittingSale, setSubmittingSale] = useState(false);
 
   // Receipt Modal State (supports multiple sales from split dual-currency checkout)
@@ -491,6 +494,7 @@ export default function POS() {
         payment_type: paymentMethod.toLowerCase(), // 'cash' | 'card' | 'debt'
         is_partner_sale: isPartnerSale,
         counterparty_id: selectedCounterparty ? parseInt(selectedCounterparty, 10) : null,
+        ...(paymentMethod === 'DEBT' ? { debt_due_date: debtDueDate || null } : {}),
         items: cart.map((i) => ({
           product_variant_id: i.variant.id,
           quantity: Number(i.quantity),
@@ -510,12 +514,14 @@ export default function POS() {
       resetCounterpartySearch();
       resetCounterpartyRow();
       resetCounterparty();
+      resetDebtDueDate();
       setMobileTab('catalog');
       loadVariants();
       setCheckoutOpen(false);
       setReceiptOpen(true);
       toast.success('Sotuv muvaffaqiyatli amalga oshirildi!');
       window.dispatchEvent(new CustomEvent('shift_status_changed'));
+      window.dispatchEvent(new CustomEvent('refresh_notifications'));
     } catch (err) {
       toast.error(err.message || 'Sotuvni saqlashda xatolik yuz berdi');
     } finally {
@@ -1693,6 +1699,7 @@ export default function POS() {
                     onClick={() => {
                       setSelectedCounterparty('');
                       setSelectedCounterpartyRow(null);
+                      setDebtDueDate('');
                       setCounterpartySearch('');
                     }}
                     style={{
@@ -1721,7 +1728,9 @@ export default function POS() {
                   value={selectedCounterparty}
                   onChange={(val) => {
                     setSelectedCounterparty(val);
-                    setSelectedCounterpartyRow(counterparties.find((row) => String(row.id) === String(val)) || null);
+                    const customer = counterparties.find((row) => String(row.id) === String(val)) || null;
+                    setSelectedCounterpartyRow(customer);
+                    setDebtDueDate(customer?.debt_due_date || '');
                   }}
                   searchable
                   searchValue={counterpartySearch}
@@ -1768,14 +1777,18 @@ export default function POS() {
                   fullWidth
                   style={{
                     ...(paymentMethod === 'DEBT' && !selectedCounterparty
-                      ? { borderColor: 'var(--accent-amber)', background: 'rgba(245, 158, 11, 0.04)' }
+                      ? { border: '1px solid var(--accent-amber)', background: 'rgba(245, 158, 11, 0.04)' }
                       : isPartnerSale
-                      ? { borderColor: 'var(--accent-emerald)' }
+                      ? { border: '1px solid var(--accent-emerald)' }
                       : {}),
                   }}
                 />
               )}
             </div>
+          )}
+
+          {paymentMethod === 'DEBT' && selectedCounterparty && (
+            <DebtDueDateField value={debtDueDate} onChange={setDebtDueDate} />
           )}
 
           {/* DUAL-CURRENCY SPLIT VIEW (USD on Left, UZS on Right with vertical divider line) */}

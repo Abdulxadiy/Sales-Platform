@@ -11,6 +11,7 @@ from apps.catalog.models import ProductVariant
 from apps.inventory.services import StockService, StockServiceError
 from apps.sales.models import Sale, SaleItem, Counterparty, Notification
 from apps.sales.services.debt_service import DebtService
+from apps.sales.services.debt_reminder_service import UNSET, set_debt_due_date
 from apps.tenants.models import SellerProfile
 from apps.tenants.receipt_settings import receipt_settings
 from apps.sales.taxes import calculate_line
@@ -80,6 +81,7 @@ class SaleService:
         is_partner_sale: bool = False,
         idempotency_key: str = None,
         expected_tax_settings: dict = None,
+        debt_due_date=UNSET,
     ) -> list[Sale]:
         """
         Creates a POS sale in UZS. USD catalog values remain outside retail checkout.
@@ -98,6 +100,10 @@ class SaleService:
                 for item in items_data
             ], key=lambda item: (item['variant'], item['quantity'], str(item['price']))),
         }
+        if debt_due_date is not UNSET:
+            if payment_type != Sale.PAYMENT_DEBT:
+                raise SaleServiceError('Qaytarish sanasi faqat nasiya savdosida belgilanadi.')
+            canonical['debt_due_date'] = debt_due_date.isoformat() if debt_due_date else None
         fingerprint = hashlib.sha256(json.dumps(canonical, sort_keys=True).encode()).hexdigest()
         idempotency_key = (idempotency_key or "").strip() or None
         if idempotency_key:
@@ -299,6 +305,7 @@ class SaleService:
             # If debt payment, update counterparty balance
             if payment_type == Sale.PAYMENT_DEBT:
                 cp = Counterparty.objects.select_for_update().get(pk=counterparty.pk)
+                set_debt_due_date(cp, debt_due_date)
                 if currency == 'UZS':
                     cp.debt_balance_uzs += total_amount
                 else:

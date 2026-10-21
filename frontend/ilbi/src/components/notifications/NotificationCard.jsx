@@ -364,7 +364,7 @@ function MinimalGeneralMarkdownView({ text }) {
   );
 }
 
-export default function NotificationCard({ notification, onMarkRead, onDelete }) {
+export default function NotificationCard({ notification, onMarkRead, onDelete, onNavigate }) {
   const navigate = useNavigate();
   const n = notification;
   const parsedZ = parseZReport(n.message || n.text);
@@ -384,6 +384,7 @@ export default function NotificationCard({ notification, onMarkRead, onDelete })
 
   const handleLinkClick = () => {
     if (n.link) {
+      onNavigate?.();
       navigate(n.link);
     }
   };

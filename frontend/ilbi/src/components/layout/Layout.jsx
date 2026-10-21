@@ -640,6 +640,7 @@ function LayoutContent({ children }) {
                     notification={n}
                     onMarkRead={handleMarkRead}
                     onDelete={handleDeleteNotification}
+                    onNavigate={() => setNotifModalOpen(false)}
                   />
                 ))}
               </div>

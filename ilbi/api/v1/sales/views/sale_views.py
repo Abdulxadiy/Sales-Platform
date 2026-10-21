@@ -124,6 +124,7 @@ class SaleListCreateView(SalesAPIView):
                 is_partner_sale=data.get('is_partner_sale', False),
                 idempotency_key=data.get('idempotency_key'),
                 expected_tax_settings=data.get('expected_tax_settings'),
+                **({'debt_due_date': data['debt_due_date']} if 'debt_due_date' in data else {}),
             )
         except (SaleServiceError, StockServiceError) as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)

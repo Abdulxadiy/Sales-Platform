@@ -18,6 +18,9 @@ class NotificationListView(TenantContextMixin, APIView):
 
     @extend_schema(request=None, responses={200: NotificationOutputSerializer(many=True)})
     def get(self, request):
+        if self.tenant and self.tenant.owner_id == request.user.pk:
+            from apps.sales.services.debt_reminder_service import notify_due_debts
+            notify_due_debts(tenant_id=self.tenant.pk)
         if request.user.role == 'platform_admin':
             qs = Notification.objects.filter(recipient=request.user)
         else:

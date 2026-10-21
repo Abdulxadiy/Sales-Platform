@@ -9,6 +9,10 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
+    'notify-due-debts-periodic': {
+        'task': 'apps.sales.tasks.notify_due_debts_task',
+        'schedule': crontab(minute='*/5'),
+    },
     # Recheck hourly so delayed publications/recovery are picked up the same day.
     'sync-cbu-rates-hourly': {
         'task': 'apps.tenants.tasks.sync_cbu_rates_task',

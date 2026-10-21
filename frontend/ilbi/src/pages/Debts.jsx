@@ -25,6 +25,7 @@ import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import PriceInput from '../components/common/PriceInput';
 import PhoneInput from '../components/common/PhoneInput';
+import DebtDueDateField from '../components/common/DebtDueDateField';
 import { useConfirm } from '../context/ConfirmContext';
 import { useToast } from '../context/ToastContext';
 import { useTenant } from '../context/TenantContext';
@@ -46,6 +47,7 @@ export default function Debts() {
   const [newCpName, setNewCpName] = useState('');
   const [newCpPhone, setNewCpPhone] = useState('');
   const [newCpNote, setNewCpNote] = useState('');
+  const [newCpDueDate, setNewCpDueDate] = useState('');
   const [newCpCode, setNewCpCode] = useState('');
   const [submittingCp, setSubmittingCp] = useState(false);
 
@@ -118,16 +120,19 @@ export default function Debts() {
         phone_number: newCpPhone.trim(),
         target_tenant_code: newCpCode.trim(),
         note: newCpNote.trim(),
+        debt_due_date: newCpDueDate || null,
       };
-      if (editingCp) await salesApi.updateCounterparty(editingCp.id, { name: data.name, note: data.note });
+      if (editingCp) await salesApi.updateCounterparty(editingCp.id, { name: data.name, note: data.note, debt_due_date: data.debt_due_date });
       else await salesApi.createCounterparty(data);
       toast.success('Kontragent saqlandi');
+      window.dispatchEvent(new CustomEvent('refresh_notifications'));
       setEditingCp(null);
       setNewCpCode('');
       setNewCpModalOpen(false);
       setNewCpName('');
       setNewCpPhone('');
       setNewCpNote('');
+      setNewCpDueDate('');
       loadCounterparties();
     } catch (err) {
       toast.error(err.message || 'Kontragent yaratishda xatolik');
@@ -160,7 +165,7 @@ export default function Debts() {
   useWorkspaceAction(({ action, search, id, signal }) => {
     if (search !== null) { setCounterpartySearch(search); setCounterpartyFilter('all'); }
     if (action === 'new_customer' && canManageCp) {
-      setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpCode(''); setNewCpModalOpen(true);
+      setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpDueDate(''); setNewCpCode(''); setNewCpModalOpen(true);
     }
     if (action === 'import' && canManageCp) setImportModalOpen(true);
     if (id) salesApi.getCounterparty(id, { signal }).then(cp => {
@@ -454,7 +459,7 @@ export default function Debts() {
           </button>}
           <button
             type="button"
-            onClick={() => { setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpCode(''); setNewCpModalOpen(true); }}
+            onClick={() => { setEditingCp(null); setNewCpName(''); setNewCpPhone(''); setNewCpNote(''); setNewCpDueDate(''); setNewCpCode(''); setNewCpModalOpen(true); }}
             style={{
               padding: '8px 16px',
               borderRadius: 'var(--radius-xs)',
@@ -588,6 +593,9 @@ export default function Debts() {
                           )}
                         </div>
                         {cp.note && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{cp.note}</div>}
+                        {cp.debt_due_date && <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+                          <Clock size={12} /> Qaytarish: {cp.debt_due_date.split('-').reverse().join('.')}
+                        </div>}
                       </td>
 
                       {/* Phone */}
@@ -737,7 +745,7 @@ export default function Debts() {
                         <div style={{ display: 'inline-flex', gap: 6 }}>
                           {canManageCp && <>
                             <button className="btn btn-secondary" onClick={() => {
-                              setEditingCp(cp); setNewCpName(cp.name); setNewCpPhone(cp.phone_number); setNewCpNote(cp.note || ''); setNewCpModalOpen(true);
+                              setEditingCp(cp); setNewCpName(cp.name); setNewCpPhone(cp.phone_number); setNewCpNote(cp.note || ''); setNewCpDueDate(cp.debt_due_date || ''); setNewCpModalOpen(true);
                             }}>Tahrirlash</button>
                             {isSettled && <button className="btn btn-secondary" onClick={async () => {
                               if (!await confirm({ title: 'Kontragentni arxivlash', message: `${cp.name} arxivlansinmi? Xarid va to‘lov tarixi saqlanadi.`, confirmText: 'Arxivlash', cancelText: 'Bekor qilish' })) return;
@@ -893,6 +901,8 @@ export default function Debts() {
               className="input-field"
             />
           </div>
+
+          <DebtDueDateField value={newCpDueDate} onChange={setNewCpDueDate} />
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
             <button
@@ -1229,6 +1239,9 @@ export default function Debts() {
         maxWidth={900}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {selectedCpDetail?.debt_due_date && <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13 }}>
+            Qarzni qaytarish sanasi: <strong>{selectedCpDetail.debt_due_date.split('-').reverse().join('.')}</strong>
+          </p>}
           {/* Summary Card */}
           <div
             style={{

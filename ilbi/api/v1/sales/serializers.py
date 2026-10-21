@@ -26,6 +26,7 @@ class CounterpartyOutputSerializer(serializers.ModelSerializer):
             "target_tenant_name",
             "debt_balance_uzs",
             "debt_balance_usd",
+            "debt_due_date",
             "note",
             "is_active",
             "created_at",
@@ -71,6 +72,7 @@ class CounterpartyOutputSerializer(serializers.ModelSerializer):
 
 
 class CounterpartyCreateSerializer(serializers.Serializer):
+    debt_due_date = serializers.DateField(required=False, allow_null=True)
     target_tenant_code = serializers.CharField(max_length=12, required=False, allow_blank=True, default="")
     name = serializers.CharField(max_length=150)
     phone_number = serializers.CharField(max_length=20)
@@ -78,6 +80,7 @@ class CounterpartyCreateSerializer(serializers.Serializer):
 
 
 class CounterpartyUpdateSerializer(serializers.Serializer):
+    debt_due_date = serializers.DateField(required=False, allow_null=True)
     name = serializers.CharField(max_length=150, required=False)
     note = serializers.CharField(required=False, allow_blank=True)
     is_active = serializers.BooleanField(required=False)
@@ -238,12 +241,18 @@ class SaleCreateItemInputSerializer(serializers.Serializer):
 
 
 class SaleCreateInputSerializer(serializers.Serializer):
+    debt_due_date = serializers.DateField(required=False, allow_null=True)
     expected_tax_settings = serializers.JSONField(required=False)
     items = SaleCreateItemInputSerializer(many=True)
     payment_type = serializers.ChoiceField(choices=["cash", "card", "debt"], default="cash")
     counterparty_id = serializers.IntegerField(required=False, allow_null=True)
     is_partner_sale = serializers.BooleanField(default=False)
     idempotency_key = serializers.CharField(max_length=64, required=False, allow_null=True, allow_blank=True)
+
+    def validate(self, attrs):
+        if 'debt_due_date' in attrs and attrs['payment_type'] != 'debt':
+            raise serializers.ValidationError({'debt_due_date': 'Qaytarish sanasi faqat nasiya savdosida belgilanadi.'})
+        return attrs
 
 
 class SaleVoidSerializer(serializers.Serializer):

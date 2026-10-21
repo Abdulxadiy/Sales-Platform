@@ -21,10 +21,11 @@ Hozir `yay -S ilbi` va `sudo pacman -S ilbi` orqali tarqatilmaydi: AUR yoki aloh
 
 Bitta kompyuterda ishlasangiz, boshqa kassaga ulanish yoki fayl ko‘chirish kerak emas. Ilova ma’lumotlarni shu kompyuterda saqlaydi. Keyinchalik kassalar soni oshsa, boshqa kompyuterlarni shu tayyor kassaga ulashingiz mumkin; qayta sozlash talab qilinmaydi. Boshqa, mustaqil do‘konlar o‘z ilovasini alohida sozlaydi.
 
-![Bitta kompyuterda boshlash: 1 — Ishni boshlash, 2 — faqat zarur bo‘lganda ochiladigan Server sozlamalari.](desktop-guide/01-primary-setup.png)
+![Bitta kompyuterda boshlash: 1 — Ishni boshlash tugmasi. Serverni sozlash talab qilinmaydi.](desktop-guide/01-primary-setup.png)
 
-1. **Ishni boshlash** tugmasini bosing va kirish oynasi ochilishini kuting. Birinchi tayyorlash odatdagidan uzoqroq davom etishi mumkin.
-2. **Server sozlamalari** bo‘limini odatda ochish shart emas. Manzil oldindan `https://new-dev.site` qilib kiritilgan. Faqat `ilbi.uz`ga ko‘chirilgani e’lon qilinsa yoki yordam xizmati aytsa o‘zgartiring.
+**Ishni boshlash** tugmasini bosing va kirish oynasi ochilishini kuting. Birinchi tayyorlash odatdagidan uzoqroq davom etishi mumkin.
+
+Server manzili avtomatik tanlanadi va ilova ichida o‘zgartirilmaydi. Login va sinxronlash faqat rasmiy `https://new-dev.site` serveri orqali ishlaydi. Platforma `ilbi.uz`ga ko‘chsa, yangi rasmiy ilovani o‘rnatasiz; manzilni qo‘lda kiritish kerak bo‘lmaydi. “Server manzili rasmiy ILBI manziliga mos emas” xabari chiqsa, rasmiy sahifadan ilovani yangilang yoki yordamga murojaat qiling. Mahalliy baza va `device.vault` faylini o‘chirmang.
 
 ## 2. Do‘konni offline ishlashga tayyorlash
 

@@ -4,11 +4,13 @@ const { readFile, writeFile, mkdir, access } = require('node:fs/promises');
 const { join, resolve, sep } = require('node:path');
 const net = require('node:net');
 
+// Change together with the backend server policy when publishing a domain migration.
+const OFFICIAL_SERVER = 'https://new-dev.site';
 function validateServer(value) {
-  const url = new URL(value);
-  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname))) throw Error('HTTPS manzil kerak.');
-  if (url.username || url.password || url.search || url.hash || url.pathname !== '/') throw Error('Serverning asosiy manzilini kiriting.');
-  return url.origin;
+  if (value !== OFFICIAL_SERVER && value !== OFFICIAL_SERVER + '/') {
+    throw Error('Server manzili rasmiy ILBI manziliga mos emas. Ilovani rasmiy saytdan yangilang yoki yordam xizmatiga murojaat qiling. Ma’lumotlar papkasini o‘chirmang.');
+  }
+  return OFFICIAL_SERVER;
 }
 function privateHost(host) {
   return host === 'localhost' || host === '127.0.0.1' || /^10\.\d+\.\d+\.\d+$/.test(host) || /^192\.168\.\d+\.\d+$/.test(host) || /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host);
@@ -45,6 +47,7 @@ async function command(executable, args, options = {}) {
 }
 async function exists(path) { try { await access(path); return true; } catch { return false; } }
 async function startHost({ resources, dataDir, secrets, bridgeKey, server, executable, runtimeArguments = [] }) {
+  server = validateServer(server);
   await mkdir(dataDir, { recursive: true });
   const pgRoot = join(resources, 'postgres');
   const binary = name => join(pgRoot, 'bin', name + (process.platform === 'win32' ? '.exe' : ''));
@@ -97,4 +100,4 @@ async function startHost({ resources, dataDir, secrets, bridgeKey, server, execu
     throw error;
   }
 }
-module.exports = { validateServer, validatePairing, privateHost, safePath, equalKey, freePort, command, startHost };
+module.exports = { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, freePort, command, startHost };

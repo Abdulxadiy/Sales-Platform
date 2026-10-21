@@ -63,7 +63,6 @@ try {
   await browser.resize(920, 1000);
   await capture('01-primary-setup.png', '#host', [
     { selector: '#host button', number: 1, x: 1, y: .5, dx: 60, dy: 0 },
-    { selector: '#server-settings summary', number: 2, x: .29, y: .5, dx: 60, dy: 0 },
   ], 'desktop/ilbi/setup.html + setup.css: primary computer form', 16);
   await browser.evaluate('document.querySelector("#join-details").open=true');
   await capture('07-extra-register.png', '#join-details', [

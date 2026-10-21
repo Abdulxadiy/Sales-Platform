@@ -4,7 +4,6 @@ import json
 import os
 import threading
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 from cryptography.fernet import Fernet
@@ -12,16 +11,7 @@ from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .local import activity
-
-
-def server_url(value):
-    parsed = urlparse(value)
-    local = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
-    if parsed.scheme != "https" and not (local and parsed.scheme == "http"):
-        raise ValueError("Server uchun HTTPS manzil kerak.")
-    if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
-        raise ValueError("Serverning asosiy manzilini kiriting, masalan https://ilbi.uz")
-    return value.rstrip("/")
+from .server_policy import server_url  # noqa: F401 -- retained for existing transport imports
 
 
 class Vault:

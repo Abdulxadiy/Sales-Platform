@@ -10,6 +10,6 @@ async function perform(action) {
   finally { document.querySelectorAll('button').forEach(button => { button.disabled = false; }); }
 }
 document.querySelector('#host').addEventListener('submit', event => {
-  event.preventDefault(); void perform(() => window.ilbiDesktop.setup({ server: new FormData(event.target).get('server') }));
+  event.preventDefault(); void perform(() => window.ilbiDesktop.setup());
 });
 document.querySelector('#join').addEventListener('click', () => { void perform(() => window.ilbiDesktop.join()); });

@@ -5,7 +5,7 @@ const { readFile, writeFile, mkdir } = require('node:fs/promises');
 const { join, extname } = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
-const { validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
+const { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
 app.setName('ILBI');
 if (process.platform === 'linux') app.setDesktopName('uz.ilbi.desktop.desktop');
 
@@ -61,7 +61,11 @@ function proxy(request, response, target, secure = false) {
   request.pipe(upstream);
 }
 async function launchRuntime() {
+  // Recheck persisted settings before starting any service or forwarding credentials.
+  if (configuration.mode === 'client') configuration.pairing = validatePairing(configuration.pairing);
+  else if (configuration.mode !== 'host') throw Error('Qurilma sozlamalari noto‘g‘ri. Yordam xizmatiga murojaat qiling.');
   if (configuration.mode === 'host') {
+    configuration.server = validateServer(configuration.server);
     localHost = await startHost({ resources, dataDir, secrets, bridgeKey, server: configuration.server,
       executable: join(resources, process.platform === 'win32' ? 'backend/python/python.exe' : 'backend/python/bin/python3'),
       runtimeArguments: [join(resources, 'backend/runtime.py')] });
@@ -139,10 +143,10 @@ else {
       // A stable origin preserves account drafts and session storage across restarts.
       await new Promise((ok, fail) => { webServer.once('error', fail); webServer.listen(49244, '127.0.0.1', ok); });
       origin = `http://127.0.0.1:${webServer.address().port}`;
-      ipcMain.handle('ilbi:setup', async (event, value) => {
+      ipcMain.handle('ilbi:setup', async event => {
         validSender(event, true);
         if (configuration) throw Error('Qurilma allaqachon sozlangan.');
-        configuration = { mode: 'host', server: validateServer(value.server), lanPort: 49243 };
+        configuration = { mode: 'host', server: OFFICIAL_SERVER, lanPort: 49243 };
         secrets = { djangoSecret: randomBytes(48).toString('hex'), databasePassword: randomBytes(32).toString('hex'),
           vaultKey: randomBytes(32).toString('base64url') + '=', pairingKey: randomBytes(32).toString('hex') };
         await saveVault();

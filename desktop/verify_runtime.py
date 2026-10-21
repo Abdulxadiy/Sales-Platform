@@ -61,7 +61,6 @@ def main():
         f"http://127.0.0.1:{cloud_port}",
         f"http://127.0.0.1:{local_port}",
     )
-    environment["ILBI_DESKTOP_SERVER"] = cloud_origin
     local_headers = {"X-ILBI-Desktop-Key": environment["ILBI_DESKTOP_BRIDGE_KEY"]}
     logs = []
 
@@ -141,7 +140,14 @@ def main():
         )
         (temporary / "qa_local.py").write_text(
             "from config.settings_desktop import *\nDEBUG=True\n"
-            "DATABASES['default'].update(NAME="
+            # Replace the pinned origin in disposable test settings only. The shipped
+            # entry point always loads config.settings_desktop and has no override.
+            "from apps.desktop_sync import server_policy\n"
+            + "DESKTOP_SERVER=server_policy.OFFICIAL_SERVER="
+            + repr(cloud_origin)
+            + "\n"
+            + "FRONTEND_URL=DESKTOP_SERVER\n"
+            + "DATABASES['default'].update(NAME="
             + repr(local_db)
             + ",USER='ilbi_test')\n"
         )

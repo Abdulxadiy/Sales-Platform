@@ -9,6 +9,8 @@ os.environ["LOCAL_DEMO_LOGIN_ENABLED"] = "False"
 os.environ["USE_MINIO"] = "False"
 os.environ["ALLOWED_HOSTS"] = "127.0.0.1,localhost"
 
+from apps.desktop_sync.server_policy import OFFICIAL_SERVER  # noqa: E402
+
 from .settings import *  # noqa: E402,F403
 from .settings import MIDDLEWARE as BASE_MIDDLEWARE  # noqa: E402
 from .settings import REST_FRAMEWORK as BASE_REST_FRAMEWORK  # noqa: E402
@@ -16,7 +18,7 @@ from .settings import REST_FRAMEWORK as BASE_REST_FRAMEWORK  # noqa: E402
 DESKTOP_MODE = True
 DESKTOP_DATA_DIR = Path(os.environ["ILBI_DESKTOP_DATA"])
 DESKTOP_BRIDGE_KEY = os.environ["ILBI_DESKTOP_BRIDGE_KEY"]
-DESKTOP_SERVER = os.environ.get("ILBI_DESKTOP_SERVER", "https://ilbi.uz")
+DESKTOP_SERVER = OFFICIAL_SERVER
 FRONTEND_URL = DESKTOP_SERVER
 DATABASES = {
     "default": {

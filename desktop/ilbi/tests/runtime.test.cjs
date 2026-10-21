@@ -2,12 +2,33 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { join } = require('node:path');
 const { tmpdir } = require('node:os');
-const { validateServer, validatePairing, safePath, equalKey } = require('../runtime.cjs');
+const { OFFICIAL_SERVER, validateServer, validatePairing, safePath, equalKey, startHost } = require('../runtime.cjs');
 
-test('cloud URL validation excludes insecure or credential-bearing remote URLs', () => {
-  assert.equal(validateServer('https://ilbi.uz/'), 'https://ilbi.uz');
-  assert.equal(validateServer('http://127.0.0.1:8000'), 'http://127.0.0.1:8000');
-  for (const value of ['http://ilbi.uz', 'https://user:secret@ilbi.uz', 'https://ilbi.uz/path', 'file:///etc/passwd']) assert.throws(() => validateServer(value));
+test('cloud destinations are restricted to the official release origin', () => {
+  assert.equal(validateServer(OFFICIAL_SERVER), OFFICIAL_SERVER);
+  assert.equal(validateServer(OFFICIAL_SERVER + '/'), OFFICIAL_SERVER);
+  for (const value of [undefined, null, {}, 'https://ilbi.uz', 'https://evil.example',
+    'http://127.0.0.1:8000', 'http://new-dev.site', 'https://new-dev.site.evil.example',
+    'https://user:secret@new-dev.site', 'https://new-dev.site@evil.example',
+    'https://new-dev.site:8443', 'https://new-dev.site./', 'https://new-dev.site/path',
+    'https://new-dev.site/?server=evil', 'https://new-dev.site/#evil', 'file:///etc/passwd']) {
+    assert.throws(() => validateServer(value));
+  }
+});
+test('a changed persisted server is refused before creating a database or starting a process', async () => {
+  await assert.rejects(startHost({ server: 'https://evil.example' }), /rasmiy ILBI/);
+});
+test('the sandboxed setup bridge does not forward a renderer-supplied server', () => {
+  const vm = require('node:vm');
+  const { readFileSync } = require('node:fs');
+  let bridge;
+  const invocations = [];
+  vm.runInNewContext(readFileSync(join(__dirname, '../preload.cjs'), 'utf8'), {
+    require: () => ({ contextBridge: { exposeInMainWorld: (_name, value) => { bridge = value; } },
+      ipcRenderer: { invoke: (...args) => { invocations.push(args); } } }),
+  });
+  bridge.setup({ server: 'https://evil.example' });
+  assert.deepEqual(invocations, [['ilbi:setup']]);
 });
 test('LAN pairing requires a private address, pinned certificate and strong key', () => {
   const value = { protocol: 1, host: '192.168.1.8', port: 49243, key: 'a'.repeat(64), certificate: '-----BEGIN CERTIFICATE-----\nexample' };

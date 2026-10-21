@@ -15,7 +15,7 @@ from .desktop_api import authenticated, endpoint
 from .files import decode_body, encode_request
 from .local import aliases_for, enqueue, get_state, runtime_lock
 from .protocol import allowed, preconditions, record_changes, title_for
-from .transport import cloud_request
+from .transport import cloud_request, server_url
 
 
 class DesktopMiddleware:
@@ -172,7 +172,7 @@ class DesktopMiddleware:
                     set_state("revision", -1)
                     wake_worker.set()
             else:
-                base = settings.DESKTOP_SERVER.rstrip("/")
+                base = server_url(settings.DESKTOP_SERVER)
                 headers = {
                     key: value
                     for key, value in request.headers.items()
@@ -195,6 +195,8 @@ class DesktopMiddleware:
                 if name in remote.headers:
                     response[name] = remote.headers[name]
             return response
+        except ValueError as error:
+            return JsonResponse({"detail": str(error)}, status=503)
         except requests.RequestException:
             return JsonResponse(
                 {"detail": "Internet yo‘q. Tayyorlangan hisobga offline parol bilan kiring."}, status=503

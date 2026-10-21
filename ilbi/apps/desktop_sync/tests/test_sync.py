@@ -487,8 +487,8 @@ def test_fast_workspace_reminder_replay_and_conflict(owner, tenant, device):
     assert not WorkspaceReminder.objects.filter(pk=reminder.pk).exists()
 
 
-@override_settings(DESKTOP_SERVER="https://downloads.example")
-def test_desktop_public_release_feed_uses_configured_cloud_origin():
+@override_settings(DESKTOP_SERVER="https://new-dev.site")
+def test_desktop_public_release_feed_uses_official_cloud_origin():
     import json
     from unittest.mock import Mock, patch
 
@@ -501,7 +501,7 @@ def test_desktop_public_release_feed_uses_configured_cloud_origin():
     with patch("apps.desktop_sync.desktop_api.requests.get", return_value=upstream) as fetch:
         response = endpoint(RequestFactory().get("/desktop/releases/"), "releases/")
     assert response.status_code == 200
-    assert json.loads(response.content)["origin"] == "https://downloads.example"
+    assert json.loads(response.content)["origin"] == "https://new-dev.site"
     fetch.assert_called_once_with(
-        "https://downloads.example/downloads/releases.json", timeout=(5, 15), allow_redirects=False
+        "https://new-dev.site/downloads/releases.json", timeout=(5, 15), allow_redirects=False
     )

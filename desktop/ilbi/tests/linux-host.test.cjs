@@ -5,7 +5,7 @@ const { join } = require('node:path');
 const { tmpdir } = require('node:os');
 const { randomBytes } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
-const { startHost } = require('../runtime.cjs');
+const { OFFICIAL_SERVER, startHost } = require('../runtime.cjs');
 
 test('bundled Linux runtime migrates, isolates its database and preserves data on restart', {
   skip: process.platform !== 'linux' || !process.env.ILBI_DESKTOP_TEST_RESOURCES, timeout: 180000,
@@ -14,7 +14,7 @@ test('bundled Linux runtime migrates, isolates its database and preserves data o
   const dataDir = await mkdtemp(join(tmpdir(), 'ilbi-linux-host-'));
   const bridgeKey = randomBytes(32).toString('hex');
   const secrets = { djangoSecret: randomBytes(48).toString('hex'), databasePassword: randomBytes(32).toString('hex'), vaultKey: randomBytes(32).toString('base64url') + '=' };
-  const options = { resources, dataDir, secrets, bridgeKey, server: 'https://example.invalid',
+  const options = { resources, dataDir, secrets, bridgeKey, server: OFFICIAL_SERVER,
     executable: join(resources, 'backend/python/bin/python3'), runtimeArguments: [join(resources, 'backend/runtime.py')] };
   let host;
   try {
@@ -22,7 +22,7 @@ test('bundled Linux runtime migrates, isolates its database and preserves data o
     let url = `http://127.0.0.1:${host.port}/desktop/status/`;
     assert.equal((await fetch(url)).status, 403);
     const status = await (await fetch(url, { headers: { 'X-ILBI-Desktop-Key': bridgeKey } })).json();
-    assert.equal(status.desktop, true); assert.equal(status.enrolled, false);
+    assert.equal(status.server, OFFICIAL_SERVER); assert.equal(status.desktop, true); assert.equal(status.enrolled, false);
     // Query this app's own disposable cluster, never the host's PostgreSQL service.
     const { readFile } = require('node:fs/promises');
     const pgPort = (await readFile(join(dataDir, 'postgres/postmaster.pid'), 'utf8')).split('\n')[3];

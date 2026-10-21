@@ -9,7 +9,7 @@
         "x": 136,
         "y": 302.96875,
         "width": 648,
-        "height": 308.28125
+        "height": 248.890625
       },
       "arrows": [
         {
@@ -19,24 +19,16 @@
           "y": 0.5,
           "dx": 60,
           "dy": 0
-        },
-        {
-          "selector": "#server-settings summary",
-          "number": 2,
-          "x": 0.29,
-          "y": 0.5,
-          "dx": 60,
-          "dy": 0
         }
       ],
-      "sha256": "51460706144706c24b3d722f8e3a171af5d6a0834b95804376a9cd18c81bf894"
+      "sha256": "c73028d1b5ef7feeb0cd17643269a1919b4ec6b9146fb92c075de1f449f35243"
     },
     {
       "file": "07-extra-register.png",
       "source": "desktop/ilbi/setup.html + setup.css: extra register",
       "crop": {
         "x": 136,
-        "y": 599.25,
+        "y": 539.859375,
         "width": 648,
         "height": 234.765625
       },
@@ -58,7 +50,7 @@
           "dy": 0
         }
       ],
-      "sha256": "825e567a218a4051ff147029ae1ba719eb6027c80eb536afdb3657043a840581"
+      "sha256": "e9eed5dfa0d677103d1ae38c4c7f4bf736a2d642e601e281a1c8c151fce0788e"
     },
     {
       "file": "02-prepare.png",
@@ -132,7 +124,7 @@
           "dy": 0
         }
       ],
-      "sha256": "93cd17fc4009c7539fceac325472606fcd92dbdd1907485868345ebbe5627460"
+      "sha256": "29d2072ff7d1174ce2715017d126751d8624a3929df62229cabe6944b06992df"
     },
     {
       "file": "04-queue.png",
@@ -161,7 +153,7 @@
           "dy": 0
         }
       ],
-      "sha256": "c4865e00f09fa9a695024bb7565d559182cadef905508d2d34436467d6e2b5b6"
+      "sha256": "71c5a0732d5a9bbd0cab747f56c458b45dcc75f518302233c21cd5349cefda06"
     },
     {
       "file": "05-priority.png",

@@ -129,7 +129,10 @@ conflicts and rejected financial commands remain visible for review.
 
 Offline coverage includes the store's catalog, images/imports, inventory,
 retail sales, returns/voids, counterparties, debt payments, cash income/expenses,
-shifts and the reports available from the downloaded records. Cross-store B2B
+shifts, Fast-workspace reminders/search and reports from the downloaded records.
+Both Classic and Fast workspaces are included in desktop v1.2.0, with the sync
+control available in both. Layout selection and account drafts remain local.
+Cross-store B2B
 confirmation/transfers, employee/security administration, support, Telegram,
 online payments and external providers require a live server. Historical receipt
 prices, identifiers and business timestamps are preserved during synchronization.
@@ -198,6 +201,29 @@ workflow **ILBI Windows desktop** also runs a native Windows Python/PostgreSQL
 startup check and uploads the installer; it must be run in the connected repo
 before treating a build as Windows-validated.
 
+The public download page is `/download`, linked from the landing page and both
+workspace menus. It reads `/downloads/releases.json`; unpublished Windows/mobile
+builds have disabled download controls. The desktop reads that same public feed
+through its configured cloud origin. Build files are kept outside the React
+bundle so an installer never embeds another copy of itself.
+
+After a successful build, prepare the public files locally:
+
+```bash
+python desktop/export_downloads.py
+```
+
+This verifies the installer hash, copies it to `desktop/downloads` and atomically
+writes `releases.json`. Its default channel is `preview`, shown as **Sinov
+nusxasi** on the page. It does not upload or deploy anything. Copy that directory
+to the server before deploying the matching frontend; production Compose mounts
+it read-only at Nginx's `/var/www/downloads`. The directory is public and contains
+release files only. Nginx supports resumed/range downloads, returns 404 for absent
+files and does not cache the feed. After release acceptance, export with
+`--channel stable`. A future mobile release can be added under the feed's
+`mobile` key with `version`, `label` and an HTTPS or `/downloads/…` `url`; subsequent
+Windows exports preserve that entry. Mobile application development is separate.
+
 Additional verification commands, using only disposable test databases:
 
 ```bash
@@ -208,12 +234,14 @@ uv run python ../desktop/verify_runtime.py
 cd ../frontend/ilbi
 npm test
 npm run test:sync
+npm run test:downloads
 ```
 
 The integration runner creates and drops two disposable databases on the isolated
 test PostgreSQL at `127.0.0.1:5433`. It exercises three simultaneous cashier
 sessions, offline sale/debt/cash/shift/image changes, priority, a process restart,
 offline unlock, reconnect, server refresh and stale open-form identifier mapping.
+It also verifies offline reminder creation/completion/deletion and lease recovery.
 Browser tests use synthetic responses. The Windows startup test is deliberately
 skipped on Linux; a passing Linux run does not establish native Windows support.
 

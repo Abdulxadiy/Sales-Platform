@@ -10,7 +10,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const artifacts = await mkdtemp(join(tmpdir(), 'ilbi-sync-ui-'));
 let server, browser;
 try {
-  server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), logLevel: 'error', server: { host: '127.0.0.1', port: 0 } });
+  server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), cacheDir: 'node_modules/.vite-sync-qa', logLevel: 'error', server: { host: '127.0.0.1', port: 0 } });
   await server.listen();
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await launchBrowser({ width: 1280, height: 900 });
@@ -51,22 +51,29 @@ try {
   await browser.evaluate('window.keptDraft=document.querySelector("input[aria-label=\\\"Sinov qoralamasi\\\"]");keptDraft.value="Saqlangan qoralama"');
   await browser.evaluate('document.querySelector("button[aria-label=\\\"Ish stolini almashtirish\\\"]").click()');
   await wait('Boolean(document.querySelector(".workspace-navbar .sync-status"))');
+  assert.equal(await browser.evaluate('Boolean(document.querySelector(".workspace-nav-row a[href=\\\"/download\\\"]"))'), true);
   assert.equal(await browser.evaluate('keptDraft===document.querySelector("input[aria-label=\\\"Sinov qoralamasi\\\"]")&&keptDraft.value==="Saqlangan qoralama"'), true);
   await browser.evaluate('document.querySelector(".sync-status").click()');
   await wait('Boolean(document.querySelector("dialog[open] .sync-row"))');
   assert.equal(await browser.evaluate('document.querySelector("dialog[open] [data-operation-id=active]").textContent.includes("27%")'), true);
   await writeFile(join(artifacts, 'fast-workspace-sync.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
   await browser.evaluate('document.querySelector("dialog[open] button[aria-label=Yopish]").click()');
+  await browser.evaluate('window.syncBeforeReload=true');
   await browser.call('Page.reload');
-  await wait('Boolean(document.querySelector(".workspace-navbar .sync-status"))');
+  await wait('!window.syncBeforeReload&&Boolean(document.querySelector(".workspace-navbar .sync-status"))');
   await browser.evaluate('document.querySelector("button[aria-label=\\\"Ish stolini almashtirish\\\"]").click()');
   await wait('Boolean(document.querySelector(".sidebar"))&&Boolean(document.querySelector(".app-header .sync-status"))');
   await browser.evaluate('document.querySelector(".sync-status").click()');
   await wait('Boolean(document.querySelector("dialog[open] .sync-row"))');
   assert.equal(await browser.evaluate('document.querySelector("dialog[open] [data-operation-id=active]").textContent.includes("27%")'), true);
   await writeFile(join(artifacts, 'classic-workspace-sync.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+  assert.equal(await browser.evaluate('Boolean(document.querySelector(".sidebar a[href=\\\"/download\\\"]"))'), true);
   assert.deepEqual(browser.errors, []);
   console.log(JSON.stringify({ passed: true, scenarios: ['priority animation', 'active operation preserved', 'next arrows', 'real progress', 'server confirmation', 'mobile', 'reduced motion', 'keyboard focus', 'classic and fast workspace sync', 'draft preserved on workspace switch', 'workspace preference survives reload'], artifacts }));
+} catch (error) {
+  console.error('Browser errors:', browser?.errors);
+  if (browser) console.error(await browser.evaluate('({body:document.body.innerText.slice(0,1500),url:location.href})'));
+  throw error;
 } finally {
   await browser?.close();
   await server?.close();

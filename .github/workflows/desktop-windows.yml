@@ -50,9 +50,12 @@ jobs:
           $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
           $manifest.nativeWindowsServiceVerified = $true
           $manifest | ConvertTo-Json | Set-Content $manifestPath
+      - name: Prepare public download files
+        run: python desktop/export_downloads.py
       - uses: actions/upload-artifact@v4
         with:
           name: ILBI-Windows-x64
           path: |
-            desktop/ilbi/release/ILBI-Setup-*.exe
+            desktop/downloads/ILBI-Setup-*.exe
+            desktop/downloads/releases.json
             desktop/ilbi/release/desktop-build-manifest.json

@@ -11,6 +11,7 @@ import SessionRecovery from './components/auth/SessionRecovery';
 const Layout = lazy(() => import('./components/layout/Layout'));
 const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
 const Landing = lazy(() => import('./pages/Landing'));
+const Downloads = lazy(() => import('./pages/Downloads'));
 const Support = lazy(() => import('./pages/Support'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -84,8 +85,8 @@ function RoutePresentation() {
   const { pathname } = useLocation();
   useEffect(() => {
     const isLanding = pathname === '/';
-    document.title = isLanding ? 'ILBI — Har bir savdo. Bir butun manzara.' : 'ILBI — Savdo va boshqaruv tizimi';
-    document.querySelector('meta[name="robots"]')?.setAttribute('content', isLanding ? 'index, follow' : 'noindex, nofollow');
+    document.title = isLanding ? 'ILBI — Har bir savdo. Bir butun manzara.' : pathname === '/download' ? 'ILBI — Yuklab olish' : 'ILBI — Savdo va boshqaruv tizimi';
+    document.querySelector('meta[name="robots"]')?.setAttribute('content', isLanding || pathname === '/download' ? 'index, follow' : 'noindex, nofollow');
   }, [pathname]);
   if (pathname === '/') return null;
   return <Suspense fallback={null}><HelpLauncher /></Suspense>;
@@ -108,6 +109,7 @@ export default function App() {
                 <Suspense fallback={<AppLoadingScreen message="Sahifa yuklanmoqda..." />}>
                 <Routes>
                 <Route path="/" element={<Landing />} />
+                <Route path="/download" element={<Downloads />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/support" element={<SupportRoute />} />
                 <Route path="/setup-account" element={<SetupAccount />} />

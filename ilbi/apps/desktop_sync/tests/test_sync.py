@@ -432,6 +432,17 @@ def test_changed_default_sale_price_cannot_silently_change_offline_receipt(owner
     assert not Sale.objects.filter(tenant=tenant).exists()
     assert not SyncReceipt.objects.filter(device=device).exists()
     payload["body"]["items"][0]["unit_price"] = "12000"
+    from apps.cashbox.models import CashShift
+
+    shift = CashShift.objects.get(tenant=tenant, closed_at__isnull=True)
+    payload["created"][0]["fields"]["shift_id"] = shift.pk
+    shift.closed_at = timezone.now()
+    shift.save()
+    replacement = CashShift.objects.create(tenant=tenant, opened_by=owner)
+    with pytest.raises(SyncConflict, match="smenasi"):
+        apply_operation(owner, device.pk, payload)
+    assert not Sale.objects.filter(tenant=tenant).exists()
+    payload["created"][0]["fields"]["shift_id"] = replacement.pk
     apply_operation(owner, device.pk, payload)
     assert Sale.objects.get(tenant=tenant).total_amount == Decimal("12000")
 
@@ -474,3 +485,23 @@ def test_fast_workspace_reminder_replay_and_conflict(owner, tenant, device):
     delete = command(device, path=f"workspace/reminders/{reminder.pk}/", method="DELETE", body={"unused": True})
     apply_operation(owner, device.pk, delete)
     assert not WorkspaceReminder.objects.filter(pk=reminder.pk).exists()
+
+
+@override_settings(DESKTOP_SERVER="https://downloads.example")
+def test_desktop_public_release_feed_uses_configured_cloud_origin():
+    import json
+    from unittest.mock import Mock, patch
+
+    from django.test import RequestFactory
+
+    from apps.desktop_sync.desktop_api import endpoint
+
+    upstream = Mock(ok=True, status_code=200)
+    upstream.json.return_value = {"schema": 1, "windows": {"version": "1.2.0"}}
+    with patch("apps.desktop_sync.desktop_api.requests.get", return_value=upstream) as fetch:
+        response = endpoint(RequestFactory().get("/desktop/releases/"), "releases/")
+    assert response.status_code == 200
+    assert json.loads(response.content)["origin"] == "https://downloads.example"
+    fetch.assert_called_once_with(
+        "https://downloads.example/downloads/releases.json", timeout=(5, 15), allow_redirects=False
+    )

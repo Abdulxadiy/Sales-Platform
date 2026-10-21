@@ -8,6 +8,8 @@ from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 
+from apps.core.event_clock import event_time
+
 from .cloud import rewrite
 from .desktop_api import authenticated, endpoint
 from .files import decode_body, encode_request
@@ -102,7 +104,12 @@ class DesktopMiddleware:
                 if Counterparty.objects.filter(pk=body["counterparty_id"], target_tenant__isnull=False).exists():
                     return JsonResponse({"detail": "B2B savdo uchun ikki do‘konning jonli tasdig‘i kerak."}, status=409)
             with transaction.atomic(), record_changes() as changes:
-                response = self.get_response(request)
+                occurred = timezone.now()
+                clock_token = event_time.set(occurred)
+                try:
+                    response = self.get_response(request)
+                finally:
+                    event_time.reset(clock_token)
                 if response.status_code >= 400:
                     transaction.set_rollback(True)
                     return response
@@ -123,7 +130,7 @@ class DesktopMiddleware:
                         "body": body,
                         "created": changes["created"],
                         "preconditions": preconditions(changes),
-                        "occurred_at": timezone.now().isoformat(),
+                        "occurred_at": occurred.isoformat(),
                         "actor_ticket": actor["actor_ticket"],
                     },
                 )

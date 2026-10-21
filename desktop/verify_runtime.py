@@ -209,6 +209,28 @@ open(SEED_PATH,"w").write(json.dumps(seed))
                 }
             )
         stop(cloud_process)
+        from datetime import UTC, datetime, timedelta
+
+        reminder = call(
+            "/api/v1/workspace/reminders/",
+            {
+                "title": "Offline tezkor eslatma",
+                "due_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
+            },
+            headers=auth,
+        )
+        call(
+            f"/api/v1/workspace/reminders/{reminder['id']}/",
+            {"completed": True},
+            method="PATCH",
+            headers=auth,
+        )
+        call(
+            f"/api/v1/workspace/reminders/{reminder['id']}/",
+            method="DELETE",
+            headers=auth,
+        )
+        assert "results" in call("/api/v1/workspace/search/?q=Offline", headers=auth)
         cp = call(
             "/api/v1/sales/counterparties/",
             {"name": "Offline QA mijoz", "phone_number": "+998901234567"},
@@ -296,7 +318,7 @@ open(SEED_PATH,"w").write(json.dumps(seed))
         )
         time.sleep(1)
         queue = call("/desktop/queue/", headers=auth)
-        assert len(queue["operations"]) == 11, queue
+        assert len(queue["operations"]) == 14, queue
         promoted = next(
             row["id"]
             for row in queue["operations"]
@@ -312,7 +334,7 @@ open(SEED_PATH,"w").write(json.dumps(seed))
             {"username": "offline-qa-owner", "pin": "offline-test-pass"},
         )
         auth["Authorization"] = "Bearer " + unlocked["access"]
-        assert len(call("/desktop/queue/", headers=auth)["operations"]) == 11
+        assert len(call("/desktop/queue/", headers=auth)["operations"]) == 14
         local_cp = call(f"/api/v1/sales/counterparties/{cp_id}/", headers=auth)
         assert local_cp["debt_balance_uzs"] == "18000.00", local_cp
         cloud_process = start("qa_cloud", cloud_port)
@@ -386,7 +408,9 @@ assert Sale.objects.filter(payment_type="debt").get().total_amount == Decimal("2
 assert all(sale.receipt_number.startswith("O") for sale in Sale.objects.all())
 assert Stock.objects.get().quantity == Decimal("95")
 assert DailyCashReport.objects.get().expected_cash_uzs == Decimal("41500")
-assert SyncReceipt.objects.count()==11
+assert SyncReceipt.objects.count()==14
+from apps.core.models import WorkspaceReminder
+assert not WorkspaceReminder.objects.exists()
 from apps.catalog.models import ProductImage
 assert ProductImage.objects.count()==1
 """
@@ -412,8 +436,9 @@ assert ProductImage.objects.count()==1
                         "two-way replica refresh",
                         "open-form ID aliases",
                         "expired lease recovery",
+                        "offline fast workspace reminder create/complete/delete and search",
                     ],
-                    "operations": 11,
+                    "operations": 14,
                     "artifacts": str(temporary),
                 }
             )

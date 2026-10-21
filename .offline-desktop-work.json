@@ -46,47 +46,54 @@
       "id": "server_sync_and_conflicts",
       "status": "complete",
       "checks": [
-        "26 synchronization tests passed, including exactly-once lost ACK, permissions/store isolation, partner-data redaction, 2500 dependencies and final receipt amount mismatch rollback",
+        "28 synchronization tests passed; 919 complete backend tests passed; 39 sync/workspace/schema subset tests passed",
         "Production OpenAPI regression tests passed; migration check reports no changes",
-        "Owner enrollment/reconnect renews lease without erasing replica; queue ownership follows store membership"
+        "Owner enrollment/reconnect renews lease without erasing replica; queue ownership follows store membership",
+        "Final financial guard rejects changed prices/taxes and web-changed cash shifts without altering the cloud ledger"
       ]
     },
     {
       "id": "desktop_and_animated_queue",
       "status": "complete",
       "checks": [
-        "58 frontend tests passed; production Vite build passed; lint exits successfully with existing warnings elsewhere",
+        "59 frontend tests passed; production Vite build and lint passed",
         "Chrome verified priority animation, active preservation, next arrows, real progress, confirmation, mobile, reduced motion and keyboard focus",
-        "3 shell tests passed; native Windows host smoke test skipped on Linux"
+        "3 shell tests passed; native Windows host smoke test skipped on Linux",
+        "Classic and Fast workspace sync, retained draft, retained layout choice and both download navigation links verified in Chrome"
       ]
     },
     {
       "id": "workflow_integration",
       "status": "complete",
       "checks": [
-        "Real two-database integration passed 16 scenarios and synchronized 11 commands",
+        "17 real two-database integration scenarios passed; 14 commands synchronized, including Fast workspace reminder create/complete/delete and search",
         "Three concurrent cashier sessions, debt sale/payment, cash income/expense, image upload, shift close, priority, restart, unlock, reconnect, refresh, stale form aliases and expired lease recovery",
-        "Cloud totals verified: stock 95, debt 18000 UZS, expected cash 41500 UZS, 4 sales, 11 receipts"
+        "Cloud totals verified: stock 95, debt 18000 UZS, expected cash 41500 UZS, 4 sales, 14 receipts"
       ]
     },
     {
       "id": "windows_packaging",
-      "status": "in_progress",
+      "status": "complete",
       "checks": [
-        "Custom per-user NSIS installer builds without Wine and preserves user data; final latest-source build running",
-        "Windows CI includes installation, installed bundled-service startup and uninstallation checks; workflow has not been run"
+        "Latest Windows x64 NSIS installer built successfully; embedded payload size and MZ signature verified",
+        "Final packaged backend matches 369 source files; no deployment .env packaged",
+        "SHA-256 verified during public-file export; native Windows execution remains in the acceptance phase"
       ]
     },
     {
       "id": "download_page_and_distribution",
-      "status": "in_progress",
-      "checks": []
+      "status": "complete",
+      "checks": [
+        "Anonymous /download page browser tests passed for published/missing/offline/retry/mobile states; linked from landing and both workspaces",
+        "10 isolated HTTPS/download tests passed, including resumed installer download; 9 rate-limit regression tests passed",
+        "Final preview installer exported; public release feed, file size, SHA-256 and Windows executable header verified locally; cloud deployment remains pending"
+      ]
     },
     {
       "id": "end_to_end_verification",
       "status": "in_progress",
       "checks": [
-        "917 backend regression tests passed; 58 frontend tests passed; 16 real integration scenarios passed",
+        "919 backend and 59 frontend tests passed; 17 real integration scenarios and 19 browser scenarios passed",
         "Native Windows UI/install/update, actual LAN registers and physical printers/providers remain unverified",
         "Existing production retail fiscal-provider gate remains active; do not claim production POS is enabled"
       ]
@@ -96,6 +103,6 @@
     "Run Windows CI and verify actual Windows startup/install/update/uninstall",
     "Test multiple physical Windows registers over LAN and receipt printers",
     "Complete the pre-existing fiscal-provider integration before production retail sales",
-    "Deploy matching cloud code/migrations before enrolling a real store"
+    "Deploy matching backend/migrations, frontend and desktop/downloads public files before real enrollment"
   ]
 }

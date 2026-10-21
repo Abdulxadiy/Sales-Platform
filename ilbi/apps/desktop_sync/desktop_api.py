@@ -49,6 +49,14 @@ def endpoint(request, path):
         if path == "status/" and request.method == "GET":
             # No account names, operations or credentials in the pre-login status.
             return JsonResponse({"desktop": True, "enrolled": bool(device), "server": settings.DESKTOP_SERVER})
+        if path == "releases/" and request.method == "GET":
+            origin = server_url(settings.DESKTOP_SERVER)
+            response = requests.get(origin + "/downloads/releases.json", timeout=(5, 15), allow_redirects=False)
+            if response.status_code == 404:
+                return JsonResponse({"origin": origin, "release": {"schema": 1}})
+            if not response.ok:
+                return JsonResponse({"detail": "Yuklab olish ma’lumotlari vaqtincha mavjud emas."}, status=503)
+            return JsonResponse({"origin": origin, "release": response.json()})
         if path == "unlock/" and request.method == "POST":
             actors = get_state("actors", {})
             blocked_until = parse_datetime(get_state("unlock_blocked_until", ""))

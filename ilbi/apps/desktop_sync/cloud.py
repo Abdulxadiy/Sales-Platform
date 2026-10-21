@@ -193,6 +193,10 @@ def apply_operation(user, device_id, payload):
         if not candidates:
             raise SyncConflict("Operatsiya natijasi mahalliy yozuvga mos kelmadi.")
         remote_row = candidates.pop(0)
+        if "shift_id" in row["fields"]:
+            expected_shift = rewrite(row["fields"]["shift_id"], {**mapping, **id_map})
+            if expected_shift != remote_row["fields"].get("shift_id"):
+                raise SyncConflict("Kassa smenasi webda o‘zgargan. Mahalliy operatsiya saqlangan; tekshirish kerak.")
         money_fields = {
             "sales.sale": {"currency", "total_amount", "subtotal_amount", "tax_amount"},
             "sales.saleitem": {"unit_price", "quantity", "total_price", "net_amount", "tax_amount"},

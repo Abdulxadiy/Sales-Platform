@@ -1,14 +1,15 @@
 {
-  "generated_at": "2026-10-21T04:41:16.747171+00:00",
+  "generated_at": "2026-10-21T04:58:27.774509+00:00",
   "validation_platform": "Linux x64",
   "backend": {
-    "passed": 917,
+    "passed": 919,
     "failed": 0,
-    "sync_subset_passed": 26,
-    "migration_check": "no changes"
+    "sync_subset_passed": 28,
+    "migration_check": "no changes",
+    "workspace_and_schema_subset_passed": 39
   },
   "frontend": {
-    "tests_passed": 58,
+    "tests_passed": 59,
     "production_build": "passed",
     "lint_exit_code": 0,
     "lint_note": "Existing unrelated warnings remain"
@@ -23,9 +24,12 @@
       "server confirmation",
       "mobile",
       "reduced motion",
-      "keyboard focus"
+      "keyboard focus",
+      "classic and fast workspace sync",
+      "draft preserved on workspace switch",
+      "workspace preference survives reload"
     ],
-    "artifacts": "/tmp/ilbi-sync-ui-WseIWv"
+    "artifacts": "/tmp/ilbi-sync-ui-94tbQI"
   },
   "integration": {
     "passed": true,
@@ -45,10 +49,11 @@
       "automatic reconnect",
       "two-way replica refresh",
       "open-form ID aliases",
-      "expired lease recovery"
+      "expired lease recovery",
+      "offline fast workspace reminder create/complete/delete and search"
     ],
-    "operations": 11,
-    "artifacts": "/tmp/ilbi-offline-qa-3g6sgyuc"
+    "operations": 14,
+    "artifacts": "/tmp/ilbi-offline-qa-tt_3ydac"
   },
   "desktop_shell": {
     "passed": 3,
@@ -57,9 +62,20 @@
     "skip_reason": "Native Windows host test requires Windows"
   },
   "packaging": {
-    "status": "final build in progress",
-    "source_files_compared": 368,
-    "packaged_env_files": 0
+    "status": "passed",
+    "build": {
+      "version": "1.2.0",
+      "platform": "win32",
+      "arch": "x64",
+      "installerBytes": 196127755,
+      "payloadBytes": 195759250,
+      "sha256": "210994d9bdea1ec3b39b236524e2d2ba503d9bd9f5ff0904ce197c7432b0cc0d",
+      "nativeWindowsServiceVerified": false
+    },
+    "source_files_compared": 369,
+    "packaged_env_files": 0,
+    "public_download_feed": "desktop/downloads/releases.json",
+    "channel": "preview"
   },
   "remaining_acceptance": [
     "Native Windows installation, application UI and update/uninstall acceptance",
@@ -73,5 +89,29 @@
     "offline_authorization_days": 7,
     "external_services_require_connectivity": true,
     "existing_production_fiscal_gate_retained": true
+  },
+  "version": "1.2.0",
+  "downloads_browser": {
+    "passed": true,
+    "scenarios": [
+      "landing download link",
+      "anonymous download page",
+      "versioned Windows link",
+      "preview label",
+      "future mobile slot",
+      "mobile layout",
+      "missing release",
+      "offline and retry"
+    ],
+    "artifacts": "/tmp/ilbi-downloads-ui-I0F1yB"
+  },
+  "production_edge": {
+    "https_and_download_tests_passed": 10,
+    "rate_limit_regression_tests_passed": 9
+  },
+  "last_change_validation": {
+    "sync_tests_passed": 28,
+    "integration_scenarios_passed": 17,
+    "note": "Final shift-conflict guard verified by focused sync tests and repeated real integration"
   }
 }

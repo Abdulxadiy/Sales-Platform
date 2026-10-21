@@ -10,3 +10,13 @@ test('release links accept HTTPS and versioned public files while rejecting exec
   }
   assert.equal(releaseSize(1048576), '1.0 MB');
 });
+
+test('CI installer URLs accept an immutable commit directory and reject unsafe paths', () => {
+  const commit = 'a'.repeat(40);
+  const path = `/downloads/${commit}/ILBI-Setup-1.2.0-x64.exe`;
+  assert.equal(releaseURL(path, 'https://new-dev.site'), `https://new-dev.site${path}`);
+  for (const value of [`/downloads/${commit}/../.env`, '/downloads/not-a-commit/app.exe',
+    `/downloads/${commit}/%2e%2e`, `/downloads/${commit}/nested/app.exe`]) {
+    assert.equal(releaseURL(value, 'https://new-dev.site'), null);
+  }
+});

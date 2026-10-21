@@ -21,7 +21,7 @@ try {
       if(path==='/downloads/releases.json'){
         if(downloadsQA.mode==='offline')throw new TypeError('Offline');
         if(downloadsQA.mode==='missing')return new Response('',{status:404});
-        return new Response(JSON.stringify({schema:1,windows:{version:'1.2.0',url:'/downloads/ILBI-Setup-1.2.0-x64.exe',bytes:196124625,channel:'preview',sha256:'a'.repeat(64)},mobile:null}),{status:200,headers:{'Content-Type':'application/json'}});
+        return new Response(JSON.stringify({schema:1,windows:{version:'1.2.0',url:'/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-Setup-1.2.0-x64.exe',bytes:196124625,channel:'preview',sha256:'a'.repeat(64)},mobile:null}),{status:200,headers:{'Content-Type':'application/json'}});
       }
       if(path.startsWith('/api/'))return new Response('{}',{status:401,headers:{'Content-Type':'application/json'}});
       return originalFetch(input,options);
@@ -40,7 +40,7 @@ try {
   await wait('Boolean(document.querySelector(".downloads-button[href]"))');
   await wait('!document.querySelector(".ilbi-loading")');
   assert.equal(await browser.evaluate('location.pathname'), '/download');
-  assert.equal(await browser.evaluate('document.querySelector(".downloads-button[href]").href'), origin + '/downloads/ILBI-Setup-1.2.0-x64.exe');
+  assert.equal(await browser.evaluate('document.querySelector(".downloads-button[href]").href'), origin + '/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-Setup-1.2.0-x64.exe');
   assert.equal(await browser.evaluate('document.querySelector(".downloads-preview").textContent'), 'Sinov nusxasi');
   assert.equal(await browser.evaluate('document.querySelectorAll(".downloads-card button:disabled").length'), 1);
   await writeFile(join(artifacts, 'downloads-desktop.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));

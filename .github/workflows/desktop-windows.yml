@@ -61,4 +61,5 @@ jobs:
             desktop/downloads/releases.json
             desktop/ilbi/release/desktop-build-manifest.json
           if-no-files-found: error
+          overwrite: true
           retention-days: 1

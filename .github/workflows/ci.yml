@@ -94,4 +94,6 @@ jobs:
       - run: npm ci
       - run: npm run lint --if-present
       - run: npm test
+      - name: Check download links and mobile layout in Chrome
+        run: npm run test:downloads
       - run: npm run build

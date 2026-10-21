@@ -160,9 +160,11 @@ def preconditions(ctx):
     return result
 
 
-def title_for(path, method):
+def title_for(path, method, body=None, response=None):
+    body = body or {}
+    result = response if isinstance(response, dict) else response[0] if isinstance(response, list) and response else {}
     if path == "sales/":
-        return "Savdo"
+        return ("Savdo — " + str(result.get("receipt_number", "yangi chek")))[:200]
     if "/payments/" in path:
         return "Qarz to‘lovi"
     if path.startswith("cashbox/shift/open"):
@@ -177,5 +179,6 @@ def title_for(path, method):
         ("inventory/", "Ombor operatsiyasi"),
     ]:
         if path.startswith(prefix):
-            return title
+            name = body.get("name") or result.get("name") or body.get("source") or body.get("category")
+            return (f"{title} — {name}" if name else title)[:200]
     return "Ma’lumotni yangilash"

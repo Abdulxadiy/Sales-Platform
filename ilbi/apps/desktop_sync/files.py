@@ -20,10 +20,12 @@ def encode_request(request):
             BytesIO(request.body), request.META["CONTENT_TYPE"], {"request": Request(request)}
         )
         files = []
+        total = 0
         for name, values in parsed.files.lists():
             for item in values:
-                if item.size > 10 * 1024 * 1024:
-                    raise ValueError("Offline yuborish uchun fayl 10 MB dan kichik bo‘lsin.")
+                total += item.size
+                if total > 10 * 1024 * 1024:
+                    raise ValueError("Offline yuborish uchun jami fayllar 10 MB dan kichik bo‘lsin.")
                 files.append(
                     {
                         "field": name,

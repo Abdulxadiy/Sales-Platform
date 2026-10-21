@@ -166,7 +166,7 @@ open(SEED_PATH,"w").write(json.dumps(seed))
         time.sleep(1)
         queue = call("/desktop/queue/", headers=auth)
         assert len(queue["operations"]) == 11, queue
-        promoted = next(row["id"] for row in queue["operations"] if row["title"] == "Katalog o‘zgarishi")
+        promoted = next(row["id"] for row in queue["operations"] if row["title"].startswith("Katalog o‘zgarishi — Offline QA"))
         call("/desktop/priority/", {"id": promoted}, headers=auth)
         queue = call("/desktop/queue/", headers=auth)
         assert queue["operations"][0]["id"] == promoted, queue

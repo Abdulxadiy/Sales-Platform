@@ -37,7 +37,7 @@ class DesktopMiddleware:
                 return self.proxy(request, path)
             if not device:
                 return self.proxy(request, path)
-            identifiers = [path.split('/'), [part for value in request.GET.values() for part in value.split(',')]]
+            identifiers = [path.split("/"), [part for value in request.GET.values() for part in value.split(",")]]
             aliases = aliases_for(identifiers)
             if aliases:
                 # Forms and open receipts may retain their local IDs after a pull.
@@ -74,7 +74,10 @@ class DesktopMiddleware:
             if remote_only or (request.method not in {"GET", "HEAD", "OPTIONS"} and not allowed(request.method, path)):
                 from .models import LocalOperation
 
-                if request.method not in {"GET", "HEAD", "OPTIONS"} and LocalOperation.objects.exclude(status="done").exists():
+                if (
+                    request.method not in {"GET", "HEAD", "OPTIONS"}
+                    and LocalOperation.objects.exclude(status="done").exists()
+                ):
                     return JsonResponse(
                         {"detail": "Bu amal jonli serverda bajariladi. Avval mahalliy navbatni sinxronlang."},
                         status=409,
@@ -111,7 +114,7 @@ class DesktopMiddleware:
                 row = enqueue(
                     user_id=request.user.pk,
                     tenant_id=device["tenant_id"],
-                    title=title_for(path, request.method),
+                    title=title_for(path, request.method, body, getattr(response, "data", None)),
                     resources=changes["resources"],
                     references=changes["references"],
                     payload={
@@ -134,19 +137,31 @@ class DesktopMiddleware:
                 # Live actions use this cashier's own encrypted credentials.
                 # They never inherit the primary owner's permissions.
                 from rest_framework.exceptions import APIException
+
                 try:
                     user = authenticated(request)
-                    remote = cloud_request(request.method, request.get_full_path()[len('/api/v1/'):],
-                        user_id=user.pk, raw=request.body, headers={
+                    remote = cloud_request(
+                        request.method,
+                        request.get_full_path()[len("/api/v1/") :],
+                        user_id=user.pk,
+                        raw=request.body,
+                        headers={
                             "Content-Type": request.headers.get("Content-Type", "application/json"),
                             "X-Tenant-ID": str(get_state("device")["tenant_id"]),
-                        })
+                        },
+                    )
                 except (KeyError, APIException):
-                    return JsonResponse({"detail": "Jonli amal uchun internet orqali hisobingizga qayta kiring."}, status=409)
+                    return JsonResponse(
+                        {"detail": "Jonli amal uchun internet orqali hisobingizga qayta kiring."}, status=409
+                    )
                 if remote.status_code == 401:
-                    return JsonResponse({"detail": "Jonli sessiya tugagan. Internet orqali qayta kiring; offline ishlar saqlangan."}, status=409)
+                    return JsonResponse(
+                        {"detail": "Jonli sessiya tugagan. Internet orqali qayta kiring; offline ishlar saqlangan."},
+                        status=409,
+                    )
                 if request.method not in {"GET", "HEAD", "OPTIONS"} and remote.ok:
                     from .local import set_state, wake_worker
+
                     set_state("revision", -1)
                     wake_worker.set()
             else:
@@ -156,8 +171,14 @@ class DesktopMiddleware:
                     for key, value in request.headers.items()
                     if key.lower() in {"authorization", "content-type", "x-tenant-id"}
                 }
-                remote = requests.request(request.method, base + request.get_full_path(), data=request.body,
-                                          headers=headers, timeout=(5, 30), allow_redirects=False)
+                remote = requests.request(
+                    request.method,
+                    base + request.get_full_path(),
+                    data=request.body,
+                    headers=headers,
+                    timeout=(5, 30),
+                    allow_redirects=False,
+                )
             response = HttpResponse(
                 remote.content,
                 status=remote.status_code,

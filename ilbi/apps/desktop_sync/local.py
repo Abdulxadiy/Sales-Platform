@@ -45,7 +45,9 @@ def ordered_operations(rows):
                 raise ValueError("Operatsiyalar bog‘liqligida sikl bor.")
             visiting.add(key)
             pending.append((current, True))
-            pending.extend((by_id[dependency], False) for dependency in reversed(current.dependencies) if dependency in by_id)
+            pending.extend(
+                (by_id[dependency], False) for dependency in reversed(current.dependencies) if dependency in by_id
+            )
 
     for row in rows:
         if row.status == "active":
@@ -74,7 +76,10 @@ def prioritize(operation_id):
 def next_operation():
     rows = ordered_operations(LocalOperation.objects.exclude(status="done").defer("payload", "result"))
     required = {dependency for row in rows for dependency in row.dependencies}
-    done = {str(value) for value in LocalOperation.objects.filter(id__in=required, status="done").values_list("id", flat=True)}
+    done = {
+        str(value)
+        for value in LocalOperation.objects.filter(id__in=required, status="done").values_list("id", flat=True)
+    }
     for row in rows:
         if row.status == "waiting" and all(dependency in done for dependency in row.dependencies):
             if row.next_attempt_at is None or row.next_attempt_at <= timezone.now():
@@ -147,4 +152,9 @@ def queue_status():
 
 def aliases_for(value):
     needed = reference_ids(value)
-    return {str(local): remote for local, remote in LocalAlias.objects.filter(active=True, local_id__in=needed).values_list("local_id", "remote_id")}
+    return {
+        str(local): remote
+        for local, remote in LocalAlias.objects.filter(active=True, local_id__in=needed).values_list(
+            "local_id", "remote_id"
+        )
+    }

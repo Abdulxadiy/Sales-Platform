@@ -18,7 +18,16 @@ from apps.core.event_clock import event_time
 
 from .files import decode_body
 from .models import SyncDevice, SyncObjectMap, SyncReceipt
-from .protocol import LOCAL_ID_START, allowed, digest, json_value, receipt_hint, record_changes, reference_ids, replaying
+from .protocol import (
+    LOCAL_ID_START,
+    allowed,
+    digest,
+    json_value,
+    receipt_hint,
+    record_changes,
+    reference_ids,
+    replaying,
+)
 from .snapshots import authorize
 
 
@@ -27,9 +36,16 @@ class SyncConflict(APIException):
     default_detail = "Ma’lumotlar o‘zgargan. Operatsiyani tekshirish kerak."
 
 
+def device_uuid(value):
+    try:
+        return UUID(str(value))
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("Qurilma identifikatori noto‘g‘ri.") from exc
+
+
 def device_for(user, device_id, *, lock=False):
     queryset = SyncDevice.objects.select_for_update() if lock else SyncDevice.objects
-    device = queryset.filter(pk=device_id, user_id=user.pk, revoked_at__isnull=True).first()
+    device = queryset.filter(pk=device_uuid(device_id), user_id=user.pk, revoked_at__isnull=True).first()
     if device is None or device.token_version != user.token_version:
         raise PermissionDenied("Qurilma ruxsati bekor qilingan.")
     if device.lease_until <= timezone.now():
@@ -101,8 +117,13 @@ def apply_operation(user, device_id, payload):
         device=device, operation_id__in=dependencies
     ).count() != len(set(dependencies)):
         raise SyncConflict("Bog‘liq operatsiyalar avval yuborilishi kerak.")
-    needed = reference_ids([path.split('/'), payload.get('body', {}), payload.get('preconditions', [])])
-    mapping = {str(local): remote for local, remote in SyncObjectMap.objects.filter(device=device, local_id__in=needed).values_list('local_id', 'remote_id')}
+    needed = reference_ids([path.split("/"), payload.get("body", {}), payload.get("preconditions", [])])
+    mapping = {
+        str(local): remote
+        for local, remote in SyncObjectMap.objects.filter(device=device, local_id__in=needed).values_list(
+            "local_id", "remote_id"
+        )
+    }
     path = re.sub(r"(?<=/)\d+(?=/|$)", lambda match: str(rewrite(int(match[0]), mapping)), path)
     body = rewrite(payload.get("body", {}), mapping)
     for condition in payload.get("preconditions", []):
@@ -134,16 +155,16 @@ def apply_operation(user, device_id, payload):
         raise ValidationError("Operatsiya vaqti noto‘g‘ri.")
     if grant.get("lease_until") and occurred > parse_datetime(grant["lease_until"]):
         raise PermissionDenied("Operatsiya offline ruxsat muddatidan tashqarida bajarilgan.")
-    token = replaying.set(True)
-    clock_token = event_time.set(occurred)
     sale_hint = next((row["fields"] for row in payload.get("created", []) if row["model"] == "sales.sale"), None)
-    if sale_hint and (
-        not re.fullmatch(r"O" + device.id.hex[:6] + r"-\d{8}-\d{4,}", sale_hint.get("receipt_number", ""))
+    if sale_hint is not None and (
+        not isinstance(sale_hint.get("receipt_number"), str)
+        or not isinstance(sale_hint.get("public_token"), str)
+        or not re.fullmatch(r"O" + device.id.hex[:6] + r"-\d{8}-\d{4,}", sale_hint.get("receipt_number", ""))
         or not re.fullmatch(r"[A-Za-z0-9_-]{40,64}", sale_hint.get("public_token", ""))
     ):
-        replaying.reset(token)
-        event_time.reset(clock_token)
         raise ValidationError("Offline chek identifikatori noto‘g‘ri.")
+    token = replaying.set(True)
+    clock_token = event_time.set(occurred)
     receipt_token = receipt_hint.set(sale_hint)
     try:
         with record_changes() as changes:
@@ -166,7 +187,9 @@ def apply_operation(user, device_id, payload):
         if not candidates:
             raise SyncConflict("Operatsiya natijasi mahalliy yozuvga mos kelmadi.")
         id_map[str(row["id"])] = candidates.pop(0)
-        SyncObjectMap.objects.create(device=device, local_id=row['id'], remote_id=id_map[str(row['id'])], model=row['model'])
+        SyncObjectMap.objects.create(
+            device=device, local_id=row["id"], remote_id=id_map[str(row["id"])], model=row["model"]
+        )
     result = {"id": str(operation_id), "id_map": id_map, "response": json_value(getattr(response, "data", {}))}
     SyncReceipt.objects.create(device=device, operation_id=operation_id, fingerprint=fingerprint, result=result)
     return result

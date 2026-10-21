@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .cloud import apply_operation, device_for
+from .cloud import apply_operation, device_for, device_uuid
 from .models import SyncActor, SyncDevice
 from .protocol import PROTOCOL
 from .revisions import revision_for
@@ -48,12 +48,7 @@ class DeviceEnrollView(APIView):
         existing = SyncDevice.objects.filter(
             pk=installation_id, user_id=request.user.pk, tenant_id=tenant.pk, revoked_at__isnull=True
         ).first()
-        if (
-            not existing
-            and SyncDevice.objects.filter(
-                tenant_id=tenant.pk, revoked_at__isnull=True
-            ).exists()
-        ):
+        if not existing and SyncDevice.objects.filter(tenant_id=tenant.pk, revoked_at__isnull=True).exists():
             raise ValidationError(
                 "Bu do‘konda offline qurilma bor. Bir nechta kassa uchun umumiy mahalliy server kerak."
             )
@@ -65,6 +60,10 @@ class DeviceEnrollView(APIView):
             token_version=request.user.token_version,
             lease_until=timezone.now() + timedelta(days=7),
         )
+        if existing:
+            device.token_version = request.user.token_version
+            device.lease_until = timezone.now() + timedelta(days=7)
+            device.save(update_fields=["token_version", "lease_until"])
         actor, _ = SyncActor.objects.update_or_create(
             device=device, user_id=request.user.pk, defaults={"token_version": request.user.token_version}
         )
@@ -121,7 +120,7 @@ class ActorGrantView(APIView):
     def post(self, request):
         from apps.accounts.services.tenant_context_service import resolve_active_context
 
-        device = SyncDevice.objects.filter(pk=request.data.get("device_id"), revoked_at__isnull=True).first()
+        device = SyncDevice.objects.filter(pk=device_uuid(request.data.get("device_id")), revoked_at__isnull=True).first()
         if device is None or resolve_active_context(request.user, str(device.tenant_id)).tenant is None:
             raise ValidationError("Bu offline qurilma sizning do‘koningizga tegishli emas.")
         if request.user.pk == device.user_id:

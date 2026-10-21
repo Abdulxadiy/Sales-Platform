@@ -26,6 +26,7 @@ def server_url(value):
 
 class Vault:
     lock = threading.RLock()
+
     def __init__(self):
         self.path = Path(settings.DESKTOP_DATA_DIR) / "cloud.credentials"
         self.cipher = Fernet(os.environ["ILBI_DESKTOP_VAULT_KEY"].encode())
@@ -92,8 +93,11 @@ def cloud_request(method, path, *, body=None, progress=False, headers=None, user
         if refreshed.ok:
             credentials.update(refreshed.json())
             actor_id = stored["primary_user"] if user_id is None else user_id
-            vault.put_user(actor_id, {"server": base, "access": credentials["access"], "refresh": credentials["refresh"]},
-                           primary=actor_id == stored["primary_user"])
+            vault.put_user(
+                actor_id,
+                {"server": base, "access": credentials["access"], "refresh": credentials["refresh"]},
+                primary=actor_id == stored["primary_user"],
+            )
             kwargs["headers"]["Authorization"] = "Bearer " + credentials["access"]
             response = requests.request(method, base + "/api/v1/" + path, timeout=(5, 45), **kwargs)
     return response

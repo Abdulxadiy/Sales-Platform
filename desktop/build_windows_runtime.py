@@ -48,13 +48,32 @@ def stage_source(backend):
     shutil.copytree(ROOT / "docs", docs, ignore=shutil.ignore_patterns("rasmlar", "releases"))
 
 
+def stage_msvc(resources, archive):
+    with zipfile.ZipFile(archive) as source:
+        for name in source.namelist():
+            if name.lower().endswith('.dll') and '.data/data/' in name:
+                destination = resources / 'postgres/bin' / Path(name).name
+                destination.write_bytes(source.read(name))
+                python_destination = resources / 'backend/python' / Path(name).name
+                if not python_destination.exists():
+                    python_destination.write_bytes(source.read(name))
+            elif name.endswith('/licenses/LICENSE'):
+                (resources / 'postgres/msvc-runtime-LICENSE.txt').write_bytes(source.read(name))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cache", type=Path, default=Path(tempfile.gettempdir()) / "ilbi-windows-assets")
     parser.add_argument("--code-only", action="store_true", help="Refresh source in an already staged runtime")
     args = parser.parse_args()
     if args.code_only:
+        asset = json.loads((ROOT / "desktop/runtime-assets.json").read_text())["msvc"]
+        archive = args.cache / asset["file"]
+        with archive.open("rb") as source:
+            if hashlib.file_digest(source, "sha256").hexdigest() != asset["sha256"]:
+                raise ValueError("Archive checksum mismatch: msvc")
         stage_source(ROOT / "desktop/ilbi/resources/backend")
+        stage_msvc(ROOT / 'desktop/ilbi/resources', archive)
         return
     args.cache.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((ROOT / "desktop/runtime-assets.json").read_text())
@@ -114,6 +133,7 @@ def main():
             extract(archives["postgres"], temporary, postgres=True)
             source = next(temporary.rglob("initdb.exe")).parent.parent
             shutil.copytree(source, postgres)
+    stage_msvc(resources, archives['msvc'])
     required = [backend / "python/python.exe", postgres / "bin/initdb.exe", postgres / "bin/pg_ctl.exe",
                 postgres / "bin/postgres.exe", postgres / "bin/createdb.exe"]
     if not all(path.exists() for path in required):

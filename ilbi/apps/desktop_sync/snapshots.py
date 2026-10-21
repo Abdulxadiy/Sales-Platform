@@ -68,7 +68,11 @@ def export_snapshot(tenant):
     from .revisions import revision_for
 
     snapshot_revision = revision_for(tenant.pk)
+    from apps.accounts.models import Employee
+
+    own_users = set(Employee.objects.filter(tenant_id=tenant.pk).values_list("user_id", flat=True)) | {tenant.owner_id}
     selected = {}
+    overrides = {}
     for label in LABELS:
         model = apps.get_model(label)
         names = {f.name for f in model._meta.fields}
@@ -98,10 +102,14 @@ def export_snapshot(tenant):
             if key not in selected and label in LABELS:
                 related = model.objects.filter(pk=key[1]).first()
                 if related:
+                    if hasattr(related, "tenant_id") and related.tenant_id != tenant.pk and field.null:
+                        overrides.setdefault((obj._meta.label_lower, obj.pk), {})[field.name] = None
+                        continue
                     selected[key] = related
                     pending.append(related)
     rows = json.loads(serializers.serialize("json", selected.values()))
     for row in rows:
+        row["fields"].update(overrides.get((row["model"], row["pk"]), {}))
         if row["model"] == "accounts.user":
             row["fields"].update(
                 is_superuser=False,
@@ -111,8 +119,38 @@ def export_snapshot(tenant):
             )
             row["fields"]["password"] = "!desktop-no-cloud-password"  # noqa: S105 -- unusable hash, no cloud password
             row["fields"].pop("terms_accepted_ip", None)
+            if row["pk"] not in own_users:
+                row["fields"].update(
+                    username=f"offline-ref-{row['pk']}",
+                    email=f"offline-ref-{row['pk']}@example.invalid",
+                    phone_number=f"ref-{row['pk']}",
+                    contact_phone="",
+                    date_of_birth=None,
+                    avatar="",
+                    first_name="Foydalanuvchi",
+                    last_name="",
+                    role="staff",
+                    is_phone_verified=False,
+                )
+        if row["model"] == "tenants.tenant" and row["pk"] != tenant.pk:
+            model = apps.get_model(row["model"])
+            for field in model._meta.fields:
+                if field.name not in {"id", "owner", "name", "public_code", "created_at"}:
+                    from .protocol import json_value
+
+                    row["fields"][field.name] = json_value(field.get_default())
         if row["model"] == "tenants.sellerprofile":
             row["fields"]["reviewed_by"] = None
+            if row["pk"] != tenant.seller_profile_id:
+                row["fields"].update(
+                    tax_identifier=f"offline-ref-{row['pk']}",
+                    tax_regime="",
+                    permitted_activity="",
+                    fiscal_provider="",
+                    review_reason="",
+                    status="pending",
+                    expires_at=None,
+                )
     return {
         "protocol": PROTOCOL,
         "schema": schema_signature(),

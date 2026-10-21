@@ -1,6 +1,6 @@
 from datetime import timedelta
-from uuid import uuid4
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from django.core import signing
@@ -294,8 +294,14 @@ def test_cash_income_replay_keeps_historical_time(owner, tenant, device):
 def test_thousands_of_prioritized_dependencies_do_not_overflow_stack():
     rows = []
     for index in range(2500):
-        rows.append(SimpleNamespace(id=str(index), dependencies=[str(index - 1)] if index else [],
-                                    priority=1 if index == 2499 else 0, status="waiting"))
+        rows.append(
+            SimpleNamespace(
+                id=str(index),
+                dependencies=[str(index - 1)] if index else [],
+                priority=1 if index == 2499 else 0,
+                status="waiting",
+            )
+        )
     assert [row.id for row in ordered_operations(rows)] == [str(index) for index in range(2500)]
 
 
@@ -313,14 +319,70 @@ def test_expired_primary_requires_explicit_revocation(owner, tenant, device):
     device.save()
     client = APIClient()
     client.force_authenticate(owner)
-    assert client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 400
+    assert (
+        client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 400
+    )
     assert client.post(f"/api/v1/sync/devices/{device.pk}/revoke/", {}, format="json").status_code == 200
-    assert client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 200
+    assert (
+        client.post("/api/v1/sync/devices/", {"protocol": 1, "tenant_id": tenant.pk}, format="json").status_code == 200
+    )
 
 
 def test_malformed_sync_payload_is_a_client_error(owner, device):
     client = APIClient()
     client.force_authenticate(owner)
-    response = client.post("/api/v1/sync/push/", {"protocol": 1, "device_id": str(device.pk), "operation": {}}, format="json")
+    response = client.post(
+        "/api/v1/sync/push/", {"protocol": 1, "device_id": str(device.pk), "operation": {}}, format="json"
+    )
     assert response.status_code == 400
     assert not SyncReceipt.objects.exists()
+
+
+def test_bad_receipt_does_not_leak_replay_clock(owner, device):
+    from rest_framework.exceptions import ValidationError
+
+    from apps.core.event_clock import event_time
+    from apps.desktop_sync.protocol import replaying
+
+    payload = command(
+        device,
+        created=[{"model": "sales.sale", "id": LOCAL_ID_START, "fields": {"receipt_number": 123}}],
+    )
+    with pytest.raises(ValidationError):
+        apply_operation(owner, device.pk, payload)
+    assert replaying.get() is False
+    assert event_time.get() is None
+
+
+def test_reenroll_same_installation_renews_owner_lease(owner, tenant, device):
+    device.lease_until = timezone.now() - timedelta(days=1)
+    device.token_version = owner.token_version + 1
+    device.save()
+    client = APIClient()
+    client.force_authenticate(owner)
+    result = client.post(
+        "/api/v1/sync/devices/",
+        {"protocol": 1, "tenant_id": tenant.pk, "installation_id": str(device.pk)},
+        format="json",
+    )
+    assert result.status_code == 200, result.data
+    device.refresh_from_db()
+    assert device.lease_until > timezone.now()
+    assert device.token_version == owner.token_version
+    assert SyncDevice.objects.filter(tenant_id=tenant.pk).count() == 1
+
+
+def test_partner_headings_do_not_expose_partner_private_settings(owner, tenant):
+    other = TenantFactory(telegram_group_id="private-partner-chat", address="Private partner address")
+    CounterpartyFactory(tenant=tenant, target_tenant=other)
+    snapshot = export_snapshot(tenant)
+    rows = {(row["model"], row["pk"]): row["fields"] for row in snapshot["rows"]}
+    partner = rows[("tenants.tenant", other.pk)]
+    assert partner["name"] == other.name
+    assert partner["telegram_group_id"] == partner["address"] == ""
+    identity = rows[("accounts.user", other.owner_id)]
+    assert identity["phone_number"] == f"ref-{other.owner_id}"
+    assert identity["username"].startswith("offline-ref-")
+    assert identity["password"].startswith("!")
+    with override_settings(DESKTOP_MODE=True):
+        import_snapshot(snapshot)

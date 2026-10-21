@@ -5,7 +5,8 @@ const { readFile, writeFile, mkdir } = require('node:fs/promises');
 const { join, extname } = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
-const { validateServer, validatePairing, safePath, equalKey, startHost } = require('./runtime.cjs');
+const { validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
+app.setName('ILBI');
 
 let window, localHost, lanServer, webServer, origin, configuration, secrets;
 let quitting = false;
@@ -52,8 +53,21 @@ async function launchRuntime() {
 async function exportPairing(event) {
   validSender(event);
   if (configuration?.mode !== 'host') throw Error('Ulanish fayli asosiy kompyuterda yaratiladi.');
-  const host = Object.values(networkInterfaces()).flat().find(item => item.family === 'IPv4' && !item.internal)?.address;
-  if (!host) throw Error('Mahalliy tarmoq topilmadi.');
+  const addresses = Object.entries(networkInterfaces()).flatMap(([name, items]) =>
+    /^(docker|veth|br-|virbr|vmnet|vboxnet|tailscale|tun|tap)/i.test(name) ? [] :
+      items.filter(item => item.family === 'IPv4' && !item.internal && privateHost(item.address))
+        .map(item => ({ name, address: item.address })));
+  if (!addresses.length) throw Error('Mahalliy tarmoq topilmadi. Wi-Fi yoki kabel ulanishini tekshiring.');
+  let selected = 0;
+  if (addresses.length > 1) {
+    const choice = await dialog.showMessageBox(window, { type: 'question', title: 'Kassalar tarmog‘i',
+      message: 'Boshqa kassalar ulangan mahalliy tarmoqni tanlang.',
+      buttons: [...addresses.map(item => `${item.name}: ${item.address}`), 'Bekor qilish'],
+      defaultId: 0, cancelId: addresses.length });
+    if (choice.response === addresses.length) return false;
+    selected = choice.response;
+  }
+  const host = addresses[selected].address;
   const result = await dialog.showSaveDialog(window, { title: 'Boshqa kassaga ulanish fayli', defaultPath: 'ILBI-kassa-ulanish.ilbi', filters: [{ name: 'ILBI pairing', extensions: ['ilbi'] }] });
   if (result.canceled) return false;
   const pairing = { protocol: 1, host, port: configuration.lanPort || 49243, key: secrets.pairingKey,

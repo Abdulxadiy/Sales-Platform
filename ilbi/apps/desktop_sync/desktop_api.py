@@ -104,8 +104,11 @@ def endpoint(request, path):
             else:
                 if not device or user_data["id"] != device["user_id"]:
                     raise ValueError("Ushbu qurilmani ulagan owner hisobi kerak.")
-                Vault().put_user(user_data["id"],
-                    {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")}, primary=True)
+                Vault().put_user(
+                    user_data["id"],
+                    {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")},
+                    primary=True,
+                )
                 wake_worker.set()
                 return JsonResponse({"connected": True})
             if not response.ok:
@@ -131,8 +134,11 @@ def endpoint(request, path):
                     "actor_ticket": result["actor_ticket"],
                 }
                 set_state("actors", actors)
-                Vault().put_user(user.pk, {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")},
-                                 primary=user.pk == device["user_id"])
+                Vault().put_user(
+                    user.pk,
+                    {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")},
+                    primary=user.pk == device["user_id"],
+                )
                 if path == "actor/" and user.pk == device["user_id"]:
                     device["lease_until"] = result["lease_until"]
                     set_state("device", device)

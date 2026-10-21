@@ -55,8 +55,13 @@ def sync_once():
                         raise ValueError("Server noto‘g‘ri operatsiyani tasdiqladi.")
                     row.status, row.result, row.completed_at = "done", result, timezone.now()
                     row.error = ""
-                    LocalAlias.objects.bulk_create([LocalAlias(local_id=int(local), remote_id=remote)
-                                                    for local, remote in result.get("id_map", {}).items()], ignore_conflicts=True)
+                    LocalAlias.objects.bulk_create(
+                        [
+                            LocalAlias(local_id=int(local), remote_id=remote)
+                            for local, remote in result.get("id_map", {}).items()
+                        ],
+                        ignore_conflicts=True,
+                    )
                 elif response.status_code in {408, 425, 429} or response.status_code >= 500:
                     row.status = "waiting"
                     row.error = "Server vaqtincha band. Qayta yuboriladi."

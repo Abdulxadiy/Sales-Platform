@@ -17,14 +17,17 @@ class OperationSerializer(serializers.Serializer):
     def validate_created(self, value):
         from .snapshots import LABELS
 
+        identifiers = set()
         for row in value:
             if (
                 row.get("model") not in LABELS
                 or type(row.get("id")) is not int
                 or row["id"] < LOCAL_ID_START
+                or row["id"] in identifiers
                 or not isinstance(row.get("fields"), dict)
             ):
                 raise serializers.ValidationError("Yangi yozuv identifikatori noto‘g‘ri.")
+            identifiers.add(row["id"])
         return value
 
     def validate_preconditions(self, value):

@@ -11,14 +11,16 @@ export async function launchBrowser({ width = 1920, height = 1080, reducedMotion
   for (const path of candidates) { try { await access(path); executable = path; break; } catch {} }
   if (!executable) throw new Error('Chrome/Chromium topilmadi. CHROME_PATH orqali uning manzilini bering.');
   const profile = await mkdtemp(join(tmpdir(), 'ilbi-chrome-'));
-  const child = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--remote-debugging-port=0', `--user-data-dir=${profile}`, `--window-size=${width},${height}`, 'about:blank'], { stdio: 'ignore' });
+  const child = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--remote-debugging-port=0', `--user-data-dir=${profile}`, `--window-size=${width},${height}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let startupLog = '';
+  child.stderr.on('data', data => { startupLog = (startupLog + data.toString()).slice(-4000); });
   let port;
-  for (let i = 0; i < 160; i++) {
+  for (let i = 0; i < 600; i++) {
     try { port = Number((await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]); break; } catch {}
-    if (child.exitCode !== null) throw new Error(`Chrome exited: ${child.exitCode}`);
+    if (child.exitCode !== null) throw new Error(`Chrome exited: ${child.exitCode}: ${startupLog}`);
     await delay(50);
   }
-  if (!port) { child.kill(); throw new Error('Chrome DevTools did not start'); }
+  if (!port) { child.kill(); throw new Error('Chrome DevTools did not start: ' + startupLog); }
   const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });

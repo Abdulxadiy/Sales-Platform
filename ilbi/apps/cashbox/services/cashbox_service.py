@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Q, Sum
-from django.utils import timezone
+from apps.core import event_clock as timezone
 
 from apps.cashbox.models import CashExpense, CashIncome, CashShift, DailyCashReport
 from apps.sales.models import Notification, Sale

@@ -15,6 +15,7 @@ import {
   Headphones,
   Sliders,
   History,
+  Download,
 } from 'lucide-react';
 
 
@@ -120,6 +121,11 @@ export function getNavigation({ user, isOwner, isAdmin }) {
       to: '/docs',
       label: 'Qo‘llanma & Hujjatlar',
       icon: BookOpen,
+    },
+    {
+      to: '/download',
+      label: 'Yuklab olish',
+      icon: Download,
     },
     {
       to: '/profile',

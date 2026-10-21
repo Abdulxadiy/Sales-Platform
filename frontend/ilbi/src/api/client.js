@@ -203,6 +203,9 @@ export async function request(endpoint, options = {}) {
   }
 
   const token = getAccessToken();
+  if (typeof window !== 'undefined' && window.ilbiDesktop && token && !parseJwt(token)?.desktop_device) {
+    headers['X-ILBI-Cloud-Session'] = 'true';
+  }
   const isPublicAuth = endpoint.startsWith('/auth/admin-login') || endpoint.startsWith('/auth/password-reset') || endpoint.startsWith('/auth/token');
   if (token && !isPublicAuth && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;

@@ -6,6 +6,7 @@ import { cashboxApi } from '../../api/client';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import TenantSwitcher from './TenantSwitcher';
+import SyncCenter from '../sync/SyncCenter';
 import { useWorkspace } from '../../context/WorkspaceContext';
 const WorkspaceNavbar = React.lazy(() => import('./WorkspaceNavbar'));
 
@@ -45,7 +46,7 @@ export default function Header({
 
   const isShiftOpen = Boolean(shift?.is_open ?? (shift?.status === 'OPEN'));
 
-  const statusControl = <>{isAdmin ? (
+  const statusControl = <><SyncCenter />{isAdmin ? (
           <div
             style={{
               display: 'flex',

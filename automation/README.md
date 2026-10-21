@@ -1,67 +1,47 @@
-# Avtomatik tekshirilgan chiqarish va GitHub zaxirasi
+# Saqlangan kodni main va serverga avtomatik chiqarish
 
-Saqlangan kod kompyuter yoqilganda har 15 daqiqada `backup/work-in-progress` branchiga zaxiralanadi. Zaxira muvaffaqiyatli bo‘lgach chiqarish navbati avtomatik yangilanadi. GitHub Actions kuniga bir marta tekshirilgan haqiqiy ishlarni `main`ga yuboradi; kompyuter o‘chiq bo‘lsa ham GitHubga yetib borgan navbat chiqarilishi mumkin.
+Kod saqlangach 8 soniya davomida boshqa o‘zgarish kelmasa, lokal xizmat bitta haqiqiy commit yaratib to‘g‘ridan to‘g‘ri `main`ga push qiladi. Kunlik vaqt, commit soni chegarasi va chiqarish navbati yo‘q. Bir necha faylni ketma-ket saqlash bitta commitga birlashadi. IDE’da hali saqlanmagan matn yuborilmaydi.
 
-## Kunlik tartib
+Oqim: **Save → main → GitHub CI → Windows paketi va tekshiruvlar → production deploy**. CI/backend/frontend/Windows tekshiruvlari muvaffaqiyatli tugagach GHCR imagelari va tekshirilgan Windows o‘rnatuvchisi serverga avtomatik yetkaziladi. Test xatosida server oldingi chiqarishda qoladi; xatoni lokal tuzatib saqlash yangi urinishni boshlaydi. Yangi push oldingi CI’ni bekor qiladi, serverga o‘tishdan oldin commit hali ham eng yangi main ekanligi tekshiriladi.
 
-- Vaqt zonasi: `Asia/Tashkent`. Kunlik soat sana va repozitoriydan tanlanadi; ketma-ket kunlarning soati farq qiladi. Jadval odatdagi GitHub cron tekshiruvini soatning 17-daqiqasida bajaradi. Kechikkan tekshiruv kunlik ishni keyingi soatda yana sinaydi.
-- Odatdagi paket 20 atrofida, minimum 15, maksimum 25 ta haqiqiy commitdan iborat. Versiya commitiga ham shu maksimum ichida joy ajratiladi.
-- O‘zaro bog‘liq ilova, papka nomi, backend va frontend o‘zgarishlari bitta atomik paketda tekshiriladi. Kunlik sonni olish uchun ishlamaydigan yarim holat yuborilmaydi.
-- Navbatda 15 ta mazmunli guruh bo‘lmasa, yangi haqiqiy ish kelguncha chiqarish kutiladi. Bo‘sh commit, sun’iy fayl yoki soxta Git sanasi yaratilmaydi. Ish bo‘lmagan kunlarda 15 ta haqiqiy commitni kafolatlash mumkin emas.
-- Shu kun uchun paket chiqarilgan bo‘lsa, takror ishga tushirish yana commit yubormaydi. Yangi backup bu kunlik hisobni o‘chirmaydi.
+## Ushbu kompyuter
 
-GitHub cron aynan belgilangan daqiqada boshlanishi kafolatlanmaydi. Tizim kechikkan ishga tushirishni ushlaydi. [GitHub schedule hujjati](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
-
-## Versiyalar
-
-Ilova versiyasi backend `pyproject.toml` orqali yuritiladi. Ilovaga tegishli `fix`/`perf`/`refactor` paketi patch, `feat` paketi minor, `!` bilan belgilangan moslikni buzuvchi paket major versiyani oshiradi. Hujjat, test, dizayn manbasi yoki chiqarish avtomatizatsiyasi o‘zgarishining o‘zi ilova versiyasini oshirmaydi.
-
-Versiya bir paketda bir marta o‘zgaradi. Faqat backend loyiha versiyasi, `uv.lock`dagi shu loyihaning yozuvi, frontend `package.json` va `package-lock.json`dagi loyiha yozuvlari yangilanadi. Dependency versiyalari va hujjatlardagi matnlar ommaviy almashtirilmaydi. Mos `vX.Y.Z` tagi `main` va navbat holati bilan bir atomik pushda yuboriladi. Keyingi eski lokal nusxa chiqarilgan versiyani pasaytirmaydi.
-
-## Branchlar
-
-| Branch | Vazifa |
-|---|---|
-| `main` | Tekshirilgan chiqarishlar |
-| `backup/work-in-progress` | Eng oxirgi muvaffaqiyatli manba zaxirasi |
-| `queue/ready` | Kelgusi chiqarishlarning muzlatilgan manbasi va rejasi |
-| `queue/progress` | Tugallangan guruhlar, kunlik hisob va oxirgi versiya |
-
-Faol navbat yangilanganda hali chiqarilmagan farqlar yangi asosda qayta hisoblanadi. Oldingi navbat va holat Git tarixida saqlanadi; main o‘zgartirilmaydi. `main` tashqaridan o‘zgargan bo‘lsa jarayon to‘xtaydi va yangi asosni ko‘rib chiqish kerak bo‘ladi. Force push ishlatilmaydi. Ishchi kompyuterdagi HEAD, indeks va fayllar boshqa clone orqali chiqarishdan ta’sirlanmaydi.
-
-Zaxira branchi repozitoriy bilan bir xil ochiqlikda. `.env`, maxfiy kalit, ma’lumotlar bazasi, media va kesh manba zaxirasiga kirmaydi. IDE’da saqlanmagan buferlar ham yuborilmaydi.
-
-## Tekshiruvlar va boshqarish
-
-Har paket avtomatizatsiya integratsion testlari, backend testlari, API sxemasi, frontend testlari, lint va builddan o‘tadi. Birortasi muvaffaqiyatsiz bo‘lsa `main`, tag va navbat holati oldinga siljimaydi.
-
-Navbat publisheri yangi `main` commitini yuborgach CI workflow’ini alohida dispatch qiladi:
-`GITHUB_TOKEN` bilan qilingan push boshqa push workflow’ini o‘zi boshlamaydi
-([GitHub token qoidasi](https://docs.github.com/en/actions/concepts/security/github_token)).
-Quruq sinovda yoki `main` o‘zgarmaganda dispatch qilinmaydi. CI muvaffaqiyatli tugasa,
-`DEPLOY_ENABLED=true` holatida production deploy ishlaydi. Buning uchun shaxsiy GitHub tokenini
-qo‘shimcha secret sifatida saqlash kerak emas; publisher jobiga `actions: write` berilgan.
+`ilbi-auto-publish.service` foydalanuvchi sessiyasida avtomatik ishlaydi. Internet bo‘lmasa o‘zgarishlar diskda qoladi va ulanish qaytgach qayta yuboriladi. Kompyuter o‘chiq bo‘lganda lokal fayllarni yuborish imkoni yo‘q; GitHubga yuborilgan CI/deploy kompyutersiz davom etadi.
 
 ```bash
-python3 scripts/commit_queue.py backup
-python3 scripts/commit_queue.py status
-python3 scripts/commit_queue.py gate
-python3 scripts/commit_queue.py enqueue --refresh
+python3 scripts/auto_publish.py status
+systemctl --user status ilbi-auto-publish.service
+journalctl --user -u ilbi-auto-publish.service -n 30
+```
+
+Qo‘lda tez yuborish:
+
+```bash
+python3 scripts/auto_publish.py once --align
+```
+
+Xizmatni vaqtincha to‘xtatish/qayta yoqish:
+
+```bash
+systemctl --user stop ilbi-auto-publish.service
+systemctl --user start ilbi-auto-publish.service
+```
+
+## Boshqa Linux kompyuterda sozlash
+
+`git`, `gh`, Python 3.12+ va systemd user sessiyasi kerak. `gh auth login` orqali repository/workflow yozish huquqiga ega hisobni ulang. `main`ni clone qiling, keyin:
+
+```bash
+python3 scripts/auto_publish.py once --initialize --align
+python3 scripts/install_auto_publish.py
+```
+
+Birinchi `--initialize` shu kompyuterdagi to‘liq manba holatini chiqaradi: o‘chirilgan manbalar ham main’dan o‘chadi. Keyingi safarlarda faqat lokal o‘zgargan fayllar yuboriladi. Boshqa kompyuter main’dagi aynan shu faylni o‘zgartirgan bo‘lsa, avtomatik bosib yozish o‘rniga jurnalga konflikt yoziladi. Uni solishtirib birlashtiring. Force push ishlatilmaydi. Har pushdan keyin lokal main/index yangilanadi; ishchi fayllar, shu jumladan upload vaqtida saqlangan yangi tahrirlar saqlanadi. Dastlabki lokal HEAD `refs/auto-publish/initial-head` orqali, oldingi HEAD esa `refs/auto-publish/before-alignment` orqali saqlanadi.
+
+`.env`, kalitlar, ma’lumotlar bazasi, media, node_modules va yig‘ilgan installer Git’ga yuborilmaydi. Manbada token aniqlansa push to‘xtaydi. `.auto-publish-local/` — faqat shu kompyuterning xususiy holati va izolyatsiyalangan Git nusxasi. Uni Git’ga qo‘shmang.
+
+Sozlamalar: `automation/auto-publish.json`. Platforma versiyasi alohida boshqariladi; avtomatik push versiyani sun’iy oshirmaydi.
+
+```bash
 python3 -m unittest discover -s tests/automation -v
-```
-
-GitHub → Actions → **Publish reviewed changes** → **Run workflow** vaqtni kutmasdan chiqarishni tekshiradi; kunlik chegaralar va tekshiruvlar saqlanadi. `dry_run` push qilmaydi. Sozlamalar `automation/commit-queue.json`da, mazmunli guruhlar va atomik bog‘liqliklar `automation/queue-plan.json`da.
-
-Linux zaxira taymeri:
-
-```bash
-python3 scripts/install_backup_timer.py
-systemctl --user list-timers ilbi-source-backup.timer
-journalctl --user -u ilbi-source-backup.service -n 30
-```
-
-Yangi kompyuterda eng oxirgi manbani tiklash:
-
-```bash
-git clone --branch backup/work-in-progress --single-branch https://github.com/Abdulxadiy/Sales-Platform.git Sales-Platform-recovered
 ```

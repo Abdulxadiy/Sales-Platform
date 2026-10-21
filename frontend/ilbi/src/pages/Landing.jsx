@@ -621,6 +621,7 @@ export default function Landing() {
     ["#platforma", "Platforma"],
     ["#imkoniyatlar", "Imkoniyatlar"],
     ["#savollar", "Savollar"],
+    ["/download", "Yuklab olish"],
   ];
   return (
     <div className="ilbi-landing" ref={root}>
@@ -1154,6 +1155,7 @@ export default function Landing() {
           <div className="lp-footer-bottom">
             <span>© {year} ILBI</span>
             <nav aria-label="Qo‘shimcha havolalar">
+              <Link to="/download">Yuklab olish</Link>
               <button
                 type="button"
                 onClick={() => setLegal("maxfiylik_siyosati")}

@@ -133,6 +133,7 @@ services:
       - '${EDGE_BIND_ADDRESS:-0.0.0.0}:443:443'
     volumes:
       - static_data:/var/www/static:ro
+      - ./desktop/downloads:/var/www/downloads:ro
       - type: bind
         source: '${TLS_CERT_DIR:?Set TLS_CERT_DIR to the directory containing fullchain.pem and privkey.pem}'
         target: /etc/nginx/tls

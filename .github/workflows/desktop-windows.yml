@@ -1,0 +1,64 @@
+name: ILBI Windows desktop
+on:
+  workflow_dispatch: {}
+  workflow_call: {}
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Stage verified Python, PostgreSQL and application wheels
+        run: python desktop/build_windows_runtime.py
+      - name: Install frontend
+        run: npm ci --prefix frontend/ilbi
+      - name: Install desktop build tools
+        run: npm ci --prefix desktop/ilbi
+      - name: Verify desktop shell
+        run: npm test --prefix desktop/ilbi
+      - name: Build Windows installer
+        run: npm run dist:win --prefix desktop/ilbi
+      - name: Install the built package and verify its bundled service
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem desktop/ilbi/release/ILBI-Setup-*-x64.exe | Select-Object -First 1
+          $destination = Join-Path $env:RUNNER_TEMP 'ILBI-Installer-QA'
+          $installed = Start-Process $installer.FullName -ArgumentList "/S /D=$destination" -Wait -PassThru
+          if ($installed.ExitCode -ne 0 -or !(Test-Path "$destination/ILBI.exe")) {
+            throw 'Windows installation failed'
+          }
+          try {
+            $env:ILBI_DESKTOP_TEST_RESOURCES = Join-Path $destination 'resources'
+            node --test desktop/ilbi/tests/windows-host.test.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Installed service startup failed' }
+          } finally {
+            Remove-Item Env:ILBI_DESKTOP_TEST_RESOURCES -ErrorAction SilentlyContinue
+            Start-Process "$destination/Uninstall ILBI.exe" -ArgumentList '/S' -Wait
+          }
+          $deadline = (Get-Date).AddSeconds(60)
+          while ((Test-Path "$destination/ILBI.exe") -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 500
+          }
+          if (Test-Path "$destination/ILBI.exe") { throw 'Windows uninstallation failed' }
+          $manifestPath = 'desktop/ilbi/release/desktop-build-manifest.json'
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          $manifest.nativeWindowsServiceVerified = $true
+          $manifest | ConvertTo-Json | Set-Content $manifestPath
+      - name: Prepare public download files
+        run: python desktop/export_downloads.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ILBI-Windows-x64
+          path: |
+            desktop/downloads/ILBI-Setup-*.exe
+            desktop/downloads/releases.json
+            desktop/ilbi/release/desktop-build-manifest.json
+          if-no-files-found: error
+          retention-days: 7

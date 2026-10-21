@@ -150,6 +150,10 @@ class ProductionHttpsFixture:
         (web / "assets").mkdir(parents=True)
         (web / "index.html").write_text("isolated frontend fixture")
         (web / "assets" / "fixture.js").write_text("/* isolated asset */")
+        downloads = folder / "downloads"
+        downloads.mkdir()
+        (downloads / "releases.json").write_text('{"schema":1,"windows":{"version":"1.2.0"}}')
+        (downloads / "ILBI-Setup-1.2.0-x64.exe").write_bytes(b"MZ" + b"isolated download fixture" * 100)
         tag = uuid.uuid4().hex[:12]
         cls.network = f"ilbi-https-test-{tag}"
         command("docker", "network", "create", cls.network)
@@ -253,6 +257,8 @@ ThreadingHTTPServer(('0.0.0.0',8000),Handler).serve_forever()
             f"{certs}:/etc/nginx/tls:ro",
             "-v",
             f"{web}:/usr/share/nginx/html:ro",
+            "-v",
+            f"{downloads}:/var/www/downloads:ro",
             "nginx:alpine",
         )
         cls.addClassCleanup(command, "docker", "rm", "-f", edge)
@@ -286,6 +292,20 @@ ThreadingHTTPServer(('0.0.0.0',8000),Handler).serve_forever()
 
 
 class ProductionHttpsTests(ProductionHttpsFixture, unittest.TestCase):
+    def test_public_download_feed_and_partial_installer_requests(self):
+        status, headers, body = self.https("/downloads/releases.json")
+        headers = {name.lower(): value for name, value in headers.items()}
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["schema"], 1)
+        self.assertEqual(headers["cache-control"], "no-store")
+        status, headers, body = self.https("/downloads/ILBI-Setup-1.2.0-x64.exe", {"Range": "bytes=0-1"})
+        headers = {name.lower(): value for name, value in headers.items()}
+        self.assertEqual(status, 206)
+        self.assertEqual(body, b"MZ")
+        self.assertEqual(headers["content-disposition"], "attachment")
+        self.assertEqual(headers["content-type"], "application/octet-stream")
+        self.assertEqual(self.https("/downloads/missing.exe")[0], 404)
+
     def test_http_redirect_preserves_method_and_path(self):
         connection = http.client.HTTPConnection("127.0.0.1", self.http_port, timeout=5)
         try:

@@ -19,7 +19,7 @@ from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Production receives its environment from Compose; never fall back to local secrets.
-if os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings_production":
+if os.environ.get("DJANGO_SETTINGS_MODULE") not in ("config.settings_production", "config.settings_desktop"):
     load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'apps.analytics',
     'apps.cashbox',
     'apps.support',
+    'apps.desktop_sync',
 ]
 
 MIDDLEWARE = [

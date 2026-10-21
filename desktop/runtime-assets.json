@@ -1,0 +1,17 @@
+{
+  "python": {
+    "url": "https://www.python.org/ftp/python/3.13.16/python-3.13.16-embed-amd64.zip",
+    "sha256": "97dae5274cc54867065e8d5a3226e48c35017ed332a0fdb0e27d5b5821961297",
+    "file": "python.zip"
+  },
+  "postgres": {
+    "url": "https://get.enterprisedb.com/postgresql/postgresql-16.15-1-windows-x64-binaries.zip",
+    "sha256": "25e6fcdfb8caec38691bf461125e7564508760666f7b8e5dc6a5f0818f58f81e",
+    "file": "postgres.zip"
+  },
+  "msvc": {
+    "url": "https://files.pythonhosted.org/packages/fe/17/7a1eace5a7c6083bd99db861625c08bb37010dfbe90ed7a0194ae0281689/msvc_runtime-14.44.35112-cp313-cp313-win_amd64.whl",
+    "sha256": "d4f6cf106aaf235f2a90952f9ec7de49e9946323880d051abf9745a6d4bf60bf",
+    "file": "msvc.whl"
+  }
+}

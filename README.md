@@ -2,6 +2,8 @@
 
 Current platform release: [v1.2.0](docs/releases/v1.2.0.md).
 
+Saved local source publishes directly to main after 8 quiet seconds. Passing CI builds the Windows package and deploys the platform and downloads to production. Setup and controls: [automatic publishing](automation/README.md).
+
 ILBI is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
 
 ---
@@ -107,6 +109,143 @@ npm run test:landing
 These browser checks use synthetic API responses and never sign in to or write to a real backend. Screenshots and the JSON report are saved under `branding/ilbi-motion-studio/qa/landing/`; set `ILBI_LANDING_QA_DIR` to choose another output directory.
 
 ---
+
+## Windows desktop and offline stores
+
+The Windows desktop source is in `desktop/ilbi`. It bundles the React UI,
+Python/Django and PostgreSQL; customers do not install Docker, Python, Node or
+Redis. Each independent store has **one primary computer** with its own database.
+Additional registers use that primary over the local network with a pinned TLS
+certificate and a private pairing file. Internet can be unavailable; the primary
+computer and the local network must remain available to the other registers.
+Closing ILBI on the primary stops that store's local service.
+
+The local business transaction and its durable outgoing command commit together.
+Reconnection sends commands in dependency order, with server receipts preventing
+duplicate effects after a lost acknowledgement. A selected urgent command moves
+below the active command; it brings required dependencies forward and never
+interrupts an upload. The panel shows real upload progress, server confirmation,
+errors and retry controls. Server changes are pulled only after local pending
+commands finish, so a refresh cannot erase unsent work. Catalog/customer edit
+conflicts and rejected financial commands remain visible for review.
+
+Offline coverage includes the store's catalog, images/imports, inventory,
+retail sales, returns/voids, counterparties, debt payments, cash income/expenses,
+shifts, Fast-workspace reminders/search and reports from the downloaded records.
+Both Classic and Fast workspaces are included in desktop v1.2.0, with the sync
+control available in both. Layout selection and account drafts remain local.
+Cross-store B2B
+confirmation/transfers, employee/security administration, support, Telegram,
+online payments and external providers require a live server. Historical receipt
+prices, identifiers and business timestamps are preserved during synchronization.
+An offline receipt's public web link becomes available after the sale reaches the
+server. Images not yet downloaded need a later connection; attachment uploads are
+limited to 10 MB in total per offline operation.
+
+**Release boundary:** the existing production fiscal-provider gate is retained.
+Retail POS intentionally rejects sales with `DEBUG=False` until the platform's
+fiscal integration is implemented. Desktop packaging does not remove this gate.
+The automated retail-sale scenarios use isolated synthetic test settings; this
+is not evidence that a production fiscal provider or a physical receipt printer
+works. Native Windows startup, installation/update/uninstallation, real LAN
+registers, printers and fiscal/payment hardware still require acceptance testing.
+
+Initial setup:
+
+1. Deploy the matching backend code and migrations to the HTTPS server first.
+   The usual backend `manage.py migrate --noinput` includes `desktop_sync`.
+   Do not switch the cloud deployment to `config.settings_desktop`.
+2. Install the Windows x64 package and choose **Asosiy kompyuter** on the primary.
+   Enter the HTTPS server origin, sign in online as the store owner, select the
+   store and open **Offline tayyorlash** to download its database and set a local
+   password of at least eight characters.
+3. Each cashier signs in online once and uses **Hisobni kassaga ulash** to set
+   their own local password. Later they use **Offline kassaga kirish** with their
+   own login/password. The server checks that cashier's permissions again on
+   replay. The local database contains owner-level store data, so provision the
+   primary only on a trusted store computer and Windows account.
+4. For another register, export **ILBI → Boshqa kassani ulash** on the primary,
+   install ILBI on the register and import the `.ilbi` pairing file. Keep this
+   file private. Allow inbound TCP 49243 on the primary for the store's private
+   LAN only; reserve its private IP in the router. Import a replacement pairing
+   file if the primary IP changes. Each register still uses its own cashier login.
+5. Offline authorization lasts seven days after a successful online renewal.
+   While connected, the primary refreshes it periodically. After expiry the
+   owner signs in online again and links the account to renew it. Pending work
+   stays on disk. Cloud permission changes may reject older queued commands;
+   they are retained for review rather than silently discarded.
+
+Program updates use a new installer after closing ILBI. The installer preserves
+`%APPDATA%\ILBI`, including the database, encrypted cloud credentials and outbox;
+uninstalling also preserves it. Back up this directory while ILBI is closed.
+The encrypted device vault belongs to its Windows account; a folder copy is not
+a supported migration to another Windows account/computer. Do not delete or
+replace the primary while it contains unsent work. A replacement primary needs
+the old cloud device explicitly revoked after its pending work has been resolved.
+This release has no automatic updater or code-signing certificate configured.
+
+To build locally (requires a development Python with pip, Node/npm and internet):
+
+```bash
+python desktop/build_windows_runtime.py
+npm ci --prefix frontend/ilbi
+npm ci --prefix desktop/ilbi
+npm test --prefix desktop/ilbi
+npm run dist:win --prefix desktop/ilbi
+```
+
+Pinned Python/PostgreSQL/MSVC archives are checked by SHA-256. Dependency wheels
+are checked against `uv.lock` and `desktop/windows-wheel-lock.json`. Deployment
+`.env` files, cloud database contents and development dependencies are excluded.
+The output is `desktop/ilbi/release/ILBI-Setup-1.2.0-x64.exe`. The build verifies
+that the installer contains its application payload. The manual GitHub Actions
+workflow **ILBI Windows desktop** also runs a native Windows Python/PostgreSQL
+startup check and uploads the installer; it must be run in the connected repo
+before treating a build as Windows-validated.
+
+The public download page is `/download`, linked from the landing page and both
+workspace menus. It reads `/downloads/releases.json`; unpublished Windows/mobile
+builds have disabled download controls. The desktop reads that same public feed
+through its configured cloud origin. Build files are kept outside the React
+bundle so an installer never embeds another copy of itself.
+
+After a successful build, prepare the public files locally:
+
+```bash
+python desktop/export_downloads.py
+```
+
+This verifies the installer hash, copies it to `desktop/downloads` and atomically
+writes `releases.json`. Its default channel is `preview`, shown as **Sinov
+nusxasi** on the page. It does not upload or deploy anything. Copy that directory
+to the server before deploying the matching frontend; production Compose mounts
+it read-only at Nginx's `/var/www/downloads`. The directory is public and contains
+release files only. Nginx supports resumed/range downloads, returns 404 for absent
+files and does not cache the feed. After release acceptance, export with
+`--channel stable`. A future mobile release can be added under the feed's
+`mobile` key with `version`, `label` and an HTTPS or `/downloads/…` `url`; subsequent
+Windows exports preserve that entry. Mobile application development is separate.
+
+Additional verification commands, using only disposable test databases:
+
+```bash
+cd ilbi
+uv sync --group desktop
+uv run pytest apps/desktop_sync/tests apps/core/tests/test_api_docs_production.py
+uv run python ../desktop/verify_runtime.py
+cd ../frontend/ilbi
+npm test
+npm run test:sync
+npm run test:downloads
+```
+
+The integration runner creates and drops two disposable databases on the isolated
+test PostgreSQL at `127.0.0.1:5433`. It exercises three simultaneous cashier
+sessions, offline sale/debt/cash/shift/image changes, priority, a process restart,
+offline unlock, reconnect, server refresh and stale open-form identifier mapping.
+It also verifies offline reminder creation/completion/deletion and lease recovery.
+Browser tests use synthetic responses. The Windows startup test is deliberately
+skipped on Linux; a passing Linux run does not establish native Windows support.
 
 ## Production Deployment
 

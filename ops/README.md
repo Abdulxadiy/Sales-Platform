@@ -11,8 +11,8 @@ Frontend ommaviy 80/443 portlarida ishlayapti; backend readiness `ready`.
 
 Boshlang‘ich o‘rnatma `1.0.0` edi. Avtodeploy GHCR’dagi `sha-<commit>` imagelarini ishlatadi;
 oxirgi sog‘lom chiqarishning uchta image manzili `/srv/ilbi/.deployed-images`da saqlanadi.
-Git tag yoki GitHub Release ushbu server yangilanishi bilan avtomatik yaratilmaydi;
-ular tekshirilgan manba `main`ga chiqarilganda mavjud publish tartibi orqali yuritiladi.
+Git tag va GitHub Release server yangilanishida avtomatik yaratilmaydi;
+saqlangan manba bevosita main’ga push qilinadi, versiya esa alohida boshqariladi.
 
 ## SSH va holat
 
@@ -170,13 +170,15 @@ GitHub’da `production` muhiti va maxsus SSH kaliti sozlangan:
 - Muhit variables: `DEPLOY_HOST`, `DEPLOY_USER`.
 - Repo variable: **`DEPLOY_ENABLED=true`** — avtomatik deploy yoqilgan.
 
-Oddiy `main` push CI’ni boshlaydi. Navbatdagi chiqarish `GITHUB_TOKEN` bilan push qilgani uchun
-publisher yangi commit yuborilganidan keyin CI’ni `workflow_dispatch` orqali alohida boshlaydi.
-Ikkala yo‘l ham testlar muvaffaqiyatli tugagach deployga ulanadi; PR, quruq sinov va o‘zgarmagan
-navbat serverni yangilamaydi. Tag yoki GitHub Release yaratish deploy triggeri emas.
-Serverga o‘tishdan oldin testdan o‘tgan commit hali ham `main` ekanligi tekshiriladi;
-kech tugagan eski CI yangi chiqarishning ustidan yozmaydi. `backup/` va `queue/` branchlari
-serverga chiqarilmaydi. Favqulodda to‘xtatish: repo variable `DEPLOY_ENABLED=false`.
+Lokal `ilbi-auto-publish.service` saqlangan kodni 8 soniya tinishdan keyin to‘g‘ridan to‘g‘ri main’ga yuboradi. Oddiy main push CI’ni boshlaydi; kunlik chiqarish navbati yo‘q. Boshqarish: [automation/README.md](../automation/README.md).
+CI Windows runner’da paketni yig‘adi, o‘rnatib ichki servisni tekshiradi va o‘chirib ko‘radi.
+Deploy shu CI artifactidagi installer hajmi/SHA256/native sinovini tekshiradi,
+installer va release feed’ni `/srv/ilbi/desktop/downloads/`ga yuboradi.
+Backend/frontend imagelari ham aynan shu commitdan yig‘iladi.
+PR va muvaffaqiyatsiz CI serverni yangilamaydi. Tag yoki GitHub Release deploy triggeri emas.
+Serverga o‘tishdan oldin testdan o‘tgan commit hali ham main ekanligi tekshiriladi;
+kech tugagan eski CI yangi chiqarishning ustidan yozmaydi.
+Favqulodda to‘xtatish: repo variable `DEPLOY_ENABLED=false`.
 
 Image yuklashda ishlatiladigan GHCR token serverga stdin orqali uzatiladi;
 vaqtinchalik Docker credential katalogi SSH sessiyasi tugaganda o‘chiriladi.

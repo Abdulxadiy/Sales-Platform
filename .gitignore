@@ -237,6 +237,11 @@ staticfiles/
 
 # Frontend
 node_modules/
+desktop/ilbi/resources/backend/
+desktop/ilbi/resources/postgres/
+desktop/ilbi/release/
+desktop/downloads/*
+!desktop/downloads/.gitkeep
 dist/
 dist_docker/
 .vite/
@@ -250,6 +255,8 @@ Architectures/.obsidian/
 
 # Local GitHub publishing cache and locks
 .commit-queue-local/
+.auto-publish-local/
+.offline-desktop-work.json
 
 # Private data backups and operator configuration (kept outside this repository)
 ilbi-data-*.tar.gpg

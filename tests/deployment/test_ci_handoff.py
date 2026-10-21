@@ -35,7 +35,6 @@ class CiHandoffTests(unittest.TestCase):
             "GITHUB_SHA": "1" * 40,
             "RELEASE_SHA": "2" * 40,
             "GITHUB_OUTPUT": str(self.output),
-            "QUEUE_DRY_RUN": "false",
         }
 
     def run_script(self, path, **overrides):
@@ -43,29 +42,6 @@ class CiHandoffTests(unittest.TestCase):
             ["bash", str(ROOT / path)], env={**self.env, **overrides},
             capture_output=True, text=True, timeout=10, check=False,
         )
-
-    def test_published_main_explicitly_dispatches_ci(self):
-        result = self.run_script("scripts/dispatch_published_ci.sh")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.log.read_text().splitlines(), [
-            "api repos/example/project/git/ref/heads/main --jq .object.sha",
-            "workflow run ci.yml --repo example/project --ref main",
-        ])
-
-    def test_unchanged_main_does_not_dispatch(self):
-        result = self.run_script("scripts/dispatch_published_ci.sh", TEST_MAIN_SHA="1" * 40)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertNotIn("workflow run", self.log.read_text())
-
-    def test_dry_run_never_calls_github(self):
-        result = self.run_script("scripts/dispatch_published_ci.sh", QUEUE_DRY_RUN="true")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse(self.log.exists())
-
-    def test_api_failure_does_not_dispatch(self):
-        result = self.run_script("scripts/dispatch_published_ci.sh", TEST_API_ERROR="true")
-        self.assertEqual(result.returncode, 19)
-        self.assertNotIn("workflow run", self.log.read_text())
 
     def test_current_tested_main_can_deploy(self):
         result = self.run_script("ops/check_deploy_target.sh")

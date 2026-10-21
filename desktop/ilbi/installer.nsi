@@ -17,6 +17,12 @@ Var RestartApp
 Var InstallTarget
 Var UpdateStaging
 Var UpdateBackup
+!macro UpdateStatus STAGE
+  ${If} $AutoUpdate == 1
+    WriteINIStr "$APPDATA\ILBI\updates\windows-install.ini" "update" "stage" "${STAGE}"
+    WriteINIStr "$APPDATA\ILBI\updates\windows-install.ini" "update" "directory" "$INSTDIR"
+  ${EndIf}
+!macroend
 !define MUI_WELCOMEPAGE_TEXT "Install or update ILBI for this Windows account.$\r$\n$\r$\nA running ILBI will close safely and reopen after updating. Your store database and unsent operations are preserved. Save open forms before continuing."
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipForUpdate
 !insertmacro MUI_PAGE_WELCOME
@@ -45,6 +51,10 @@ Function .onInit
     StrCpy $AutoUpdate 1
     StrCpy $RestartApp 1
     SetAutoClose true
+    ReadEnvStr $INSTDIR "ILBI_UPDATE_INSTALL_DIRECTORY"
+    StrCmp $INSTDIR "" 0 +2
+      Abort
+    !insertmacro UpdateStatus "starting"
   ${EndIf}
 FunctionEnd
 
@@ -72,6 +82,7 @@ valid:
 FunctionEnd
 
 Section "ILBI"
+  !insertmacro UpdateStatus "validating"
   Call .onVerifyInstDir
   SetShellVarContext current
   SetRegView 64
@@ -83,20 +94,26 @@ Section "ILBI"
   IfFileExists "$UpdateBackup\*.*" installationFailed
   StrCpy $INSTDIR $UpdateStaging
   SetOutPath "$UpdateStaging"
+  !insertmacro UpdateStatus "extracting"
   !insertmacro extractEmbeddedAppPackage
   StrCpy $INSTDIR $InstallTarget
+  !insertmacro UpdateStatus "closing"
   IfFileExists "$UpdateStaging\ILBI.exe" 0 installationFailed
   InitPluginsDir
   File /oname=$PLUGINSDIR\ilbi-close.ps1 "${PROJECT_DIR}\windows-close.ps1"
-  ExecWait '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\ilbi-close.ps1" -InstallDirectory "$INSTDIR"' $R0
+  ; NSIS is 32-bit. Sysnative avoids launching 32-bit PowerShell, which cannot
+  ; reliably read the executable paths of our 64-bit ILBI processes.
+  ExecWait '"$WINDIR\Sysnative\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\ilbi-close.ps1" -InstallDirectory "$INSTDIR"' $R0
   ${If} $R0 == 10
     StrCpy $RestartApp 1
   ${ElseIf} $R0 != 0
+    !insertmacro UpdateStatus "close_failed"
     MessageBox MB_ICONSTOP "ILBI is still finishing work. The current application and store data were preserved. Please retry after it finishes."
     SetErrorLevel 1
     Quit
   ${EndIf}
   SetOutPath "$TEMP"
+  !insertmacro UpdateStatus "replacing"
   ClearErrors
   IfFileExists "$INSTDIR\ILBI.exe" 0 noPreviousInstallation
   Rename "$INSTDIR" "$UpdateBackup"
@@ -129,13 +146,16 @@ activateInstallation:
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "NoRepair" 1
   ${If} $RestartApp == 1
+    !insertmacro UpdateStatus "reopening"
     Exec '"$INSTDIR\ILBI.exe" --ilbi-updated'
   ${EndIf}
+  !insertmacro UpdateStatus "complete"
   Goto installationDone
 restoreInstallation:
   Rename "$UpdateBackup" "$INSTDIR"
 installationFailed:
   StrCpy $INSTDIR $InstallTarget
+  !insertmacro UpdateStatus "failed"
   ${If} $RestartApp == 1
     IfFileExists "$INSTDIR\ILBI.exe" 0 +2
       Exec '"$INSTDIR\ILBI.exe" --ilbi-update-failed'
@@ -152,7 +172,7 @@ Section "Uninstall"
   nsProcess::_FindProcess "ILBI.exe"
   Pop $R0
   ${If} $R0 == 0
-    MessageBox MB_ICONSTOP "Close ILBI before uninstalling it."
+    MessageBox MB_ICONSTOP "Close ILBI before uninstalling it." /SD IDOK
     Abort
   ${EndIf}
   IfFileExists "$INSTDIR\ilbi-installation.id" 0 refuseUninstall

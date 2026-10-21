@@ -115,7 +115,8 @@ async function applyUpdate(archive, release) {
   try {
     if (process.platform === 'win32') {
       if ((await readFile(join(dirname(process.execPath), 'ilbi-installation.id'), 'utf8')).trim() !== 'uz.ilbi.desktop') throw Error('Avval rasmiy ILBI o‘rnatuvchisidan foydalaning.');
-      const child = spawn(archive, ['/ILBIUPDATE'], { detached: true, stdio: 'ignore' });
+      const child = spawn(archive, ['/ILBIUPDATE'], { detached: true, stdio: 'ignore',
+        env: { ...process.env, ILBI_UPDATE_INSTALL_DIRECTORY: dirname(process.execPath) } });
       await new Promise((ok, fail) => { child.once('spawn', ok); child.once('error', fail); });
       child.once('exit', () => { if (!quitting && !closing) void resumeUpdate().then(() => updater.set({ phase: 'error', message: 'O‘rnatish tugallanmadi. Yana urinib ko‘rishingiz mumkin.' })); });
       child.unref();
@@ -341,6 +342,6 @@ else {
       if (process.argv.includes('--ilbi-updated')) updater.set({ phase: 'updated', message: 'ILBI muvaffaqiyatli yangilandi.' });
       if (process.argv.includes('--ilbi-update-failed')) updater.set({ phase: 'error', message: 'Yangilanish o‘rnatilmadi. Avvalgi ILBI qayta ochildi.' });
       updater.start();
-    } catch (error) { dialog.showErrorBox('ILBI ishga tushmadi', error.message); app.quit(); }
+    } catch (error) { if (!closing && !quitting) dialog.showErrorBox('ILBI ishga tushmadi', error.message); app.quit(); }
   });
 }

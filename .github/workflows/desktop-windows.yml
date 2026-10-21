@@ -26,6 +26,7 @@ jobs:
       - name: Build Windows installer
         run: npm run dist:win --prefix desktop/ilbi
       - name: Install the built package and verify its bundled service
+        timeout-minutes: 15
         shell: pwsh
         run: |
           $installer = Get-ChildItem desktop/ilbi/release/ILBI-Setup-*-x64.exe | Select-Object -First 1
@@ -66,7 +67,11 @@ jobs:
             Remove-Item Env:ILBI_DESKTOP_TEST_RESOURCES -ErrorAction SilentlyContinue
             Remove-Item Env:ILBI_DESKTOP_INSTALLED_EXE -ErrorAction SilentlyContinue
             Remove-Item Env:ILBI_DESKTOP_UPDATE_PACKAGE -ErrorAction SilentlyContinue
-            Start-Process "$destination/Uninstall ILBI.exe" -ArgumentList '/S' -Wait
+            & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File desktop/ilbi/windows-close.ps1 -InstallDirectory $destination
+            if ($LASTEXITCODE -notin @(0, 10)) { throw 'Windows app did not close safely' }
+            $global:LASTEXITCODE = 0
+            $uninstall = Start-Process "$destination/Uninstall ILBI.exe" -ArgumentList '/S' -PassThru
+            if (!$uninstall.WaitForExit(60000)) { throw 'Windows uninstaller did not finish' }
           }
           $deadline = (Get-Date).AddSeconds(60)
           while ((Test-Path "$destination/ILBI.exe") -and (Get-Date) -lt $deadline) {
@@ -77,6 +82,14 @@ jobs:
           $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
           $manifest.nativeWindowsServiceVerified = $true
           $manifest | ConvertTo-Json | Set-Content $manifestPath
+      - name: Keep native update diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ILBI-Windows-update-diagnostics
+          path: desktop/ilbi/build/native-update-qa/
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Prepare public download files
         run: python desktop/export_downloads.py --release-id ${{ github.sha }}
       - uses: actions/upload-artifact@v4

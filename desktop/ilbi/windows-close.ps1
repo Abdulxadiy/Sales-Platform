@@ -7,6 +7,11 @@ function Find-InstalledProcesses {
     })
 }
 $wasRunning = (Find-InstalledProcesses).Count -gt 0
+if ($wasRunning) {
+    # Ask ILBI through its single-instance channel, even when minimized or when
+    # Windows cannot identify its main window. Older apps also get WM_CLOSE.
+    $null = Start-Process -FilePath $executable -ArgumentList '--ilbi-quit-for-update' -WindowStyle Hidden -PassThru
+}
 $deadline = (Get-Date).AddSeconds(180)
 do {
     $running = Find-InstalledProcesses

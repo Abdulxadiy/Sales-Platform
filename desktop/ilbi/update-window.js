@@ -9,7 +9,9 @@ function render(value) {
   document.querySelector('#percent').textContent = value.progress == null ? '' : `${value.progress}%`;
   const action = document.querySelector('#action'); action.hidden = !bridge || ['updated', 'installing'].includes(value.phase); action.disabled = busy;
   action.textContent = ['available', 'error'].includes(value.phase) ? 'Yuklab olish va yangilash' : 'Yangilanishni tekshirish';
-  document.querySelector('#close').hidden = Boolean(window.ilbiUpdateProgress) && value.phase !== 'failed';
+  const close = document.querySelector('#close');
+  close.hidden = busy || Boolean(window.ilbiUpdateProgress) && value.phase !== 'failed';
+  close.textContent = ['current', 'updated', 'failed'].includes(value.phase) ? 'Yopish' : 'Keyinroq';
 }
 document.querySelector('#action').addEventListener('click', () => {
   const task = ['available', 'error'].includes(state.phase) ? bridge.updateApp() : bridge.checkForUpdates();

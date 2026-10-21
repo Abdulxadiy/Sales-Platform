@@ -1,7 +1,8 @@
 // Installed acceptance: only disposable, unenrolled native QA profiles are used.
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
-const { stat } = require('node:fs/promises');
+const { stat, readFile, mkdir } = require('node:fs/promises');
+const { dirname, join } = require('node:path');
 const { createHash } = require('node:crypto');
 const { createReadStream } = require('node:fs');
 const { freePort, OFFICIAL_SERVER } = require('../runtime.cjs');
@@ -43,9 +44,15 @@ async function launch() {
 }
 async function closeNormal() {
   const environment={...process.env}; delete environment.ELECTRON_RUN_AS_NODE;
-  const secondary=spawn(executable,['--ilbi-quit-for-update'],{env:environment,stdio:'ignore'});
-  await new Promise((ok,fail)=>{secondary.once('exit',ok);secondary.once('error',fail)});
+  const secondary=process.platform==='win32'
+    ? spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',join(__dirname,'../windows-close.ps1'),'-InstallDirectory',dirname(executable)],{env:environment,stdio:'ignore'})
+    : spawn(executable,['--ilbi-quit-for-update'],{env:environment,stdio:'ignore'});
+  const code=await new Promise((ok,fail)=>{secondary.once('exit',ok);secondary.once('error',fail)});
+  assert([0,10].includes(code),'Graceful close command failed');
   await wait(async()=>{try{await status();return false}catch{return true}},'Updated app did not close',180);
+  const profile=join(process.platform==='win32'?process.env.APPDATA:process.env.XDG_CONFIG_HOME,'ILBI');
+  await wait(async()=>{try{await stat(join(profile,'postgres/postmaster.pid'));return false}catch{return true}},'Updated database did not stop',90);
+  await pause(300);
 }
 const sql = `
 import os,sys,django,uuid
@@ -95,7 +102,7 @@ let running;
   await wait(()=>running.child.exitCode!==null,'Old app did not exit cleanly',240);
   assert.equal(running.child.exitCode,0);
   console.log('Update QA: old application exited cleanly.');
-  await wait(async()=>{const value=await status();return value.installedBuild===build.sourceCommit},'Installer did not reopen ILBI',240);
+  await wait(async()=>{const value=await status();return value.installedBuild===build.sourceCommit&&value.phase==='updated'},'Installer did not reopen ILBI',240);
   await closeNormal();
   console.log('Update QA: updated application relaunched and closed cleanly.');
   running=await launch();
@@ -108,4 +115,16 @@ let running;
   await wait(()=>running.child.exitCode!==null,'QA application did not close',180);
   assert.equal(running.child.exitCode,0);
   console.log(`PASS installed ${process.platform} update: UI notice, real verified download, visible installer, automatic exit/relaunch, durable outbox, encrypted vault and browser drafts preserved.`);
-})().catch(async error=>{console.error(error);if(running?.child.exitCode===null)running.child.kill();else await closeNormal().catch(()=>{});process.exitCode=1}).finally(()=>{for(const socket of sockets)socket.close()});
+})().catch(async error=>{
+  console.error(error);
+  console.error('Updater state:',await status().catch(()=>({unavailable:true})));
+  if(process.platform==='win32'){
+    const profile=join(process.env.APPDATA,'ILBI');
+    console.error('Installer state:',await readFile(join(profile,'updates/windows-install.ini'),'utf8').catch(()=>'(not started)'));
+    const directory=join(__dirname,'../build/native-update-qa');await mkdir(directory,{recursive:true});
+    const script=`Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $bounds=[Windows.Forms.SystemInformation]::VirtualScreen; $image=New-Object Drawing.Bitmap $bounds.Width,$bounds.Height; $graphics=[Drawing.Graphics]::FromImage($image); $graphics.CopyFromScreen($bounds.Location,[Drawing.Point]::Empty,$bounds.Size); $image.Save('${join(directory,'failure.png').replaceAll("'","''")}'); $graphics.Dispose(); $image.Dispose()`;
+    const capture=spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{stdio:'ignore'});
+    await Promise.race([new Promise(ok=>capture.once('exit',ok)),pause(10000)]);
+  }
+  if(running?.child.exitCode===null)running.child.kill();else await closeNormal().catch(()=>{});process.exitCode=1;
+}).finally(()=>{for(const socket of sockets)socket.close()});

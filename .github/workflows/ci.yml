@@ -98,3 +98,5 @@ jobs:
       - name: Check download links and mobile layout in Chrome
         run: npm run test:downloads
       - run: npm run build
+      - name: Check the bundled desktop guide without a cloud server
+        run: npm run test:desktop-guide

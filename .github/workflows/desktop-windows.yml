@@ -35,11 +35,30 @@ jobs:
             throw 'Windows installation failed'
           }
           try {
+            $iconPath = Join-Path $destination 'resources/ilbi-desktop-rounded.ico'
+            if (!(Test-Path $iconPath)) { throw 'Installed desktop icon is missing' }
+            $shell = New-Object -ComObject WScript.Shell
+            $shortcut = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'ILBI.lnk'))
+            if ([IO.Path]::GetFullPath($shortcut.IconLocation.Split(',')[0].Trim('"')) -ne [IO.Path]::GetFullPath($iconPath)) {
+              throw 'Desktop shortcut does not use the rounded icon'
+            }
+            Add-Type -AssemblyName System.Drawing
+            $icon = [System.Drawing.Icon]::new($iconPath, [System.Drawing.Size]::new(256, 256))
+            $bitmap = $icon.ToBitmap()
+            try {
+              foreach ($point in @(@(0,0), @(255,0), @(0,255), @(255,255))) {
+                if ($bitmap.GetPixel($point[0], $point[1]).A -ne 0) { throw 'Icon corners are not transparent' }
+              }
+            } finally { $bitmap.Dispose(); $icon.Dispose() }
             $env:ILBI_DESKTOP_TEST_RESOURCES = Join-Path $destination 'resources'
             node --test desktop/ilbi/tests/windows-host.test.cjs
             if ($LASTEXITCODE -ne 0) { throw 'Installed service startup failed' }
+            $env:ILBI_DESKTOP_INSTALLED_EXE = Join-Path $destination 'ILBI.exe'
+            node --test desktop/ilbi/tests/windows-ui.test.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Installed guide UI failed' }
           } finally {
             Remove-Item Env:ILBI_DESKTOP_TEST_RESOURCES -ErrorAction SilentlyContinue
+            Remove-Item Env:ILBI_DESKTOP_INSTALLED_EXE -ErrorAction SilentlyContinue
             Start-Process "$destination/Uninstall ILBI.exe" -ArgumentList '/S' -Wait
           }
           $deadline = (Get-Date).AddSeconds(60)

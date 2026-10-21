@@ -17,3 +17,5 @@
 @keyframes sync-arrow-turn{to{transform:rotate(360deg)}}@keyframes sync-progress-travel{0%{transform:translateX(-110%)}100%{transform:translateX(390%)}}
 @media(max-width:520px){.sync-row{flex-wrap:wrap;padding:12px}.sync-priority-button{margin-left:40px}.sync-heading{padding:18px}.sync-summary{padding:14px 18px}}
 @media(prefers-reduced-motion:reduce){.sync-arrows,.sync-progress.is-indeterminate span{animation:none}.sync-progress span{transition:none}}
+.sync-guide-link{display:block;margin:0 24px 24px;color:var(--text-secondary);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.desktop-access input{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font:inherit}

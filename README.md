@@ -112,6 +112,8 @@ These browser checks use synthetic API responses and never sign in to or write t
 
 ## Windows desktop and offline stores
 
+Illustrated setup guide: [`/desktop-guide`](https://new-dev.site/desktop-guide), also linked from Downloads, first-run setup and the app's **ILBI → Ilovani sozlash (rasmli qo‘llanma)** menu. Its seven annotated screenshots and text are bundled for offline reading. The rounded Windows icon uses transparent corners and separate DPI sizes; reinstall the latest package to update desktop/Start shortcuts.
+
 The Windows desktop source is in `desktop/ilbi`. It bundles the React UI,
 Python/Django and PostgreSQL; customers do not install Docker, Python, Node or
 Redis. Each independent store has **one primary computer** with its own database.

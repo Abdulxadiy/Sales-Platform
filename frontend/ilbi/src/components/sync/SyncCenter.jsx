@@ -122,6 +122,10 @@ export default function SyncCenter() {
         {!operations.length && <div className="sync-empty"><Check size={32} /><strong>Barcha operatsiyalar yuborilgan</strong><p>Yangi ishlaringiz shu yerda ko‘rinadi.</p></div>}
         <p className="sync-footnote">“Darhol” tanlangan ishni zarur bog‘liqliklari bilan oldinga oladi. Davom etayotgan yuborish tugagach boshlanadi.</p>
       </>}
+      <a className="sync-guide-link" href="/desktop-guide" onClick={event => {
+        if (!window.ilbiDesktop?.openGuide) return;
+        event.preventDefault(); void window.ilbiDesktop.openGuide().catch(failure => setError(failure.message));
+      }}>Ilovani sozlash — rasmli qo‘llanma</a>
     </dialog>
   </>;
 }

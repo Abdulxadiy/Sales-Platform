@@ -1,0 +1,225 @@
+{
+  "syntheticData": true,
+  "method": "Chrome screenshots of production controls with numbered SVG arrow overlays",
+  "frames": [
+    {
+      "file": "01-primary-setup.png",
+      "source": "desktop/ilbi/setup.html + setup.css: primary computer form",
+      "crop": {
+        "x": 136,
+        "y": 288.96875,
+        "width": 648,
+        "height": 302.078125
+      },
+      "arrows": [
+        {
+          "selector": "#host input",
+          "number": 1,
+          "x": 0.82,
+          "y": 0,
+          "dx": 0,
+          "dy": -40
+        },
+        {
+          "selector": "#host button",
+          "number": 2,
+          "x": 1,
+          "y": 0.5,
+          "dx": 60,
+          "dy": 0
+        }
+      ],
+      "sha256": "19277f5860a3f7251c0bedb49315b63f4e66d698932c901764a2533a25c31243"
+    },
+    {
+      "file": "07-extra-register.png",
+      "source": "desktop/ilbi/setup.html + setup.css: extra register",
+      "crop": {
+        "x": 136,
+        "y": 579.046875,
+        "width": 648,
+        "height": 261.171875
+      },
+      "arrows": [
+        {
+          "selector": "section h2",
+          "number": 1,
+          "x": 0.55,
+          "y": 0,
+          "dx": 20,
+          "dy": -18
+        },
+        {
+          "selector": "#join",
+          "number": 2,
+          "x": 1,
+          "y": 0.5,
+          "dx": 65,
+          "dy": 0
+        }
+      ],
+      "sha256": "c755ca3acb437fdcd45a9fa11279bf8bad7552722f14f06a1ed3cbd0200cc2df"
+    },
+    {
+      "file": "02-prepare.png",
+      "source": "SyncCenter.jsx: owner preparing the synthetic store",
+      "crop": {
+        "x": 35,
+        "y": 106.296875,
+        "width": 850,
+        "height": 507.390625
+      },
+      "arrows": [
+        {
+          "selector": ".sync-heading h2",
+          "number": 1,
+          "x": 1,
+          "y": 0.4,
+          "dx": 44,
+          "dy": -25
+        },
+        {
+          "selector": ".sync-setup input",
+          "number": 2,
+          "x": 0.8,
+          "y": 0,
+          "dx": 0,
+          "dy": -38
+        },
+        {
+          "selector": ".sync-setup button",
+          "number": 3,
+          "x": 1,
+          "y": 0.5,
+          "dx": 35,
+          "dy": 0
+        }
+      ],
+      "sha256": "0bb53a51bec6fedd1dc0c3cd0d8d86b67dbe429971db419aae9e265b6a32b56f"
+    },
+    {
+      "file": "03-offline-login.png",
+      "source": "DesktopAccess.jsx: synthetic enrolled account",
+      "crop": {
+        "x": 185,
+        "y": 97,
+        "width": 550,
+        "height": 429
+      },
+      "arrows": [
+        {
+          "selector": ".desktop-access input[autocomplete=\"username\"]",
+          "number": 1,
+          "x": 0.8,
+          "y": 0,
+          "dx": 0,
+          "dy": -35
+        },
+        {
+          "selector": ".desktop-access input[type=\"password\"]",
+          "number": 2,
+          "x": 0.8,
+          "y": 0,
+          "dx": 0,
+          "dy": -35
+        },
+        {
+          "selector": ".desktop-access button",
+          "number": 3,
+          "x": 1,
+          "y": 0.5,
+          "dx": 34,
+          "dy": 0
+        }
+      ],
+      "sha256": "556174ff529e2db03e03815ef3487cc4f43b55bae1b8c56fee106dea775025bd"
+    },
+    {
+      "file": "04-queue.png",
+      "source": "SyncCenter.jsx: synthetic outgoing operations (queue)",
+      "crop": {
+        "x": 35,
+        "y": 29.953125,
+        "width": 850,
+        "height": 660.09375
+      },
+      "arrows": [
+        {
+          "selector": "[data-operation-id=\"active\"] .sync-percent",
+          "number": 1,
+          "x": 1,
+          "y": 0.5,
+          "dx": 58,
+          "dy": -15
+        },
+        {
+          "selector": "[data-operation-id=\"payment\"] button",
+          "number": 2,
+          "x": 1,
+          "y": 0.5,
+          "dx": 42,
+          "dy": 0
+        }
+      ],
+      "sha256": "6647937c448f19ed19dd8a2d3b1cc7b6a112bcda3123ae63afe6b8c9c7b02ace"
+    },
+    {
+      "file": "05-priority.png",
+      "source": "SyncCenter.jsx: synthetic outgoing operations (priority)",
+      "crop": {
+        "x": 35,
+        "y": 29.953125,
+        "width": 850,
+        "height": 660.09375
+      },
+      "arrows": [
+        {
+          "selector": "[data-operation-id=\"active\"] .sync-percent",
+          "number": 1,
+          "x": 1,
+          "y": 0.5,
+          "dx": 58,
+          "dy": -15
+        },
+        {
+          "selector": "[data-operation-id=\"payment\"] .sync-row-body",
+          "number": 2,
+          "x": 0,
+          "y": 0.5,
+          "dx": -70,
+          "dy": 0
+        }
+      ],
+      "sha256": "c602db063c2a30373f2e2bcd9c97034deecc7dbc2e1b5af2a5702744db15e519"
+    },
+    {
+      "file": "06-retry.png",
+      "source": "SyncCenter.jsx: synthetic network failure; no real customer data",
+      "crop": {
+        "x": 35,
+        "y": 95.046875,
+        "width": 850,
+        "height": 529.890625
+      },
+      "arrows": [
+        {
+          "selector": "[data-operation-id=\"failed\"] small",
+          "number": 1,
+          "x": 0.38,
+          "y": 0,
+          "dx": 0,
+          "dy": -50
+        },
+        {
+          "selector": "[data-operation-id=\"failed\"] button",
+          "number": 2,
+          "x": 1,
+          "y": 0.5,
+          "dx": 40,
+          "dy": 0
+        }
+      ],
+      "sha256": "db3114babd74feee77647a0b0e7ada8203441e2c2936efef64e1707fad37f2d2"
+    }
+  ]
+}

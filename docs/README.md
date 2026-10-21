@@ -1,6 +1,6 @@
 # ILBI hujjatlari
 
-Yangilangan: **2026-10-16**. Qo‘llanmalar hozirgi kod va interfeysga moslashtirilgan. Rasmli yo‘riqnomalar faqat sun’iy demo ma’lumotlarni ko‘rsatadi.
+Yangilangan: **2026-10-21**. Qo‘llanmalar hozirgi kod va interfeysga moslashtirilgan. Rasmli yo‘riqnomalar faqat sun’iy demo ma’lumotlarni ko‘rsatadi.
 
 ## Kerakli hujjatni tanlang
 
@@ -10,6 +10,7 @@ Yangilangan: **2026-10-16**. Qo‘llanmalar hozirgi kod va interfeysga moslashti
 | Xodim | [Amaliy yo‘riqnoma](qollanmalar/staff_amaliy_qollanma.md) | [Ish qoidalari](qollanmalar/staff_qollanma.md) |
 | Administrator/operator | [Amaliy yo‘riqnoma](qollanmalar/platform_admin_amaliy_qollanma.md) | [Boshqaruv qoidalari](qollanmalar/platform_admin_qollanma.md) |
 | Mehmon va yangi mijoz | [O‘zbekcha](qollanmalar/yordam_uz.md), [Русский](qollanmalar/yordam_ru.md), [English](qollanmalar/yordam_en.md) | [Foydalanish qoidalari](hujjatlar/foydalanish_qoidalari.md) |
+| Windows ilovasi foydalanuvchisi | [Ilovani sozlash — rasmli qo‘llanma](qollanmalar/desktop_qollanma_uz.md) | Offline parol, sinxronlash, qo‘shimcha kassalar va yangilash |
 
 [Ommaviy oferta](hujjatlar/ommaviy_oferta.md) va [maxfiylik siyosati](hujjatlar/maxfiylik_siyosati.md) alohida hujjatlardir. Tasdiqlanmagan rekvizit, SLA, saqlash muddati yoki fiskal imkoniyatni kafolat deb ko‘rsatmang.
 

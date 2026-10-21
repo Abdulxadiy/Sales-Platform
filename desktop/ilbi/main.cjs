@@ -8,13 +8,31 @@ const { randomBytes, createHash } = require('node:crypto');
 const { validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
 app.setName('ILBI');
 
-let window, localHost, lanServer, webServer, origin, configuration, secrets;
+let window, guideWindow, localHost, lanServer, webServer, origin, configuration, secrets;
 let quitting = false;
 const bridgeKey = randomBytes(32).toString('hex');
 const dataDir = app.getPath('userData');
 const resources = app.isPackaged ? process.resourcesPath : join(__dirname, 'resources');
 const uiRoot = app.isPackaged ? join(resources, 'ui') : join(__dirname, '../../frontend/ilbi/dist');
 const vaultPath = join(dataDir, 'device.vault');
+const applicationIcon = app.isPackaged ? join(resources, 'ilbi-desktop-rounded.ico') : join(__dirname, 'icon.ico');
+
+async function openGuide(event) {
+  if (event) validSender(event);
+  if (guideWindow && !guideWindow.isDestroyed()) { guideWindow.restore(); guideWindow.focus(); return true; }
+  guideWindow = new BrowserWindow({ parent: window, title: 'ILBI — Ilovani sozlash', icon: applicationIcon,
+    width: 1140, height: 880, minWidth: 760, minHeight: 600,
+    webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true } });
+  guideWindow.setMenu(null);
+  guideWindow.webContents.on('will-navigate', (navigation, url) => { if (!url.startsWith(origin + '/')) navigation.preventDefault(); });
+  guideWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  guideWindow.on('closed', () => { guideWindow = null; });
+  await guideWindow.loadURL(origin + '/desktop-guide?desktop-window=1');
+  return true;
+}
 
 async function saveVault() {
   if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')) throw Error('Tizimning maxfiy ma’lumotlar ombori ishlamayapti.');
@@ -138,10 +156,12 @@ else {
         return true;
       });
       ipcMain.handle('ilbi:pairing', exportPairing);
+      ipcMain.handle('ilbi:guide', openGuide);
       session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(permission === 'media' && contents.getURL().startsWith(origin + '/')));
       app.setAppUserModelId('uz.ilbi.desktop');
-      window = new BrowserWindow({ title: 'ILBI', icon: join(__dirname, 'icon.ico'), width: 1440, height: 960, minWidth: 900, minHeight: 650,
+      window = new BrowserWindow({ title: 'ILBI', icon: applicationIcon, width: 1440, height: 960, minWidth: 900, minHeight: 650,
         webPreferences: { preload: join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true } });
+      window.on('close', () => guideWindow?.close());
       window.webContents.on('will-navigate', (event, url) => { if (!url.startsWith(origin + '/')) event.preventDefault(); });
       window.webContents.setWindowOpenHandler(({ url }) => {
         if (url === 'about:blank' || url === '') return { action: 'allow', overrideBrowserWindowOptions: { webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } } };
@@ -149,6 +169,7 @@ else {
         return { action: 'deny' };
       });
       Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'ILBI', submenu: [
+        { label: 'Ilovani sozlash (rasmli qo‘llanma)', click: () => openGuide().catch(error => dialog.showErrorBox('ILBI', error.message)) },
         { label: 'Boshqa kassani ulash', click: () => exportPairing({ senderFrame: { url: origin + '/' } }).catch(error => dialog.showErrorBox('ILBI', error.message)) },
         { label: 'Ulanish faylini yangilash', enabled: configuration?.mode === 'client', click: async () => {
           try {

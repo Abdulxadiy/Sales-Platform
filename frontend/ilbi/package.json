@@ -12,6 +12,7 @@
     "test:auth-session": "node tests/authSession.browser.mjs",
     "test:sync": "node tests/sync.browser.mjs",
     "test:downloads": "node tests/downloads.browser.mjs",
+    "test:desktop-guide": "node tests/desktopGuide.browser.mjs",
     "test:loading": "node tests/loading.browser.mjs",
     "test:camera": "node tests/cameraScanner.browser.mjs",
     "test:labels": "node tests/productLabels.browser.mjs",

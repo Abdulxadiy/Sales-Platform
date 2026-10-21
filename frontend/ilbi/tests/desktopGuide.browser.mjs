@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { readFile, mkdtemp, writeFile } from 'node:fs/promises';
+import { extname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { launchBrowser } from './browser/chrome.mjs';
+
+const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+const artifacts = await mkdtemp(join(tmpdir(), 'ilbi-desktop-guide-'));
+const server = createServer(async (request, response) => {
+  try {
+    const path = new URL(request.url, 'http://localhost').pathname;
+    if (path.startsWith('/api/') || path.startsWith('/desktop/')) { response.writeHead(503); response.end(); return; }
+    const file = extname(path) ? resolve(dist, '.' + path) : join(dist, 'index.html');
+    assert(file.startsWith(dist));
+    let body = await readFile(file);
+    // The packaged desktop removes remote font links, so this test does the same.
+    if (extname(file) === '.html') body = Buffer.from(body.toString().replace(/<link\b[^>]*(?:fonts\.googleapis\.com|fonts\.gstatic\.com)[^>]*>/g, ''));
+    const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png' }[extname(file)];
+    response.writeHead(200, { 'Content-Type': type || 'application/octet-stream' }); response.end(body);
+  } catch { response.writeHead(404); response.end(); }
+});
+await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+const origin = `http://127.0.0.1:${server.address().port}`;
+let browser;
+try {
+  browser = await launchBrowser({ width: 1440, height: 1000 });
+  await browser.call('Network.setBlockedURLs', { urls: ['https://*'] });
+  const wait = async expression => {
+    for (let i = 0; i < 300; i++) { if (await browser.evaluate(expression)) return; await new Promise(ok => setTimeout(ok, 40)); }
+    throw Error('Guide check timed out: ' + expression);
+  };
+  await browser.call('Page.navigate', { url: origin + '/desktop-guide' });
+  await wait('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash"');
+  await wait('!document.querySelector(".ilbi-loading")');
+  assert.equal(await browser.evaluate('document.querySelectorAll(".desktop-guide-toc a").length'), 6);
+  assert.equal(await browser.evaluate('document.querySelectorAll(".doc-focus-trigger img").length'), 7);
+  await browser.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
+  assert.equal(await browser.evaluate('[...document.querySelectorAll(".doc-focus-trigger img")].every(img=>img.naturalWidth>0&&!img.src.includes("undefined"))'), true);
+  await browser.evaluate('document.querySelector(".doc-focus-trigger").click()');
+  await wait('Boolean(document.querySelector("dialog[open]"))');
+  await browser.evaluate('document.querySelector("dialog[open] button[aria-label=Kattalashtirish]").click()');
+  assert.equal(await browser.evaluate('Boolean(document.querySelector("dialog[open] img.is-zoomed"))'), true);
+  await browser.call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await browser.call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+  await wait('!document.querySelector("dialog[open]")');
+  await writeFile(join(artifacts, 'guide-desktop.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+  await browser.resize(390, 844);
+  assert.equal(await browser.evaluate('document.documentElement.scrollWidth<=innerWidth'), true);
+  await writeFile(join(artifacts, 'guide-mobile.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+  await browser.evaluate('document.querySelector(".desktop-guide-toc a:last-of-type").click()');
+  await wait('document.querySelector(".desktop-guide-article h2:last-of-type").getBoundingClientRect().top < innerHeight');
+  await browser.call('Page.reload');
+  await wait('document.querySelectorAll(".doc-focus-trigger img").length===7');
+  await browser.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
+  assert.deepEqual(browser.errors, []);
+  console.log(JSON.stringify({ passed: true, scenarios: ['built guide without cloud/backend', 'all seven bundled images', 'image zoom and Escape', 'six section anchors', 'mobile layout', 'reload without internet'], artifacts }));
+} finally { await browser?.close(); await new Promise(ok => server.close(ok)); }

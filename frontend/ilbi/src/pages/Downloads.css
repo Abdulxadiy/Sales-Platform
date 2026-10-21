@@ -29,3 +29,4 @@
 .downloads-notice { margin-top: 24px; border: 1px solid var(--border-card); padding: 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
 .downloads-notice button { display: inline-flex; align-items: center; gap: 6px; color: inherit; margin-left: 14px; text-decoration: underline; }
 @media (max-width: 680px) { .downloads-page { padding: 0 18px; } .downloads-main { padding-top: 40px; } .downloads-grid { grid-template-columns: 1fr; gap: 16px; } .downloads-card { padding: 23px; } .downloads-back { font-size: 12px; } }
+.downloads-guide-link{display:flex;align-items:center;gap:14px;padding:20px;margin-top:24px;border:1px solid var(--border-card);border-radius:14px;background:var(--bg-card);color:var(--text-primary)}.downloads-guide-link>span{flex:1;min-width:0}.downloads-guide-link strong{font-size:14px}.downloads-guide-link small{display:block;color:var(--text-secondary);font-size:12px;line-height:1.6;margin-top:5px}

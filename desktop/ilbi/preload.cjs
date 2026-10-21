@@ -4,4 +4,5 @@ contextBridge.exposeInMainWorld('ilbiDesktop', Object.freeze({
   setup: value => ipcRenderer.invoke('ilbi:setup', value),
   join: () => ipcRenderer.invoke('ilbi:join'),
   exportPairing: () => ipcRenderer.invoke('ilbi:pairing'),
+  openGuide: () => ipcRenderer.invoke('ilbi:guide'),
 }));

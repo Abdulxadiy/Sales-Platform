@@ -66,13 +66,14 @@ Section "ILBI"
   FileClose $R0
   WriteUninstaller "$INSTDIR\Uninstall ILBI.exe"
   CreateDirectory "$SMPROGRAMS\ILBI"
-  CreateShortcut "$SMPROGRAMS\ILBI\ILBI.lnk" "$INSTDIR\ILBI.exe"
-  CreateShortcut "$DESKTOP\ILBI.lnk" "$INSTDIR\ILBI.exe"
+  CreateShortcut "$SMPROGRAMS\ILBI\ILBI.lnk" "$INSTDIR\ILBI.exe" "" "$INSTDIR\resources\ilbi-desktop-rounded.ico" 0
+  CreateShortcut "$DESKTOP\ILBI.lnk" "$INSTDIR\ILBI.exe" "" "$INSTDIR\resources\ilbi-desktop-rounded.ico" 0
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   WriteRegStr HKCU "Software\ILBI\Desktop" "InstallDir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "DisplayName" "ILBI"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "Publisher" "ILBI"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "DisplayIcon" "$INSTDIR\ILBI.exe"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "DisplayIcon" "$INSTDIR\resources\ilbi-desktop-rounded.ico"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "UninstallString" '"$INSTDIR\Uninstall ILBI.exe"'
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ILBI" "NoRepair" 1

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Download, Monitor, RefreshCw, Smartphone } from 'lucide-react';
+import { ArrowLeft, BookOpen, Download, RefreshCw, Smartphone } from 'lucide-react';
 import IlbiLogo from '../components/common/IlbiLogo';
 import { desktopRequest } from '../components/sync/desktopApi';
 import { useAuth } from '../hooks/useAuth';
@@ -51,7 +51,7 @@ export default function Downloads() {
       {state.error && <div className="downloads-notice" role="status">Yuklab olish ma’lumotlarini hozircha olib bo‘lmadi. Internetga ulanishni tekshiring.
         <button type="button" onClick={() => setAttempt(value => value + 1)}><RefreshCw size={15} />Qayta tekshirish</button></div>}
       <div className="downloads-grid">
-        <article className="downloads-card"><div className="downloads-platform-icon"><Monitor size={27} /></div>
+        <article className="downloads-card"><div className="downloads-platform-icon"><img src="/brand/ilbi-desktop.svg" width="52" height="52" alt="ILBI ilovasi belgisi" /></div>
           <div className="downloads-card-heading"><h2>Windows uchun ILBI</h2><span>v{windows?.version || version}</span></div>
           <p>Klassik va Tezkor ish stoli. Savdo, ombor, nasiya va sinxronlash navbati bir dasturda.</p>
           <div className="downloads-details"><span>Windows · 64 bit</span>{releaseSize(windows?.bytes) && <span>{releaseSize(windows.bytes)}</span>}{windowsURL && windows?.channel === 'preview' && <span className="downloads-preview">Sinov nusxasi</span>}</div>
@@ -71,6 +71,7 @@ export default function Downloads() {
       <section className="downloads-help" aria-labelledby="download-start"><h2 id="download-start">Birinchi ishga tushirish</h2>
         <ol><li>ILBI’ni o‘rnating va asosiy kompyuterni tanlang.</li><li>Internet orqali do‘kon egasi hisobiga kirib, offline ishlashni tayyorlang.</li><li>Qo‘shimcha kassalarni asosiy kompyuterga mahalliy tarmoq orqali ulang.</li></ol>
         <p>Qo‘shimcha kassalar uchun asosiy kompyuter yoqilgan bo‘lishi kerak. Offline ruxsat internet orqali yangilanib turadi; uning muddati 7 kun.</p>
+        <Link className="downloads-guide-link" to="/desktop-guide"><BookOpen size={19} /><span><strong>Ilovani sozlash — rasmli qo‘llanma</strong><small>Birinchi kirish, offline parol, sinxronlash va qo‘shimcha kassalar.</small></span><ArrowLeft size={17} style={{ transform: 'rotate(180deg)' }} /></Link>
       </section>
     </main>
     <footer className="downloads-footer"><span>ILBI · v{version}</span><Link to="/support">Yordam markazi</Link><Link to="/login">Tizimga kirish</Link></footer>

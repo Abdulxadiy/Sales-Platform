@@ -10,7 +10,11 @@ UNSET = object()
 
 
 def set_debt_due_date(counterparty, value):
-    if value is not UNSET and value != counterparty.debt_due_date:
+    if value is UNSET:
+        return
+    from apps.desktop_sync.protocol import protect_replacement
+    protect_replacement(counterparty, 'debt_due_date')
+    if value != counterparty.debt_due_date:
         counterparty.debt_due_date = value
         counterparty.last_notified_debt_due_date = None
 

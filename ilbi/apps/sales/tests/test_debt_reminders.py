@@ -176,3 +176,19 @@ def test_legacy_checkout_keeps_deadline_and_full_void_clears_it(client, tenant, 
     cp.refresh_from_db()
     assert cp.debt_balance_uzs == 0
     assert cp.debt_due_date is None
+
+
+@pytest.mark.parametrize('selected', [None, date(2035, 3, 15)])
+def test_checkout_protects_an_explicit_unchanged_deadline(client, tenant, owner, selected):
+    from apps.desktop_sync.protocol import preconditions, record_changes
+    variant = ProductVariantFactory(tenant=tenant, product__tenant=tenant, product__category__tenant=tenant)
+    StockService.intake(tenant=tenant, product_variant=variant, quantity=Decimal('2'), cost_price=Decimal('1'), created_by=owner)
+    cp = CounterpartyFactory(tenant=tenant, debt_due_date=selected)
+    expected = selected.isoformat() if selected else None
+    payload = {'items': [{'product_variant_id': variant.pk, 'quantity': '1', 'unit_price': str(variant.price_recommended)}],
+               'payment_type': 'debt', 'counterparty_id': cp.pk, 'debt_due_date': expected}
+    with record_changes() as changes:
+        result = client.post('/api/v1/sales/', payload, format='json')
+    assert result.status_code == 201
+    condition = next(row for row in preconditions(changes) if row['model'] == 'sales.counterparty')
+    assert condition == {'model': 'sales.counterparty', 'id': cp.pk, 'fields': {'debt_due_date': expected}}

@@ -91,6 +91,38 @@ def test_offline_date_edits_protect_web_changes_but_ignore_notification_bookkeep
     assert preconditions(bookkeeping) == []
 
 
+@pytest.mark.parametrize('selected_date', [None, '2035-03-15'])
+def test_explicit_unchanged_debt_date_still_guards_against_a_web_replacement(owner, tenant, device, selected_date):
+    from datetime import date
+    from apps.sales.services import CounterpartyService
+    from apps.desktop_sync.protocol import preconditions, record_changes
+    selected = date.fromisoformat(selected_date) if selected_date else None
+    cp = CounterpartyFactory(tenant=tenant, debt_due_date=selected, debt_balance_uzs=100)
+    with record_changes() as changes:
+        CounterpartyService.update(cp, debt_due_date=selected)
+    expected = [{'model': 'sales.counterparty', 'id': cp.pk, 'fields': {'debt_due_date': selected_date}}]
+    assert preconditions(changes) == expected
+    CounterpartyService.update(cp, debt_due_date=date(2035, 4, 1))
+    payload = command(device, path=f'sales/counterparties/{cp.pk}/', method='PATCH',
+                      body={'debt_due_date': selected_date}, preconditions=expected)
+    with pytest.raises(SyncConflict):
+        apply_operation(owner, device.pk, payload)
+    cp.refresh_from_db()
+    assert cp.debt_due_date == date(2035, 4, 1)
+
+
+def test_financial_settlement_does_not_add_a_schedule_conflict(owner, tenant):
+    from decimal import Decimal
+    from apps.sales.services import DebtService
+    from apps.desktop_sync.protocol import preconditions, record_changes
+    cp = CounterpartyFactory(tenant=tenant, debt_due_date=timezone.localdate(), debt_balance_uzs=100)
+    with record_changes() as changes:
+        DebtService.record_payment(counterparty=cp, amount=Decimal('100'), currency='UZS', recorded_by=owner)
+    assert preconditions(changes) == []
+    cp.refresh_from_db()
+    assert cp.debt_due_date is None
+
+
 def test_lost_ack_replay_is_exactly_once(owner, tenant, device):
     payload = command(device, created=[{"model": "sales.counterparty", "id": LOCAL_ID_START, "fields": {}}])
     first = apply_operation(owner, device.pk, payload)

@@ -85,6 +85,14 @@ def tracked(sender):
     return sender._meta.app_label in DOMAIN_APPS and sender._meta.model_name not in {"notification", "auditlog"}
 
 
+def protect_replacement(instance, field):
+    """An explicit replacement must also guard an unchanged local value."""
+    ctx = capture.get()
+    if ctx is not None and instance.pk:
+        key = f'{instance._meta.label_lower}:{instance.pk}'
+        ctx.setdefault('protected', {}).setdefault(key, {}).setdefault(field, json_value(getattr(instance, field)))
+
+
 def before_save(sender, instance, raw=False, **kwargs):
     ctx = capture.get()
     if raw or ctx is None or not tracked(sender):
@@ -161,15 +169,16 @@ def preconditions(ctx):
         current = apps.get_model(label).objects.filter(pk=pk).first()
         if current is None:
             fields = {
-                k: v for k, v in previous.items() if k not in excluded and not k.startswith(("debt_balance_", "last_notified_"))
+                k: v for k, v in previous.items() if k not in excluded and not k.startswith(("debt_", "last_notified_"))
             }
         else:
             now = state(current)
             fields = {
                 k: v
                 for k, v in previous.items()
-                if k not in excluded and now.get(k) != v and not k.startswith(("debt_balance_", "last_notified_"))
+                if k not in excluded and now.get(k) != v and not k.startswith(("debt_", "last_notified_"))
             }
+        fields.update(ctx.get('protected', {}).get(key, {}))
         if fields:
             result.append({"model": label, "id": int(pk), "fields": fields})
     return result

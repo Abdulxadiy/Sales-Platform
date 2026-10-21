@@ -46,7 +46,10 @@ jobs:
             $icon = [System.Drawing.Icon]::new($iconPath, [System.Drawing.Size]::new(256, 256))
             $bitmap = $icon.ToBitmap()
             try {
-              foreach ($point in @(@(0,0), @(255,0), @(0,255), @(255,255))) {
+              Write-Host "Windows icon dimensions: $($bitmap.Width)x$($bitmap.Height)"
+              $right = $bitmap.Width - 1
+              $bottom = $bitmap.Height - 1
+              foreach ($point in @(@(0,0), @($right,0), @(0,$bottom), @($right,$bottom))) {
                 if ($bitmap.GetPixel($point[0], $point[1]).A -ne 0) { throw 'Icon corners are not transparent' }
               }
             } finally { $bitmap.Dispose(); $icon.Dispose() }

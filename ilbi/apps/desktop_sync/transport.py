@@ -1,0 +1,75 @@
+"""Bounded HTTPS transport; a completed upload is distinct from cloud acceptance."""
+import json
+import os
+from pathlib import Path
+from urllib.parse import urlparse
+
+import requests
+from cryptography.fernet import Fernet
+from django.conf import settings
+from django.core.serializers.json import DjangoJSONEncoder
+
+from .local import activity
+
+
+def server_url(value):
+    parsed = urlparse(value)
+    local = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    if parsed.scheme != "https" and not (local and parsed.scheme == "http"):
+        raise ValueError("Server uchun HTTPS manzil kerak.")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
+        raise ValueError("Serverning asosiy manzilini kiriting, masalan https://ilbi.uz")
+    return value.rstrip("/")
+
+
+class Vault:
+    def __init__(self):
+        self.path = Path(settings.DESKTOP_DATA_DIR) / "cloud.credentials"
+        self.cipher = Fernet(os.environ["ILBI_DESKTOP_VAULT_KEY"].encode())
+
+    def read(self):
+        return json.loads(self.cipher.decrypt(self.path.read_bytes())) if self.path.exists() else {}
+
+    def write(self, value):
+        temporary = self.path.with_suffix(".new")
+        temporary.write_bytes(self.cipher.encrypt(json.dumps(value).encode()))
+        temporary.chmod(0o600)
+        temporary.replace(self.path)
+
+
+class UploadBody:
+    def __init__(self, data):
+        self.data = data
+
+    def __len__(self):
+        return len(self.data)
+
+    def __iter__(self):
+        for offset in range(0, len(self.data), 32768):
+            chunk = self.data[offset:offset + 32768]
+            activity["progress"] = round(min(len(self.data), offset + len(chunk)) / len(self.data) * 100)
+            yield chunk
+        activity["stage"] = "confirming"
+
+
+def cloud_request(method, path, *, body=None, progress=False, headers=None):
+    vault = Vault()
+    credentials = vault.read()
+    base = server_url(credentials["server"])
+    auth = {"Authorization": "Bearer " + credentials["access"], **(headers or {})}
+    kwargs = {"timeout": (5, 45), "allow_redirects": False, "headers": auth}
+    if body is not None:
+        data = json.dumps(body, cls=DjangoJSONEncoder).encode()
+        kwargs["data"] = UploadBody(data) if progress else data
+        kwargs["headers"]["Content-Type"] = "application/json"
+        kwargs["headers"]["Content-Length"] = str(len(data))
+    response = requests.request(method, base + "/api/v1/" + path, **kwargs)
+    if response.status_code == 401 and credentials.get("refresh"):
+        refreshed = requests.post(base + "/api/v1/auth/token/refresh/", json={"refresh": credentials["refresh"]},
+                                  timeout=(5, 20), allow_redirects=False)
+        if refreshed.ok:
+            credentials.update(refreshed.json())
+            vault.write(credentials)
+            kwargs["headers"]["Authorization"] = "Bearer " + credentials["access"]
+            response = requests.request(method, base + "/api/v1/" + path, **kwargs)
+    return response

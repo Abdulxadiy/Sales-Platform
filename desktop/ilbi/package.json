@@ -1,0 +1,33 @@
+{
+  "name": "ilbi-desktop",
+  "version": "1.2.0",
+  "private": true,
+  "description": "ILBI offline savdo dasturi",
+  "author": "ILBI",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "build:ui": "npm --prefix ../../frontend/ilbi run build",
+    "dist:win": "npm run build:ui && electron-builder --win nsis --x64",
+    "pack": "npm run build:ui && electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "44.9.3",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "uz.ilbi.desktop",
+    "productName": "ILBI",
+    "artifactName": "ILBI-Setup-${version}-${arch}.${ext}",
+    "directories": { "output": "release" },
+    "files": ["main.cjs", "runtime.cjs", "preload.cjs", "setup.html", "setup.js", "setup.css"],
+    "extraResources": [
+      { "from": "../../frontend/ilbi/dist", "to": "ui" },
+      { "from": "resources/backend", "to": "backend" },
+      { "from": "resources/postgres", "to": "postgres" }
+    ],
+    "win": { "target": "nsis", "requestedExecutionLevel": "asInvoker" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "deleteAppDataOnUninstall": false }
+  }
+}

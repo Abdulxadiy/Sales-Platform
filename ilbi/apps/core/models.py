@@ -1,10 +1,11 @@
 from django.db import models
+from .event_clock import EventDateTimeField
 
 
 class BaseModel(models.Model):
     tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = EventDateTimeField(auto_now_add=True)
+    updated_at = EventDateTimeField(auto_now=True)
 
     class Meta:
         abstract = True

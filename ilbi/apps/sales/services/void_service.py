@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
-from django.utils import timezone
+from apps.core import event_clock as timezone
 
 from apps.inventory.services import StockService
 from apps.sales.models import Sale, SaleItem, SaleVoidLog

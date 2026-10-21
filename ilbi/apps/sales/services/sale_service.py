@@ -4,7 +4,7 @@ from collections import defaultdict
 import hashlib
 import json
 from django.db import transaction
-from django.utils import timezone
+from apps.core import event_clock as timezone
 from django.conf import settings
 
 from apps.catalog.models import ProductVariant
@@ -38,12 +38,19 @@ class SaleService:
 
     @staticmethod
     def _next_receipt_number(tenant) -> str:
+        from apps.desktop_sync.protocol import receipt_hint
+        if receipt_hint.get():
+            return receipt_hint.get()["receipt_number"]
         from apps.tenants.models import Tenant
         # Row-level lock on tenant serializes receipt number generation per tenant
         tenant = Tenant.objects.select_for_update(of=("self",)).select_related("seller_profile").get(pk=tenant.pk)
 
         today_str = timezone.localtime().strftime('%Y%m%d')
         prefix = f"POS-{today_str}-"
+        if getattr(settings, "DESKTOP_MODE", False):
+            from apps.desktop_sync.local import get_state
+            device = get_state("device")
+            prefix = f"O{device['device_id'].replace('-', '')[:6]}-{today_str}-"
         
         last_sale = (
             Sale.objects.filter(tenant=tenant, receipt_number__startswith=prefix)

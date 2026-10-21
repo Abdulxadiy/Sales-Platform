@@ -237,6 +237,9 @@ staticfiles/
 
 # Frontend
 node_modules/
+desktop/ilbi/resources/backend/
+desktop/ilbi/resources/postgres/
+desktop/ilbi/release/
 dist/
 dist_docker/
 .vite/

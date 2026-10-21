@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.db.models import F, Sum
-from django.utils import timezone
+from apps.core import event_clock as timezone
 
 from apps.inventory.models import BatchAllocation, StockBatch, StockMovement
 

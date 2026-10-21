@@ -11,6 +11,7 @@ import Modal from '../components/common/Modal';
 import IlbiLogo from '../components/common/IlbiLogo';
 import IlbiIntroAnimation from '../components/common/IlbiIntroAnimation';
 import TelegramConnectionGate from '../components/auth/TelegramConnectionGate';
+import DesktopAccess from '../components/sync/DesktopAccess';
 
 const OTP_EXPIRY_SECONDS = 180; // 3 daqiqa
 
@@ -422,6 +423,7 @@ export default function Login() {
           </div>
         )}
 
+        <DesktopAccess />
         {step === 1 ? (
           <form onSubmit={handleStep1} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>

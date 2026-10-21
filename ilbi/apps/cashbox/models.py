@@ -1,3 +1,4 @@
+from apps.core.event_clock import EventDateTimeField
 from decimal import Decimal
 
 from django.db import models
@@ -31,7 +32,7 @@ class DailyCashReport(BaseModel):
     closed_by = models.ForeignKey(
         'accounts.User', on_delete=models.PROTECT, related_name='closed_shifts'
     )
-    closed_at = models.DateTimeField(auto_now_add=True)
+    closed_at = EventDateTimeField(auto_now_add=True)
 
     # Savdo tushumlari
     total_sale_cash_uzs = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal('0.00'))

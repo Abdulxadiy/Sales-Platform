@@ -25,9 +25,18 @@ class SyncReceipt(models.Model):
         constraints = [models.UniqueConstraint(fields=["device", "operation_id"], name="sync_receipt_device_operation")]
 
 
+class SyncActor(models.Model):
+    device = models.ForeignKey(SyncDevice, on_delete=models.CASCADE)
+    user_id = models.BigIntegerField()
+    token_version = models.PositiveIntegerField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["device", "user_id"], name="sync_actor_device_user")]
+
+
 class LocalOperation(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    sequence = models.BigAutoField(unique=True)
+    id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    sequence = models.BigAutoField(primary_key=True)
     user_id = models.BigIntegerField()
     tenant_id = models.BigIntegerField()
     title = models.CharField(max_length=200)

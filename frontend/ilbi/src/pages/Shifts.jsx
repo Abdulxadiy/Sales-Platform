@@ -25,6 +25,7 @@ import { useTenant } from '../context/TenantContext';
 import ShiftReportSlip from '../components/common/ShiftReportSlip';
 import ZReportModernView from '../components/common/ZReportModernView';
 import { printReceiptSlip } from '../components/common/ReceiptSlip';
+import ShareDocumentButton from '../components/common/ShareDocumentButton';
 import usePersistedState from '../hooks/usePersistedState';
 
 const expenseStorageKey = (tenantId) => `ilbi_custom_expense_categories:${tenantId || 'pending'}`;
@@ -1250,6 +1251,9 @@ export default function Shifts() {
       >
         {selectedReportDetail && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <ShareDocumentButton elementId="printable-z-report" title={`ILBI Z-Hisobot ${selectedReportDetail.id}`} paperWidth={receiptPaperWidth} />
+            </div>
             {reportViewMode === 'modern' ? (
               <ZReportModernView
                 report={selectedReportDetail}

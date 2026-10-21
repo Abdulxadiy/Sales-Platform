@@ -15,6 +15,7 @@ import Pagination from '../components/common/Pagination';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
+import ShareDocumentButton from '../components/common/ShareDocumentButton';
 import './History.css';
 
 const categories = [
@@ -97,6 +98,7 @@ function HistoryDetail({ event, data, loading, error, onRetry }) {
           {['58mm', '80mm'].map(width => <button key={width} className={paperWidth === width ? 'is-active' : ''} onClick={() => setPaperWidth(width)}>{width.replace('mm', ' mm')}</button>)}
         </div>
         <div className="history-receipt-actions">
+          <ShareDocumentButton elementId="history-receipt" title={`ILBI Chek ${data.sale.receipt_number || ''}`} sales={[data.sale]} paperWidth={paperWidth} />
           <button className="btn btn-secondary" onClick={() => setInvoice(true)}><FileText size={15} />A4 ko‘rinish</button>
           <button className="btn btn-primary" onClick={() => printReceiptSlip('history-receipt', 'ILBI Savdo Cheki', paperWidth)}><Printer size={15} />Chop etish</button>
         </div>

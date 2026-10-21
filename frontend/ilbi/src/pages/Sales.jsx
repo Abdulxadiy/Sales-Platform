@@ -21,6 +21,7 @@ import Modal from '../components/common/Modal';
 import ExcelExportButton from '../components/common/ExcelExportButton';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
+import ShareDocumentButton from '../components/common/ShareDocumentButton';
 import CustomSelect from '../components/common/CustomSelect';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 import Pagination from '../components/common/Pagination';
@@ -1018,9 +1019,15 @@ export default function Sales() {
 
             {/* Modal Bottom Actions */}
             <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 10 }}>
+              <ShareDocumentButton
+                elementId="printable-receipt"
+                title={`ILBI Chek ${selectedSaleDetail.receipt_number || ''}`}
+                sales={[selectedSaleDetail]}
+                paperWidth={receiptPaperWidth}
+              />
               <button
                 type="button"
-                onClick={() => printReceiptSlip('printable-receipt', receiptPaperWidth)}
+                onClick={() => printReceiptSlip('printable-receipt', 'ILBI Savdo Cheki', receiptPaperWidth)}
                 style={{
                   padding: '9px 18px',
                   borderRadius: 'var(--radius-sm)',

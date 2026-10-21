@@ -11,6 +11,7 @@ import {
   Lock,
 } from 'lucide-react';
 import Modal from './Modal';
+import ShareDocumentButton from './ShareDocumentButton';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import { numberToWordsUzbek } from '../../utils/numberToWordsUzbek';
@@ -621,6 +622,12 @@ export default function InvoiceA4Modal({
                 <span>Ekranda elektron imzolash</span>
               </button>
             )}
+
+            <ShareDocumentButton
+              elementId="printable-invoice-a4"
+              title={`Hisob-faktura ${invoiceNumber}`}
+              format="invoice"
+            />
 
             <button
               type="button"

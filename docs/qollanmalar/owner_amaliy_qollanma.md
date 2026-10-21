@@ -79,6 +79,10 @@ Bu misol demo muhitidan. Hozir production POS fiskal integratsiya tayyor bo‘lg
 
 **Savdolar**dan chek tafsilotini ochish, chiqarish va tegishli vakolat bilan 7 kun ichida sababli to‘liq/qisman qaytarish mumkin. Xatoda yangi savdo kiritishdan oldin tarixni tekshiring.
 
+Kassa, **Savdolar**, **Tarix** va A4 fakturada **Ulashish** tugmasi mavjud. Webda chek havolasini nusxalang yoki brauzer qo‘llasa ilova orqali ulashing. **PDF faylini yuklab olish** hujjatni bevosita brauzerdan yuklab beradi. Ochiq elektron chek sahifasida ham **PDF yuklab olish** tugmasi mavjud. Windows/Linux ilovasida **PDF faylini saqlash** orqali fayl tanlangan joyga saqlanadi; tayyor faylni boshqa ilovaga biriktirib ulashing. Fakturadagi qo‘yilgan imzolar PDF nusxasiga ham kiradi.
+
+Offline chek havolasi serverga sinxronlangandan keyin ishlaydi. Hali yuborilmagan chek yoki internet bo‘lmaganda PDF nusxasini saqlash mumkin.
+
 ## 7. Qarz to‘lovi
 
 **Qarzlar**dan mijozni topib **Qarz To‘lash**ni bosing.
@@ -96,6 +100,8 @@ Bu misol demo muhitidan. Hozir production POS fiskal integratsiya tayyor bo‘lg
 
 1. Kassadagi haqiqiy naqdni sanab kiriting. Tafovut chiqsa sababini yozing.
 2. **Smenani Yopish & Z-Chek**ni bosing va hisobotni tekshiring. Telegramga yuborish do‘kon sozlamalariga bog‘liq.
+
+Ochilgan Z-hisobotdagi **Ulashish** orqali uning PDF nusxasini ham saqlash mumkin.
 
 ## 9. Xodim va yordam
 

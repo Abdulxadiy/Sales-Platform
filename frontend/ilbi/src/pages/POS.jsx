@@ -31,6 +31,7 @@ import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
 import InvoiceA4Modal from '../components/common/InvoiceA4Modal';
+import ShareDocumentButton from '../components/common/ShareDocumentButton';
 import CameraBarcodeScanner from '../components/common/CameraBarcodeScanner';
 import Pagination from '../components/common/Pagination';
 import PriceInput from '../components/common/PriceInput';
@@ -2271,6 +2272,12 @@ export default function POS() {
           </div>
 
           <div className="no-print" style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <ShareDocumentButton
+              elementId="printable-pos-receipt"
+              title={`ILBI Chek ${completedSales?.[0]?.receipt_number || ''}`}
+              sales={completedSales}
+              paperWidth={receiptPaperWidth}
+            />
             <button
               type="button"
               onClick={() => printReceiptSlip('printable-pos-receipt', 'ILBI Savdo Cheki', receiptPaperWidth)}

@@ -17,6 +17,7 @@
     "test:camera": "node tests/cameraScanner.browser.mjs",
     "test:labels": "node tests/productLabels.browser.mjs",
     "test:receipts": "node tests/receiptSettings.browser.mjs",
+    "test:document-share": "node tests/documentShare.browser.mjs",
     "test:currency": "node tests/currencySettings.browser.mjs",
     "test:history": "node tests/history.browser.mjs",
     "test:counterparty-import": "node tests/counterpartyImport.browser.mjs",
@@ -30,7 +31,9 @@
   },
   "dependencies": {
     "@zxing/library": "^0.21.3",
+    "html2canvas": "1.4.1",
     "jsbarcode": "^3.12.3",
+    "jspdf": "4.2.1",
     "lucide-react": "^1.48.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

@@ -6,7 +6,6 @@ import {
   Printer,
   Download,
   CheckCircle,
-  Share2,
   CreditCard,
   AlertTriangle,
   Store,
@@ -15,13 +14,16 @@ import { salesApi } from '../api/client';
 import IlbiLogo from '../components/common/IlbiLogo';
 import ReceiptTaxSummary from '../components/common/ReceiptTaxSummary';
 import ReceiptItemCodes from '../components/common/ReceiptItemCodes';
+import ShareDocumentButton from '../components/common/ShareDocumentButton';
+import { saveSharedDocument } from '../utils/documentShare';
 
 export default function PublicReceiptView() {
   const { token } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [receipt, setReceipt] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
 
   useEffect(() => {
     if (!token) {
@@ -49,12 +51,12 @@ export default function PublicReceiptView() {
     window.print();
   };
 
-  const handleCopyLink = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
+  const handleDownload = async () => {
+    setDownloading(true); setDownloadError('');
+    try {
+      await saveSharedDocument({ elementId: 'public-receipt-document', title: `ILBI Chek ${receipt.receipt_number || ''}`, paperWidth: '80mm' });
+    } catch (failure) { setDownloadError(failure.message || 'PDF faylini yuklab bo‘lmadi. Qayta urinib ko‘ring.'); }
+    finally { setDownloading(false); }
   };
 
   const formatDate = (dateStr) => {
@@ -148,31 +150,14 @@ export default function PublicReceiptView() {
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Savdo nusxasi</span>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={handleCopyLink}
-            title="Chek havolasini nusxalash"
-            style={{
-              padding: '8px 14px',
-              borderRadius: 8,
-              border: '1px solid var(--border-card)',
-              background: 'var(--bg-card)',
-              color: 'var(--text-primary)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <Share2 size={15} />
-            <span>{copied ? 'Nusxalandi!' : 'Ulashish'}</span>
-          </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <ShareDocumentButton elementId="public-receipt-document" title={`ILBI Chek ${receipt.receipt_number || ''}`} sales={[{ public_token: token }]} paperWidth="80mm" />
 
           <button
-            onClick={handlePrint}
-            title="PDF formatida saqlash yoki chop etish"
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            title="Chekning PDF nusxasini yuklab olish"
             style={{
               padding: '8px 18px',
               borderRadius: 8,
@@ -189,13 +174,15 @@ export default function PublicReceiptView() {
             }}
           >
             <Download size={15} />
-            <span>PDF yuklab olish</span>
+            <span>{downloading ? 'PDF tayyorlanmoqda…' : 'PDF yuklab olish'}</span>
           </button>
         </div>
       </div>
+      {downloadError && <p role="alert" className="no-print" style={{ maxWidth: 520, margin: '0 auto 16px', color: 'var(--accent-rose)', fontSize: 13 }}>{downloadError}</p>}
 
       {/* Customer copy of the sale record; this is not a fiscal receipt. */}
       <div
+        id="public-receipt-document"
         className="public-receipt-container"
         data-print-surface="paper"
         style={{
@@ -365,7 +352,7 @@ export default function PublicReceiptView() {
           }}
         >
           <Printer size={18} />
-          <span>Chekni PDF Saqlash / Chop etish</span>
+          <span>Chekni chop etish</span>
         </button>
       </div>
     </div>

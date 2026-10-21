@@ -7,6 +7,7 @@ const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
 const { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
 const { configureSecretStore, serveReleases } = require('./services.cjs');
+const { saveDocumentPDF, receiptShareLinks } = require('./document-sharing.cjs');
 configureSecretStore(app);
 app.setName('ILBI');
 if (process.platform === 'linux') app.setDesktopName('uz.ilbi.desktop.desktop');
@@ -14,6 +15,7 @@ if (process.platform === 'linux') app.setDesktopName('uz.ilbi.desktop.desktop');
 let window, guideWindow, localHost, lanServer, webServer, origin, configuration, secrets;
 let quitting = false;
 let setupBusy = false;
+let documentExportBusy = false;
 const bridgeKey = randomBytes(32).toString('hex');
 const dataDir = app.getPath('userData');
 const resources = app.isPackaged ? process.resourcesPath : join(__dirname, process.platform === 'linux' ? 'resources-linux' : 'resources');
@@ -195,6 +197,21 @@ else {
       ipcMain.handle('ilbi:pairing', exportPairing);
       ipcMain.handle('ilbi:guide', openGuide);
       ipcMain.handle('ilbi:downloads', event => { validSender(event); return shell.openExternal(OFFICIAL_SERVER + '/download'); });
+      const validDocumentSender = event => {
+        validSender(event);
+        if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame) throw Error('So‘rov manbasi tasdiqlanmadi.');
+      };
+      ipcMain.handle('ilbi:receipt-share-links', (event, tokens) => {
+        validDocumentSender(event);
+        return receiptShareLinks(tokens, (...args) => net.fetch(...args));
+      });
+      ipcMain.handle('ilbi:document-pdf', async (event, document) => {
+        validDocumentSender(event);
+        if (documentExportBusy) throw Error('Boshqa PDF tayyorlanmoqda. Biroz kuting.');
+        documentExportBusy = true;
+        try { return await saveDocumentPDF({ document, parent: window, BrowserWindow, dialog }); }
+        finally { documentExportBusy = false; }
+      });
       session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => callback(permission === 'media' && contents.getURL().startsWith(origin + '/')));
       app.setAppUserModelId('uz.ilbi.desktop');
       window = new BrowserWindow({ title: 'ILBI', icon: applicationIcon, width: 1440, height: 960, minWidth: 900, minHeight: 650,

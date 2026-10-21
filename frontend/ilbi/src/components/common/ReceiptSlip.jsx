@@ -5,6 +5,7 @@ import IlbiLogo from './IlbiLogo';
 import { useAuth } from '../../hooks/useAuth';
 import ReceiptTaxSummary from './ReceiptTaxSummary';
 import ReceiptItemCodes from './ReceiptItemCodes';
+import { receiptShareURL } from '../../utils/documentShare';
 
 /**
  * High-resolution QR Code generator optimized for thermal printer heads (203 DPI)
@@ -672,11 +673,7 @@ export default function ReceiptSlip({
               {/* QR Code (Has dashed border frame!) */}
               {showQrCode && sale?.public_token && (
                 <ReceiptQRCode
-                  value={
-                    typeof window !== 'undefined'
-                      ? `${window.location.origin}/r/${sale?.public_token || ''}`
-                      : `https://ilbi.uz/r/${sale?.public_token || ''}`
-                  }
+                  value={receiptShareURL(sale.public_token) || ''}
                   size={is58mm ? 84 : 105}
                 />
               )}

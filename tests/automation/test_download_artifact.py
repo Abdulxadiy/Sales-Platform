@@ -42,6 +42,18 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "integrity"):
             verifier.verify(self.folder)
 
+    def test_immutable_download_matches_exact_tested_commit(self):
+        commit = "a" * 40
+        (self.folder / "downloads" / commit).mkdir()
+        self.installer.rename(self.folder / "downloads" / commit / self.name)
+        self.feed["windows"]["url"] = f"/downloads/{commit}/{self.name}"
+        self.feed["windows"]["sourceCommit"] = commit
+        self.manifest["sourceCommit"] = commit
+        self.save()
+        self.assertEqual(verifier.verify(self.folder, commit), self.name)
+        with self.assertRaisesRegex(ValueError, "source commit"):
+            verifier.verify(self.folder, "b" * 40)
+
     def test_missing_native_test_or_wrong_version_is_rejected(self):
         for field, value in (("nativeWindowsServiceVerified", False), ("version", "0.0.0")):
             with self.subTest(field=field):

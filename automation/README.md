@@ -1,47 +1,40 @@
-# Saqlangan kodni main va serverga avtomatik chiqarish
+# GitHub orqali avtomatik deploy
 
-Kod saqlangach 8 soniya davomida boshqa o‘zgarish kelmasa, lokal xizmat bitta haqiqiy commit yaratib to‘g‘ridan to‘g‘ri `main`ga push qiladi. Kunlik vaqt, commit soni chegarasi va chiqarish navbati yo‘q. Bir necha faylni ketma-ket saqlash bitta commitga birlashadi. IDE’da hali saqlanmagan matn yuborilmaydi.
-
-Oqim: **Save → main → GitHub CI → Windows paketi va tekshiruvlar → production deploy**. CI/backend/frontend/Windows tekshiruvlari muvaffaqiyatli tugagach GHCR imagelari va tekshirilgan Windows o‘rnatuvchisi serverga avtomatik yetkaziladi. Test xatosida server oldingi chiqarishda qoladi; xatoni lokal tuzatib saqlash yangi urinishni boshlaydi. Yangi push oldingi CI’ni bekor qiladi, serverga o‘tishdan oldin commit hali ham eng yangi main ekanligi tekshiriladi.
-
-## Ushbu kompyuter
-
-`ilbi-auto-publish.service` foydalanuvchi sessiyasida avtomatik ishlaydi. Internet bo‘lmasa o‘zgarishlar diskda qoladi va ulanish qaytgach qayta yuboriladi. Kompyuter o‘chiq bo‘lganda lokal fayllarni yuborish imkoni yo‘q; GitHubga yuborilgan CI/deploy kompyutersiz davom etadi.
+Lokal fayllarni saqlash GitHub’ga hech narsa yubormaydi. Kuzatuvchi xizmat, kunlik chiqarish jadvali va commit soni cheklovlari olib tashlangan. Tayyor o‘zgarishni main’ga odatiy Git buyruqlari yoki IDE Source Control orqali yuboring:
 
 ```bash
-python3 scripts/auto_publish.py status
-systemctl --user status ilbi-auto-publish.service
-journalctl --user -u ilbi-auto-publish.service -n 30
+git status
+# Faqat chiqarishga tayyor fayllarni tanlang:
+git add README.md
+# Zarur bo‘lsa boshqa tayyor fayllarni ham qo‘shing.
+git commit -m "fix: o‘zgarish tavsifi"
+git push origin main
 ```
 
-Qo‘lda tez yuborish:
+Oqim: **main push → GitHub CI → Windows paketini tekshirish → production deploy**. IDE’da saqlash va commit yaratishning o‘zi serverni yangilamaydi. Internetga yuborish uchun push kerak. Har bir qator alohida jo‘natilmaydi; bitta commitda bir necha fayl bo‘lishi mumkin.
+
+## Avtomatik tekshiruv va server yangilanishi
+
+CI backend/frontend/bot testlari, dependency auditi, production HTTPS/backup chegaralari va Windows paketini tekshiradi. Windows runner paketni yig‘adi, o‘rnatadi, ichki servisni ishga tushirib tekshiradi va o‘chirib ko‘radi.
+
+- Yangi main push avvalgi tugamagan CI’ni bekor qiladi.
+- Eskirib qolgan CI natijasi Docker imagelarini yig‘ishdan oldin ham, serverga uzatishdan oldin ham tekshiriladi.
+- Serverda deploylar parallel ishlamaydi. Har chiqarishda backup → migratsiya/start → healthcheck bajariladi.
+- Test muvaffaqiyatsiz bo‘lsa server oldingi chiqarishda qoladi; tuzatishni yangi commit/push bilan yuboring.
+- Installer aynan tekshirilgan commit/SHA256 bilan tekshiriladi. Har build uchun o‘zgarmas alohida URL ishlatiladi; fayl avval to‘liq uzatiladi, download feed ilova sog‘lom ishga tushgandan keyin atomik yangilanadi.
+- Serverda oxirgi uch Windows build saqlanadi; mobil yuklamalar saqlanib qoladi. GitHub’dagi eski Windows artifactlari muvaffaqiyatli deploydan keyin tozalanadi; artifactning odatiy muddati 1 kun.
+
+GitHub → **Actions → CI / Deploy production** orqali natijani ko‘ring. Main’ga branch merge qilish yoki kunlik navbatni kutish talab qilinmaydi. Platforma versiyasi alohida boshqariladi; push uni sun’iy oshirmaydi.
+
+## To‘xtatish va qayta tekshirish
+
+Favqulodda avtomatik deployni to‘xtatish: repo variable `DEPLOY_ENABLED=false`. Qayta yoqish: `true`. Shu qiymat yoqilganida faqat muvaffaqiyatli main CI serverni yangilaydi.
 
 ```bash
-python3 scripts/auto_publish.py once --align
-```
-
-Xizmatni vaqtincha to‘xtatish/qayta yoqish:
-
-```bash
-systemctl --user stop ilbi-auto-publish.service
-systemctl --user start ilbi-auto-publish.service
-```
-
-## Boshqa Linux kompyuterda sozlash
-
-`git`, `gh`, Python 3.12+ va systemd user sessiyasi kerak. `gh auth login` orqali repository/workflow yozish huquqiga ega hisobni ulang. `main`ni clone qiling, keyin:
-
-```bash
-python3 scripts/auto_publish.py once --initialize --align
-python3 scripts/install_auto_publish.py
-```
-
-Birinchi `--initialize` shu kompyuterdagi to‘liq manba holatini chiqaradi: o‘chirilgan manbalar ham main’dan o‘chadi. Keyingi safarlarda faqat lokal o‘zgargan fayllar yuboriladi. Boshqa kompyuter main’dagi aynan shu faylni o‘zgartirgan bo‘lsa, avtomatik bosib yozish o‘rniga jurnalga konflikt yoziladi. Uni solishtirib birlashtiring. Force push ishlatilmaydi. Har pushdan keyin lokal main/index yangilanadi; ishchi fayllar, shu jumladan upload vaqtida saqlangan yangi tahrirlar saqlanadi. Dastlabki lokal HEAD `refs/auto-publish/initial-head` orqali, oldingi HEAD esa `refs/auto-publish/before-alignment` orqali saqlanadi.
-
-`.env`, kalitlar, ma’lumotlar bazasi, media, node_modules va yig‘ilgan installer Git’ga yuborilmaydi. Manbada token aniqlansa push to‘xtaydi. `.auto-publish-local/` — faqat shu kompyuterning xususiy holati va izolyatsiyalangan Git nusxasi. Uni Git’ga qo‘shmang.
-
-Sozlamalar: `automation/auto-publish.json`. Platforma versiyasi alohida boshqariladi; avtomatik push versiyani sun’iy oshirmaydi.
-
-```bash
+gh run list --workflow ci.yml
+gh run list --workflow deploy.yml
 python3 -m unittest discover -s tests/automation -v
+python3 -m unittest discover -s tests/deployment -p 'test_download_activation.py' -v
 ```
+
+`.env`, kalitlar, bazalar va yig‘ilgan installer Git’dan chiqarib tashlangan. Maxfiy yoki ishga tayyor bo‘lmagan fayllarni commitga qo‘shmang.

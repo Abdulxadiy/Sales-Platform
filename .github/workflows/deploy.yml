@@ -8,16 +8,33 @@ concurrency:
   group: ilbi-production
   cancel-in-progress: false
 permissions:
-  actions: read
+  actions: write
   contents: read
   packages: write
 jobs:
-  deploy:
+  target:
     if: >-
       vars.DEPLOY_ENABLED == 'true' &&
       github.event.workflow_run.conclusion == 'success' &&
       (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
       github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      current: ${{ steps.target.outputs.current }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Skip superseded CI before building release images
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: bash ops/check_deploy_target.sh
+  deploy:
+    needs: target
+    if: needs.target.outputs.current == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -34,7 +51,9 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
       - name: Verify public installer before transfer
-        run: python3 desktop/verify_downloads.py desktop-release
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: python3 desktop/verify_downloads.py desktop-release "$RELEASE_SHA"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -104,9 +123,9 @@ jobs:
           rsync -a scripts/data_backup.py production:/srv/ilbi/scripts/
           rsync -a docker-compose.prod.yml production:/srv/ilbi/
           ssh production 'mkdir -p /srv/ilbi/desktop/downloads'
-          # Transfer the complete installer first, then atomically replace its feed.
-          rsync -a --delay-updates desktop-release/downloads/ILBI-Setup-*.exe production:/srv/ilbi/desktop/downloads/
-          rsync -a --delay-updates desktop-release/downloads/releases.json production:/srv/ilbi/desktop/downloads/
+          # Immutable commit directories keep existing download links intact.
+          rsync -a --delay-updates --exclude=releases.json desktop-release/downloads/ production:/srv/ilbi/desktop/downloads/
+          rsync -a desktop-release/downloads/releases.json production:/srv/ilbi/desktop/.release-pending.json
       - name: Deploy commit images
         if: steps.target.outputs.current == 'true'
         env:
@@ -118,3 +137,21 @@ jobs:
           # The registry credential is stdin-only and removed after this SSH session.
           printf '%s' "$REGISTRY_TOKEN" | ssh production \
             "set -eu; export DOCKER_CONFIG=\$(mktemp -d); trap 'rm -rf \"\$DOCKER_CONFIG\"' EXIT; docker login ghcr.io -u '$REGISTRY_USER' --password-stdin; cd /srv/ilbi; ./ops/deploy_release.sh '$PREFIX/backend:$TAG' '$PREFIX/frontend:$TAG' '$PREFIX/bot:$TAG'"
+      - name: Activate downloads after application health checks
+        if: steps.target.outputs.current == 'true'
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: ssh production "python3 /srv/ilbi/ops/activate_downloads.py /srv/ilbi/desktop/downloads /srv/ilbi/desktop/.release-pending.json '$RELEASE_SHA'"
+      - name: Remove superseded Windows artifacts
+        if: steps.target.outputs.current == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts" \
+            --jq ".artifacts[] | select(.name == \"ILBI-Windows-x64\" and .workflow_run.head_branch == \"main\" and .workflow_run.id < $RELEASE_RUN_ID) | .id" > /tmp/old-windows-artifacts
+          while read -r artifact; do
+            [[ "$artifact" =~ ^[0-9]+$ ]] || continue
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact"
+          done < /tmp/old-windows-artifacts

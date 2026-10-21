@@ -52,13 +52,13 @@ jobs:
           $manifest.nativeWindowsServiceVerified = $true
           $manifest | ConvertTo-Json | Set-Content $manifestPath
       - name: Prepare public download files
-        run: python desktop/export_downloads.py
+        run: python desktop/export_downloads.py --release-id ${{ github.sha }}
       - uses: actions/upload-artifact@v4
         with:
           name: ILBI-Windows-x64
           path: |
-            desktop/downloads/ILBI-Setup-*.exe
+            desktop/downloads/**/*.exe
             desktop/downloads/releases.json
             desktop/ilbi/release/desktop-build-manifest.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 1

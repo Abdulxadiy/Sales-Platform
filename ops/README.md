@@ -12,7 +12,7 @@ Frontend ommaviy 80/443 portlarida ishlayapti; backend readiness `ready`.
 Boshlang‘ich o‘rnatma `1.0.0` edi. Avtodeploy GHCR’dagi `sha-<commit>` imagelarini ishlatadi;
 oxirgi sog‘lom chiqarishning uchta image manzili `/srv/ilbi/.deployed-images`da saqlanadi.
 Git tag va GitHub Release server yangilanishida avtomatik yaratilmaydi;
-saqlangan manba bevosita main’ga push qilinadi, versiya esa alohida boshqariladi.
+tayyor manba oddiy Git push orqali main’ga yuboriladi, versiya esa alohida boshqariladi.
 
 ## SSH va holat
 
@@ -170,13 +170,16 @@ GitHub’da `production` muhiti va maxsus SSH kaliti sozlangan:
 - Muhit variables: `DEPLOY_HOST`, `DEPLOY_USER`.
 - Repo variable: **`DEPLOY_ENABLED=true`** — avtomatik deploy yoqilgan.
 
-Lokal `ilbi-auto-publish.service` saqlangan kodni 8 soniya tinishdan keyin to‘g‘ridan to‘g‘ri main’ga yuboradi. Oddiy main push CI’ni boshlaydi; kunlik chiqarish navbati yo‘q. Boshqarish: [automation/README.md](../automation/README.md).
+Lokal saqlash GitHub’ga avtomatik yuborilmaydi. Tayyor kodni main’ga push qilish CI’ni boshlaydi; kunlik chiqarish navbati yo‘q. Boshqarish: [automation/README.md](../automation/README.md).
 CI Windows runner’da paketni yig‘adi, o‘rnatib ichki servisni tekshiradi va o‘chirib ko‘radi.
 Deploy shu CI artifactidagi installer hajmi/SHA256/native sinovini tekshiradi,
-installer va release feed’ni `/srv/ilbi/desktop/downloads/`ga yuboradi.
+installer faylini `/srv/ilbi/desktop/downloads/<commit>/`ga yuboradi.
+Ilova healthcheck’i o‘tgach release feed atomik yangilanadi. Oxirgi uch installer
+saqlanadi; oldingi havolalar navbatdagi yangilanish vaqtida buzilmaydi.
+GitHub’dagi eski Windows artifactlari deploydan keyin tozalanadi, qolganlari 1 kun saqlanadi.
 Backend/frontend imagelari ham aynan shu commitdan yig‘iladi.
 PR va muvaffaqiyatsiz CI serverni yangilamaydi. Tag yoki GitHub Release deploy triggeri emas.
-Serverga o‘tishdan oldin testdan o‘tgan commit hali ham main ekanligi tekshiriladi;
+Docker builddan oldin ham, serverga o‘tishdan oldin ham commit hali main ekanligi tekshiriladi;
 kech tugagan eski CI yangi chiqarishning ustidan yozmaydi.
 Favqulodda to‘xtatish: repo variable `DEPLOY_ENABLED=false`.
 

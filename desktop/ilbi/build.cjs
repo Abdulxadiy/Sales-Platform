@@ -47,6 +47,7 @@ async function main() {
   await writeFile(join(__dirname, 'release/desktop-build-manifest.json'), JSON.stringify({
     version, platform: 'win32', arch: 'x64', installerBytes: output.size, payloadBytes,
     sha256: hash.digest('hex'), nativeWindowsServiceVerified: false,
+    sourceCommit: process.env.GITHUB_SHA || null,
   }, null, 2) + '\n');
   console.log(`Verified installer payload: ${installer} (${output.size} bytes)`);
 }

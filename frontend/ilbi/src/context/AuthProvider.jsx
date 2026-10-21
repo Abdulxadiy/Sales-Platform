@@ -1,7 +1,7 @@
 import { localStore, sessionStore } from '../utils/brandStorage.js';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import AuthContext from './authContext';
+import AuthContext from './authContext.js';
 import { getAccessToken, getRefreshToken, refreshAccessToken, setTokens, clearTokens, parseJwt, isTokenExpired, authApi, getAuthenticationGeneration, invalidateAuthenticationRequests } from '../api/client';
 import { beginLoginSupportSession } from '../api/support';
 import { captureLegacyDraftOwner } from '../utils/accountDrafts';

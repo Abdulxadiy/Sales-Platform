@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthProvider.jsx';
 import { useAuth } from './hooks/useAuth';
 import { TenantProvider } from './context/TenantContext';
 import { ToastProvider } from './context/ToastContext';

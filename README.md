@@ -2,7 +2,7 @@
 
 Current platform release: [v1.2.0](docs/releases/v1.2.0.md).
 
-Saved local source publishes directly to main after 8 quiet seconds. Passing CI builds the Windows package and deploys the platform and downloads to production. Setup and controls: [automatic publishing](automation/README.md).
+Push ready changes to main with Git or IDE Source Control. Passing CI automatically builds the Windows package and deploys the platform and downloads to production; saving a local file does not push it. Details: [CI and automatic deployment](automation/README.md).
 
 ILBI is an enterprise-grade multi-tenant retail and wholesale sales platform designed for inventory tracking, point-of-sale (POS) operations, cash register (cashbox) accounting, debt management, and B2B commerce.
 

@@ -19,7 +19,7 @@ After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory={quoted(root)}
+WorkingDirectory={str(root).replace('%', '%%')}
 ExecStart=/usr/bin/python3 {quoted(root / 'scripts/auto_publish.py')} watch
 Environment=GIT_TERMINAL_PROMPT=0
 Environment={quoted('PATH=' + search_path)}

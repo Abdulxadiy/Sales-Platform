@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -191,11 +192,18 @@ class DirectPublicationTests(unittest.TestCase):
 
     def test_service_has_no_timer_and_quotes_repository_path(self):
         service = installer.service_contents(Path('/tmp/project space%name'), '/usr/bin:/home/user/bin')
-        self.assertIn('WorkingDirectory="/tmp/project space%%name"', service)
+        self.assertIn('WorkingDirectory=/tmp/project space%%name', service)
         self.assertIn('auto_publish.py" watch', service)
         self.assertIn('Restart=always', service)
         self.assertNotIn('OnCalendar', service)
         self.assertNotIn('timer', service)
+
+    @unittest.skipUnless(shutil.which('systemd-analyze'), 'systemd unit validator unavailable')
+    def test_generated_service_is_accepted_by_systemd(self):
+        unit = self.root.parent / 'ilbi-auto-publish.service'
+        unit.write_text(installer.service_contents(self.root, '/usr/bin:/bin'))
+        checked = subprocess.run(['systemd-analyze', 'verify', str(unit)], capture_output=True, text=True)
+        self.assertEqual(checked.returncode, 0, checked.stderr)
 
 
 if __name__ == "__main__":

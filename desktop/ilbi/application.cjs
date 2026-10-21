@@ -103,8 +103,11 @@ async function notifyUpdate() {
     } catch { return; }
   }
   if (!Notification.isSupported()) return;
-  const notice = new Notification({ title: 'ILBI yangilanishi', body: 'Yangi yangilanish bor. Yuklab olish va o‘rnatish uchun bosing.', icon: applicationIcon });
-  notice.on('click', () => { window?.restore(); window?.focus(); void showUpdates(); }); notice.show();
+  const notice = new Notification({ title: 'ILBI yangilanishi', body: 'Ochiq shakllarni saqlang. Yuklab olish va yangilash uchun bosing.', icon: applicationIcon });
+  notice.on('click', () => {
+    window?.restore(); window?.focus();
+    void showUpdates().then(() => updater.update()).catch(error => updater.set({ phase: 'error', message: error.message }));
+  }); notice.show();
 }
 async function applyUpdate(archive, release) {
   if (!app.isPackaged) throw Error('Yangilash rasmiy o‘rnatilgan ILBI ilovasida ishlaydi.');

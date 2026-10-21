@@ -85,7 +85,7 @@ Ulanmasa, bir xil mahalliy tarmoq va Windows’dagi ILBI uchun xususiy tarmoq ru
 Internet borida yangi yangilanish haqida ilova ichida xabar chiqadi. ILBI oynasi oldinda bo‘lmasa, tizim bildirishnomasi ham ko‘rsatiladi. Istalgan payt **ILBI → Yangilanishni tekshirish** menyusi orqali tekshirishingiz mumkin. Bu imkoniyat Klassik va Tezkor ish stolida ham ishlaydi.
 
 1. Hali saqlanmagan shakllarni saqlang. Asosiy kompyuterni yangilayotgan bo‘lsangiz, boshqa kassalarda ham ishni vaqtincha to‘xtating.
-2. Xabardagi **Yuklab olish va yangilash** tugmasini bosing. Alohida oyna ochilib, yuklash foizini ko‘rsatadi. Paket yuklanib, tekshirilguncha ishlashda davom etishingiz mumkin.
+2. Xabardagi **Yuklab olish va yangilash** tugmasini bosing. Tizim bildirishnomasining ustiga bossangiz ham yuklash boshlanadi. Alohida oyna ochilib, yuklash foizini ko‘rsatadi. Paket yuklanib, tekshirilguncha ishlashda davom etishingiz mumkin.
 3. Yuklash tugagach, ilova davom etayotgan amallar tugashini kutadi va o‘rnatuvchini o‘zi ochadi. ILBI yopiladi, dastur fayllari yangilanadi va ILBI avtomatik qayta ochiladi. Yuborilmagan ishlar o‘z navbatida qoladi.
 
 Internet uzilsa yoki yuklash tugamasa, oynadagi xabarni o‘qing va **Qayta urinish**ni bosing. Tekshirilmagan paket o‘rnatilmaydi. Hozir yangilash qulay bo‘lmasa, xabarni keyinga qoldirishingiz mumkin.

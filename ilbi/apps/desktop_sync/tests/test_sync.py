@@ -386,3 +386,91 @@ def test_partner_headings_do_not_expose_partner_private_settings(owner, tenant):
     assert identity["password"].startswith("!")
     with override_settings(DESKTOP_MODE=True):
         import_snapshot(snapshot)
+
+
+def test_queue_management_uses_store_ownership_not_global_owner_role(owner, tenant):
+    from apps.desktop_sync.desktop_api import can_manage_queue
+    from apps.desktop_sync.local import set_state
+    from tests.factories import OwnerFactory
+
+    other_owner = OwnerFactory()
+    EmployeeFactory(user=other_owner, tenant=tenant, is_owner=False)
+    set_state("device", {"tenant_id": tenant.pk})
+    assert can_manage_queue(owner)
+    assert not can_manage_queue(other_owner)
+
+
+@override_settings(DEBUG=True)
+def test_changed_default_sale_price_cannot_silently_change_offline_receipt(owner, tenant, device):
+    from decimal import Decimal
+
+    from apps.inventory.services import StockService
+    from apps.sales.models import Sale
+
+    variant = ProductVariantFactory(product__category__tenant=tenant, price_recommended=Decimal("20000"))
+    StockService.intake(
+        tenant=tenant, product_variant=variant, quantity=Decimal("10"), cost_price=Decimal("5000"), created_by=owner
+    )
+    payload = command(
+        device,
+        path="sales/",
+        body={"items": [{"product_variant_id": variant.pk, "quantity": "1"}], "payment_type": "cash"},
+        created=[
+            {
+                "model": "sales.sale",
+                "id": LOCAL_ID_START,
+                "fields": {
+                    "receipt_number": f"O{device.id.hex[:6]}-20261021-0001",
+                    "public_token": "A" * 48,
+                    "total_amount": "12000.00",
+                },
+            },
+        ],
+    )
+    with pytest.raises(SyncConflict, match="Chek summasi"):
+        apply_operation(owner, device.pk, payload)
+    assert not Sale.objects.filter(tenant=tenant).exists()
+    assert not SyncReceipt.objects.filter(device=device).exists()
+    payload["body"]["items"][0]["unit_price"] = "12000"
+    apply_operation(owner, device.pk, payload)
+    assert Sale.objects.get(tenant=tenant).total_amount == Decimal("12000")
+
+
+def test_fast_workspace_reminder_replay_and_conflict(owner, tenant, device):
+    from apps.core.models import WorkspaceReminder
+
+    first = command(
+        device,
+        path="workspace/reminders/",
+        body={"title": "Offline eslatma", "due_at": (timezone.now() + timedelta(days=1)).isoformat()},
+        created=[{"model": "core.workspacereminder", "id": LOCAL_ID_START, "fields": {}}],
+    )
+    result = apply_operation(owner, device.pk, first)
+    reminder = WorkspaceReminder.objects.get(pk=result["id_map"][str(LOCAL_ID_START)])
+    assert reminder.title == "Offline eslatma"
+    update = command(
+        device,
+        path=f"workspace/reminders/{LOCAL_ID_START}/",
+        method="PATCH",
+        body={"title": "Bajarilgan eslatma", "completed": True},
+        dependencies=[first["id"]],
+        preconditions=[
+            {"model": "core.workspacereminder", "id": LOCAL_ID_START, "fields": {"title": "Offline eslatma"}}
+        ],
+    )
+    apply_operation(owner, device.pk, update)
+    reminder.refresh_from_db()
+    assert reminder.title == "Bajarilgan eslatma"
+    assert reminder.completed_at.isoformat() == update["occurred_at"]
+    conflicting = command(
+        device,
+        path=f"workspace/reminders/{reminder.pk}/",
+        method="PATCH",
+        body={"title": "Eski tahrir"},
+        preconditions=[{"model": "core.workspacereminder", "id": reminder.pk, "fields": {"title": "Offline eslatma"}}],
+    )
+    with pytest.raises(SyncConflict):
+        apply_operation(owner, device.pk, conflicting)
+    delete = command(device, path=f"workspace/reminders/{reminder.pk}/", method="DELETE", body={"unused": True})
+    apply_operation(owner, device.pk, delete)
+    assert not WorkspaceReminder.objects.filter(pk=reminder.pk).exists()

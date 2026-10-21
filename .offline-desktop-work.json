@@ -19,7 +19,10 @@
     "Test offline/restart/reconnection/lost ACK/priority/dependencies/conflicts/account isolation and full integrated workflows.",
     "Mark each phase complete only after its checks pass; retain evidence and report unverified platform/device limitations honestly.",
     "Delete this temporary tracker only after every required phase is actually complete.",
-    "Support independent stores and 1/2/3+ registers per store through a shared LAN primary with pinned TLS pairing and per-actor offline grants."
+    "Support independent stores and 1/2/3+ registers per store through a shared LAN primary with pinned TLS pairing and per-actor offline grants.",
+    "Retain both existing Classic and Fast workspaces in the Windows application, including offline workspace reminders and a usable sync control in both layouts.",
+    "Keep backend, frontend and desktop release version at 1.2.0.",
+    "Add a compact public download page linked from the main landing page and both Classic/Fast workspaces; distribute verified versioned installers through a public release manifest, with a future mobile slot."
   ],
   "phases": [
     {
@@ -33,38 +36,66 @@
     {
       "id": "local_runtime_and_storage",
       "status": "in_progress",
-      "checks": []
+      "checks": [
+        "Bundled Windows Python/PostgreSQL archives and wheels staged with pinned SHA-256 verification; no deployment .env included",
+        "Real isolated local PostgreSQL/Waitress service verified on Linux, including restart and encrypted per-user credentials",
+        "Native Windows service test is implemented in CI but remains unexecuted in this Linux workspace"
+      ]
     },
     {
       "id": "server_sync_and_conflicts",
-      "status": "in_progress",
+      "status": "complete",
       "checks": [
-        "17 synchronization tests passed: lost ACK, duplicate mismatch, dependency remapping, permissions, store isolation, conflicts, priorities and snapshot import"
+        "26 synchronization tests passed, including exactly-once lost ACK, permissions/store isolation, partner-data redaction, 2500 dependencies and final receipt amount mismatch rollback",
+        "Production OpenAPI regression tests passed; migration check reports no changes",
+        "Owner enrollment/reconnect renews lease without erasing replica; queue ownership follows store membership"
       ]
     },
     {
       "id": "desktop_and_animated_queue",
-      "status": "in_progress",
+      "status": "complete",
       "checks": [
-        "Frontend production build passed",
-        "58 existing frontend tests passed",
-        "3 desktop-shell validation tests passed"
+        "58 frontend tests passed; production Vite build passed; lint exits successfully with existing warnings elsewhere",
+        "Chrome verified priority animation, active preservation, next arrows, real progress, confirmation, mobile, reduced motion and keyboard focus",
+        "3 shell tests passed; native Windows host smoke test skipped on Linux"
       ]
     },
     {
       "id": "workflow_integration",
-      "status": "in_progress",
-      "checks": []
+      "status": "complete",
+      "checks": [
+        "Real two-database integration passed 16 scenarios and synchronized 11 commands",
+        "Three concurrent cashier sessions, debt sale/payment, cash income/expense, image upload, shift close, priority, restart, unlock, reconnect, refresh, stale form aliases and expired lease recovery",
+        "Cloud totals verified: stock 95, debt 18000 UZS, expected cash 41500 UZS, 4 sales, 11 receipts"
+      ]
     },
     {
       "id": "windows_packaging",
+      "status": "in_progress",
+      "checks": [
+        "Custom per-user NSIS installer builds without Wine and preserves user data; final latest-source build running",
+        "Windows CI includes installation, installed bundled-service startup and uninstallation checks; workflow has not been run"
+      ]
+    },
+    {
+      "id": "download_page_and_distribution",
       "status": "in_progress",
       "checks": []
     },
     {
       "id": "end_to_end_verification",
       "status": "in_progress",
-      "checks": []
+      "checks": [
+        "917 backend regression tests passed; 58 frontend tests passed; 16 real integration scenarios passed",
+        "Native Windows UI/install/update, actual LAN registers and physical printers/providers remain unverified",
+        "Existing production retail fiscal-provider gate remains active; do not claim production POS is enabled"
+      ]
     }
+  ],
+  "remaining_acceptance": [
+    "Run Windows CI and verify actual Windows startup/install/update/uninstall",
+    "Test multiple physical Windows registers over LAN and receipt printers",
+    "Complete the pre-existing fiscal-provider integration before production retail sales",
+    "Deploy matching cloud code/migrations before enrolling a real store"
   ]
 }

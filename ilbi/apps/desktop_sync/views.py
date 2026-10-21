@@ -120,7 +120,9 @@ class ActorGrantView(APIView):
     def post(self, request):
         from apps.accounts.services.tenant_context_service import resolve_active_context
 
-        device = SyncDevice.objects.filter(pk=device_uuid(request.data.get("device_id")), revoked_at__isnull=True).first()
+        device = SyncDevice.objects.filter(
+            pk=device_uuid(request.data.get("device_id")), revoked_at__isnull=True
+        ).first()
         if device is None or resolve_active_context(request.user, str(device.tenant_id)).tenant is None:
             raise ValidationError("Bu offline qurilma sizning do‘koningizga tegishli emas.")
         if request.user.pk == device.user_id:

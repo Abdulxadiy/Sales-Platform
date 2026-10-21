@@ -7,7 +7,7 @@ const { randomBytes } = require('node:crypto');
 const { startHost } = require('../runtime.cjs');
 
 test('bundled Windows Python and PostgreSQL start the isolated offline service', { skip: process.platform !== 'win32', timeout: 180000 }, async () => {
-  const resources = join(__dirname, '../resources');
+  const resources = process.env.ILBI_DESKTOP_TEST_RESOURCES || join(__dirname, '../resources');
   const dataDir = await mkdtemp(join(tmpdir(), 'ilbi-windows-host-'));
   const bridgeKey = randomBytes(32).toString('hex');
   const secrets = { djangoSecret: randomBytes(48).toString('hex'), databasePassword: randomBytes(32).toString('hex'), vaultKey: randomBytes(32).toString('base64url') + '=' };

@@ -34,7 +34,13 @@ class OperationSerializer(serializers.Serializer):
         for row in value:
             if (
                 row.get("model")
-                not in {"catalog.category", "catalog.product", "catalog.productvariant", "sales.counterparty"}
+                not in {
+                    "catalog.category",
+                    "catalog.product",
+                    "catalog.productvariant",
+                    "sales.counterparty",
+                    "core.workspacereminder",
+                }
                 or type(row.get("id")) is not int
                 or not isinstance(row.get("fields"), dict)
             ):

@@ -2,7 +2,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.urls import path
-from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers
@@ -14,6 +13,7 @@ from api.mixins import OwnerStaffOnlyAPIView
 from apps.accounts.models import Employee
 from apps.accounts.services.permission_service import PermissionService
 from apps.catalog.models import ProductVariant
+from apps.core import event_clock as timezone
 from apps.core.models import WorkspaceReminder
 from apps.sales.models import Counterparty, Sale
 

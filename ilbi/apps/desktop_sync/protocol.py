@@ -23,6 +23,7 @@ receipt_hint = ContextVar("desktop_sync_receipt", default=None)
 # Explicit allow-list: account/security, cross-store settlement, external providers
 # and privileged platform actions are never replayed as arbitrary HTTP requests.
 ROUTES = [
+    (r"workspace/reminders/(?:\d+/)?", {"POST", "PATCH", "DELETE"}),
     (r"catalog/categories/(?:\d+/(?:archive/)?)?", {"POST", "PATCH", "DELETE"}),
     (r"catalog/products/(?:\d+/(?:archive/|unarchive/)?)?", {"POST", "PATCH", "DELETE"}),
     (r"catalog/products/\d+/variants/", {"POST"}),
@@ -112,7 +113,13 @@ def after_save(sender, instance, created, raw=False, **kwargs):
             if field.remote_field.model._meta.label_lower == "cashbox.cashshift":
                 ctx["resources"].add(f"cashbox.cashshift:{getattr(instance, field.attname)}")
     if created:
-        ctx["created"].append({"model": sender._meta.label_lower, "id": instance.pk, "fields": state(instance)})
+        row = {"model": sender._meta.label_lower, "id": instance.pk, "fields": state(instance)}
+        ctx["created"].append(row)
+        ctx["created_index"][key] = row
+    elif key in ctx["created_index"]:
+        # Financial services often create a zero-total header then save its
+        # calculated totals. Replay validation needs the final committed values.
+        ctx["created_index"][key]["fields"] = state(instance)
 
 
 def after_delete(sender, instance, **kwargs):
@@ -123,7 +130,7 @@ def after_delete(sender, instance, **kwargs):
 
 @contextmanager
 def record_changes():
-    ctx = {"before": {}, "created": [], "resources": set(), "references": set()}
+    ctx = {"before": {}, "created": [], "created_index": {}, "resources": set(), "references": set()}
     token = capture.set(ctx)
     pre_save.connect(before_save, weak=False, dispatch_uid="desktop-before")
     pre_delete.connect(before_save, weak=False, dispatch_uid="desktop-before-delete")
@@ -141,7 +148,15 @@ def preconditions(ctx):
     excluded = {"id", "updated_at", "created_at"}
     for key, previous in ctx["before"].items():
         label, pk = key.split(":")
-        if label not in {"catalog.category", "catalog.product", "catalog.productvariant", "sales.counterparty"}:
+        if key in ctx["created_index"]:
+            continue
+        if label not in {
+            "catalog.category",
+            "catalog.product",
+            "catalog.productvariant",
+            "sales.counterparty",
+            "core.workspacereminder",
+        }:
             continue
         current = apps.get_model(label).objects.filter(pk=pk).first()
         if current is None:
@@ -165,6 +180,8 @@ def title_for(path, method, body=None, response=None):
     result = response if isinstance(response, dict) else response[0] if isinstance(response, list) and response else {}
     if path == "sales/":
         return ("Savdo — " + str(result.get("receipt_number", "yangi chek")))[:200]
+    if path.startswith("workspace/reminders/"):
+        return ("Ish stoli eslatmasi — " + str(body.get("title") or result.get("title") or "yangilash"))[:200]
     if "/payments/" in path:
         return "Qarz to‘lovi"
     if path.startswith("cashbox/shift/open"):

@@ -128,7 +128,13 @@ def apply_operation(user, device_id, payload):
     body = rewrite(payload.get("body", {}), mapping)
     for condition in payload.get("preconditions", []):
         label = condition.get("model")
-        if label not in {"catalog.category", "catalog.product", "catalog.productvariant", "sales.counterparty"}:
+        if label not in {
+            "catalog.category",
+            "catalog.product",
+            "catalog.productvariant",
+            "sales.counterparty",
+            "core.workspacereminder",
+        }:
             raise ValidationError("Noto‘g‘ri versiya sharti.")
         obj = (
             apps.get_model(label)
@@ -180,13 +186,20 @@ def apply_operation(user, device_id, payload):
     # assumptions no longer hold. Roll back the entire command and receipt.
     actual = defaultdict(list)
     for row in changes["created"]:
-        actual[row["model"]].append(row["id"])
+        actual[row["model"]].append(row)
     id_map = {}
     for row in payload.get("created", []):
         candidates = actual[row["model"]]
         if not candidates:
             raise SyncConflict("Operatsiya natijasi mahalliy yozuvga mos kelmadi.")
-        id_map[str(row["id"])] = candidates.pop(0)
+        remote_row = candidates.pop(0)
+        money_fields = {
+            "sales.sale": {"currency", "total_amount", "subtotal_amount", "tax_amount"},
+            "sales.saleitem": {"unit_price", "quantity", "total_price", "net_amount", "tax_amount"},
+        }.get(row["model"], set())
+        if any(key in row["fields"] and row["fields"][key] != remote_row["fields"].get(key) for key in money_fields):
+            raise SyncConflict("Chek summasi yoki solig‘i o‘zgargan. Mahalliy chek saqlangan; tekshirish kerak.")
+        id_map[str(row["id"])] = remote_row["id"]
         SyncObjectMap.objects.create(
             device=device, local_id=row["id"], remote_id=id_map[str(row["id"])], model=row["model"]
         )

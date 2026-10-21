@@ -1,6 +1,6 @@
 import json
 from datetime import timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import requests
 from django.conf import settings
@@ -33,6 +33,13 @@ def authenticated(request):
     if result is None:
         raise ValueError("Avval hisobga kiring.")
     return result[0]
+
+
+def can_manage_queue(user):
+    from apps.accounts.models import Employee
+
+    device = get_state("device") or {}
+    return Employee.objects.filter(user=user, tenant_id=device.get("tenant_id"), is_active=True, is_owner=True).exists()
 
 
 def endpoint(request, path):
@@ -104,6 +111,23 @@ def endpoint(request, path):
             else:
                 if not device or user_data["id"] != device["user_id"]:
                     raise ValueError("Ushbu qurilmani ulagan owner hisobi kerak.")
+                renewed = requests.post(
+                    server + "/api/v1/sync/actors/",
+                    headers=headers,
+                    json={"device_id": device["device_id"]},
+                    timeout=(5, 20),
+                    allow_redirects=False,
+                )
+                if not renewed.ok:
+                    return JsonResponse({"detail": "Qurilma ruxsatini yangilab bo‘lmadi."}, status=renewed.status_code)
+                grant = renewed.json()
+                with transaction.atomic():
+                    device["lease_until"] = grant["lease_until"]
+                    set_state("device", device)
+                    actors = get_state("actors", {})
+                    if str(user_data["id"]) in actors:
+                        actors[str(user_data["id"])]["actor_ticket"] = grant["actor_ticket"]
+                        set_state("actors", actors)
                 Vault().put_user(
                     user_data["id"],
                     {"server": server, "access": access.removeprefix("Bearer "), "refresh": data.get("refresh")},
@@ -148,13 +172,18 @@ def endpoint(request, path):
         if path == "queue/" and request.method == "GET":
             status = queue_status()
             # A cashier sees only their own work; owners can inspect the whole store.
-            if user.role != "owner":
-                ids = set(str(i) for i in LocalOperation.objects.filter(user_id=user.pk).values_list("id", flat=True))
+            if not can_manage_queue(user):
+                ids = set(
+                    str(i)
+                    for i in LocalOperation.objects.filter(user_id=user.pk)
+                    .exclude(status="done")
+                    .values_list("id", flat=True)
+                )
                 status["operations"] = [row for row in status["operations"] if row["id"] in ids]
             return JsonResponse(status)
         if request.method == "POST" and path in {"priority/", "retry/"}:
-            row = LocalOperation.objects.get(id=data.get("id"))
-            if row.user_id != user.pk and user.role != "owner":
+            row = LocalOperation.objects.get(id=UUID(str(data.get("id"))))
+            if row.user_id != user.pk and not can_manage_queue(user):
                 return JsonResponse({"detail": "Bu operatsiya sizga tegishli emas."}, status=403)
             if path == "priority/":
                 prioritize(row.id)

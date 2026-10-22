@@ -394,15 +394,27 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
           )}
 
           {!isAdmin && (
-            <NavLink
-              to="/docs"
-              onClick={closeMenus}
-              className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}
-              title="Qo‘llanma & Hujjatlar"
-            >
-              <BookOpen size={16} />
-              <span>Qo‘llanma</span>
-            </NavLink>
+            <>
+              <NavLink
+                to="/docs"
+                onClick={closeMenus}
+                className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}
+                title="Qo‘llanma & Hujjatlar"
+              >
+                <BookOpen size={16} />
+                <span>Qo‘llanma</span>
+              </NavLink>
+
+              <NavLink
+                to="/download"
+                onClick={closeMenus}
+                className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}
+                title="ILBI Desktop ilovasini yuklab olish"
+              >
+                <Download size={16} />
+                <span>Yuklab olish</span>
+              </NavLink>
+            </>
           )}
         </div>
 

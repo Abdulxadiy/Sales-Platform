@@ -158,7 +158,8 @@ export function refreshAccessToken() {
       throw error;
     }
     const response = await fetch(`${BASE_URL}/auth/token/refresh/`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json',
+        ...(typeof window !== 'undefined' && window.ilbiDesktop && !parseJwt(refresh)?.desktop_device ? { 'X-ILBI-Cloud-Session': 'true' } : {}) },
       body: JSON.stringify({ refresh }),
     });
     const data = await handleResponse(response);

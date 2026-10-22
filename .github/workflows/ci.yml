@@ -100,6 +100,10 @@ jobs:
       - run: npm ci
       - run: npm run lint --if-present
       - run: npm test
+      - name: Check optional offline setup and remembered login
+        run: |
+          npm run test:sync
+          npm run test:auth-session
       - name: Check download links and mobile layout in Chrome
         run: npm run test:downloads
       - name: Check desktop update notices

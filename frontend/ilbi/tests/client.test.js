@@ -21,6 +21,23 @@ beforeEach(() => {
   globalThis.crypto ??= webcrypto;
 });
 
+test('desktop online writes and refresh stay in the cloud; enrolled offline tokens stay local', async () => {
+  window.ilbiDesktop = { version: 'qa' };
+  for (const offline of [false, true]) {
+    const value = `test.${Buffer.from(JSON.stringify({ user_id: 1, exp: Date.now()/1000+3600, ...(offline ? {desktop_device:'qa'} : {}) })).toString('base64url')}.test`;
+    setTokens(value, value);
+    let writes = 0, refreshes = 0;
+    globalThis.fetch = async (url, options) => {
+      assert.equal(options.headers['X-ILBI-Cloud-Session'], offline ? undefined : 'true');
+      if (url.endsWith('/auth/token/refresh/')) { refreshes++; return json({access:value}); }
+      assert.equal(options.method, 'POST'); writes++; return json({id:71});
+    };
+    await request('/catalog/categories/', {method:'POST',body:{name:'Synthetic'}});
+    await refreshAccessToken();
+    assert.equal(writes, 1); assert.equal(refreshes, 1);
+  }
+});
+
 test('Excel requests return binary data and keep structured server errors', async () => {
   setTokens(token(), token());
   globalThis.fetch = async () => new Response(new Uint8Array([80, 75, 3, 4]), {

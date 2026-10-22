@@ -168,8 +168,10 @@ Initial setup:
    Do not switch the cloud deployment to `config.settings_desktop`.
 2. Install the Windows x64 package and choose **Ishni boshlash** on the primary.
    The official HTTPS server is already selected. Sign in online as the store owner, select the
-   store and open **Offline tayyorlash** to download its database and set a local
-   password of at least eight characters.
+   store and open **Online rejim → Sinxronlash markazi** to download its database
+   and set a local password of at least eight characters. Offline enrollment is
+   optional: online accounts can read and write directly to the cloud without it.
+   Owners with multiple stores can select the store inside the setup dialog.
 3. Each cashier signs in online once and uses **Hisobni kassaga ulash** to set
    their own local password. Later they use **Offline kassaga kirish** with their
    own login/password. The server checks that cashier's permissions again on
@@ -185,6 +187,13 @@ Initial setup:
    owner signs in online again and links the account to renew it. Pending work
    stays on disk. Cloud permission changes may reject older queued commands;
    they are retained for review rather than silently discarded.
+
+**Meni eslab qol** restores both username and password after a successful login
+(including OTP verification). Desktop credentials use Electron OS encryption in
+a separate `login-credentials.vault`; online and offline logins are independent.
+Only the main login window can access them. Unchecking removes that saved login
+without changing device keys or the local store. On the web, supported browsers
+use their own password manager; passwords are never written to browser storage.
 
 Desktop updates are checked at startup and every 15 minutes against the fixed
 official release feed. Both workspaces show an update notice; an unfocused app

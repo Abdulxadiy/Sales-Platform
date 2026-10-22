@@ -12,6 +12,7 @@ import IlbiLogo from '../components/common/IlbiLogo';
 import IlbiIntroAnimation from '../components/common/IlbiIntroAnimation';
 import TelegramConnectionGate from '../components/auth/TelegramConnectionGate';
 import DesktopAccess from '../components/sync/DesktopAccess';
+import { readRememberedLogin, rememberLogin, forgetRememberedLogin } from '../utils/rememberedLogin';
 
 const OTP_EXPIRY_SECONDS = 180; // 3 daqiqa
 
@@ -40,6 +41,25 @@ export default function Login() {
   const [otpTimeLeft, setOtpTimeLeft] = useState(OTP_EXPIRY_SECONDS);
   const [resending, setResending] = useState(false);
   const passwordInputRef = useRef(null);
+  const credentialEdits = useRef(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const edits = credentialEdits.current;
+    readRememberedLogin('online', controller.signal).then(value => {
+      if (!controller.signal.aborted && credentialEdits.current === edits && value) {
+        setUsername(value.username); setPassword(value.password);
+      }
+    }).catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  async function saveRememberedLogin() {
+    try {
+      if (rememberMe) await rememberLogin('online', username, password);
+      else await forgetRememberedLogin('online');
+    } catch (error) { if (window.ilbiDesktop) toast.warning(error.message || 'Login va parolni eslab qolib bo‘lmadi. Tizim parollar omborini tekshiring.'); }
+  }
 
   // Faqat sahifa birinchi yuklanganda: agar avval saqlangan username mavjud bo'lsa, parolga fokus beramiz
   useEffect(() => {
@@ -67,12 +87,14 @@ export default function Login() {
   };
 
   const handleRememberMeChange = (e) => {
+    credentialEdits.current += 1;
     const checked = e.target.checked;
     setRememberMe(checked);
     if (!checked) {
       localStore.removeItem('ilbi_remember_login');
       localStore.removeItem('ilbi_remember_password');
       localStore.setItem('ilbi_remember_me', 'false');
+      void forgetRememberedLogin('online').catch(error => toast.warning(error.message));
     } else {
       localStore.setItem('ilbi_remember_me', 'true');
       if (username) localStore.setItem('ilbi_remember_login', username.trim());
@@ -109,6 +131,7 @@ export default function Login() {
       }
       const res = await loginStep1(username.trim(), password, rememberMe);
       if (res.demo_login === true && res.access && res.refresh) {
+        await saveRememberedLogin();
         toast.success('Sinov akkauntiga kirildi');
         navigate('/dashboard');
         return;
@@ -190,6 +213,7 @@ export default function Login() {
         localStore.setItem('ilbi_remember_me', 'false');
       }
       await loginStep2(username.trim(), loginTicket, otpCode, rememberMe);
+      await saveRememberedLogin();
       toast.success('Xush kelibsiz!');
       navigate('/dashboard');
     } catch (err) {
@@ -425,7 +449,7 @@ export default function Login() {
 
         <DesktopAccess />
         {step === 1 ? (
-          <form onSubmit={handleStep1} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <form id="login-form" autoComplete={rememberMe ? 'on' : 'off'} onSubmit={handleStep1} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
                 Foydalanuvchi nomi, telefon raqam yoki email
@@ -439,11 +463,12 @@ export default function Login() {
                 <input
                   id="username"
                   name="username"
+                  disabled={submittingStep1 || loading}
                   autoComplete="username"
                   type="text"
                   placeholder="admin, +998901234567 yoki email"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => { credentialEdits.current += 1; setUsername(e.target.value); }}
                   required
                   className="input-field"
                   style={{ paddingLeft: 42 }}
@@ -468,11 +493,12 @@ export default function Login() {
                   ref={passwordInputRef}
                   id="password"
                   name="password"
+                  disabled={submittingStep1 || loading}
                   autoComplete="current-password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { credentialEdits.current += 1; setPassword(e.target.value); }}
                   required
                   className="input-field"
                   style={{ paddingLeft: 42, paddingRight: 42 }}
@@ -519,6 +545,7 @@ export default function Login() {
                     name="remember-me"
                     type="checkbox"
                     checked={rememberMe}
+                    disabled={submittingStep1 || loading}
                     onChange={handleRememberMeChange}
                     style={{
                       width: 16,

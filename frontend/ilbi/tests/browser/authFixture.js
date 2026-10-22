@@ -1,5 +1,5 @@
 // Synthetic responses only: this fixture never calls a real API or sends an OTP.
-export function installAuthFixture({ saved = true, profileFailure = false, guestHistory = false, role = 'platform_admin' } = {}) {
+export function installAuthFixture({ saved = true, profileFailure = false, guestHistory = false, role = 'platform_admin', desktop = false } = {}) {
   const tenants = role === 'owner' ? [{ id: 7, name: 'Birinchi do‘kon', is_owner: true, permissions: ['*'] }, { id: 8, name: 'Ikkinchi do‘kon', is_owner: true, permissions: ['*'] }] : [];
   const user = { id: 41, username: 'session_test', first_name: 'Sessiya', last_name: 'Sinov', role, terms_accepted: true, tenants, permissions: ['*'], phone_number: '+998900000041' };
   const jwt = (id, kind) => `fixture.${btoa(JSON.stringify({ user_id: id, exp: Date.now() / 1000 + 3600, token_type: kind }))}.fixture`;
@@ -7,6 +7,16 @@ export function installAuthFixture({ saved = true, profileFailure = false, guest
   const conversation = { id: 'private-41', subject: 'Shaxsiy sinov suhbati', name: 'Sinov', status: 'active', operator_id: user.id, unread_count: 0 };
   const message = { id: 101, text: 'PRIVATE_HISTORY_SENTINEL', sender: 'visitor', author_name: 'Sinov', created_at: '2026-10-16T07:00:00Z' };
   window.authQA = { requests: [], user, tokens, profileFailure, holdProfile: false, pendingProfiles: [], holdList: false, pendingLists: [] };
+  if (desktop) {
+    // In-memory bridge double only. Native acceptance verifies the real encrypted file.
+    const vault = new Map();
+    authQA.credentialSaves = 0;
+    window.ilbiDesktop = {
+      version:'qa', getSavedLogin:async kind=>vault.get(kind)||null,
+      saveLogin:async (kind,value)=>{ vault.set(kind,value); authQA.credentialSaves++; },
+      forgetLogin:async kind=>vault.delete(kind),
+    };
+  }
   if (tenants.length) localStorage.setItem('ilbi_active_tenant:41', '7');
   if (saved) {
     localStorage.setItem('ilbi_access_token', tokens.access);
@@ -18,6 +28,7 @@ export function installAuthFixture({ saved = true, profileFailure = false, guest
   const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
   window.fetch = async (input, options = {}) => {
     const url = new URL(input, location.origin);
+    if (desktop && url.pathname.startsWith('/desktop/')) return json({desktop:true,enrolled:false});
     if (!url.pathname.startsWith('/api/')) return nativeFetch(input, options);
     const path = url.pathname;
     const body = typeof options.body === 'string' ? JSON.parse(options.body) : null;

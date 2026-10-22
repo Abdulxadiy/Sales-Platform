@@ -23,7 +23,8 @@ export async function publicSupportRequest(path, options = {}) {
   const isForm = options.body instanceof FormData;
   const response = await fetch(`/api/v1${path}`, {
     ...options,
-    headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...options.headers },
+    headers: { ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+      ...(window.ilbiDesktop ? { 'X-ILBI-Cloud-Session': 'true' } : {}), ...options.headers },
     body: options.body && !isForm ? JSON.stringify(options.body) : options.body,
   });
   if (!response.ok) {

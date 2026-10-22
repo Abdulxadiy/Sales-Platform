@@ -1,5 +1,6 @@
 .sync-status{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-subtle);border-radius:999px;padding:7px 12px;background:var(--bg-card);color:var(--text-primary);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
 .sync-status b{min-width:18px;padding:1px 5px;border-radius:10px;background:var(--primary-light);color:var(--primary)}
+.sync-status-label{display:flex;flex-direction:column;align-items:flex-start;gap:2px}.sync-status-label small{font-size:10px;color:var(--text-secondary)}
 .sync-dialog{width:min(720px,calc(100vw - 28px));max-height:85dvh;margin:auto;padding:0;border:1px solid var(--border-subtle);border-radius:22px;background:var(--bg-card);color:var(--text-primary);box-shadow:0 24px 100px #0005;overflow:auto}
 .sync-dialog::backdrop{background:#10182480;backdrop-filter:blur(4px)}
 .sync-heading{display:flex;justify-content:space-between;align-items:flex-start;padding:24px;gap:12px;border-bottom:1px solid var(--border-subtle)}
@@ -19,3 +20,4 @@
 @media(prefers-reduced-motion:reduce){.sync-arrows,.sync-progress.is-indeterminate span{animation:none}.sync-progress span{transition:none}}
 .sync-guide-link{display:block;margin:0 24px 24px;color:var(--text-secondary);font-size:12px;text-decoration:underline;text-underline-offset:3px}
 .desktop-access input{width:100%;min-width:0;padding:10px 12px;border:1px solid var(--border-subtle);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font:inherit}
+.sync-setup .sync-setup-hint{font-size:12px;color:var(--text-secondary);line-height:1.6}.desktop-access .desktop-remember{display:flex;align-items:center;gap:8px;font-size:13px}.desktop-access .desktop-remember input{width:16px;height:16px;padding:0;accent-color:var(--primary)}

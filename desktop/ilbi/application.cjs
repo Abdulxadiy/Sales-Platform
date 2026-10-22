@@ -1,11 +1,13 @@
 const { app, BrowserWindow, ipcMain, safeStorage, dialog, Menu, shell, session, net, Notification } = require('electron');
-const { createServer: httpServer, request: httpRequest } = require('node:http');
-const { createServer: httpsServer, request: httpsRequest } = require('node:https');
+const { createServer: httpServer } = require('node:http');
+const { createServer: httpsServer } = require('node:https');
 const { readFile, writeFile, mkdir } = require('node:fs/promises');
 const { join, extname, dirname } = require('node:path');
 const { spawn, execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { DesktopUpdater } = require('./updater.cjs');
+const { LoginCredentials } = require('./login-credentials.cjs');
+const { forwardRequest } = require('./proxy.cjs');
 const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
 const { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
@@ -26,6 +28,7 @@ const dataDir = app.getPath('userData');
 const resources = app.isPackaged ? process.resourcesPath : join(__dirname, process.platform === 'linux' ? 'resources-linux' : 'resources');
 const uiRoot = app.isPackaged ? join(resources, 'ui') : join(__dirname, '../../frontend/ilbi/dist');
 const vaultPath = join(dataDir, 'device.vault');
+const savedLogins = new LoginCredentials({ directory: dataDir, safeStorage });
 const applicationIcon = app.isPackaged ? join(resources, process.platform === 'linux' ? 'ilbi-desktop.png' : 'ilbi-desktop-rounded.ico')
   : process.platform === 'linux' ? join(__dirname, '../../frontend/ilbi/public/brand/ilbi-desktop-512.png') : join(__dirname, 'icon.ico');
 
@@ -148,18 +151,11 @@ function validSender(event, setupOnly = false) {
 function proxy(request, response, target, secure = false) {
   if (maintenance) { response.writeHead(503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ detail: 'ILBI yangilanmoqda. Biroz kuting.' })); return; }
   activeRequests++;
-  let finished = false;
-  const finish = () => { if (!finished) { finished = true; activeRequests--; } };
   const headers = { ...request.headers, host: secure ? target.host : '127.0.0.1', 'x-ilbi-desktop-key': secure ? configuration.pairing.key : bridgeKey };
   delete headers['x-ilbi-update-key'];
   delete headers.connection;
-  const upstream = (secure ? httpsRequest : httpRequest)({ ...target, path: request.url, method: request.method, headers,
-    timeout: 65000, ...(secure ? { ca: configuration.pairing.certificate, checkServerIdentity: () => undefined, rejectUnauthorized: true } : {}) }, remote => {
-    response.writeHead(remote.statusCode, remote.headers); remote.pipe(response); remote.once('end', finish); remote.once('error', finish); remote.once('close', finish);
-  });
-  upstream.on('timeout', () => upstream.destroy());
-  upstream.on('error', () => { finish(); if (!response.headersSent) response.writeHead(503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ detail: 'Asosiy kassa kompyuteriga ulanish yo‘q. Mahalliy tarmoq va asosiy kompyuterni tekshiring.' })); });
-  request.pipe(upstream);
+  forwardRequest(request, response, { ...target, path: request.url, method: request.method, headers,
+    timeout: 65000, ...(secure ? { ca: configuration.pairing.certificate, checkServerIdentity: () => undefined, rejectUnauthorized: true } : {}) }, secure, () => { activeRequests--; });
 }
 async function launchRuntime() {
   // Recheck persisted settings before starting any service or forwarding credentials.
@@ -206,8 +202,15 @@ app.on('window-all-closed', () => app.quit());
 app.on('before-quit', event => {
   if (quitting) return;
   event.preventDefault(); if (closing) return; closing = true;
-  Promise.resolve().then(async () => { if (!maintenance) await prepareUpdate(); updater?.stop(); webServer?.close(); await stopRuntime(); quitting = true; app.quit(); })
-    .catch(async error => { closing = false; await resumeUpdate(); dialog.showErrorBox('ILBI yopilishi', error.message); });
+  Promise.resolve().then(async () => {
+    // The first login screen can render before its setup IPC has settled.
+    // Finish that save/load (or a document export) before closing the runtime.
+    const deadline = Date.now() + 70000;
+    while ((setupBusy || documentExportBusy) && Date.now() < deadline) await new Promise(ok => setTimeout(ok, 100));
+    if (!maintenance) await prepareUpdate();
+    updater?.stop(); webServer?.close(); await stopRuntime(); quitting = true; app.quit();
+  })
+    .catch(async error => { console.error('ILBI yopilishi:', error.message); closing = false; await resumeUpdate(); dialog.showErrorBox('ILBI yopilishi', error.message); });
 });
 if (!app.requestSingleInstanceLock() || process.argv.includes('--ilbi-quit-for-update')) app.quit();
 else {
@@ -297,6 +300,13 @@ else {
       ipcMain.handle('ilbi:update-check', event => { validSender(event); return updater.check(); });
       ipcMain.handle('ilbi:update-window', showUpdates);
       ipcMain.handle('ilbi:update-run', async event => { validSender(event); await showUpdates(); return updater.update(); });
+      const loginSender = event => {
+        validSender(event);
+        if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).pathname !== '/login') throw Error('Kirish ma’lumotlari faqat kirish oynasida ochiladi.');
+      };
+      ipcMain.handle('ilbi:login-read', (event, kind) => { loginSender(event); return savedLogins.get(kind); });
+      ipcMain.handle('ilbi:login-save', (event, kind, value) => { loginSender(event); return savedLogins.save(kind, value); });
+      ipcMain.handle('ilbi:login-forget', (event, kind) => { loginSender(event); return savedLogins.forget(kind); });
       const validDocumentSender = event => {
         validSender(event);
         if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame) throw Error('So‘rov manbasi tasdiqlanmadi.');

@@ -25,6 +25,10 @@ try {
     await wait(browser, 'document.querySelector("#root")?.children.length > 0');
     return browser;
   }
+  async function release(browser) {
+    assert.deepEqual(browser.errors.filter(error => !error.includes('ERR_BLOCKED_BY_CLIENT')), []);
+    await browser.close(); browsers.splice(browsers.indexOf(browser), 1);
+  }
   const clickText = (browser, text) => browser.evaluate(`(() => {
     const button = [...document.querySelectorAll('button,a,[role=button]')].find(node => node.textContent.trim() === ${JSON.stringify(text)});
     if (!button) throw Error('Missing button: ' + ${JSON.stringify(text)});
@@ -49,6 +53,7 @@ try {
     await browser.evaluate('document.querySelector("#username").closest("form").requestSubmit()');
     await wait(browser, 'Boolean(document.querySelector("#otp-code"))');
     assert.equal(await browser.evaluate('Boolean(localStorage.getItem("ilbi_access_token") || sessionStorage.getItem("ilbi_access_token"))'), false, 'Password step alone must not grant access');
+    if (await browser.evaluate('Boolean(window.ilbiDesktop)')) assert.equal(await browser.evaluate('authQA.credentialSaves'), 0, 'Do not remember credentials before successful OTP verification');
     await fill(browser, '#otp-code', '123456');
     await browser.evaluate('document.querySelector("#otp-code").closest("form").requestSubmit()');
     await wait(browser, 'Boolean(document.querySelector(".sidebar"))');
@@ -66,6 +71,7 @@ try {
   assert.equal(await logout.evaluate('document.body.innerText.includes("PRIVATE_HISTORY_SENTINEL")'), false, 'Logout must remove private chat history immediately');
   assert.equal(await logout.evaluate('Boolean(localStorage.getItem("ilbi_access_token") || localStorage.getItem("inventra_access_token"))'), false);
   console.log('PASS logout clears private chat and both token namespaces');
+  await release(logout);
 
   const offline = await open('/support', { profileFailure: true });
   await delay(1000);
@@ -76,6 +82,7 @@ try {
   await clickText(offline, 'Qayta tekshirish');
   await wait(offline, 'Boolean(document.querySelector(".sidebar"))');
   console.log('PASS a failed session check can be retried without losing the saved session');
+  await release(offline);
 
   const savedLogin = await open('/login', { guestHistory: true });
   await wait(savedLogin, 'Boolean(document.querySelector("#username"))');
@@ -87,6 +94,7 @@ try {
   await wait(savedLogin, 'location.pathname === "/support"');
   assert.equal(await savedLogin.evaluate('Boolean(document.querySelector(".sidebar"))'), false);
   console.log('PASS login clears old authentication and old chat capability; expand stays public');
+  await release(savedLogin);
 
   const guest = await open('/login', { saved: false });
   await wait(guest, 'Boolean(document.querySelector("#username"))');
@@ -95,10 +103,23 @@ try {
   await wait(guest, 'location.pathname === "/support"');
   assert.equal(await guest.evaluate('Boolean(document.querySelector(".sidebar"))'), false);
   console.log('PASS expanding a guest chat never opens the private layout');
+  await release(guest);
 
   const loginFlow = await open('/login', { saved: false });
   await signIn(loginFlow);
   console.log('PASS normal login requires the OTP step before authenticated navigation');
+
+  const remembered = await open('/login', { saved:false, desktop:true });
+  await signIn(remembered);
+  assert.equal(await remembered.evaluate('authQA.credentialSaves'),1);
+  assert.equal(await remembered.evaluate('JSON.stringify({...localStorage,...sessionStorage}).includes("synthetic-password")'),false);
+  await remembered.evaluate('window.dispatchEvent(new Event("auth:logout"))');
+  await wait(remembered, 'location.pathname==="/login" && document.querySelector("#username")?.value==="session_test" && document.querySelector("#password")?.value==="synthetic-password"');
+  await remembered.evaluate('document.querySelector("#remember-me").click()');
+  await wait(remembered,'window.ilbiDesktop.getSavedLogin("online").then(value=>value===null)');
+  assert.equal(await remembered.evaluate('localStorage.getItem("ilbi_remember_me")'), 'false');
+  console.log('PASS verified login remembers both fields; opt-out deletes native saved credentials without plaintext browser storage');
+  await release(remembered);
 
   const draft = await open('/pos', { role: 'owner' });
   await wait(draft, 'Boolean(document.querySelector(".glass-card.interactive"))');

@@ -1,12 +1,15 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUp, Check, CloudOff, RefreshCw, X } from 'lucide-react';
+import { ArrowUp, Check, Cloud, CloudOff, RefreshCw, X } from 'lucide-react';
 import { getRefreshToken, getAccessToken, parseJwt, setTokens } from '../../api/client';
 import { useTenant } from '../../context/TenantContext';
+import { useAuth } from '../../hooks/useAuth';
+import CustomSelect from '../common/CustomSelect';
 import { desktopRequest } from './desktopApi';
 import './sync.css';
 
 export default function SyncCenter() {
-  const { activeTenant } = useTenant();
+  const { activeTenant, tenants, selectTenant, loadingTenants } = useTenant();
+  const { isAdmin } = useAuth();
   const [state, setState] = useState(null);
   const [open, setOpen] = useState(false);
   const [pin, setPin] = useState('');
@@ -18,6 +21,14 @@ export default function SyncCenter() {
   const positions = useRef(new Map());
   const desktop = Boolean(window.ilbiDesktop);
   const cloudSession = !parseJwt(getAccessToken())?.desktop_device;
+  const enrollment = !state?.enrolled;
+  const ownedTenants = tenants.filter(tenant => tenant.is_owner);
+  const selectedTenant = activeTenant?.is_owner ? activeTenant : ownedTenants.length === 1 ? ownedTenants[0] : null;
+  const setupBlocked = !state ? 'Kassa holati tekshirilmoqda…' : !enrollment ? ''
+    : isAdmin ? 'Offline bazani tayyorlash uchun do‘kon egasi hisobidan kiring. Platforma administratori hisobi bilan do‘kon ulanmaydi.'
+      : loadingTenants ? 'Do‘konlaringiz yuklanmoqda…'
+        : !ownedTenants.length ? 'Avval do‘kon egasi hisobidan kiring. Offline bazani do‘kon egasi tayyorlaydi.'
+          : !selectedTenant ? 'Offline ishlash uchun quyidan do‘konni tanlang.' : '';
 
   useEffect(() => {
     if (!desktop) return undefined;
@@ -61,7 +72,8 @@ export default function SyncCenter() {
   const operations = state?.operations || [];
   const active = operations.find(row => row.status === 'active');
   const nextPriority = operations.find(row => row.status === 'waiting' && (row.promoted || row.priority || operations.some(parent => parent.priority && parent.dependencies.includes(row.id))));
-  const label = !state ? 'Sinxronlash holati' : !state.enrolled ? 'Offline tayyorlash' : cloudSession ? 'Hisobni kassaga ulash'
+  const onlineMode = !state?.enrolled || cloudSession;
+  const label = !state ? 'Sinxronlash holati' : onlineMode ? 'Online rejim'
     : active ? 'Sinxronlanmoqda' : operations.some(row => row.status === 'error' || row.status === 'blocked') ? 'Tekshirish kerak'
       : !state.online ? 'Offline' : operations.length ? `Kutilmoqda: ${operations.length}` : 'Sinxronlangan';
   async function action(path, id) {
@@ -70,10 +82,12 @@ export default function SyncCenter() {
     catch (failure) { setError(failure.message); }
   }
   async function prepare(event) {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault();
+    if (setupBlocked || pin.length < 8) { setError(setupBlocked || 'Offline parol kamida 8 belgidan iborat bo‘lsin.'); return; }
+    setBusy(true); setError('');
     try {
       const tokens = await desktopRequest(state?.enrolled ? 'actor' : 'enroll', {
-        pin, tenant_id: activeTenant?.id, refresh: getRefreshToken(),
+        pin, tenant_id: enrollment ? selectedTenant?.id : undefined, refresh: getRefreshToken(),
       });
       setTokens(tokens.access, tokens.refresh, true);
       window.location.reload();
@@ -83,17 +97,25 @@ export default function SyncCenter() {
 
   return <>
     <button ref={trigger} className="sync-status" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}>
-      {active ? <RefreshCw size={15} className="sync-arrows" /> : state?.online ? <Check size={15} /> : <CloudOff size={15} />}
-      <span>{label}</span>{operations.length > 0 && <b>{operations.length}</b>}
+      {onlineMode ? <Cloud size={15} /> : active ? <RefreshCw size={15} className="sync-arrows" /> : state?.online ? <Check size={15} /> : <CloudOff size={15} />}
+      <span className="sync-status-label">{label}{state && !state.enrolled && <small>Internetsiz ishlamaydi</small>}</span>{operations.length > 0 && <b>{operations.length}</b>}
     </button>
     <dialog ref={dialog} className="sync-dialog" aria-labelledby="sync-title" onCancel={event => { event.preventDefault(); close(); }} onClose={close}>
-      <div className="sync-heading"><div><h2 id="sync-title">Sinxronlash markazi</h2><p>{state?.online ? 'Serverga ulanish bor' : 'Ishlaringiz shu do‘kon kompyuterida saqlanadi'}</p></div>
+      <div className="sync-heading"><div><h2 id="sync-title">Sinxronlash markazi</h2><p>{onlineMode ? 'Internet orqali ishlash rejimi. Offline rejim ixtiyoriy.' : state?.online ? 'Serverga ulanish bor' : 'Ishlaringiz shu do‘kon kompyuterida saqlanadi'}</p></div>
         <button className="sync-icon-button" onClick={close} aria-label="Yopish"><X size={20} /></button></div>
       {error && <p role="alert" className="sync-error">{error}</p>}
       {!state?.enrolled || cloudSession ? <form onSubmit={prepare} className="sync-setup">
+        {state && !state.enrolled && <p className="sync-notice" role="note">Offline rejim sozlanmagan. Internet uzilsa, ilovada ishlay olmaysiz. Internetsiz ham ishlash uchun offline rejimni internet borida tayyorlang.</p>}
         <p>{state?.enrolled ? 'Hisobingizni ushbu do‘kon kassalariga ulang. Keyingi safar internet bo‘lmasa ham offline parol bilan kirasiz.' : 'Do‘kon egasi internet orqali bir marta bazani shu kompyuterga yuklaydi. Boshqa kassalar unga mahalliy tarmoq orqali ulanadi.'}</p>
-        <label>Offline parol<input type="password" minLength={8} required value={pin} onChange={event => setPin(event.target.value)} autoComplete="new-password" /></label>
-        <button className="btn btn-primary" disabled={busy || !activeTenant?.id}>{busy ? 'Tayyorlanmoqda…' : 'Offline ishlashni tayyorlash'}</button>
+        {enrollment && !isAdmin && ownedTenants.length > 0 && <label>Offline ishlaydigan do‘kon
+          <CustomSelect aria-label="Offline ishlaydigan do‘kon" name="offline-tenant" fullWidth value={selectedTenant?.id ?? ''} options={ownedTenants.map(tenant => ({ value: tenant.id, label: tenant.name }))}
+            placeholder="Do‘konni tanlang" disabled={busy} onChange={id => { selectTenant(ownedTenants.find(tenant => String(tenant.id) === String(id))); setError(''); }} />
+        </label>}
+        {setupBlocked && <p className="sync-setup-hint" id="offline-setup-reason" role="status">{setupBlocked}</p>}
+        <label>Offline parol<input name="offline-password" type="password" minLength={8} required value={pin} onChange={event => setPin(event.target.value)} autoComplete="new-password" aria-describedby="offline-password-hint" disabled={busy} /></label>
+        <small id="offline-password-hint" className="sync-setup-hint">{pin.length > 0 && pin.length < 8 ? `Kamida 8 belgi kiriting. Hozir: ${pin.length}.` : 'Kamida 8 belgi. Bu parol internet bo‘lmaganda kassaga kirish uchun kerak.'}</small>
+        <button type="submit" className="btn btn-primary" disabled={busy || Boolean(setupBlocked) || pin.length < 8} aria-describedby={setupBlocked ? 'offline-setup-reason' : 'offline-password-hint'}>{busy ? 'Tayyorlanmoqda…' : state?.enrolled ? 'Hisobni kassaga ulash' : 'Offline ishlashni tayyorlash'}</button>
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={close}>Hozircha internet orqali ishlayman</button>
       </form> : <>
         <div className="sync-summary"><span>{operations.length} ta operatsiya</span><span>{state.last_sync ? `Oxirgi: ${new Date(state.last_sync).toLocaleString('uz-UZ')}` : 'Dastlabki sinxronlash'}</span></div>
         {state.error && <p className="sync-notice">{state.error}</p>}

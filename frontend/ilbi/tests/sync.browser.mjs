@@ -68,6 +68,48 @@ try {
   assert.equal(await browser.evaluate('document.querySelector("dialog[open] [data-operation-id=active]").textContent.includes("27%")'), true);
   await writeFile(join(artifacts, 'classic-workspace-sync.png'), Buffer.from((await browser.call('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
   assert.equal(await browser.evaluate('Boolean(document.querySelector(".sidebar a[href=\\\"/download\\\"]"))'), true);
+  async function fillPin(value) {
+    await browser.evaluate(`(() => { const input=document.querySelector('input[name="offline-password"]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+  }
+  for (const scenario of ['single', 'multi', 'admin', 'actor']) {
+    await browser.call('Page.navigate', { url: origin + '/tests/browser/sync.html?setup=' + scenario });
+    await wait('document.querySelector(".sync-status")?.textContent.includes("Online rejim")');
+    assert.equal(await browser.evaluate('document.querySelector(".sync-status").textContent.includes("Internetsiz ishlamaydi")'), scenario !== 'actor');
+    await browser.evaluate('document.querySelector(".sync-status").click()');
+    await wait('Boolean(document.querySelector("dialog[open] form"))');
+    assert.equal(await browser.evaluate('document.querySelector(".sync-heading").textContent.includes("Offline rejim ixtiyoriy")'), true);
+    assert.equal(await browser.evaluate('document.querySelector(".sync-setup").textContent.includes("Internet uzilsa, ilovada ishlay olmaysiz")'), scenario !== 'actor');
+    await fillPin('seven77');
+    assert.equal(await browser.evaluate('document.querySelector(".sync-setup button[type=submit]").disabled'), true);
+    await fillPin('synthetic-offline-password');
+    if (scenario === 'multi') {
+      assert.equal(await browser.evaluate('document.querySelector(".sync-setup button[type=submit]").disabled'), true);
+      await browser.evaluate('document.querySelector("[aria-label=\\\"Offline ishlaydigan do‘kon\\\"]").click()');
+      await wait('Boolean(document.querySelector("[role=listbox]"))');
+      await browser.evaluate('[...document.querySelectorAll("[role=option]")].find(node=>node.textContent.includes("Ikkinchi QA")).click()');
+    }
+    if (scenario === 'admin') {
+      assert.equal(await browser.evaluate('document.querySelector(".sync-setup button[type=submit]").disabled'), true);
+      assert.equal(await browser.evaluate('document.querySelector("#offline-setup-reason").textContent.includes("do‘kon egasi")'), true);
+      assert.equal(await browser.evaluate('Boolean(document.querySelector("[name=offline-tenant]"))'), false);
+    } else {
+      await wait('!document.querySelector(".sync-setup button[type=submit]").disabled');
+      await browser.evaluate('document.querySelector(".sync-setup").requestSubmit()');
+      await wait('document.querySelector(".sync-error")?.textContent.includes("Sinov javobi")');
+      const sent = await browser.evaluate('syncQA.requests.find(row=>row.path==="/desktop/enroll/"||row.path==="/desktop/actor/")');
+      assert.equal(sent.path, scenario === 'actor' ? '/desktop/actor/' : '/desktop/enroll/');
+      assert.equal(sent.body.pin, 'synthetic-offline-password');
+      assert.equal(sent.body.tenant_id, scenario === 'actor' ? undefined : scenario === 'multi' ? 8 : 7);
+      assert.equal(await browser.evaluate('document.querySelector(".sync-setup button[type=submit]").disabled'), false, 'Failed preparation stays retryable');
+    }
+    await browser.evaluate('[...document.querySelectorAll(".sync-setup button")].find(node=>node.textContent.includes("Hozircha internet")).click()');
+    await wait('!document.querySelector("dialog[open]")');
+  }
+  await browser.resize(420, 900);
+  await browser.call('Page.navigate', {url:origin+'/tests/browser/sync.html?workspace&setup=single'});
+  await wait('document.querySelector(".sync-status")?.textContent.includes("Internetsiz ishlamaydi")');
+  assert.equal(await browser.evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Optional offline warning fits a mobile workspace');
+  await writeFile(join(artifacts,'online-warning-mobile.png'),Buffer.from((await browser.call('Page.captureScreenshot',{format:'png'})).data,'base64'));
   assert.deepEqual(browser.errors, []);
   console.log(JSON.stringify({ passed: true, scenarios: ['priority animation', 'active operation preserved', 'next arrows', 'real progress', 'server confirmation', 'mobile', 'reduced motion', 'keyboard focus', 'classic and fast workspace sync', 'draft preserved on workspace switch', 'workspace preference survives reload'], artifacts }));
 } catch (error) {

@@ -6,7 +6,7 @@ ILBI ilovasida kundalik savdo va ombor ekranlari webdagidek ishlaydi. Bu qo‘ll
 
 Linux’da [qisqa 4 qadamli o‘rnatish yo‘riqnomasidan](/download#linux-install) foydalaning. [Batafsil Linux qo‘llanmasi](#7-linux-uchun-batafsil-qollanma) shu qo‘llanmaning oxirida. Quyidagi asosiy sozlash qadamlari Windows va Linux uchun bir xil.
 
-Bitta kompyuterda ishlasangiz, boshqa kassaga ulanish yoki fayl ko‘chirish kerak emas. Ilova ma’lumotlarni shu kompyuterda saqlaydi. Keyinchalik kassalar soni oshsa, boshqa kompyuterlarni shu tayyor kassaga ulashingiz mumkin; qayta sozlash talab qilinmaydi. Boshqa, mustaqil do‘konlar o‘z ilovasini alohida sozlaydi.
+Bitta kompyuterda ishlasangiz, boshqa kassaga ulanish yoki fayl ko‘chirish kerak emas. **Offline rejim ixtiyoriy:** odatiy hisobingiz bilan kirib, internet orqali darhol ishlashingiz mumkin. Offline tayyorlash oddiy amallarni bajarish uchun talab qilinmaydi. Internetsiz ham ishlamoqchi bo‘lsangiz, quyidagi 2-bo‘limni bajaring. Keyinchalik kassalar soni oshsa, boshqa kompyuterlarni shu tayyor kassaga ulashingiz mumkin; qayta sozlash talab qilinmaydi. Boshqa, mustaqil do‘konlar o‘z ilovasini alohida sozlaydi.
 
 ![Bitta kompyuterda boshlash: 1 — Ishni boshlash tugmasi. Serverni sozlash talab qilinmaydi.](desktop-guide/01-primary-setup.png)
 
@@ -16,11 +16,13 @@ Server manzili avtomatik tanlanadi va ilova ichida o‘zgartirilmaydi. Login va 
 
 ## 2. Do‘konni offline ishlashga tayyorlash
 
+Offline rejim sozlanmaganida yuqorida **Internetsiz ishlamaydi** ogohlantirishi ko‘rinadi. Bu holatda internet uzilsa, ilovada ishlay olmaysiz. Ogohlantirish online ishlashni cheklamaydi; internetsiz ishlash kerak bo‘lsa, quyidagi tayyorlashni internet borida tugating.
+
 Birinchi sozlashda internet kerak. **Do‘kon egasi** o‘zining odatiy hisobi bilan internet orqali kirsin. Ishlaydigan do‘konni tanlang; bitta do‘kon bo‘lsa, u avtomatik tanlanadi.
 
 ![Do‘konni tayyorlash: 1 — ochilgan Sinxronlash markazi, 2 — offline parol, 3 — tayyorlashni boshlash.](desktop-guide/02-prepare.png)
 
-1. Ekranning yuqorisidagi **Offline tayyorlash** yozuvini bosing. Rasmda 1 bilan ko‘rsatilgan **Sinxronlash markazi** ochiladi.
+1. Ekranning yuqorisidagi **Online rejim** yozuvini bosing. Rasmda 1 bilan ko‘rsatilgan **Sinxronlash markazi** ochiladi. Bir nechta do‘koningiz bo‘lsa, shu oynada offline ishlaydigan do‘konni tanlang. Platforma administratori hisobida bo‘lsangiz, avval do‘kon egasi hisobiga kiring.
 2. Kamida **8 belgili offline parol** yarating. Bu parolni keyinchalik internetsiz kirishda ishlatasiz. Oddiy web parolingiz avtomatik ravishda offline parolga aylanmaydi.
 3. **Offline ishlashni tayyorlash** tugmasini bosing. Do‘kon ma’lumotlari shu kompyuterga tushishini kuting; dastur sahifani yangilaydi.
 
@@ -30,6 +32,8 @@ Har bir kassir ham o‘z hisobi bilan internet orqali bir marta kirsin. **Hisobn
 > Tayyorlashni internet bor paytda tugating. Internet uzilgandan keyin yangi do‘konni yuklab olish yoki ilgari ulanmagan hisobni tayyorlash imkoni bo‘lmaydi.
 
 ## 3. Internet bo‘lmaganda kirish
+
+Kirish oynasidagi **Meni eslab qol** belgilansa, muvaffaqiyatli kirishdan so‘ng login va parol keyingi safar to‘ldiriladi. Online kirishda Telegram tasdiqlash kodi baribir so‘raladi. Kompyuter ilovasida parollar tizim parollar ombori bilan shifrlanadi. Belgini olib tashlash shu saqlangan login va parolni o‘chiradi. Online va offline hisoblar uchun bu tanlov alohida. Webda esa qo‘llab-quvvatlaydigan brauzerning parollar ombori ishlatiladi.
 
 ![Internetsiz kirish: 1 — shaxsiy login, 2 — oldindan yaratilgan offline parol, 3 — Kassaga kirish.](desktop-guide/03-offline-login.png)
 

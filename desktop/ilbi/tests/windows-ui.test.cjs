@@ -7,6 +7,11 @@ const { join } = require('node:path');
 const { OFFICIAL_SERVER, freePort } = require('../runtime.cjs');
 const pause = ms => new Promise(ok => setTimeout(ok, ms));
 const installed = Boolean(process.env.ILBI_DESKTOP_INSTALLED_EXE);
+async function waitForExit(exited, timeout) {
+  let timer;
+  try { await Promise.race([exited, new Promise(ok => { timer=setTimeout(ok,timeout); })]); }
+  finally { clearTimeout(timer); }
+}
 
 async function connect(target) {
   const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -46,7 +51,7 @@ async function withInstalled(extraArguments, action) {
   const child = spawn(process.env.ILBI_DESKTOP_INSTALLED_EXE, [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1', ...extraArguments], { env: environment, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
   const exited = new Promise(ok => child.once('exit', ok));
   let log = '', setup;
-  child.stderr.on('data', data => { log = (log + data.toString()).slice(-5000); });
+  child.stderr.on('data', data => { log = (log + data.toString()).slice(-5000); if (data.toString().includes('ILBI yopilishi:')) console.error(data.toString().trim()); });
   const sockets = [];
   const targets = async () => (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   async function waitFor(operation, description = 'app UI') {
@@ -60,10 +65,12 @@ async function withInstalled(extraArguments, action) {
     await action({ setup, waitFor, targets, page });
   } finally {
     if (setup && child.exitCode === null) await setup.evaluate('setTimeout(()=>window.close(),50);true').catch(() => {});
-    await Promise.race([exited, pause(10000)]);
+    // Normal shutdown drains in-flight cloud requests before stopping the DB.
+    await waitForExit(exited, 90000);
     for (const socket of sockets) socket.close();
     if (child.exitCode === null) child.kill();
-    await Promise.race([exited, pause(5000)]);
+    await waitForExit(exited, 5000);
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await waitForExit(exited, 5000); }
   }
   assert.equal(child.exitCode, 0, 'Installed app shuts down cleanly: ' + log);
 }

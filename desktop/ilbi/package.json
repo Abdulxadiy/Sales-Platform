@@ -37,6 +37,8 @@
       "icon.ico",
       "application.cjs",
       "updater.cjs",
+      "login-credentials.cjs",
+      "proxy.cjs",
       "build-info.json",
       "linux-update-helper.cjs",
       "update-helper-preload.cjs",

@@ -27,29 +27,37 @@ class DesktopMiddleware:
             return JsonResponse({"detail": "Desktop ulanishi tasdiqlanmadi."}, status=403)
         if request.path.startswith("/desktop/"):
             if request.path in {"/desktop/update/prepare/", "/desktop/update/resume/"}:
-                key = getattr(settings, 'DESKTOP_UPDATE_KEY', '')
-                if not key or request.method != 'POST' or not hmac.compare_digest(request.headers.get('X-ILBI-Update-Key', ''), key):
-                    return JsonResponse({'detail': 'Yangilash so‘rovi tasdiqlanmadi.'}, status=403)
+                key = getattr(settings, "DESKTOP_UPDATE_KEY", "")
+                if (
+                    not key
+                    or request.method != "POST"
+                    or not hmac.compare_digest(request.headers.get("X-ILBI-Update-Key", ""), key)
+                ):
+                    return JsonResponse({"detail": "Yangilash so‘rovi tasdiqlanmadi."}, status=403)
                 from .worker import pause_for_update, resume_after_update
-                if request.path.endswith('/resume/'):
+
+                if request.path.endswith("/resume/"):
                     resume_after_update()
-                    return JsonResponse({'ready': False})
+                    return JsonResponse({"ready": False})
                 # Do not hold runtime_lock while a network sync needs to finish.
                 if not pause_for_update():
-                    return JsonResponse({'detail': 'Sinxronlash hali tugamadi. Birozdan keyin yangilang.'}, status=409)
+                    return JsonResponse({"detail": "Sinxronlash hali tugamadi. Birozdan keyin yangilang."}, status=409)
                 with runtime_lock:
-                    return JsonResponse({'ready': True})
+                    return JsonResponse({"ready": True})
             with runtime_lock:
                 return endpoint(request, request.path[len("/desktop/") :])
+        if request.path.startswith("/media/"):
+            response = self.get_response(request)
+            return self.proxy(request, "") if response.status_code == 404 else response
         if not request.path.startswith("/api/v1/"):
             return self.get_response(request)
         path = request.path[len("/api/v1/") :]
+        if request.headers.get("X-ILBI-Cloud-Session") == "true":
+            # Online login stays online. Offline enrollment is optional;
+            # cloud writes must never also enter the local outgoing queue.
+            return self.proxy(request, path)
         with runtime_lock:
             device = get_state("device")
-            if request.headers.get("X-ILBI-Cloud-Session") == "true":
-                if request.method not in {"GET", "HEAD", "OPTIONS"} and not path.startswith("auth/"):
-                    return JsonResponse({"detail": "Avval hisobingizni offline kassaga ulang."}, status=409)
-                return self.proxy(request, path)
             if not device:
                 return self.proxy(request, path)
             identifiers = [path.split("/"), [part for value in request.GET.values() for part in value.split(",")]]
@@ -189,7 +197,19 @@ class DesktopMiddleware:
                 headers = {
                     key: value
                     for key, value in request.headers.items()
-                    if key.lower() in {"authorization", "content-type", "x-tenant-id"}
+                    if key.lower()
+                    in {
+                        "authorization",
+                        "content-type",
+                        "x-tenant-id",
+                        "x-support-token",
+                        "idempotency-key",
+                        "x-idempotency-key",
+                        "accept",
+                        "range",
+                        "if-none-match",
+                        "if-modified-since",
+                    }
                 }
                 remote = requests.request(
                     request.method,
@@ -204,7 +224,14 @@ class DesktopMiddleware:
                 status=remote.status_code,
                 content_type=remote.headers.get("Content-Type", "application/json"),
             )
-            for name in ("Content-Disposition", "Retry-After"):
+            for name in (
+                "Content-Disposition",
+                "Retry-After",
+                "Content-Range",
+                "Accept-Ranges",
+                "ETag",
+                "Last-Modified",
+            ):
                 if name in remote.headers:
                     response[name] = remote.headers[name]
             return response
@@ -212,5 +239,9 @@ class DesktopMiddleware:
             return JsonResponse({"detail": str(error)}, status=503)
         except requests.RequestException:
             return JsonResponse(
-                {"detail": "Internet yo‘q. Tayyorlangan hisobga offline parol bilan kiring."}, status=503
+                {
+                    "detail": "Internetga ulanib, qayta urinib ko‘ring. "
+                    "Offline rejim oldindan tayyorlangan bo‘lsa, offline parol bilan kirishingiz ham mumkin."
+                },
+                status=503,
             )

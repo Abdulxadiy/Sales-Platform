@@ -28,7 +28,9 @@ async function protectProfile(directory){
     const {execFile}=require('node:child_process'),{promisify}=require('node:util'),exec=promisify(execFile);
     const {stdout}=await exec('whoami',['/user','/fo','csv','/nh'],{windowsHide:true});
     const sid=stdout.match(/S-1-5-[\d-]+/)?.[0];if(!sid)throw Error('Windows foydalanuvchi himoyasi aniqlanmadi.');
-    await exec('icacls',[directory,'/inheritance:r','/grant:r',`*${sid}:(OI)(CI)F`,'*S-1-5-18:(OI)(CI)F','/T','/C','/Q'],{windowsHide:true,maxBuffer:8*1024*1024});
+    // Apply container inheritance at the root. Windows propagates the proper
+    // file and directory ACEs; do not rewrite every file with container flags.
+    await exec('icacls',[directory,'/inheritance:r','/grant:r',`*${sid}:(OI)(CI)F`,'*S-1-5-18:(OI)(CI)F','/Q'],{windowsHide:true,maxBuffer:8*1024*1024});
   }else await chmod(directory,0o700);
 }
 

@@ -17,6 +17,7 @@ test('authenticated backup restores stopped database, media, queue and drafts; t
   const id=await manager.create();assert(running);assert.equal((await readFile(join(directory,'backups',id))).includes(Buffer.from('original-pending-sale')),false);
   await writeFile(join(directory,'postgres/queue'),'newer-pending-sale');await writeFile(join(directory,'media/photo'),'newer-image');drafts={local:{},files:[]};
   const restored=await manager.restore(id);assert(restored.restored);assert(running);
+  await protectProfile(directory); // Reopening the app must preserve access to existing/restored files.
   assert.equal(await readFile(join(directory,'postgres/queue'),'utf8'),'original-pending-sale');assert.equal(await readFile(join(directory,'media/photo'),'utf8'),'original-image');assert.equal(drafts.local['ilbi_account_draft:1:1:pos_cart'],'synthetic-cart');
   assert.notEqual(restored.previousBackup,id);assert.equal((await manager.list()).length,2);
   const path=join(directory,'backups',id),bytes=await readFile(path);bytes[50]^=1;await writeFile(path,bytes);

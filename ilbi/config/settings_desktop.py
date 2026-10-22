@@ -48,4 +48,5 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 24 * 1024 * 1024
 EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
 INTERNAL_SERVICE_TOKEN = None
 TELEGRAM_BOT_TOKEN = None
+REDIS_URL = None
 ROOT_URLCONF = "config.urls_desktop"

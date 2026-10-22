@@ -25,7 +25,11 @@ from apps.core.branding import send_branded_email as send_mail
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+redis_client = (
+    redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    if getattr(settings, "REDIS_URL", None)
+    else None
+)
 
 TOKEN_TTL_SECONDS = 86400  # 24 hours
 COOLDOWN_SECONDS = 60      # Minimum interval between email dispatch requests

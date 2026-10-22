@@ -3,7 +3,11 @@ import secrets
 import redis
 from django.conf import settings
 
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+redis_client = (
+    redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    if getattr(settings, "REDIS_URL", None)
+    else None
+)
 
 OTP_TTL_SECONDS = 180  # The code is valid for only 3 minutes
 MAX_ATTEMPTS = 5       # Number of incorrect attempts
@@ -47,14 +51,20 @@ def generate_code() -> str:
     )
 
 def is_in_cooldown(phone_number: str) -> bool:
+    if not redis_client:
+        return False
     return redis_client.exists(_cooldown_key(phone_number)) == 1
 
 def get_cooldown_remaining(phone_number: str) -> int:
     """Returns the remaining seconds in cooldown, or 0 if not in cooldown."""
+    if not redis_client:
+        return 0
     ttl = redis_client.ttl(_cooldown_key(phone_number))
     return max(ttl, 0) if ttl and ttl > 0 else 0
 
 def store_code(phone_number: str, code: str) -> None:
+    if not redis_client:
+        return
     redis_client.set(_otp_key(phone_number), code, ex=OTP_TTL_SECONDS)
     redis_client.set(_cooldown_key(phone_number), '1', ex=COOLDOWN_SECONDS)
     redis_client.delete(_attempts_key(phone_number))
@@ -64,6 +74,8 @@ def discard_code(phone_number: str) -> None:
     If sanding to Telegram fails we cancel the saved code and cooldown,
     otherwise the user will wait for a code that he never sent.
     """
+    if not redis_client:
+        return
     redis_client.delete(_otp_key(phone_number))
     redis_client.delete(_cooldown_key(phone_number))
     redis_client.delete(_attempts_key(phone_number))
@@ -73,6 +85,8 @@ def verify_code(phone_number: str, code: str) -> tuple[bool, str]:
     Returns (is_valid, error_reason)
     Error reason: 'expired' | 'too_many_attempts' | 'invalid_code' | ''
     """
+    if not redis_client:
+        return False, 'Expired'
     result = redis_client.eval(
         _VERIFY_CODE_SCRIPT,
         3,

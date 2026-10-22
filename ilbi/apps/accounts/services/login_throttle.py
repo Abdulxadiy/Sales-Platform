@@ -32,7 +32,11 @@ from django.db.models import F, Q
 
 User = get_user_model()
 
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+redis_client = (
+    redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    if getattr(settings, "REDIS_URL", None)
+    else None
+)
 
 # (max_attempts, lock_seconds) per stage, in escalation order
 _STAGES = [
@@ -80,6 +84,8 @@ def is_locked(username: str) -> tuple[bool, int]:
     :param username:
     :return tuple[bool, int]:
     """
+    if not redis_client:
+        return False, 0
     ttl = redis_client.ttl(_lock_key(username))
     if ttl and ttl > 0:
         return True, ttl
@@ -89,6 +95,8 @@ def is_locked(username: str) -> tuple[bool, int]:
 def register_failure(username: str) -> None:
     """Call after ANY failure login attempts: wrong password at step 1, or
     wrong/expired OTP at step 2."""
+    if not redis_client:
+        return
     stage = int(redis_client.get(_stage_key(username)) or 0)
     stage = min(stage, _FINAL_STAGE)
     max_attempts, lock_seconds = _STAGES[stage]
@@ -118,6 +126,8 @@ def register_success(username: str) -> None:
     """Call once login fully succeeds (correct, password AND
     correct OTP). Clears every piece of throttle state, including
     the ban-strike already streak"""
+    if not redis_client:
+        return
     redis_client.delete(_lock_key(username))
     redis_client.delete(_attempts_key(username))
     redis_client.delete(_stage_key(username))

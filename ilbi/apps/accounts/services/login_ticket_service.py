@@ -12,7 +12,11 @@ from .demo_access_service import DemoAccessService
 
 TICKET_TTL_SECONDS = 30 * 60
 OTP_TICKET_TTL_SECONDS = 5 * 60
-redis_client = redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+redis_client = (
+    redis.Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    if getattr(settings, "REDIS_URL", None)
+    else None
+)
 
 
 def _ticket_key(ticket: str) -> str:
@@ -39,13 +43,14 @@ def create_ticket(
     if invitation_key:
         payload["invitation_key"] = invitation_key
     ttl = TICKET_TTL_SECONDS if max_ttl_seconds is None else min(TICKET_TTL_SECONDS, max(1, max_ttl_seconds))
-    redis_client.set(_ticket_key(ticket), json.dumps(payload), ex=ttl)
+    if redis_client:
+        redis_client.set(_ticket_key(ticket), json.dumps(payload), ex=ttl)
     return ticket
 
 
 def resolve_ticket(ticket: str):
     """Return (user, login_identifier) only while the credentials are unchanged."""
-    if not ticket or len(ticket) > 128:
+    if not redis_client or not ticket or len(ticket) > 128:
         return None
     raw = redis_client.get(_ticket_key(ticket))
     if not raw:
@@ -80,6 +85,8 @@ def resolve_ticket(ticket: str):
 
 
 def mark_otp_sent(ticket: str) -> None:
+    if not redis_client:
+        return
     ttl = redis_client.ttl(_ticket_key(ticket))
     if ttl > 0:
         otp_ttl = min(ttl, OTP_TICKET_TTL_SECONDS)
@@ -88,11 +95,15 @@ def mark_otp_sent(ticket: str) -> None:
 
 
 def was_otp_sent(ticket: str) -> bool:
+    if not redis_client:
+        return False
     return bool(redis_client.exists(_sent_key(ticket)))
 
 
 def consume_ticket(ticket: str) -> bool:
     """Claim a ticket exactly once, even if two requests arrive concurrently."""
+    if not redis_client:
+        return False
     claimed = redis_client.getdel(_ticket_key(ticket)) is not None
     redis_client.delete(_sent_key(ticket))
     return claimed

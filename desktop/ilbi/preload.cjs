@@ -7,7 +7,7 @@ async function invoke(channel, ...args) {
   }
 }
 contextBridge.exposeInMainWorld('ilbiDesktop', Object.freeze({
-  version: '1.2.0',
+  version: '1.3.0',
   setup: () => invoke('ilbi:setup'),
   join: code => invoke('ilbi:join',code),
   getJoinState:()=>invoke('ilbi:join-state'),

@@ -123,7 +123,7 @@ Muammo qolsa, [Yordam markaziga](/support) murojaat qiling. Qaysi kompyuter asos
 
 **Arch Linux uchun qadamlar:**
 
-1. **Linux uchun yuklab olish** tugmasini bosing. Fayl menejerida yuklangan `ILBI-1.2.0-linux-x64.tar.gz` arxivini ochib, bir papkaga chiqaring.
+1. **Linux uchun yuklab olish** tugmasini bosing. Fayl menejerida yuklangan `ILBI-…-linux-x64.tar.gz` arxivini ochib, bir papkaga chiqaring. Fayl nomida yuklangan versiya raqami yoziladi.
 2. Hosil bo‘lgan **ILBI** papkasiga kiring. Bo‘sh joyni o‘ng bosib **Terminalda ochish**ni tanlang.
 3. `bash install.sh` yozib, `Enter` bosing. O‘rnatish administrator parolisiz bajariladi. Ilovalar menyusida **ILBI** paydo bo‘ladi. Menyuda darhol ko‘rinmasa, `~/.local/bin/ilbi` buyrug‘i bilan oching.
 4. **Ishni boshlash**ni bosing va yuqoridagi 2-bo‘lim bo‘yicha do‘konni ulang.

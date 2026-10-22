@@ -2,7 +2,8 @@
 # Run inside a fresh dbus-run-session; all application/keyring data is disposable.
 set -euo pipefail
 repository=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)
-package=${1:-$repository/desktop/ilbi/release-linux/ILBI-1.2.0-linux-x64.tar.gz}
+version=$(node -p 'require(process.argv[1]).version' "$repository/desktop/ilbi/package.json")
+package=${1:-$repository/desktop/ilbi/release-linux/ILBI-$version-linux-x64.tar.gz}
 test_directory=$(mktemp -d "${TMPDIR:-/tmp}/ilbi-linux-package-XXXXXXXX")
 # Chromium's singleton socket must fit the Linux UNIX socket path limit. Keep
 # its tiny temporary sockets in /tmp; the extracted package stays on disk.

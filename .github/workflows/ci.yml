@@ -49,11 +49,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check deployment scripts
         run: |
+          python3 desktop/release_version.py
           for script in ops/*.sh; do bash -n "$script"; done
           python3 -m unittest discover -s tests/deployment -p 'test_operations.py' -v
           python3 -m unittest discover -s tests/deployment -p 'test_ci_handoff.py' -v
           python3 -m unittest discover -s tests/deployment -p 'test_download_activation.py' -v
           python3 -m unittest discover -s tests/deployment -p 'test_linux_downloads.py' -v
+          python3 -m unittest discover -s tests/deployment -p 'test_release*.py' -v
       - name: Fetch isolated test images
         run: |
           docker pull nginx:alpine

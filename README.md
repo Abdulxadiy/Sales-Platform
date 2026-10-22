@@ -1,6 +1,6 @@
 # ILBI Platform
 
-Current platform release: [v1.3.1](docs/releases/v1.3.1.md).
+Current platform release: [v1.3.5](docs/releases/v1.3.5.md).
 
 Push ready changes to main with Git or IDE Source Control. Passing CI automatically builds the Windows and Linux packages and deploys the platform and downloads to production; saving a local file does not push it. Details: [CI and automatic deployment](automation/README.md).
 

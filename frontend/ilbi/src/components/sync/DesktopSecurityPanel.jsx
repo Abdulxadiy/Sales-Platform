@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import {Lock,ShieldCheck,RefreshCw} from 'lucide-react';
 import {getAccessToken} from '../../api/client';
 import {desktopRequest} from './desktopApi';
+import CustomSelect from '../common/CustomSelect';
 
 export default function DesktopSecurityPanel({visible}){
   const [session,setSession]=useState(null),[registers,setRegisters]=useState([]),[pair,setPair]=useState(null);
@@ -59,7 +60,7 @@ export default function DesktopSecurityPanel({visible}){
         {(backup?.busy||busy)&&<p role="status"><RefreshCw size={16} className="sync-arrows"/>Jarayon tugashini kuting. Bir oz vaqt amallar bajarilmaydi.</p>}
         {backup?.error&&<p role="alert">{backup.error}</p>}
         <button className="btn btn-secondary" disabled={busy||backup?.busy} onClick={()=>run(async()=>setBackup(await native.createBackup(getAccessToken())))}>Hozir zaxiralash</button>
-        {backup?.backups.length>0&&<form onSubmit={event=>{event.preventDefault();void run(async()=>{await native.restoreBackup(getAccessToken(),selected,password);setPassword('');});}}><label>Tiklanadigan zaxira<select required value={selected} onChange={event=>setSelected(event.target.value)}><option value="">Zaxirani tanlang</option>{backup.backups.map(row=><option key={row.id} value={row.id}>{new Date(row.created).toLocaleString('uz-UZ')} · {(row.bytes/1048576).toFixed(1)} MB</option>)}</select></label><label>Odatiy hisob parolingiz<input type="password" required autoComplete="off" value={password} onChange={event=>setPassword(event.target.value)}/></label><button className="btn btn-secondary" disabled={busy||backup.busy||!selected||!password}>Zaxiradan tiklash</button><small>Avval hozirgi holatning yangi zaxirasi yaratiladi. Tiklash uchun yana tasdiqlash oynasi chiqadi.</small></form>}
+        {backup?.backups.length>0&&<form onSubmit={event=>{event.preventDefault();void run(async()=>{await native.restoreBackup(getAccessToken(),selected,password);setPassword('');});}}><div><label style={{ display: 'block', marginBottom: 4 }}>Tiklanadigan zaxira</label><CustomSelect value={selected} onChange={setSelected} placeholder="Zaxirani tanlang" fullWidth options={backup.backups.map(row=>({ value: String(row.id), label: `${new Date(row.created).toLocaleString('uz-UZ')} · ${(row.bytes/1048576).toFixed(1)} MB` }))}/></div><label>Odatiy hisob parolingiz<input type="password" required autoComplete="off" value={password} onChange={event=>setPassword(event.target.value)}/></label><button className="btn btn-secondary" disabled={busy||backup.busy||!selected||!password}>Zaxiradan tiklash</button><small>Avval hozirgi holatning yangi zaxirasi yaratiladi. Tiklash uchun yana tasdiqlash oynasi chiqadi.</small></form>}
       </details>
     </>}
   </section>;

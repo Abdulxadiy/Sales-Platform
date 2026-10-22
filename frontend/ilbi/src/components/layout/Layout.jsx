@@ -18,6 +18,7 @@ import { usePersistedState } from '../../hooks/usePersistedState';
 import { WorkspaceProvider, useWorkspace } from '../../context/WorkspaceContext';
 import '../../styles/workspace.css';
 import { platformApi } from '../../api/platform';
+const Reminders = React.lazy(() => import('../workspace/Reminders'));
 
 function LayoutContent({ children }) {
   const { mode } = useWorkspace();
@@ -28,6 +29,7 @@ function LayoutContent({ children }) {
   const { isAdmin, user } = useAuth();
   const { activeTenant } = useTenant();
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
+  const [remindersModalOpen, setRemindersModalOpen] = useState(false);
   const [shiftData, setShiftData] = useState(null);
   const [cashCounted, setCashCounted] = useState('');
   const [cashCountedUsd, setCashCountedUsd] = useState('0');
@@ -45,6 +47,17 @@ function LayoutContent({ children }) {
       setMobileMenuOpen(false);
     }
   }, [location.pathname]);
+
+  // Global Reminders & Tasks Listener
+  const [initiallyCreatingReminder, setInitiallyCreatingReminder] = useState(false);
+  useEffect(() => {
+    const handleOpenReminders = (e) => {
+      setInitiallyCreatingReminder(Boolean(e?.detail?.create));
+      setRemindersModalOpen(true);
+    };
+    window.addEventListener('workspace_open_reminders', handleOpenReminders);
+    return () => window.removeEventListener('workspace_open_reminders', handleOpenReminders);
+  }, []);
 
   // Notifications & B2B
   const [notifModalOpen, setNotifModalOpen] = useState(false);
@@ -347,15 +360,16 @@ function LayoutContent({ children }) {
         />
       )}
 
-      {/* Floating Collapsible Sidebar */}
-      {mode !== 'fast' && <Sidebar
+      {/* Floating Collapsible Sidebar (Active in both Classic and Fast desktops) */}
+      <Sidebar
         onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
+        onOpenReminders={() => { setInitiallyCreatingReminder(false); setRemindersModalOpen(true); }}
         unreadCount={unreadCount}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
-      />}
+      />
 
       {/* Main Content Area */}
       <div className="main-content">
@@ -365,6 +379,7 @@ function LayoutContent({ children }) {
           onOpenShiftModal={() => setShiftModalOpen(true)}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
+          onOpenReminders={() => setRemindersModalOpen(true)}
           unreadCount={unreadCount}
           notifications={notifications}
         />
@@ -648,6 +663,20 @@ function LayoutContent({ children }) {
           })()}
         </div>
       </Modal>
+
+      {/* Reminders & Employee Task Modal (Accessible in both Classic & Fast desktops) */}
+      {remindersModalOpen && (
+        <Modal
+          isOpen
+          onClose={() => { setRemindersModalOpen(false); setInitiallyCreatingReminder(false); }}
+          title="Eslatmalar va Xodimlarga topshiriqlar"
+          maxWidth={760}
+        >
+          <React.Suspense fallback={<IlbiLoader />}>
+            <Reminders initiallyCreating={initiallyCreatingReminder} />
+          </React.Suspense>
+        </Modal>
+      )}
     </div>
   );
 }

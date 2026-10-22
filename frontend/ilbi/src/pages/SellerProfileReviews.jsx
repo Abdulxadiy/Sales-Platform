@@ -5,6 +5,7 @@ import { tenantApi } from '../api/client';
 import Modal from '../components/common/Modal';
 import Pagination from '../components/common/Pagination';
 import CustomSelect from '../components/common/CustomSelect';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 import { useToast } from '../context/ToastContext';
 
 const PAGE_SIZE = 20;
@@ -240,10 +241,18 @@ export default function SellerProfileReviews() {
               />
             </div>
             {decision === 'approved' && (
-              <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
-                Amal qilish muddati
-                <input type="datetime-local" className="input-field" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} required />
-              </label>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                  Amal qilish muddati
+                </label>
+                <CustomDatePicker
+                  includeTime
+                  fullWidth
+                  value={expiresAt}
+                  onChange={setExpiresAt}
+                  placeholder="Muddati va vaqtini tanlang..."
+                />
+              </div>
             )}
             <label style={{ display: 'grid', gap: 6, fontSize: 13, fontWeight: 600 }}>
               {decision === 'rejected' ? 'Rad etish sababi' : 'Tekshiruv izohi (ixtiyoriy)'}

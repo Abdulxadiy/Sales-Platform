@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Modal from '../common/Modal';
 import PriceInput from '../common/PriceInput';
+import CustomDatePicker from '../common/CustomDatePicker';
 import CameraBarcodeScanner from '../common/CameraBarcodeScanner';
 import { useDebouncedValue, usePaginatedList } from '../../hooks/usePaginatedList';
 import { useSelectPopover } from '../../hooks/useSelectPopover';
@@ -1172,27 +1173,17 @@ export default function RapidStockIntakeModal({
                         </td>
 
                         {/* 4. Yaroqlilik Muddati */}
-                        <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '10px 10px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle', minWidth: 170 }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <input
-                              type="date"
+                            <CustomDatePicker
+                              size="sm"
                               value={item.expires_on || ''}
                               min="2020-01-01"
                               max="2045-12-31"
-                              onChange={(e) => handleUpdateItem(item.id, 'expires_on', e.target.value)}
+                              onChange={(val) => handleUpdateItem(item.id, 'expires_on', val)}
                               title="Partiyaning yaroqlilik muddati (tugash sanasi)"
-                              style={{
-                                width: '100%',
-                                padding: '5px 8px',
-                                fontSize: 12,
-                                borderRadius: 6,
-                                border: '1px solid var(--border-subtle)',
-                                background: 'var(--bg-input)',
-                                color: 'var(--text-primary)',
-                                outline: 'none',
-                                cursor: 'pointer',
-                                boxSizing: 'border-box',
-                              }}
+                              placeholder="Muddati..."
+                              fullWidth
                             />
                             {expiryStatus && (
                               <span

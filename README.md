@@ -1,6 +1,6 @@
 # ILBI Platform
 
-Current platform release: [v1.3.0](docs/releases/v1.3.0.md).
+Current platform release: [v1.3.1](docs/releases/v1.3.1.md).
 
 Push ready changes to main with Git or IDE Source Control. Passing CI automatically builds the Windows and Linux packages and deploys the platform and downloads to production; saving a local file does not push it. Details: [CI and automatic deployment](automation/README.md).
 
@@ -255,7 +255,7 @@ npm run dist:win --prefix desktop/ilbi
 Pinned Python/PostgreSQL/MSVC archives are checked by SHA-256. Dependency wheels
 are checked against `uv.lock` and `desktop/windows-wheel-lock.json`. Deployment
 `.env` files, cloud database contents and development dependencies are excluded.
-The output is `desktop/ilbi/release/ILBI-Setup-1.3.0-x64.exe`. The build verifies
+The output is `desktop/ilbi/release/ILBI-Setup-1.3.1-x64.exe`. The build verifies
 that the installer contains its application payload. Main CI calls the
 **ILBI Windows desktop** workflow, starts the native Windows Python/PostgreSQL
 service, installs the built package, tests its installed service and uninstalls it.

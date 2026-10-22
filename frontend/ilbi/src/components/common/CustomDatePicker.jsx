@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, X, Clock, Check } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
 const MONTH_NAMES_UZ = [
@@ -29,6 +29,7 @@ export default function CustomDatePicker({
   fullWidth = false,
   clearable = true,
   title = '',
+  includeTime = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -57,22 +58,29 @@ export default function CustomDatePicker({
     const trimmed = str.trim();
     if (!trimmed) return null;
 
-    // Handle ISO formats like '2026-10-08T12:00:00Z'
-    const cleanStr = trimmed.split('T')[0];
-    const parts = cleanStr.split(/[-/]/);
+    // Handle local date and datetime formats without UTC zone shifts
+    const [datePart, timePart] = trimmed.split(/[T\s]/);
+    const parts = datePart ? datePart.split(/[-/]/) : [];
     if (parts.length === 3) {
       const y = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10) - 1;
       const d = parseInt(parts[2], 10);
+      let h = 0;
+      let minVal = 0;
+      if (timePart) {
+        const timePieces = timePart.split(':');
+        if (timePieces[0]) h = parseInt(timePieces[0], 10) || 0;
+        if (timePieces[1]) minVal = parseInt(timePieces[1], 10) || 0;
+      }
       if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-        const parsed = new Date(y, m, d);
+        const parsed = new Date(y, m, d, h, minVal);
         if (!isNaN(parsed.getTime())) {
           return parsed;
         }
       }
     }
 
-    const fallback = new Date(cleanStr);
+    const fallback = new Date(trimmed);
     return isNaN(fallback.getTime()) ? null : fallback;
   };
 
@@ -82,12 +90,16 @@ export default function CustomDatePicker({
   // Calendar view state (which month/year is currently being viewed)
   const [viewYear, setViewYear] = useState(selectedDate ? selectedDate.getFullYear() : today.getFullYear());
   const [viewMonth, setViewMonth] = useState(selectedDate ? selectedDate.getMonth() : today.getMonth());
+  const [viewHour, setViewHour] = useState(selectedDate ? selectedDate.getHours() : 12);
+  const [viewMinute, setViewMinute] = useState(selectedDate ? selectedDate.getMinutes() : 0);
 
   // Update view when value changes from outside
   useEffect(() => {
     if (selectedDate) {
       setViewYear(selectedDate.getFullYear());
       setViewMonth(selectedDate.getMonth());
+      setViewHour(selectedDate.getHours());
+      setViewMinute(selectedDate.getMinutes());
     }
   }, [value]);
 
@@ -130,11 +142,16 @@ export default function CustomDatePicker({
     yearOptions.push(y);
   }
 
-  // Format date to 'YYYY-MM-DD'
-  const formatDateStr = (year, month, day) => {
+  // Format date to 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:mm'
+  const formatDateStr = (year, month, day, hour = viewHour, minute = viewMinute) => {
     const yStr = String(year);
     const mStr = String(month + 1).padStart(2, '0');
     const dStr = String(day).padStart(2, '0');
+    if (includeTime) {
+      const hStr = String(hour).padStart(2, '0');
+      const minStr = String(minute).padStart(2, '0');
+      return `${yStr}-${mStr}-${dStr}T${hStr}:${minStr}`;
+    }
     return `${yStr}-${mStr}-${dStr}`;
   };
 
@@ -144,7 +161,13 @@ export default function CustomDatePicker({
     const day = date.getDate();
     const monthName = MONTH_NAMES_UZ[date.getMonth()] || '';
     const year = date.getFullYear();
-    return `${String(day).padStart(2, '0')}-${monthName}, ${year}`;
+    const base = `${String(day).padStart(2, '0')}-${monthName}, ${year}`;
+    if (includeTime) {
+      const hStr = String(date.getHours()).padStart(2, '0');
+      const minStr = String(date.getMinutes()).padStart(2, '0');
+      return `${base} ${hStr}:${minStr}`;
+    }
+    return base;
   };
 
   const triggerChange = (valStr) => {
@@ -166,8 +189,18 @@ export default function CustomDatePicker({
   };
 
   const handleSelectDay = (day) => {
-    const dateStr = formatDateStr(viewYear, viewMonth, day);
-    setIsOpen(false);
+    const dateStr = formatDateStr(viewYear, viewMonth, day, viewHour, viewMinute);
+    if (!includeTime) {
+      setIsOpen(false);
+    }
+    triggerChange(dateStr);
+  };
+
+  const handleApplyTime = (h, m) => {
+    setViewHour(h);
+    setViewMinute(m);
+    const currentDay = selectedDate ? selectedDate.getDate() : today.getDate();
+    const dateStr = formatDateStr(viewYear, viewMonth, currentDay, h, m);
     triggerChange(dateStr);
   };
 
@@ -177,10 +210,20 @@ export default function CustomDatePicker({
   };
 
   const handleToday = () => {
-    const todayStr = formatDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayStr = formatDateStr(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      today.getHours(),
+      Math.floor(today.getMinutes() / 5) * 5
+    );
     setViewYear(today.getFullYear());
     setViewMonth(today.getMonth());
-    setIsOpen(false);
+    setViewHour(today.getHours());
+    setViewMinute(Math.floor(today.getMinutes() / 5) * 5);
+    if (!includeTime) {
+      setIsOpen(false);
+    }
     triggerChange(todayStr);
   };
 
@@ -357,7 +400,7 @@ export default function CustomDatePicker({
             position: 'absolute',
             top: 'calc(100% + 6px)',
             left: 0,
-            width: 290,
+            width: includeTime ? 310 : 290,
             background: 'var(--bg-card, #1e222d)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
@@ -535,6 +578,52 @@ export default function CustomDatePicker({
             })}
           </div>
 
+          {/* Time Picker Panel if includeTime is enabled */}
+          {includeTime && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                padding: '8px 6px',
+                borderTop: '1px solid var(--border-subtle, rgba(255, 255, 255, 0.08))',
+                background: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: 8,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                <Clock size={14} color="var(--primary)" />
+                <span>Vaqt:</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <CustomSelect
+                  value={viewHour}
+                  onChange={(val) => handleApplyTime(parseInt(val, 10), viewMinute)}
+                  options={Array.from({ length: 24 }).map((_, idx) => ({
+                    value: idx,
+                    label: String(idx).padStart(2, '0'),
+                  }))}
+                  size="sm"
+                  style={{ minWidth: 62, height: 28, padding: '2px 6px', fontSize: 12, fontWeight: 700 }}
+                  menuStyle={{ maxHeight: 180, minWidth: 70 }}
+                />
+                <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>:</span>
+                <CustomSelect
+                  value={viewMinute}
+                  onChange={(val) => handleApplyTime(viewHour, parseInt(val, 10))}
+                  options={[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((mVal) => ({
+                    value: mVal,
+                    label: String(mVal).padStart(2, '0'),
+                  }))}
+                  size="sm"
+                  style={{ minWidth: 62, height: 28, padding: '2px 6px', fontSize: 12, fontWeight: 700 }}
+                  menuStyle={{ maxHeight: 180, minWidth: 70 }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Quick Footer Action Bar */}
           <div
             style={{
@@ -546,39 +635,69 @@ export default function CustomDatePicker({
               marginTop: 2,
             }}
           >
-            <button
-              type="button"
-              onClick={handleToday}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--primary)',
-                fontSize: 11.5,
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: '3px 6px',
-                borderRadius: 4,
-              }}
-            >
-              Bugun
-            </button>
-
-            {selectedDate && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <button
                 type="button"
-                onClick={handleClear}
+                onClick={handleToday}
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: 'var(--text-muted)',
+                  color: 'var(--primary)',
                   fontSize: 11.5,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: 'pointer',
                   padding: '3px 6px',
                   borderRadius: 4,
                 }}
               >
-                Tozalash
+                {includeTime ? 'Hozir' : 'Bugun'}
+              </button>
+
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '3px 6px',
+                    borderRadius: 4,
+                  }}
+                >
+                  Tozalash
+                </button>
+              )}
+            </div>
+
+            {includeTime && (
+              <button
+                type="button"
+                onClick={() => {
+                  const currentDay = selectedDate ? selectedDate.getDate() : today.getDate();
+                  const dateStr = formatDateStr(viewYear, viewMonth, currentDay, viewHour, viewMinute);
+                  triggerChange(dateStr);
+                  setIsOpen(false);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  background: 'var(--primary)',
+                  color: 'var(--text-on-primary, #fff)',
+                  border: 'none',
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                }}
+              >
+                <Check size={13} />
+                <span>Tanlash</span>
               </button>
             )}
           </div>

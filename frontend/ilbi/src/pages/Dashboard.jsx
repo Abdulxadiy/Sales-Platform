@@ -41,6 +41,7 @@ import PhoneInput from '../components/common/PhoneInput';
 import { showOwnerInvitationResult } from '../utils/ownerInvitation';
 
 const WorkDesktop = React.lazy(() => import('../components/workspace/WorkDesktop'));
+const Reminders = React.lazy(() => import('../components/workspace/Reminders'));
 
 function TenantDashboard() {
   const { mode } = useWorkspace();
@@ -1504,11 +1505,23 @@ function TenantDashboard() {
         </div>
       </div>
 
-      {/* Bottom Section: Top 10 Products */}
-      <div className="glass-card" style={{ padding: 24 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 16px' }}>
-          Eng Ko‘p Sotilgan Tovar (Top-10)
-        </h3>
+      {/* Bottom Section: Reminders & Employee Tasks + Top 10 Products */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+          gap: 20,
+          alignItems: 'start',
+        }}
+      >
+        <React.Suspense fallback={<div className="glass-card" style={{ padding: 24 }}><IlbiLoader label="Eslatmalar yuklanmoqda..." /></div>}>
+          <Reminders />
+        </React.Suspense>
+
+        <div className="glass-card" style={{ padding: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 16px' }}>
+            Eng Ko‘p Sotilgan Tovar (Top-10)
+          </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {data?.top_products && data.top_products.length > 0 ? (
             data.top_products.slice(0, 8).map((p, idx) => (
@@ -1575,6 +1588,7 @@ function TenantDashboard() {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 

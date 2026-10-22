@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Plus, ChevronDown, Star, SlidersHorizontal, Calculator, Maximize, Minimize,
-  Sun, Moon, Bell, BellRing, Keyboard, LogOut, User, ShoppingCart, PackagePlus, Package, CreditCard, FileSpreadsheet, UserPlus } from 'lucide-react';
+  Sun, Moon, Bell, BellRing, Keyboard, LogOut, User, ShoppingCart, PackagePlus, Package, CreditCard, FileSpreadsheet, UserPlus, Download } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -78,7 +78,7 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
     { label: 'Yangi mijoz', icon: UserPlus, url: '/debts?workspace_action=new_customer', allowed: canUse(activeTenant, 'sales.manage_counterparty') },
     { label: 'Qarz to‘lovi', icon: CreditCard, tool: 'debt_payment', allowed: canUse(activeTenant, 'sales.record_debt_payment') },
     { label: 'XLSX import', icon: FileSpreadsheet, tool: 'imports', allowed: canUse(activeTenant, 'catalog.add_product', 'sales.manage_counterparty') },
-    { label: 'Eslatma', icon: BellRing, tool: 'new_reminder', allowed: Boolean(activeTenant) },
+    { label: 'Eslatma & Topshiriq', icon: BellRing, tool: 'new_reminder', allowed: Boolean(activeTenant) },
   ].filter(item => !isAdmin && item.allowed);
   const link = (item, compact = false) => <NavLink key={item.to} to={item.to} end={item.to === '/dashboard'} onClick={closeMenus}
     className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{compact ? SHORT_LABELS[item.to] || item.label : item.label}</span></NavLink>;
@@ -93,6 +93,7 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
       <div className="workspace-shift-control">{statusControl}</div>
       <div className="workspace-utility-actions">
         <WorkspaceSwitch className="workspace-icon-button" />
+        <NavLink to="/download" className="workspace-icon-button" title="ILBI Desktop ilovasini yuklab olish" aria-label="Yuklab olish"><Download size={18} /></NavLink>
         <button type="button" className="workspace-icon-button" title="Mavzuni almashtirish" aria-label="Mavzuni almashtirish" onClick={toggleTheme}>{isDark ? <Sun size={18} /> : <Moon size={18} />}</button>
         <details className="workspace-dropdown" name="workspace-menu"><summary className="workspace-icon-button" title="Xabarnomalar" aria-label="Xabarnomalar"><Bell size={18} />{notificationCount > 0 && <span className="workspace-badge">{notificationCount > 99 ? '99+' : notificationCount}</span>}</summary>
           <div className="workspace-dropdown-panel workspace-notifications-menu"><strong>Bildirishnomalar</strong>

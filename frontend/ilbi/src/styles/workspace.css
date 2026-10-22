@@ -1,6 +1,10 @@
-/* The same mounted page is shared by both desktop shells. */
-.app-layout.workspace-fast.sidebar-expanded .main-content,
-.app-layout.workspace-fast.sidebar-collapsed .main-content { margin-left: 0; padding: 18px 28px 40px; }
+/* The same mounted page is shared by both desktop shells with consistent sidebar. */
+.app-layout.workspace-fast.sidebar-expanded .main-content { margin-left: 296px; padding: 18px 28px 40px; }
+.app-layout.workspace-fast.sidebar-collapsed .main-content { margin-left: 110px; padding: 18px 28px 40px; }
+@media (max-width: 1024px) {
+  .app-layout.workspace-fast.sidebar-expanded .main-content,
+  .app-layout.workspace-fast.sidebar-collapsed .main-content { margin-left: 0; padding: 14px; }
+}
 .workspace-navbar { position: sticky; top: 12px; z-index: 90; background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 16px; box-shadow: var(--shadow-sm); color: var(--text-primary); animation: workspace-nav-enter .42s ease both; }
 .workspace-navbar-loading { min-height: 156px; padding: 24px; }
 .workspace-top-row { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }

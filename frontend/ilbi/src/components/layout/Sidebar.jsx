@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LogOut, Search, ChevronDown, Sun, Moon, Bell, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { LogOut, Search, ChevronDown, Sun, Moon, Bell, BellRing, ChevronLeft, ChevronRight, X, Download } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useTenant } from '../../context/TenantContext';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useConfirm } from '../../context/ConfirmContext';
 import { resolveAvatarUrl } from '../../api/client';
@@ -11,6 +13,7 @@ import WorkspaceSwitch from './WorkspaceSwitch';
 
 export default function Sidebar({
   onOpenNotifications,
+  onOpenReminders,
   unreadCount = 0,
   isCollapsed = false,
   onToggleCollapse,
@@ -18,6 +21,8 @@ export default function Sidebar({
   onCloseMobile,
 }) {
   const { user, isOwner, isAdmin, logout } = useAuth();
+  const { activeTenant } = useTenant();
+  const { reminders } = useWorkspace();
   const { isDark, toggleTheme } = useTheme();
   const confirm = useConfirm();
   const [filterQuery, setFilterQuery] = useState('');
@@ -42,7 +47,9 @@ export default function Sidebar({
     }
   };
 
-  const navItems = getNavigation({ user, isOwner, isAdmin });
+  const allNavItems = getNavigation({ user, isOwner, isAdmin });
+  // "Yuklab olish" bo‘lim emas — u asosiy menyudan chiqarilib, pastki burchakdagi amallar blokiga joylanadi
+  const navItems = allNavItems.filter((item) => item.to !== '/download');
 
   const filteredItems = navItems.filter((item) =>
     item.label.toLowerCase().includes(filterQuery.toLowerCase())
@@ -326,6 +333,46 @@ export default function Sidebar({
             )}
           </button>
         )}
+
+        {onOpenReminders && !isAdmin && activeTenant && (
+          <button
+            type="button"
+            className="action-btn"
+            onClick={() => {
+              if (mobileOpen && onCloseMobile) onCloseMobile();
+              onOpenReminders();
+            }}
+            title="Eslatmalar va topshiriqlar"
+            aria-label="Eslatmalar"
+            style={{ position: 'relative' }}
+          >
+            <BellRing size={18} />
+            {reminders?.overdue_count > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: 'var(--accent-rose)',
+                  boxShadow: '0 0 8px var(--accent-rose)',
+                }}
+              />
+            )}
+          </button>
+        )}
+
+        <NavLink
+          to="/download"
+          className="action-btn"
+          onClick={handleNavClick}
+          title="ILBI Desktop ilovasini yuklab olish"
+          aria-label="Yuklab olish"
+        >
+          <Download size={18} />
+        </NavLink>
 
         <button
           type="button"

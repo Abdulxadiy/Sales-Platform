@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BellRing, Plus, Trash2, RotateCw } from 'lucide-react';
 import Modal from '../common/Modal';
 import CustomSelect from '../common/CustomSelect';
+import CustomDatePicker from '../common/CustomDatePicker';
 import RecoveryNotice, { RetryButton } from '../common/RecoveryNotice';
 import Pagination from '../common/Pagination';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -14,7 +15,7 @@ import { workspaceApi } from '../../api/workspace';
 export default function Reminders({ compact = false, initiallyCreating = false }) {
   const { reminders, refreshReminders } = useWorkspace();
   const { activeTenant } = useTenant();
-  const { user } = useAuth();
+  const { user, isOwner } = useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [creating, setCreating] = useState(initiallyCreating);
@@ -22,6 +23,7 @@ export default function Reminders({ compact = false, initiallyCreating = false }
   const [due, setDue] = useState('');
   const [members, setMembers] = useState([]);
   const [assigned, setAssigned] = useState(String(user?.id));
+  const canAssignStaff = Boolean(isOwner || activeTenant?.is_owner || user?.role === 'owner' || user?.role === 'platform_admin' || members.length > 1);
   const [busy, setBusy] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [completed, setCompleted] = useState(null);
@@ -69,29 +71,42 @@ export default function Reminders({ compact = false, initiallyCreating = false }
   const current = showCompleted || page > 1 ? (completed?.page === page && completed?.status === showCompleted ? completed : null) : reminders;
   const rows = current?.results || [];
   return <section className={`workspace-card workspace-reminders ${compact ? 'compact' : ''}`}>
-    <div className="workspace-card-heading"><h2><BellRing size={18} /> Eslatmalar</h2>
-      <button className="workspace-text-button" onClick={() => setCreating(true)} type="button"><Plus size={15} /> Eslatma</button></div>
+    <div className="workspace-card-heading"><h2><BellRing size={18} /> Eslatmalar & Topshiriqlar</h2>
+      <button className="workspace-text-button" onClick={() => setCreating(true)} type="button"><Plus size={15} /> Topshiriq biriktirish</button></div>
     {reminders?.error && <RecoveryNotice title="Eslatmalar ochilmadi" actions={<RetryButton onClick={refreshReminders}>Qayta yuklash</RetryButton>}>{reminders.error}</RecoveryNotice>}
     <div className="workspace-reminder-list">
       {rows.slice(0, compact ? 4 : 50).map(row => <div className="workspace-reminder" key={row.id}>
         <input type="checkbox" checked={row.completed} disabled={busy} onChange={() => update(row)} aria-label={`${row.title} — bajarildi`} />
-        <div><strong>{row.title}</strong><small>{row.assigned_to_name}</small></div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <strong>{row.title}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <small style={{ color: 'var(--text-muted)' }}>
+              Mas’ul: <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{row.assigned_to_name || 'Xodim'}</span>
+            </small>
+          </div>
+        </div>
         <time className={row.overdue ? 'overdue' : ''} dateTime={row.due_at}>
           {new Date(row.due_at).toLocaleString('uz-UZ', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time>
         {!compact && <button type="button" className="workspace-icon-button" onClick={() => update(row, true)} disabled={busy} aria-label={`${row.title} — o‘chirish`}><Trash2 size={14} /></button>}
       </div>)}
-      {!rows.length && <p className="workspace-empty">{!reminders && !showCompleted ? 'Yuklanmoqda…' : showCompleted ? 'Bajarilgan eslatmalar yo‘q.' : 'Hozircha eslatmalar yo‘q. Muhim ishni vaqt bilan belgilang.'}</p>}
+      {!rows.length && <p className="workspace-empty">{!reminders && !showCompleted ? 'Yuklanmoqda…' : showCompleted ? 'Bajarilgan eslatmalar yo‘q.' : 'Hozircha eslatmalar yo‘q. Muhim ishni xodimga topshiring yoki vaqt bilan belgilang.'}</p>}
     </div>
     {!compact && <Pagination currentPage={page} totalItems={current?.count || 0} pageSize={50} onPageChange={setPage} compact />}
     {!compact && <button type="button" className="workspace-text-button" onClick={() => { setPage(1); setShowCompleted(value => !value); }}><RotateCw size={14} />{showCompleted ? 'Faol eslatmalar' : 'Bajarilganlarni ko‘rish'}</button>}
     {compact && reminders?.count > 4 && <button type="button" className="workspace-text-button" onClick={() => window.dispatchEvent(new Event('workspace_open_reminders'))}>Barchasi ({reminders.count})</button>}
-    {creating && <Modal isOpen onClose={() => { if (!busy) setCreating(false); }} title="Yangi eslatma" maxWidth={480}>
+    {creating && <Modal isOpen onClose={() => { if (!busy) setCreating(false); }} title="Yangi topshiriq / Eslatma biriktirish" maxWidth={480}>
       <form onSubmit={save} className="workspace-form">
-        <label>Vazifa<input autoFocus value={title} onChange={event => setTitle(event.target.value)} maxLength={200} required placeholder="Masalan: nasiya bo‘yicha qo‘ng‘iroq" /></label>
-        <label>Sana va vaqt<input type="datetime-local" value={due} onChange={event => setDue(event.target.value)} required /></label>
-        {activeTenant?.is_owner && <div><label>Mas’ul xodim</label><CustomSelect value={assigned} onChange={value => setAssigned(String(value))}
-          options={members.map(member => ({ value: String(member.id), label: member.name }))} placeholder="Mas’ulni tanlang" /></div>}
-        <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saqlanmoqda…' : 'Eslatmani saqlash'}</button>
+        <label>Topshiriq yoki vazifa mazmuni<input autoFocus value={title} onChange={event => setTitle(event.target.value)} maxLength={200} required placeholder="Masalan: Ombordagi tovarlarni tekshirish, nasiyani undirish..." /></label>
+        <div>
+          <label style={{ display: 'block', marginBottom: 6 }}>Bajarish muddati (Sana va vaqt)</label>
+          <CustomDatePicker includeTime fullWidth value={due} onChange={setDue} placeholder="Sana va vaqtni tanlang..." />
+        </div>
+        {canAssignStaff && members.length > 0 && <div>
+          <label style={{ display: 'block', marginBottom: 6 }}>Mas’ul xodim (Topshiriq biriktiriladigan xodim)</label>
+          <CustomSelect value={assigned} onChange={value => setAssigned(String(value))}
+            options={members.map(member => ({ value: String(member.id), label: `${member.name}${Number(member.id) === Number(user?.id) ? ' (O‘zim)' : ''}` }))} placeholder="Mas’ul xodimni tanlang" fullWidth />
+        </div>}
+        <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Saqlanmoqda…' : 'Topshiriqni saqlash va yuborish'}</button>
       </form>
     </Modal>}
   </section>;

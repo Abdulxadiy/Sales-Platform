@@ -11,6 +11,7 @@ import { useTenant } from '../context/TenantContext';
 import { useDebouncedValue, usePaginatedList } from '../hooks/usePaginatedList';
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 import Pagination from '../components/common/Pagination';
 import RemoteTenantSelect from '../components/common/RemoteTenantSelect';
 import ReceiptSlip, { printReceiptSlip } from '../components/common/ReceiptSlip';
@@ -167,7 +168,7 @@ export default function History() {
         <CustomSelect className="history-period" aria-label="Tarix davri" value={period} onChange={setPeriod} options={[{ value: 'all', label: 'Barcha vaqt' }, { value: 'today', label: 'Bugun' }, { value: 'yesterday', label: 'Kecha' }, { value: 'week', label: 'Oxirgi 7 kun' }, { value: 'month', label: 'Shu oy' }, { value: 'custom', label: 'Sanani tanlash' }]} />
         <button className="btn btn-secondary history-refresh" onClick={refresh} disabled={list.loading} aria-label="Tarixni yangilash">{list.loading ? <IlbiLoader size={24} inline decorative /> : <RefreshCw size={16} />} <span>Yangilash</span></button>
       </div>
-      {(isAdmin || period === 'custom') && <div className="history-extra-filters">{isAdmin && <RemoteTenantSelect allowAll value={tenantId} onChange={setTenantId} />}{period === 'custom' && <><label>Boshlanish<input aria-label="Boshlanish sanasi" type="date" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} /></label><label>Tugash<input aria-label="Tugash sanasi" type="date" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} /></label></>}</div>}
+      {(isAdmin || period === 'custom') && <div className="history-extra-filters">{isAdmin && <RemoteTenantSelect allowAll value={tenantId} onChange={setTenantId} />}{period === 'custom' && <><label>Boshlanish<CustomDatePicker size="sm" value={from} max={to || undefined} onChange={setFrom} placeholder="Boshlanish sanasi" /></label><label>Tugash<CustomDatePicker size="sm" value={to} min={from || undefined} onChange={setTo} placeholder="Tugash sanasi" /></label></>}</div>}
       <div className="history-categories" aria-label="Amal turi">{categories.map(({ id, label, icon: Icon }) => <button key={id} className={category === id ? 'is-active' : ''} aria-pressed={category === id} onClick={() => setCategory(id)}><Icon size={15} />{label}</button>)}</div>
     </section>
 

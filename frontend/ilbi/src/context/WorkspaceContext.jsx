@@ -19,7 +19,7 @@ export function WorkspaceProvider({ children }) {
   const reminderPoller = useRef(null);
   const reminderCache = useRef(null);
   useEffect(() => {
-    if (mode !== 'fast' || !activeTenant?.id || user?.role === 'platform_admin') return;
+    if (!activeTenant?.id || user?.role === 'platform_admin') return;
     const tenantId = activeTenant.id;
     let initial = true;
     const poller = createVisiblePoller(async signal => {

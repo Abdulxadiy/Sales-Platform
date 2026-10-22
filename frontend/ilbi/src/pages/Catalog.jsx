@@ -32,6 +32,7 @@ import { useConfirm } from '../context/ConfirmContext';
 const supplierStorageKey = (tenantId) => `ilbi_saved_suppliers:${tenantId || 'pending'}`;
 import Modal from '../components/common/Modal';
 import CustomSelect from '../components/common/CustomSelect';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 import Pagination from '../components/common/Pagination';
 import ProductToolsModal from '../components/common/ProductToolsModal';
 import CatalogImportModal from '../components/common/CatalogImportModal';
@@ -1865,11 +1866,11 @@ export default function Catalog() {
                           <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                             Yaroqlilik Muddati (Sanasi)
                           </label>
-                          <input
-                            type="date"
+                          <CustomDatePicker
                             value={productForm.intake_expires_on || ''}
-                            onChange={(e) => setProductForm((prev) => ({ ...prev, intake_expires_on: e.target.value }))}
-                            className="input-field"
+                            onChange={(val) => setProductForm((prev) => ({ ...prev, intake_expires_on: val }))}
+                            placeholder="Sanani tanlang..."
+                            fullWidth
                             title="Partiyaning yaroqlilik sanasi (ixtiyoriy)"
                           />
                           <span style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>

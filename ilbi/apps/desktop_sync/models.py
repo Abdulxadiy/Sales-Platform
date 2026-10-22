@@ -29,6 +29,7 @@ class SyncActor(models.Model):
     device = models.ForeignKey(SyncDevice, on_delete=models.CASCADE)
     user_id = models.BigIntegerField()
     token_version = models.PositiveIntegerField()
+    credential_digest = models.CharField(max_length=64, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["device", "user_id"], name="sync_actor_device_user")]

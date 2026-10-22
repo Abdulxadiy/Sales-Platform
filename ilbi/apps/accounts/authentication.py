@@ -22,4 +22,10 @@ class CustomJWTAuthentication(JWTAuthentication):
                 code="token_revoked",
             )
 
+        if validated_token.get("desktop_cloud_device"):
+            from apps.desktop_sync.device_credentials import trusted_device_valid
+
+            if not trusted_device_valid(user, validated_token["desktop_cloud_device"]):
+                raise AuthenticationFailed("Qurilma ruxsati bekor qilingan.", code="device_revoked")
+
         return user

@@ -118,7 +118,12 @@ def save_actor(result, pending, access, refresh, register):
     Vault().set_denied(False)
     Vault().put_user(
         user.pk,
-        {"server": server_url(settings.DESKTOP_SERVER), "access": access.removeprefix("Bearer "), "refresh": refresh},
+        {
+            "server": server_url(settings.DESKTOP_SERVER),
+            "access": result.get("cloud_tokens", {}).get("access", access.removeprefix("Bearer ")),
+            "refresh": result.get("cloud_tokens", {}).get("refresh", refresh),
+            **({"cloud_credential": result["cloud_credential"]} if result.get("cloud_credential") else {}),
+        },
         primary=user.pk == device["user_id"],
     )
     wake_worker.set()

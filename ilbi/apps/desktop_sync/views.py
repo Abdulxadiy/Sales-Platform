@@ -50,8 +50,14 @@ class CredentialVerifyView(APIView):
         )
 
 
-def grant_bundle(device, user):
-    return {"offline_grant": issue_grant(device, user), "grant_key": public_key()}
+def grant_bundle(device, user, *, trusted=False):
+    value = {"offline_grant": issue_grant(device, user), "grant_key": public_key()}
+    if trusted:
+        from .device_credentials import device_tokens, issue_credential
+
+        value["cloud_credential"] = issue_credential(device, user)
+        value["cloud_tokens"] = device_tokens(device, user)
+    return value
 
 
 def actor_ticket(device, actor):
@@ -102,7 +108,9 @@ class DeviceEnrollView(APIView):
             device.lease_until = timezone.now() + timedelta(days=7)
             device.save(update_fields=["token_version", "lease_until"])
         actor, _ = SyncActor.objects.update_or_create(
-            device=device, user_id=request.user.pk, defaults={"token_version": request.user.token_version}
+            device=device,
+            user_id=request.user.pk,
+            defaults={"token_version": request.user.token_version, "credential_digest": ""},
         )
         return Response(
             {
@@ -111,7 +119,7 @@ class DeviceEnrollView(APIView):
                 "actor_ticket": actor_ticket(device, actor),
                 "lease_until": device.lease_until,
                 "snapshot": export_snapshot(tenant),
-                **grant_bundle(device, request.user),
+                **grant_bundle(device, request.user, trusted=request.data.get("credential_mode") == "account"),
             }
         )
 
@@ -208,7 +216,9 @@ class ActorGrantView(APIView):
             ):
                 raise ValidationError("Do‘kon egasi avval qurilma ruxsatini internet orqali qayta tasdiqlasin.")
         actor, _ = SyncActor.objects.update_or_create(
-            device=device, user_id=request.user.pk, defaults={"token_version": request.user.token_version}
+            device=device,
+            user_id=request.user.pk,
+            defaults={"token_version": request.user.token_version, "credential_digest": ""},
         )
         return Response(
             {
@@ -216,7 +226,7 @@ class ActorGrantView(APIView):
                 "actor_ticket": actor_ticket(device, actor),
                 "token_version": actor.token_version,
                 "lease_until": device.lease_until,
-                **grant_bundle(device, request.user),
+                **grant_bundle(device, request.user, trusted=request.data.get("credential_mode") == "account"),
             }
         )
 

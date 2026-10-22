@@ -73,7 +73,14 @@ class UploadBody:
 def cloud_request(method, path, *, body=None, progress=False, headers=None, user_id=None, raw=None):
     vault = Vault()
     stored = vault.read()
-    credentials = stored if user_id is None else stored.get("actors", {})[str(user_id)]
+    actor_id = stored.get("primary_user") if user_id is None else user_id
+    credentials = (
+        dict(stored.get("actors", {})[str(user_id)])
+        if user_id is not None
+        else dict(stored.get("actors", {}).get(str(actor_id), {}))
+    )
+    if not credentials and user_id is None:
+        credentials = {key: stored[key] for key in ("server", "access", "refresh", "cloud_credential") if key in stored}
     base = server_url(stored["server"])
     auth = {"Authorization": "Bearer " + credentials["access"], **(headers or {})}
     kwargs = {"allow_redirects": False, "headers": auth}
@@ -85,20 +92,28 @@ def cloud_request(method, path, *, body=None, progress=False, headers=None, user
         kwargs["headers"]["Content-Type"] = "application/json"
         kwargs["headers"]["Content-Length"] = str(len(data))
     response = requests.request(method, base + "/api/v1/" + path, timeout=(5, 45), **kwargs)
-    if response.status_code == 401 and credentials.get("refresh"):
-        refreshed = requests.post(
-            base + "/api/v1/auth/token/refresh/",
-            json={"refresh": credentials["refresh"]},
-            timeout=(5, 20),
-            allow_redirects=False,
-        )
-        if refreshed.ok:
+    if response.status_code == 401:
+        refreshed = None
+        if credentials.get("refresh"):
+            refreshed = requests.post(
+                base + "/api/v1/auth/token/refresh/",
+                json={"refresh": credentials["refresh"]},
+                timeout=(5, 20),
+                allow_redirects=False,
+            )
+        if (refreshed is None or not refreshed.ok) and credentials.get("cloud_credential"):
+            refreshed = requests.post(
+                base + "/api/v1/sync/session/",
+                json=credentials["cloud_credential"],
+                timeout=(5, 20),
+                allow_redirects=False,
+            )
+        if refreshed is not None and refreshed.ok:
             credentials.update(refreshed.json())
-            actor_id = stored["primary_user"] if user_id is None else user_id
             vault.put_user(
                 actor_id,
-                {"server": base, "access": credentials["access"], "refresh": credentials["refresh"]},
-                primary=actor_id == stored["primary_user"],
+                {**credentials, "server": base},
+                primary=actor_id == stored.get("primary_user"),
             )
             kwargs["headers"]["Authorization"] = "Bearer " + credentials["access"]
             response = requests.request(method, base + "/api/v1/" + path, timeout=(5, 45), **kwargs)

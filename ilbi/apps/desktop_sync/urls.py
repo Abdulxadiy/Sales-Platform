@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .device_credentials import DeviceSessionView
+
 from .pairing import PairingClaimView, PairingCreateView, PairingOwnerView, PairingResultView
 from .views import (
     ActorGrantView,
@@ -13,6 +15,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("session/", DeviceSessionView.as_view()),
     path("pairings/", PairingCreateView.as_view()),
     path("pairings/claim/", PairingClaimView.as_view()),
     path("pairings/result/", PairingResultView.as_view()),

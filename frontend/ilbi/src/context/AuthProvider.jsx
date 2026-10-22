@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
       return profile;
     } catch (error) {
       if (!current()) return;
-      if (error.status === 401) logout();
+      if (error.status === 401 || (error.status === 423 && window.ilbiDesktop)) logout();
       else {
         setUser(null);
         setSessionError('Sessiyani tekshirib bo‘lmadi. Internet aloqasini tekshirib, qayta urinib ko‘ring.');

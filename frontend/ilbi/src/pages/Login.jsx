@@ -31,8 +31,21 @@ export default function Login() {
   const [username, setUsername] = useState(() => {
     return localStore.getItem('ilbi_remember_login') || '';
   });
-  const [password, setPassword] = useState('');
-  useEffect(() => { localStore.removeItem('ilbi_remember_password'); }, []);
+  const [password, setPassword] = useState(() => {
+    const saved = localStore.getItem('ilbi_remember_pass_vault');
+    if (!saved) return '';
+    try {
+      const raw = saved.startsWith('v1:') ? saved.slice(3) : saved;
+      return decodeURIComponent(escape(atob(raw)));
+    } catch {
+      try {
+        const raw = saved.startsWith('v1:') ? saved.slice(3) : saved;
+        return atob(raw);
+      } catch {
+        return '';
+      }
+    }
+  });
   const [loginTicket, setLoginTicket] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -91,14 +104,13 @@ export default function Login() {
     const checked = e.target.checked;
     setRememberMe(checked);
     if (!checked) {
-      localStore.removeItem('ilbi_remember_login');
-      localStore.removeItem('ilbi_remember_password');
-      localStore.setItem('ilbi_remember_me', 'false');
       void forgetRememberedLogin('online').catch(error => toast.warning(error.message));
     } else {
       localStore.setItem('ilbi_remember_me', 'true');
       if (username) localStore.setItem('ilbi_remember_login', username.trim());
-
+      if (password) {
+        void rememberLogin('online', username, password).catch(() => {});
+      }
     }
   };
 
@@ -125,9 +137,7 @@ export default function Login() {
         localStore.setItem('ilbi_remember_login', username.trim());
         localStore.setItem('ilbi_remember_me', 'true');
       } else {
-        localStore.removeItem('ilbi_remember_login');
-        localStore.removeItem('ilbi_remember_password');
-        localStore.setItem('ilbi_remember_me', 'false');
+        void forgetRememberedLogin('online').catch(() => {});
       }
       const res = await loginStep1(username.trim(), password, rememberMe);
       if ((res.local_login === true || res.demo_login === true) && res.access && res.refresh) {
@@ -209,8 +219,7 @@ export default function Login() {
         localStore.setItem('ilbi_remember_login', username.trim());
         localStore.setItem('ilbi_remember_me', 'true');
       } else {
-        localStore.removeItem('ilbi_remember_login');
-        localStore.setItem('ilbi_remember_me', 'false');
+        void forgetRememberedLogin('online').catch(() => {});
       }
       const result = await loginStep2(username.trim(), loginTicket, otpCode, rememberMe, password);
       await saveRememberedLogin();

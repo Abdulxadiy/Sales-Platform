@@ -17,8 +17,10 @@ function privateHost(host) {
 }
 function validatePairing(value) {
   if (value.protocol !== 1 || !privateHost(value.host) || !Number.isInteger(value.port) || value.port < 1024 || value.port > 65535 ||
-      !/^[a-f0-9]{64}$/.test(value.key) || !value.certificate?.startsWith('-----BEGIN CERTIFICATE-----')) throw Error('Kassaga ulanish fayli noto‘g‘ri.');
-  return { protocol: 1, host: value.host, port: value.port, key: value.key, certificate: value.certificate };
+      !/^[a-f0-9]{64}$/.test(value.key) || !value.certificate?.startsWith('-----BEGIN CERTIFICATE-----')) throw Error('Kassaga ulanish ma’lumoti noto‘g‘ri. Yangi kod bilan qayta ulang.');
+  if(value.registerId!==undefined&&!/^[a-f0-9-]{36}$/i.test(value.registerId))throw Error('Kassa identifikatori noto‘g‘ri.');
+  return { protocol: 1, host: value.host, port: value.port, key: value.key, certificate: value.certificate,
+    ...(value.registerId?{registerId:value.registerId}:{}) };
 }
 function safePath(root, pathname) {
   const candidate = resolve(root, '.' + decodeURIComponent(pathname));

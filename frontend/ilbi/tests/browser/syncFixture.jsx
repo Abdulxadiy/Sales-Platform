@@ -11,6 +11,20 @@ import { BrowserRouter } from 'react-router-dom';
 import '../../src/index.css';
 
 window.ilbiDesktop = { version: 'qa' };
+const security=new URLSearchParams(location.search).has('security');
+if(security)Object.assign(window.ilbiDesktop,{
+  onOpenSecurity:callback=>{window.openSecurityQA=callback;return()=>{};},
+  getSetupState:async()=>({mode:'host'}),getRegisters:async()=>syncQA.registers||[],
+  createPairing:async()=>{syncQA.pair={id:'synthetic-pairing',state:'waiting',code:'12345678',remaining:180};return {...syncQA.pair};},
+  getPairingState:async()=>({...syncQA.pair}),approvePairing:async(_token,_id,expected)=>{if(expected!==syncQA.pair.fingerprint)throw Error('Wrong comparison');syncQA.pair.state='approved';return {...syncQA.pair};},
+  cancelPairing:async()=>{syncQA.pair.state='expired';return {...syncQA.pair};},
+  revokeRegister:async(_token,id)=>{syncQA.registers=syncQA.registers.filter(row=>row.id!==id);},
+  setIdleMinutes:async(_token,minutes)=>{syncQA.minutes=minutes;},
+  lockSession:async()=>{syncQA.locked=true;},
+  getBackupStatus:async()=>({backups:syncQA.backups||[],busy:false}),
+  createBackup:async()=>{syncQA.backups=[{id:'synthetic-backup',created:Date.now(),bytes:1000000}];return {backups:syncQA.backups,busy:false};},
+  restoreBackup:async(_token,id,password)=>{syncQA.restore={id,password};return {cancelled:true};},
+});
 const setup = new URLSearchParams(location.search).get('setup');
 if (setup) for (const prefix of ['ilbi_', 'inventra_']) { localStorage.removeItem(prefix+'active_tenant:1'); sessionStorage.removeItem(prefix+'active_tenant:1'); }
 const jwt = `qa.${btoa(JSON.stringify({ user_id: 1, ...(!setup ? { desktop_device: 'fixture-device' } : {}), exp: Date.now() / 1000 + 3600 }))}.qa`;
@@ -35,6 +49,7 @@ window.fetch = async (input, options = {}) => {
   }
   if (!String(input).startsWith('/desktop/')) return nativeFetch(input, options);
   syncQA.requests.push({ path: input, method: options.method, body: options.body ? JSON.parse(options.body) : null });
+  if(security&&input==='/desktop/session-state/')return Response.json({owner:true,locked:false,idle_minutes:syncQA.minutes||10,lease_until:Date.now()/1000+36000});
   if (input === '/desktop/enroll/' || input === '/desktop/actor/') return new Response(JSON.stringify({ detail: 'Sinov javobi: qayta urinib ko‘rish mumkin.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   if (input === '/desktop/priority/') {
     const { id } = JSON.parse(options.body);

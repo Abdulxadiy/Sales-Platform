@@ -20,32 +20,36 @@ Offline rejim sozlanmaganida yuqorida **Internetsiz ishlamaydi** ogohlantirishi 
 
 Birinchi sozlashda internet kerak. **Do‘kon egasi** o‘zining odatiy hisobi bilan internet orqali kirsin. Ishlaydigan do‘konni tanlang; bitta do‘kon bo‘lsa, u avtomatik tanlanadi.
 
-![Do‘konni tayyorlash: 1 — ochilgan Sinxronlash markazi, 2 — offline parol, 3 — tayyorlashni boshlash.](desktop-guide/02-prepare.png)
+![Do‘konni tayyorlash: 1 — Sinxronlash markazi, 2 — do‘kon tanlash, 3 — internetsiz ishlashni yoqish.](desktop-guide/02-prepare.png)
 
 1. Ekranning yuqorisidagi **Online rejim** yozuvini bosing. Rasmda 1 bilan ko‘rsatilgan **Sinxronlash markazi** ochiladi. Bir nechta do‘koningiz bo‘lsa, shu oynada offline ishlaydigan do‘konni tanlang. Platforma administratori hisobida bo‘lsangiz, avval do‘kon egasi hisobiga kiring.
-2. Kamida **8 belgili offline parol** yarating. Bu parolni keyinchalik internetsiz kirishda ishlatasiz. Oddiy web parolingiz avtomatik ravishda offline parolga aylanmaydi.
-3. **Offline ishlashni tayyorlash** tugmasini bosing. Do‘kon ma’lumotlari shu kompyuterga tushishini kuting; dastur sahifani yangilaydi.
+2. Alohida offline parol kerak emas. Hisobingizning odatiy paroli ishlatiladi; ichki baza va qurilma kalitlarini dastur tasodifiy yaratib himoyalaydi. Qayta tasdiqlash so‘ralsa, hozirgi hisob parolingizni kiriting.
+3. **Internetsiz ishlashni yoqish** tugmasini bosing. Ruxsat tekshirilishi, ma’lumotlar va rasmlar yuklanishi, saqlanishini shu oynada kuzating. Tayyor bo‘lgach, dastur do‘konni ochadi.
 
-Har bir kassir ham o‘z hisobi bilan internet orqali bir marta kirsin. **Hisobni kassaga ulash** tugmasini ochib, o‘z offline parolini yaratsin. Do‘kon tayyorlangan bo‘lsa, uni qayta asosiy kassa qilib sozlash kerak emas. Boshqa kassirning login/parolidan foydalanmang.
+Har bir kassir ham o‘z odatiy login, parol va tasdiqlash kodi bilan internet orqali bir marta kirsin. Hisob tayyor do‘konga avtomatik ulanadi. Zarur bo‘lsa, **Hisobni kassaga ulash**ni bosing. Boshqa kassirning login/parolidan foydalanmang. Eski nusxadan yangilaganda ham bir marta internet orqali kiring; avvalgi baza va yuborilmagan ishlar qoladi.
 
 > [!TIP]
 > Tayyorlashni internet bor paytda tugating. Internet uzilgandan keyin yangi do‘konni yuklab olish yoki ilgari ulanmagan hisobni tayyorlash imkoni bo‘lmaydi.
 
 ## 3. Internet bo‘lmaganda kirish
 
-Kirish oynasidagi **Meni eslab qol** belgilansa, muvaffaqiyatli kirishdan so‘ng login va parol keyingi safar to‘ldiriladi. Online kirishda Telegram tasdiqlash kodi baribir so‘raladi. Kompyuter ilovasida parollar tizim parollar ombori bilan shifrlanadi. Belgini olib tashlash shu saqlangan login va parolni o‘chiradi. Online va offline hisoblar uchun bu tanlov alohida. Webda esa qo‘llab-quvvatlaydigan brauzerning parollar ombori ishlatiladi.
+Tayyorlangan hisobda internet borida ham, yo‘g‘ida ham bitta kirish oynasi ishlaydi. Internet uzilib yoki qaytganda qayta login qilish kerak emas. Birinchi online kirishda Telegram tasdiqlash kodi so‘raladi.
 
-![Internetsiz kirish: 1 — shaxsiy login, 2 — oldindan yaratilgan offline parol, 3 — Kassaga kirish.](desktop-guide/03-offline-login.png)
+![Yagona kirish oynasi: 1 — shaxsiy login, 2 — odatiy hisob paroli, 3 — kirish tugmasi.](desktop-guide/03-offline-login.png)
 
-1. ILBI’ni oching va kirish oynasidagi **Offline kassaga kirish** qismini toping.
-2. O‘z **login**ingizni va 2-qadamda yaratgan **offline parol**ingizni kiriting.
-3. **Kassaga kirish** tugmasini bosing. Ilgari yuklangan do‘kon ma’lumotlari bilan ishlashda davom etasiz.
+1. ILBI’ni oching. Odatdagi kirish oynasi chiqadi.
+2. O‘z **login**ingizni va odatiy hisob **parol**ingizni kiriting.
+3. **Davom etish** tugmasini bosing. Tayyorlangan hisob internet bo‘lmaganda ham ochiladi.
+
+**Meni eslab qol** login va parolni tizimning himoyalangan omborida saqlaydi. Offline tayyorlangan kassa qulflanganda yoki ilova qayta ochilganda, login saqlanadi, parolni o‘zingiz qayta kiritasiz. Saqlangan parol qulfni ochib bermaydi. Belgini olib tashlasangiz, eslab qolingan ma’lumot o‘chiriladi.
+
+**Kassalar va xavfsizlik → Kassani qulflash** orqali joyingizdan ketishda kassani qulflang. Ishlatilmasa, odatda **10 daqiqada** avtomatik qulflanadi; egasi 1–60 daqiqa tanlaydi. Qoralamalar qoladi. Ko‘p noto‘g‘ri urinishdan keyin faqat o‘sha hisobga vaqtincha cheklov qo‘yiladi.
 
 Klassik va Tezkor ish stoli shu ilovaning ichida ham bor. Tashqi ko‘rinishni almashtirish qayta sozlashni talab qilmaydi. Odatdagi savdo ekranlarini o‘rganish uchun web qo‘llanmasidan foydalanishingiz mumkin.
 
 Internet yo‘q paytda bajarilgan ishlar avval shu do‘kon kompyuterida saqlanadi. Webdagi boshqa qurilmalar ularni **serverga yuborilgandan keyin** ko‘radi. Faqat yuklangan ma’lumotlar va rasmlar ochiladi; Telegram, to‘lov xizmatlari va do‘konlararo tasdiqlar uchun internet kerak.
 
-Offline ruxsat oxirgi muvaffaqiyatli yangilanishdan keyin **7 kun** amal qiladi. Internet borida u avtomatik yangilanib turadi. Muddati tugasa, do‘kon egasi internet orqali qayta kirib hisobni kassaga ulashi kerak. Yuborilmagan ishlar o‘chirilmaydi.
+Offline ruxsat oxirgi muvaffaqiyatli yangilanishdan keyin **7 kun** amal qiladi. Qolgan vaqt **Sinxronlash markazi → Kassalar va xavfsizlik**da ko‘rinadi; 24 soatdan kam qolsa ogohlantiradi. Internet borida, navbat bo‘shamaganida ham, ruxsat avtomatik yangilanadi. Muddati tugasa, egasi internet orqali qayta kiradi. Server bekor qilgan ruxsat tekshirilgach to‘xtatiladi. Yuborilmagan ishlar o‘chirilmaydi. Kompyuter vaqtini orqaga o‘zgartirish aniqlansa, internet orqali qayta tasdiqlash talab qilinadi.
 
 ## 4. Ishlar serverga qanday yuboriladi?
 
@@ -70,19 +74,19 @@ Davom etayotgan ish to‘xtatilmaydi. Tanlangan qator silliq siljib, uning tagig
 
 Barcha kassalar bitta mahalliy tarmoqqa — bir routerdagi Wi-Fi yoki kabelga ulangan bo‘lsin. Internet bo‘lmasa ham shu tarmoq ishlashi kerak.
 
-1. Tayyorlangan asosiy kompyuterda ILBI’ni ochiq qoldiring. Yuqoridagi **ILBI → Boshqa kassani ulash** menyusini tanlang. Tarmoq tanlash so‘ralsa, boshqa kassalar ulangan Wi-Fi yoki kabel tarmog‘ini tanlang.
-2. `ILBI-kassa-ulanish.ilbi` faylini saqlang va shu do‘konning qo‘shimcha kompyuteriga, masalan, fleshka orqali olib o‘ting.
-3. Qo‘shimcha kompyuterga ham ILBI’ni o‘rnating. Birinchi oynadagi **Boshqa kassaga ulanish** bo‘limini oching. Birinchi, yolg‘iz kassangizda bu bo‘lim kerak emas.
+1. Birinchi ulashda **ikkala kompyuterda internet bo‘lsin**. Asosiy kompyuterda egasi **ILBI → Kassalar va xavfsizlik → Boshqa kompyuterni ulash**ni ochsin.
+2. **Ulanish kodini yaratish**ni bosing. Tasodifiy 8 raqamli kod **3 daqiqa** amal qiladi va bir marta ishlatiladi. Vaqt tugasa yoki noto‘g‘ri kompyuter so‘rov yuborsa, bekor qilib yangi kod yarating.
+3. Qo‘shimcha kompyuterga ILBI’ni o‘rnating. Birinchi oynadagi **Boshqa kassaga ulanish**ni ochib kodni kiriting. Birinchi, yolg‘iz kassangizda bu bo‘lim kerak emas.
 
-![Qo‘shimcha kassa: 1 — tayyor kassaga ulanish bo‘limi, 2 — .ilbi faylini ochish.](desktop-guide/07-extra-register.png)
+![Qo‘shimcha kassa: 1 — ulanish bo‘limi, 2 — bir martalik kod bilan ulanish.](desktop-guide/07-extra-register.png)
 
-4. **Ulanish faylini ochish**ni bosing va olib kelgan `.ilbi` faylini tanlang. Qo‘shimcha kassada **Ishni boshlash** orqali alohida baza tayyorlash kerak emas.
-5. Kassir o‘z hisobi bilan kirsin. Uning offline hisobi hali tayyor bo‘lmasa, internet bor paytda 2-bo‘limdagi **Hisobni kassaga ulash** qadamini bajaring.
+4. Ikkala ekranda ko‘ringan tasdiqlash belgisini solishtiring. Bir xil bo‘lsa, egasi **Ikkala ekrandagi belgi bir xil**ni belgilab, **Yangi kassani tasdiqlash**ni bossin. Tarmoq tanlash so‘ralsa, yangi kassa ulangan tarmoqni tanlang. Qolganini dastur bajaradi; fayl tashish kerak emas.
+5. Kassir o‘z odatiy hisobi bilan kirsin. Hisob ilgari tayyorlanmagan bo‘lsa, birinchi kirishni internet borida bajarsin. Keyin internet bo‘lmasa ham bir router orqali ishlayveradi.
 
 > [!IMPORTANT]
 > Qo‘shimcha kassalar ishlashi uchun asosiy kompyuter ham, undagi ILBI ham ochiq turishi kerak. Oynani kichraytirish mumkin. Asosiy kompyuter uxlab qolsa, o‘chsa yoki ILBI yopilsa, qo‘shimcha kassalar umumiy bazaga ulana olmaydi.
 
-Ulanmasa, bir xil mahalliy tarmoq va Windows’dagi ILBI uchun xususiy tarmoq ruxsatini tekshiring. Asosiy kompyuterning tarmoq manzili o‘zgarsa, yangi ulanish faylini oling; qo‘shimcha kassada **ILBI → Ulanish faylini yangilash** orqali tanlang. Routerda asosiy kompyuterga doimiy mahalliy manzil ajratish buni kamaytiradi. Ulanish faylini boshqa do‘kon yoki begona kishiga bermang.
+Ulanmasa, bir xil mahalliy tarmoq va Windows’dagi ILBI uchun xususiy tarmoq ruxsatini tekshiring. Asosiy kompyuter manzili o‘zgarsa, qo‘shimcha kassada **ILBI → Asosiy kassaga qayta ulanish**ni tanlab yangi kod bilan ulang. Routerda asosiy kompyuterga doimiy mahalliy manzil ajratish buni kamaytiradi. Har bir kassa alohida kalit oladi. Egasi ro‘yxatdagi **Kassani uzish** orqali faqat o‘sha kompyuter ulanishini bekor qiladi. Bitta kompyuterli do‘konda qo‘shimcha kassa xizmati yoqilmaydi.
 
 ## 6. Ilovani yangilash va yordam
 
@@ -96,7 +100,13 @@ Internet uzilsa yoki yuklash tugamasa, oynadagi xabarni o‘qing va **Qayta urin
 
 **Eski ilovadan birinchi o‘tish:** yangilanish xabari hali yo‘q bo‘lgan nusxani bir marta [yuklab olish sahifasidagi](/download) yangi paket bilan yangilang. Windows’da yangi `.exe` faylni oching; Linux’da eski ILBI’ni yopib, yangi arxivdagi `bash install.sh` buyrug‘ini bajaring. Keyingi yangilanishlar yuqoridagi xabar orqali olinadi.
 
-O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. Ular Windows’da `%APPDATA%\ILBI`, Linux’da esa odatda `~/.config/ILBI` papkasida turadi (`XDG_CONFIG_HOME` belgilangan bo‘lsa, o‘sha joydagi `ILBI` papkasida). Zaxira olishda barcha kassalarni to‘xtatib, asosiy ILBI’ni yoping va ma’lumotlar papkasining nusxasini oling. Papka yoki `device.vault` faylini muammoni tuzatish uchun o‘chirmang. Kalitlar tizim hisobingiz va parollar omboriga bog‘liq; boshqa hisob yoki yangi kompyuterga o‘tishni yordam bilan rejalashtiring.
+O‘rnatuvchi mahalliy baza, sozlamalar va yuborilmagan ishlarni saqlab qoladi. Ular Windows’da `%APPDATA%\ILBI`, Linux’da odatda `~/.config/ILBI` papkasida turadi (`XDG_CONFIG_HOME` belgilangan bo‘lsa, o‘sha joydagi `ILBI` papkasida). Papka yoki `device.vault`ni o‘chirmang. Kalitlar tizim hisobingiz va parollar omboriga bog‘liq; boshqa hisob yoki kompyuterga o‘tishni yordam bilan rejalashtiring.
+
+**Shifrlangan zaxira:** asosiy kompyuterda **Kassalar va xavfsizlik → Shifrlangan zaxiralar**ni oching. Dastur ochiq bo‘lib, bir daqiqa ishlatilmaganda kuniga bir marta zaxiralanadi; oxirgi **7 nusxa** qoladi. **Hozir zaxiralash** bilan qo‘lda ham yaratasiz. Shu payt kassa bazasi izchil nusxa olish uchun qisqa to‘xtaydi; kassalarda ishni kutib turing. Baza, yuborilmagan ishlar, rasmlar va shu kompyuterdagi qoralamalar kiritiladi. Qo‘shimcha kassalarning qoralamalari o‘z kompyuterida qoladi.
+
+**Tiklash:** ro‘yxatdan zaxirani tanlang, egasi odatiy parolini kiritsin va alohida oynada tasdiqlasin. Avval zaxiraning yaxlitligi tekshiriladi, keyin hozirgi holat alohida yangi zaxiraga olinadi. Tanlangan nusxa tiklangach qayta kirasiz. Keyingi sanada bajarilgan ishlar tiklashdan oldingi yangi zaxirada qoladi. Boshqa kassalardagi ishni oldindan to‘xtating.
+
+Zaxiralar shu o‘rnatish kaliti bilan shifrlangan; disk ishdan chiqishi yoki tizim kalitlari yo‘qolishidan himoya bermaydi. Ishlayotgan PostgreSQL fayllari to‘liq disk shifrlanishi bilan himoyalanmaydi: Windows’da BitLocker, Linux’da LUKS kabi disk himoyasini tizim o‘rnatishda alohida sozlash mumkin. Baza parolini fayllarning shifrlanishi deb hisoblamang.
 
 Qo‘llanma **ILBI → Ilovani sozlash (rasmli qo‘llanma)** menyusidan ham ochiladi. Uning matni va rasmlari ilova ichida saqlanadi, shuning uchun internet kerak emas. Rasm ustiga bossangiz kattalashadi; `Esc` bilan yoping.
 

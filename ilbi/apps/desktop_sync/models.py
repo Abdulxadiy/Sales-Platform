@@ -80,3 +80,17 @@ class LocalAlias(models.Model):
     local_id = models.BigIntegerField(primary_key=True)
     remote_id = models.BigIntegerField()
     active = models.BooleanField(default=False)
+
+
+class PairingSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    device = models.ForeignKey(SyncDevice, on_delete=models.CASCADE)
+    code_digest = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+    claimed_at = models.DateTimeField(null=True)
+    claim_digest = models.CharField(max_length=64, blank=True)
+    client_name = models.CharField(max_length=80, blank=True)
+    client_public_key = models.CharField(max_length=100, blank=True)
+    encrypted_payload = models.JSONField(null=True)
+    completed_at = models.DateTimeField(null=True)

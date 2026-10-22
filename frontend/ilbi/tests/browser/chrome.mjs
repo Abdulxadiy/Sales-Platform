@@ -5,13 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function launchBrowser({ width = 1920, height = 1080, reducedMotion = false } = {}) {
+export async function launchBrowser({ width = 1920, height = 1080, reducedMotion = false, disableBackForwardCache = false } = {}) {
   const candidates = [process.env.CHROME_PATH, '/opt/google/chrome/chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser'].filter(Boolean);
   let executable;
   for (const path of candidates) { try { await access(path); executable = path; break; } catch {} }
   if (!executable) throw new Error('Chrome/Chromium topilmadi. CHROME_PATH orqali uning manzilini bering.');
   const profile = await mkdtemp(join(tmpdir(), 'ilbi-chrome-'));
-  const child = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--remote-debugging-port=0', `--user-data-dir=${profile}`, `--window-size=${width},${height}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-extensions', '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-color-profile=srgb', '--font-render-hinting=none', '--remote-debugging-port=0', ...(disableBackForwardCache ? ['--disable-features=BackForwardCache'] : []), `--user-data-dir=${profile}`, `--window-size=${width},${height}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   let startupLog = '';
   child.stderr.on('data', data => { startupLog = (startupLog + data.toString()).slice(-4000); });
   let port;

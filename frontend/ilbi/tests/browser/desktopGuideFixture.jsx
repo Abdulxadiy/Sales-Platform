@@ -4,7 +4,10 @@ import { createRoot } from 'react-dom/client';
 import AuthContext from '../../src/context/authContext';
 import { TenantProvider } from '../../src/context/TenantContext';
 import SyncCenter from '../../src/components/sync/SyncCenter';
-import DesktopAccess from '../../src/components/sync/DesktopAccess';
+import Login from '../../src/pages/Login';
+import {BrowserRouter} from 'react-router-dom';
+import {ToastProvider} from '../../src/context/ToastContext';
+import {ThemeProvider} from '../../src/context/ThemeContext';
 import IlbiLogo from '../../src/components/common/IlbiLogo';
 import '../../src/index.css';
 
@@ -23,13 +26,14 @@ const state = { desktop: true, enrolled: mode !== 'prepare', online: true, activ
     ? [{ id: 'failed', title: 'Qarz to‘lovi — namuna', status: 'error', error: 'Serverga ulanish uzildi. Internetni tekshiring.', priority: 0, sequence: 1, dependencies: [] }]
     : mode === 'priority' ? [active, payment, stock] : [active, stock, payment] };
 window.fetch = async input => {
+  if (String(input).startsWith('/api/')) return new Response(JSON.stringify({results:[],methods:[],enabled:false}),{headers:{'Content-Type':'application/json'}});
   if (!String(input).startsWith('/desktop/')) throw Error('Documentation fixture must not call a real API');
   return new Response(JSON.stringify(state), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 const user = { id: 1, role: 'owner', tenants: [{ id: 7, name: 'Namuna do‘koni', is_owner: true, permissions: ['*'] }] };
-createRoot(document.getElementById('root')).render(<AuthContext.Provider value={{ user, isAuthenticated: true, isOwner: true, isAdmin: false }}>
-  <TenantProvider><main style={{ maxWidth: 760, margin: '20px auto', padding: 24 }}>
-    {mode === 'login' ? <div style={{ width: 420, margin: '70px auto' }}><IlbiLogo size={36} /><DesktopAccess /></div>
+createRoot(document.getElementById('root')).render(<AuthContext.Provider value={{ user, isAuthenticated: true, isOwner: true, isAdmin: false, logout() {} }}>
+  <BrowserRouter><ThemeProvider><ToastProvider><TenantProvider><main style={{ maxWidth: 760, margin: '20px auto', padding: 24 }}>
+    {mode === 'login' ? <div id="documentation-login"><Login /></div>
       : <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}><IlbiLogo size={32} /><SyncCenter /></header>}
-  </main></TenantProvider>
+  </main></TenantProvider></ToastProvider></ThemeProvider></BrowserRouter>
 </AuthContext.Provider>);

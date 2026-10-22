@@ -9,6 +9,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import AppLoadingScreen, { AppLoadingProvider } from './components/common/AppLoadingScreen';
 import SessionRecovery from './components/auth/SessionRecovery';
 import DesktopUpdateNotice from './components/sync/DesktopUpdateNotice';
+import DesktopSessionGuard from './components/sync/DesktopSessionGuard';
 const Layout = lazy(() => import('./components/layout/Layout'));
 const HelpLauncher = lazy(() => import('./components/support/HelpLauncher'));
 const Landing = lazy(() => import('./pages/Landing'));
@@ -107,6 +108,7 @@ export default function App() {
         <DesktopUpdateNotice />
         <AppLoadingProvider>
         <AuthProvider>
+          <DesktopSessionGuard />
           <TenantProvider>
             <SessionUI>
                 <Suspense fallback={<AppLoadingScreen message="Sahifa yuklanmoqda..." />}>

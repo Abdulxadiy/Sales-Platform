@@ -39,6 +39,11 @@ class DesktopMiddleware:
                 if request.path.endswith("/resume/"):
                     resume_after_update()
                     return JsonResponse({"ready": False})
+                from .account_access import jobs, jobs_lock
+
+                with jobs_lock:
+                    if any(job["stage"] not in {"ready", "error"} for job in jobs.values()):
+                        return JsonResponse({"detail": "Avval offline tayyorlash tugashini kuting."}, status=409)
                 # Do not hold runtime_lock while a network sync needs to finish.
                 if not pause_for_update():
                     return JsonResponse({"detail": "Sinxronlash hali tugamadi. Birozdan keyin yangilang."}, status=409)
@@ -47,6 +52,14 @@ class DesktopMiddleware:
             with runtime_lock:
                 return endpoint(request, request.path[len("/desktop/") :])
         if request.path.startswith("/media/"):
+            if not get_state("device") or request.headers.get("X-ILBI-Cloud-Session") == "true":
+                return self.proxy(request, "")
+            from rest_framework.exceptions import APIException
+
+            try:
+                authenticated(request)
+            except (APIException, ValueError) as exc:
+                return JsonResponse({"detail": str(exc)}, status=getattr(exc, "status_code", 401))
             response = self.get_response(request)
             return self.proxy(request, "") if response.status_code == 404 else response
         if not request.path.startswith("/api/v1/"):
@@ -88,8 +101,10 @@ class DesktopMiddleware:
 
                 try:
                     token = RefreshToken(json.loads(request.body)["refresh"])
-                    user = DesktopJWTAuthentication().get_user(token)
-                    return JsonResponse(local_tokens(user, device))
+                    authentication = DesktopJWTAuthentication()
+                    authentication.register = request.headers.get("X-ILBI-Register-ID", "primary")
+                    user = authentication.get_user(token)
+                    return JsonResponse(local_tokens(user, device, authentication.register))
                 except Exception:
                     return JsonResponse({"detail": "Offline sessiya muddati tugagan."}, status=401)
             # Cross-store actions and external services require live confirmation.
@@ -241,7 +256,7 @@ class DesktopMiddleware:
             return JsonResponse(
                 {
                     "detail": "Internetga ulanib, qayta urinib ko‘ring. "
-                    "Offline rejim oldindan tayyorlangan bo‘lsa, offline parol bilan kirishingiz ham mumkin."
+                    "Offline rejim oldindan tayyorlangan bo‘lsa, odatiy hisob parolingiz bilan kiring."
                 },
                 status=503,
             )

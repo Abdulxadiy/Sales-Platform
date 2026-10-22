@@ -1,8 +1,24 @@
 from django.urls import path
 
-from .views import ActorGrantView, ChangesView, DeviceEnrollView, DeviceRevokeView, PushView, SnapshotView
+from .pairing import PairingClaimView, PairingCreateView, PairingOwnerView, PairingResultView
+from .views import (
+    ActorGrantView,
+    ChangesView,
+    CredentialVerifyView,
+    DeviceEnrollView,
+    DeviceRevokeView,
+    PushView,
+    SecurityStateView,
+    SnapshotView,
+)
 
 urlpatterns = [
+    path("pairings/", PairingCreateView.as_view()),
+    path("pairings/claim/", PairingClaimView.as_view()),
+    path("pairings/result/", PairingResultView.as_view()),
+    path("pairings/<uuid:pairing_id>/", PairingOwnerView.as_view()),
+    path("credentials/", CredentialVerifyView.as_view()),
+    path("security/", SecurityStateView.as_view()),
     path("devices/", DeviceEnrollView.as_view()),
     path("actors/", ActorGrantView.as_view()),
     path("devices/<uuid:device_id>/revoke/", DeviceRevokeView.as_view()),

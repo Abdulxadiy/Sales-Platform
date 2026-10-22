@@ -9,13 +9,16 @@
   <button id="updates" type="button">Yangilanishlarni tekshirish</button>
   <form id="host">
     <h2>Shu kompyuterda ishlash</h2>
-    <p>Internet bo‘lmasa ham ishlaringiz shu kompyuterda saqlanadi.</p>
+    <p>Hisobingizga kiring. Internetsiz ishlashni xohlasangiz, ilovada bir marta yoqasiz.</p>
     <button type="submit">Ishni boshlash</button>
     <small>Keyinroq boshqa kompyuter qo‘shsangiz, ILBI menyusidan ulaysiz.</small>
   </form>
   <details id="join-details"><summary>Boshqa kassaga ulanish</summary>
-    <p>Shu do‘konda ILBI boshqa kompyuterda allaqachon sozlangan bo‘lsa, o‘sha kompyuterdagi ILBI menyusidan ulanish faylini oling.</p>
-    <button id="join" type="button">Ulanish faylini ochish</button>
+    <p>Ikkala kompyuterni bir xil Wi-Fi yoki kabel tarmog‘iga ulang. Birinchi ulashda ikkala kompyuterda ham internet bo‘lsin. Asosiy kassada <strong>Kassalar va xavfsizlik → Boshqa kompyuterni ulash</strong> orqali vaqtinchalik kod oling.</p>
+    <label for="join-code">Asosiy kassadagi 8 xonali kod</label>
+    <input id="join-code" inputmode="numeric" autocomplete="one-time-code" maxlength="11" placeholder="1234 5678">
+    <button id="join" type="button">Kod orqali ulanish</button>
+    <div id="join-wait" hidden role="status"><strong id="join-fingerprint"></strong><p>Ikkala ekrandagi tasdiqlash belgisi bir xil ekanini tekshiring. Asosiy kassada ulanishni tasdiqlang.</p><p id="join-countdown"></p></div>
   </details>
   <div id="status" class="setup-status" role="status" aria-live="polite" hidden>
     <span class="status-symbol" aria-hidden="true"></span>

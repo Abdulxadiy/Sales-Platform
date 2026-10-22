@@ -3,7 +3,7 @@ const { request: httpsRequest } = require('node:https');
 
 function forwardRequest(request, response, options, secure, completed) {
   let remoteResponse, finished = false;
-  const finish = () => { if (!finished) { finished = true; completed(); } };
+  const finish = () => { if (!finished) { finished = true; completed(remoteResponse?.statusCode); } };
   // Closing a window must not cancel an already submitted business operation.
   // Consume its response even when the renderer no longer accepts the result.
   response.once('close', () => { if (remoteResponse) { remoteResponse.unpipe(response); remoteResponse.resume(); } });

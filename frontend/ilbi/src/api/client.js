@@ -105,6 +105,7 @@ async function handleResponse(response, responseType) {
   const data = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
+    if (response.status === 423 && typeof window !== 'undefined' && window.ilbiDesktop) window.dispatchEvent(new Event('desktop:locked'));
     let errorMsg = 'Kutilmagan xatolik yuz berdi';
 
     if (response.status === 429) {

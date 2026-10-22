@@ -23,7 +23,7 @@ desktop-file-validate "$XDG_DATA_HOME/applications/uz.ilbi.desktop.desktop"
 export ILBI_DESKTOP_TEST_RESOURCES="$XDG_DATA_HOME/ilbi-app/current/resources"
 export ILBI_DESKTOP_INSTALLED_EXE="$ILBI_INSTALL_BIN_DIR/ilbi"
 export ILBI_LINUX_INSTALLER="$test_directory/unpacked space/ILBI/install.sh"
-node --test "$repository/desktop/ilbi/tests/linux-host.test.cjs" "$repository/desktop/ilbi/tests/windows-ui.test.cjs"
+node --test "$repository/desktop/ilbi/tests/linux-host.test.cjs" "$repository/desktop/ilbi/tests/offline-security-native.test.cjs" "$repository/desktop/ilbi/tests/windows-ui.test.cjs"
 test -s "$XDG_CONFIG_HOME/ILBI/device.vault"
 vault_before=$(sha256sum "$XDG_CONFIG_HOME/ILBI/device.vault")
 bash "$test_directory/unpacked space/ILBI/install.sh"

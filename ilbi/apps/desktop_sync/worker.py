@@ -15,6 +15,7 @@ from .transport import cloud_request
 log = logging.getLogger(__name__)
 update_paused = threading.Event()
 cycle_lock = threading.Lock()
+last_security_check = 0
 
 
 def pause_for_update(timeout=65):
@@ -45,9 +46,32 @@ def error_message(value):
 
 
 def sync_once():
+    global last_security_check
+    import time
+
     device = get_state("device")
     if not device:
         return False
+    if (
+        any(actor.get("credential_mode") == "account" for actor in get_state("actors", {}).values())
+        and time.monotonic() - last_security_check >= 60
+    ):
+        try:
+            security = cloud_request("GET", "sync/security/?device_id=" + device["device_id"])
+            if security.ok:
+                from .security import refresh_grants
+
+                with runtime_lock, transaction.atomic():
+                    refresh_grants(security.json(), update_policy=True)
+            elif security.status_code in {401, 403}:
+                set_state("security_denied", True)
+                from .transport import Vault
+
+                Vault().set_denied(True)
+        except (requests.RequestException, OSError):
+            pass  # Existing signed leases remain valid during a genuine network outage.
+        finally:
+            last_security_check = time.monotonic()
     with runtime_lock:
         row = next_operation()
         if row:
@@ -126,13 +150,17 @@ def sync_once():
                     for key in list(actors):
                         if key not in data.get("actors", {}):
                             del actors[key]
-                        else:
+                        elif actors[key].get("credential_mode") != "account" or not data.get("grant_key"):
                             actors[key]["actor_ticket"] = data["actors"][key]
                     set_state("actors", actors)
                     set_state("device", device)
                     set_state("revision", data["snapshot"].get("revision", 0))
                     set_state("lease_refreshed", timezone.now().isoformat())
                     set_state("last_sync", timezone.now().isoformat())
+                    if data.get("grant_key"):
+                        from .security import refresh_grants
+
+                        refresh_grants(data)
             activity["error"] = (
                 f"{len(missing_media)} ta rasm hali yuklanmadi. Keyingi ulanishda qayta uriniladi."
                 if missing_media

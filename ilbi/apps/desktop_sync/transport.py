@@ -42,6 +42,18 @@ class Vault:
                 current["primary_user"] = user_id
             self.write(current)
 
+    def put_grant_key(self, key):
+        with self.lock:
+            current = self.read()
+            current["grant_key"] = key
+            self.write(current)
+
+    def set_denied(self, denied):
+        with self.lock:
+            current = self.read()
+            current["security_denied"] = bool(denied)
+            self.write(current)
+
 
 class UploadBody:
     def __init__(self, data):

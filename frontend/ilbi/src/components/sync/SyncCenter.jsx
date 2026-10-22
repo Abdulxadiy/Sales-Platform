@@ -1,18 +1,21 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUp, Check, Cloud, CloudOff, RefreshCw, X } from 'lucide-react';
-import { getRefreshToken, getAccessToken, parseJwt, setTokens } from '../../api/client';
+import { getRefreshToken, getAccessToken, getAuthenticationGeneration, parseJwt, setTokens } from '../../api/client';
 import { useTenant } from '../../context/TenantContext';
 import { useAuth } from '../../hooks/useAuth';
 import CustomSelect from '../common/CustomSelect';
 import { desktopRequest } from './desktopApi';
 import './sync.css';
+import DesktopSecurityPanel from './DesktopSecurityPanel';
 
 export default function SyncCenter() {
   const { activeTenant, tenants, selectTenant, loadingTenants } = useTenant();
   const { isAdmin } = useAuth();
   const [state, setState] = useState(null);
   const [open, setOpen] = useState(false);
-  const [pin, setPin] = useState('');
+  const [confirmationPassword, setConfirmationPassword] = useState('');
+  const [verifyAccount, setVerifyAccount] = useState(false);
+  const [setupProgress, setSetupProgress] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const dialog = useRef(null);
@@ -31,6 +34,10 @@ export default function SyncCenter() {
           : !selectedTenant ? 'Offline ishlash uchun quyidan do‘konni tanlang.' : '';
 
   useEffect(() => {
+    return window.ilbiDesktop?.onOpenSecurity?.(()=>setOpen(true));
+  }, []);
+
+  useEffect(() => {
     if (!desktop) return undefined;
     let stopped = false;
     let timer;
@@ -38,6 +45,7 @@ export default function SyncCenter() {
       try {
         const status = await desktopRequest('status');
         const next = status.enrolled && !cloudSession ? await desktopRequest('queue') : { ...status, operations: [] };
+        next.lease_warning = Boolean(next.lease_until && next.lease_until*1000-Date.now()<86400000);
         if (!stopped) setState(next);
       } catch (failure) { if (!stopped) setError(failure.message); }
       if (!stopped) timer = setTimeout(poll, open ? 500 : 3000);
@@ -83,15 +91,33 @@ export default function SyncCenter() {
   }
   async function prepare(event) {
     event.preventDefault();
-    if (setupBlocked || pin.length < 8) { setError(setupBlocked || 'Offline parol kamida 8 belgidan iborat bo‘lsin.'); return; }
+    if (setupBlocked) { setError(setupBlocked); return; }
     setBusy(true); setError('');
+    const generation = getAuthenticationGeneration();
     try {
-      const tokens = await desktopRequest(state?.enrolled ? 'actor' : 'enroll', {
-        pin, tenant_id: enrollment ? selectedTenant?.id : undefined, refresh: getRefreshToken(),
+      if (verifyAccount) {
+        if (!confirmationPassword) throw Error('Odatiy hisob parolingizni kiriting.');
+        await desktopRequest('session',{password:confirmationPassword,refresh:getRefreshToken()});
+        setConfirmationPassword(''); setVerifyAccount(false);
+      }
+      let tokens = await desktopRequest(state?.enrolled ? 'actor' : 'enroll', {
+        tenant_id: enrollment ? selectedTenant?.id : undefined, refresh: getRefreshToken(),
       });
+      if (tokens.job_token) {
+        const jobToken=tokens.job_token;
+        for (;;) {
+          if (getAuthenticationGeneration()!==generation) throw Error('Hisob o‘zgargan. Tayyorlash holatini o‘sha hisobda tekshiring.');
+          const progress=await desktopRequest('setup-status',{job_token:jobToken});
+          setSetupProgress(progress);
+          if (progress.stage==='error') throw Error(progress.message);
+          if (progress.stage==='ready') {tokens=progress.tokens;break;}
+          await new Promise(resolve=>setTimeout(resolve,500));
+        }
+      }
+      if(getAuthenticationGeneration()!==generation)return;
       setTokens(tokens.access, tokens.refresh, true);
       window.location.reload();
-    } catch (failure) { setError(failure.message); }
+    } catch (failure) { if(failure.code==='account_verification_required')setVerifyAccount(true); setError(failure.message); }
     finally { setBusy(false); }
   }
 
@@ -99,6 +125,7 @@ export default function SyncCenter() {
     <button ref={trigger} className="sync-status" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}>
       {onlineMode ? <Cloud size={15} /> : active ? <RefreshCw size={15} className="sync-arrows" /> : state?.online ? <Check size={15} /> : <CloudOff size={15} />}
       <span className="sync-status-label">{label}{state && !state.enrolled && <small>Internetsiz ishlamaydi</small>}</span>{operations.length > 0 && <b>{operations.length}</b>}
+      {state?.lease_warning&&<small>Ruxsat muddati yaqin</small>}
     </button>
     <dialog ref={dialog} className="sync-dialog" aria-labelledby="sync-title" onCancel={event => { event.preventDefault(); close(); }} onClose={close}>
       <div className="sync-heading"><div><h2 id="sync-title">Sinxronlash markazi</h2><p>{onlineMode ? 'Internet orqali ishlash rejimi. Offline rejim ixtiyoriy.' : state?.online ? 'Serverga ulanish bor' : 'Ishlaringiz shu do‘kon kompyuterida saqlanadi'}</p></div>
@@ -106,15 +133,16 @@ export default function SyncCenter() {
       {error && <p role="alert" className="sync-error">{error}</p>}
       {!state?.enrolled || cloudSession ? <form onSubmit={prepare} className="sync-setup">
         {state && !state.enrolled && <p className="sync-notice" role="note">Offline rejim sozlanmagan. Internet uzilsa, ilovada ishlay olmaysiz. Internetsiz ham ishlash uchun offline rejimni internet borida tayyorlang.</p>}
-        <p>{state?.enrolled ? 'Hisobingizni ushbu do‘kon kassalariga ulang. Keyingi safar internet bo‘lmasa ham offline parol bilan kirasiz.' : 'Do‘kon egasi internet orqali bir marta bazani shu kompyuterga yuklaydi. Boshqa kassalar unga mahalliy tarmoq orqali ulanadi.'}</p>
+        <p>{state?.enrolled ? 'Hisobingizni ushbu do‘kon kassalariga ulang. Keyin odatiy login va parolingiz bilan internet borida ham, yo‘g‘ida ham ishlaysiz.' : 'Do‘konni tanlang va tayyorlashni boshlang. Ma’lumotlar shu kompyuterga yuklanadi. Bitta kompyuter uchun boshqa ulanish kerak emas.'}</p>
         {enrollment && !isAdmin && ownedTenants.length > 0 && <label>Offline ishlaydigan do‘kon
           <CustomSelect aria-label="Offline ishlaydigan do‘kon" name="offline-tenant" fullWidth value={selectedTenant?.id ?? ''} options={ownedTenants.map(tenant => ({ value: tenant.id, label: tenant.name }))}
             placeholder="Do‘konni tanlang" disabled={busy} onChange={id => { selectTenant(ownedTenants.find(tenant => String(tenant.id) === String(id))); setError(''); }} />
         </label>}
         {setupBlocked && <p className="sync-setup-hint" id="offline-setup-reason" role="status">{setupBlocked}</p>}
-        <label>Offline parol<input name="offline-password" type="password" minLength={8} required value={pin} onChange={event => setPin(event.target.value)} autoComplete="new-password" aria-describedby="offline-password-hint" disabled={busy} /></label>
-        <small id="offline-password-hint" className="sync-setup-hint">{pin.length > 0 && pin.length < 8 ? `Kamida 8 belgi kiriting. Hozir: ${pin.length}.` : 'Kamida 8 belgi. Bu parol internet bo‘lmaganda kassaga kirish uchun kerak.'}</small>
-        <button type="submit" className="btn btn-primary" disabled={busy || Boolean(setupBlocked) || pin.length < 8} aria-describedby={setupBlocked ? 'offline-setup-reason' : 'offline-password-hint'}>{busy ? 'Tayyorlanmoqda…' : state?.enrolled ? 'Hisobni kassaga ulash' : 'Offline ishlashni tayyorlash'}</button>
+        <small className="sync-setup-hint">Alohida offline parol yaratilmaydi. Odatiy hisobingiz ishlatiladi; ichki himoya kalitlarini dastur o‘zi yaratadi.</small>
+        {verifyAccount && <label>Hisobingizni qayta tasdiqlang<input name="account-confirmation-password" type="password" required value={confirmationPassword} onChange={event=>setConfirmationPassword(event.target.value)} autoComplete="off" disabled={busy}/><small>Bu hozirgi hisob parolingiz. Yangi parol o‘rnatilmaydi.</small></label>}
+        {setupProgress && <div className="sync-setup-progress" role="status"><RefreshCw size={20} className={busy?'sync-arrows':''}/><strong>{setupProgress.message}</strong>{setupProgress.files_total>0&&<small>Rasmlar: {setupProgress.files_done} / {setupProgress.files_total}</small>}</div>}
+        <button type="submit" className="btn btn-primary" disabled={busy || Boolean(setupBlocked)} aria-describedby={setupBlocked ? 'offline-setup-reason' : undefined}>{busy ? 'Tayyorlanmoqda…' : state?.enrolled ? 'Hisobni kassaga ulash' : 'Internetsiz ishlashni yoqish'}</button>
         <button type="button" className="btn btn-secondary" disabled={busy} onClick={close}>Hozircha internet orqali ishlayman</button>
       </form> : <>
         <div className="sync-summary"><span>{operations.length} ta operatsiya</span><span>{state.last_sync ? `Oxirgi: ${new Date(state.last_sync).toLocaleString('uz-UZ')}` : 'Dastlabki sinxronlash'}</span></div>
@@ -144,6 +172,7 @@ export default function SyncCenter() {
         {!operations.length && <div className="sync-empty"><Check size={32} /><strong>Barcha operatsiyalar yuborilgan</strong><p>Yangi ishlaringiz shu yerda ko‘rinadi.</p></div>}
         <p className="sync-footnote">“Darhol” tanlangan ishni zarur bog‘liqliklari bilan oldinga oladi. Davom etayotgan yuborish tugagach boshlanadi.</p>
       </>}
+      {state?.enrolled&&!cloudSession&&<DesktopSecurityPanel visible={open}/>}
       <a className="sync-guide-link" href="/desktop-guide" onClick={event => {
         if (!window.ilbiDesktop?.openGuide) return;
         event.preventDefault(); void window.ilbiDesktop.openGuide().catch(failure => setError(failure.message));

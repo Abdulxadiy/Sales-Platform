@@ -57,7 +57,7 @@ def decode_body(body):
     return encode_multipart(BOUNDARY, data), MULTIPART_CONTENT
 
 
-def cache_media(snapshot, server):
+def cache_media(snapshot, server, on_progress=None):
     from django.apps import apps
     from django.db.models import FileField
 
@@ -68,7 +68,9 @@ def cache_media(snapshot, server):
             if isinstance(field, FileField) and value:
                 paths.add(value)
     missing = []
-    for value in paths:
+    for index, value in enumerate(sorted(paths)):
+        if on_progress:
+            on_progress(index, len(paths))
         path = PurePosixPath(value)
         if path.is_absolute() or any(part in {"..", "."} or part.startswith(".") for part in path.parts):
             continue
@@ -98,4 +100,6 @@ def cache_media(snapshot, server):
                 response.close()
         except (requests.RequestException, ValueError, OSError):
             missing.append(value)
+    if on_progress:
+        on_progress(len(paths), len(paths))
     return missing

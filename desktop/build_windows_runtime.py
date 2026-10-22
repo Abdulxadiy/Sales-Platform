@@ -67,6 +67,7 @@ def stage_source(backend):
         )
     shutil.copy(ROOT / "ilbi/pyproject.toml", app / "pyproject.toml")
     shutil.copy(ROOT / "desktop/runtime.py", backend / "runtime.py")
+    shutil.copy(ROOT / "desktop/backup_store.py", backend / "backup_store.py")
     docs = backend / "docs"
     if docs.exists():
         shutil.rmtree(docs)

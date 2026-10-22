@@ -119,6 +119,9 @@ test('default installed launch opens downloads before setup, recovers a failed r
     const guide = await page(await waitFor(async () => (await targets()).find(item => item.type === 'page' && item.url.includes('/desktop-guide'))));
     await waitFor(() => guide.evaluate('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash" && !document.querySelector(".ilbi-loading")'), 'guide content');
     assert.equal(await guide.evaluate('document.querySelectorAll(".doc-focus-trigger img").length'), 7);
+    for(const expression of ["window.ilbiDesktop.createPairing('synthetic-token')","window.ilbiDesktop.createBackup('synthetic-token')","window.ilbiDesktop.lockSession('synthetic-token')"]){
+      const denied=await guide.evaluate(`(${expression}).then(()=>false,()=>true)`);assert.equal(denied,true,'A guide window cannot change register security');
+    }
     await guide.evaluate('Promise.all([...document.querySelectorAll(".doc-focus-trigger img")].map(img=>{img.loading="eager";return img.decode()}))');
     await guide.evaluate('document.querySelector(".doc-focus-trigger").click()');
     await waitFor(() => guide.evaluate('Boolean(document.querySelector("dialog[open]"))'), 'enlarged guide image');
@@ -145,6 +148,11 @@ test('default installed launch opens downloads before setup, recovers a failed r
     await waitFor(() => setup.evaluate('location.pathname === "/login"'), 'default keyring selection and encrypted database setup');
     const status = await setup.evaluate('fetch("/desktop/status/").then(response=>response.json())');
     assert.equal(status.desktop, true); assert.equal(status.enrolled, false); assert.equal(status.server, OFFICIAL_SERVER);
+    await new Promise((ok,fail)=>{
+      const socket=require('node:net').connect({host:'127.0.0.1',port:49243});
+      socket.once('connect',()=>{socket.destroy();fail(Error('A single-PC store must not expose a LAN listener'));});
+      socket.once('error',error=>error.code==='ECONNREFUSED'?ok():fail(error));
+    });
     await waitFor(() => setup.evaluate('document.readyState === "complete" && Boolean(document.querySelector("form")) && !document.querySelector(".ilbi-loading")'), 'login screen');
     const vault = await readFile(join(process.platform === 'linux' ? process.env.XDG_CONFIG_HOME : process.env.APPDATA, 'ILBI/device.vault'));
     assert.equal(vault.includes(Buffer.from(OFFICIAL_SERVER)), false);

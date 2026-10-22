@@ -97,9 +97,9 @@ export default function Downloads() {
         <Link className="downloads-linux-guide" to="/desktop-guide#7-linux-uchun-batafsil-qollanma"><BookOpen size={18} aria-hidden="true" /><span>Linux uchun batafsil qo‘llanma<small>Arch, boshqa Linux’lar va parollar omborini sozlash.</small></span><ArrowLeft size={16} aria-hidden="true" style={{ transform: 'rotate(180deg)' }} /></Link>
       </section>
       <section className="downloads-help" aria-labelledby="download-start"><h2 id="download-start">Birinchi ishga tushirish</h2>
-        <ol><li>ILBI’ni o‘rnating va <strong>Ishni boshlash</strong> tugmasini bosing.</li><li>Internet orqali do‘kon egasi hisobiga kirib, offline ishlashni tayyorlang.</li><li>Bitta kompyuter uchun shu yetarli. Keyinroq boshqa kassa kerak bo‘lsa, <strong>ILBI → Boshqa kassani ulash</strong> menyusidan qo‘shing.</li></ol>
+        <ol><li>ILBI’ni o‘rnating va <strong>Ishni boshlash</strong> tugmasini bosing.</li><li>Do‘kon egasi internet orqali kirib, <strong>Internetsiz ishlashni yoqish</strong>ni bossin. Alohida offline parol kerak emas.</li><li>Bitta kompyuter uchun shu yetarli. Keyinchalik <strong>ILBI → Kassalar va xavfsizlik</strong>dan bir martalik kod bilan boshqa kompyuterni ulaysiz. Birinchi ulashda ikkala kompyuterda ham internet kerak.</li></ol>
         <p>Bir nechta kassa ishlatilganda asosiy kompyuter va undagi ILBI ochiq turadi. Offline ruxsat internet orqali yangilanib turadi; uning muddati 7 kun.</p>
-        <Link className="downloads-guide-link" to="/desktop-guide"><BookOpen size={19} /><span><strong>Ilovani sozlash — rasmli qo‘llanma</strong><small>Birinchi kirish, offline parol, sinxronlash va qo‘shimcha kassalar.</small></span><ArrowLeft size={17} style={{ transform: 'rotate(180deg)' }} /></Link>
+        <Link className="downloads-guide-link" to="/desktop-guide"><BookOpen size={19} /><span><strong>Ilovani sozlash — rasmli qo‘llanma</strong><small>Internetsiz ishlash, kod bilan ulash, xavfsizlik, zaxira va yangilash.</small></span><ArrowLeft size={17} style={{ transform: 'rotate(180deg)' }} /></Link>
       </section>
     </main>
     <footer className="downloads-footer"><span>ILBI · v{version}</span><Link to="/support">Yordam markazi</Link><Link to="/login">Tizimga kirish</Link></footer>

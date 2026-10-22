@@ -5,6 +5,7 @@ import AuthContext from './authContext.js';
 import { getAccessToken, getRefreshToken, refreshAccessToken, setTokens, clearTokens, parseJwt, isTokenExpired, authApi, getAuthenticationGeneration, invalidateAuthenticationRequests } from '../api/client';
 import { beginLoginSupportSession } from '../api/support';
 import { captureLegacyDraftOwner } from '../utils/accountDrafts';
+import { localAccountLogin, prepareDesktopAccount } from '../utils/desktopSession';
 
 export function AuthProvider({ children }) {
   const { pathname } = useLocation();
@@ -26,6 +27,8 @@ export function AuthProvider({ children }) {
   const observedTokens = useRef([getAccessToken(), getRefreshToken()]);
 
   const logout = useCallback(() => {
+    const oldAccess = getAccessToken();
+    if (oldAccess) void window.ilbiDesktop?.lockSession?.(oldAccess).catch(() => {});
     profileRequest.current += 1;
     clearTokens();
     beginLoginSupportSession();
@@ -55,6 +58,8 @@ export function AuthProvider({ children }) {
       const profile = await authApi.getProfile();
       if (!current()) return;
       if (!requestedUserId || String(profile.id) !== String(requestedUserId)) throw new Error('Profil tasdiqlanmadi.');
+      if(window.ilbiDesktop?.activateSession)await window.ilbiDesktop.activateSession(getAccessToken());
+      if(!current())return;
       setUser(profile);
       setToken(getAccessToken());
       setSessionError('');
@@ -82,6 +87,7 @@ export function AuthProvider({ children }) {
     const updateToken = event => {
       observedTokens.current = [getAccessToken(), getRefreshToken()];
       setToken(event.detail);
+      if(event.detail)void window.ilbiDesktop?.activateSession?.(event.detail).catch(()=>{});
     };
     const handleProfileRefresh = () => { void refreshProfile(); };
     const handleStorage = event => {
@@ -127,16 +133,29 @@ export function AuthProvider({ children }) {
 
   const loginStep1 = async (username, password, remember = true) => {
     setBusy(true);
+    const generation=getAuthenticationGeneration();
     try {
+      const local = await localAccountLogin(username, password);
+      if(generation!==getAuthenticationGeneration())throw Error('Kirish bekor qilindi. Qayta urinib ko‘ring.');
+      if (local) {
+        completeLogin(username, local, remember);
+        return {...local,local_login:true};
+      }
       const response = await authApi.adminLogin(username, password);
       if (response.demo_login === true && response.access && response.refresh) completeLogin(username, response, remember);
       return response;
     } finally { setBusy(false); }
   };
 
-  const loginStep2 = async (username, loginTicket, code, remember = true) => {
+  const loginStep2 = async (username, loginTicket, code, remember = true, password) => {
     setBusy(true);
-    try { return completeLogin(username, await authApi.verifyOtp(loginTicket, code), remember); }
+    const generation=getAuthenticationGeneration();
+    try {
+      const cloud = await authApi.verifyOtp(loginTicket, code);
+      const response = await prepareDesktopAccount(username, password, cloud);
+      if(generation!==getAuthenticationGeneration())throw Error('Kirish bekor qilindi. Qayta urinib ko‘ring.');
+      return {...completeLogin(username,response,remember),desktopNotice:response.desktopNotice};
+    }
     finally { setBusy(false); }
   };
 

@@ -24,4 +24,26 @@ async function perform(action) {
 document.querySelector('#host').addEventListener('submit', event => {
   event.preventDefault(); void perform(() => window.ilbiDesktop.setup());
 });
-document.querySelector('#join').addEventListener('click', () => { void perform(() => window.ilbiDesktop.join()); });
+let joining=false;
+document.querySelector('#join').addEventListener('click', () => { void perform(async()=>{
+  const code=document.querySelector('#join-code').value.replace(/[ -]/g,'');
+  if(!/^\d{8}$/.test(code))throw Error('Asosiy kassadagi 8 xonali kodni kiriting.');
+  let state=await window.ilbiDesktop.join(code);joining=true;
+  document.querySelector('#join-wait').hidden=false;
+  document.querySelector('#join-fingerprint').textContent='Tasdiqlash belgisi: '+state.fingerprint;
+  showStatus('busy','Asosiy kassada do‘kon egasining tasdig‘i kutilmoqda.');
+  try{
+    while(joining){
+      document.querySelector('#join-countdown').textContent='Qolgan vaqt: '+Math.floor(state.remaining/60)+':'+String(state.remaining%60).padStart(2,'0');
+      if(state.state==='completed')break;
+      await new Promise(resolve=>setTimeout(resolve,1000));
+      state=await window.ilbiDesktop.getJoinState();
+    }
+  }finally{joining=false;document.querySelector('#join-wait').hidden=true;}
+}); });
+void window.ilbiDesktop.getSetupState?.().then(state=>{
+  if(state.mode==='client'){
+    document.querySelector('#host').hidden=true;document.querySelector('#join-details').open=true;
+    if(state.requiresRejoin)showStatus('error','Eski ulanish fayli o‘rniga asosiy kassadagi yangi kod bilan bir marta qayta ulang. Do‘kon ma’lumotlari o‘chirilmaydi.');
+  }
+}).catch(()=>{});

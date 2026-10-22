@@ -7,9 +7,13 @@
       "source": "desktop/ilbi/setup.html + setup.css: primary computer form",
       "crop": {
         "x": 136,
-        "y": 302.96875,
+        "y": 342.96875,
         "width": 648,
-        "height": 248.890625
+        "height": 274.484375
+      },
+      "dimensions": {
+        "width": 972,
+        "height": 411
       },
       "arrows": [
         {
@@ -21,20 +25,20 @@
           "dy": 0
         }
       ],
-      "sha256": "40a97884b35df2a240a1bd9b61da729f7c75bf3496016943d1632155b539eeec",
-      "dimensions": {
-        "width": 972,
-        "height": 372
-      }
+      "sha256": "1e1edbde886de3fbb2c6375a5697aa96c062ac6afb7ef316fb3310795f274188"
     },
     {
       "file": "07-extra-register.png",
       "source": "desktop/ilbi/setup.html + setup.css: extra register",
       "crop": {
         "x": 136,
-        "y": 539.859375,
+        "y": 605.453125,
         "width": 648,
-        "height": 234.765625
+        "height": 334.34375
+      },
+      "dimensions": {
+        "width": 972,
+        "height": 501
       },
       "arrows": [
         {
@@ -54,20 +58,20 @@
           "dy": 0
         }
       ],
-      "sha256": "f9b36ffa2978ba29899b4958e0ddf725eab051901d4afff16acbb3228de64893",
-      "dimensions": {
-        "width": 972,
-        "height": 351
-      }
+      "sha256": "87c817db134db8704a16f4c27bb124f3c18408c29c6068f3ec84a64b8500b12f"
     },
     {
       "file": "02-prepare.png",
       "source": "SyncCenter.jsx: owner preparing the synthetic store",
       "crop": {
         "x": 35,
-        "y": 106.296875,
+        "y": 17.90625,
         "width": 850,
-        "height": 507.390625
+        "height": 684.171875
+      },
+      "dimensions": {
+        "width": 1275,
+        "height": 1026
       },
       "arrows": [
         {
@@ -79,7 +83,7 @@
           "dy": -25
         },
         {
-          "selector": ".sync-setup input",
+          "selector": ".sync-setup [aria-label=\"Offline ishlaydigan do‘kon\"]",
           "number": 2,
           "x": 0.8,
           "y": 0,
@@ -95,40 +99,40 @@
           "dy": 0
         }
       ],
-      "sha256": "e6e56f85529c486382aa7daed464f355322ebad4281d3e712f8f28b09cc4dddb",
-      "dimensions": {
-        "width": 1275,
-        "height": 761
-      }
+      "sha256": "eba71eb1efec920e7238ea3fa21afee816f535292ce532f749e213ca1205de44"
     },
     {
       "file": "03-offline-login.png",
-      "source": "DesktopAccess.jsx: synthetic enrolled account",
+      "source": "Login.jsx: production shared login form with synthetic account",
       "crop": {
-        "x": 185,
-        "y": 97,
-        "width": 550,
-        "height": 429
+        "x": 212,
+        "y": 207,
+        "width": 496,
+        "height": 415.5
+      },
+      "dimensions": {
+        "width": 744,
+        "height": 623
       },
       "arrows": [
         {
-          "selector": ".desktop-access input[autocomplete=\"username\"]",
+          "selector": "#documentation-login input[autocomplete=\"username\"]",
           "number": 1,
           "x": 0.8,
           "y": 0,
           "dx": 0,
-          "dy": -35
+          "dy": -30
         },
         {
-          "selector": ".desktop-access input[type=\"password\"]",
+          "selector": "#documentation-login input[type=\"password\"]",
           "number": 2,
           "x": 0.8,
           "y": 0,
           "dx": 0,
-          "dy": -35
+          "dy": -30
         },
         {
-          "selector": ".desktop-access button",
+          "selector": "#login-form button[type=\"submit\"]",
           "number": 3,
           "x": 1,
           "y": 0.5,
@@ -136,11 +140,7 @@
           "dy": 0
         }
       ],
-      "sha256": "93cd17fc4009c7539fceac325472606fcd92dbdd1907485868345ebbe5627460",
-      "dimensions": {
-        "width": 825,
-        "height": 644
-      }
+      "sha256": "d548982adf41a4ca4f0f39e16bc2894a62183c41ae845487610ef6fc076a59de"
     },
     {
       "file": "04-queue.png",
@@ -150,6 +150,10 @@
         "y": 29.953125,
         "width": 850,
         "height": 660.09375
+      },
+      "dimensions": {
+        "width": 1275,
+        "height": 990
       },
       "arrows": [
         {
@@ -169,11 +173,7 @@
           "dy": 0
         }
       ],
-      "sha256": "6647937c448f19ed19dd8a2d3b1cc7b6a112bcda3123ae63afe6b8c9c7b02ace",
-      "dimensions": {
-        "width": 1275,
-        "height": 990
-      }
+      "sha256": "c87a6515544718d0c3be8eaea3ad3032210438e5ba06d0732ac379875f287c37"
     },
     {
       "file": "05-priority.png",
@@ -183,6 +183,10 @@
         "y": 29.953125,
         "width": 850,
         "height": 660.09375
+      },
+      "dimensions": {
+        "width": 1275,
+        "height": 990
       },
       "arrows": [
         {
@@ -202,11 +206,7 @@
           "dy": 0
         }
       ],
-      "sha256": "c602db063c2a30373f2e2bcd9c97034deecc7dbc2e1b5af2a5702744db15e519",
-      "dimensions": {
-        "width": 1275,
-        "height": 990
-      }
+      "sha256": "c602db063c2a30373f2e2bcd9c97034deecc7dbc2e1b5af2a5702744db15e519"
     },
     {
       "file": "06-retry.png",
@@ -216,6 +216,10 @@
         "y": 95.046875,
         "width": 850,
         "height": 529.890625
+      },
+      "dimensions": {
+        "width": 1275,
+        "height": 794
       },
       "arrows": [
         {
@@ -235,11 +239,7 @@
           "dy": 0
         }
       ],
-      "sha256": "f0f6d89c09e93c4dfbcda2767f79b5b0e2706ac6b7ab2cd3ea7ea0617c94f50e",
-      "dimensions": {
-        "width": 1275,
-        "height": 794
-      }
+      "sha256": "db3114babd74feee77647a0b0e7ada8203441e2c2936efef64e1707fad37f2d2"
     }
   ]
 }

@@ -55,7 +55,7 @@ jobs:
               }
             } finally { $bitmap.Dispose(); $icon.Dispose() }
             $env:ILBI_DESKTOP_TEST_RESOURCES = Join-Path $destination 'resources'
-            node --test desktop/ilbi/tests/windows-host.test.cjs
+            node --test desktop/ilbi/tests/windows-host.test.cjs desktop/ilbi/tests/offline-security-native.test.cjs desktop/ilbi/tests/backups.test.cjs
             if ($LASTEXITCODE -ne 0) { throw 'Installed service startup failed' }
             $env:ILBI_DESKTOP_INSTALLED_EXE = Join-Path $destination 'ILBI.exe'
             node --test desktop/ilbi/tests/windows-ui.test.cjs

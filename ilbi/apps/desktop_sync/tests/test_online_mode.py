@@ -67,12 +67,32 @@ def test_uncached_online_media_comes_from_cloud_but_offline_cached_media_stays_l
     remote = Mock(
         status_code=206, content=b"\x89P", headers={"Content-Type": "image/png", "Content-Range": "bytes 0-1/100"}
     )
-    with patch("apps.desktop_sync.middleware.requests.request", return_value=remote) as send:
+    with (
+        patch("apps.desktop_sync.middleware.requests.request", return_value=remote) as send,
+        patch("apps.desktop_sync.middleware.get_state", return_value=None),
+    ):
         response = DesktopMiddleware(lambda _: HttpResponse(status=404))(request)
         assert response.status_code == 206
         assert response.content == b"\x89P"
         assert response["Content-Range"] == "bytes 0-1/100"
         assert send.call_args.args[1] == OFFICIAL_SERVER + "/media/catalog/synthetic.png"
         send.reset_mock()
-        assert DesktopMiddleware(lambda _: HttpResponse(b"cached"))(request).content == b"cached"
+        with (
+            patch("apps.desktop_sync.middleware.get_state", return_value={"device_id": "synthetic"}),
+            patch("apps.desktop_sync.middleware.authenticated"),
+        ):
+            assert DesktopMiddleware(lambda _: HttpResponse(b"cached"))(request).content == b"cached"
         send.assert_not_called()
+
+
+@override_settings(DESKTOP_BRIDGE_KEY="synthetic-bridge", DESKTOP_SERVER=OFFICIAL_SERVER)
+def test_locked_register_cannot_read_store_media():
+    from apps.desktop_sync.security import DesktopLocked
+
+    request = RequestFactory().get("/media/private.png", HTTP_X_ILBI_DESKTOP_KEY="synthetic-bridge")
+    with (
+        patch("apps.desktop_sync.middleware.get_state", return_value={"device_id": "synthetic"}),
+        patch("apps.desktop_sync.middleware.authenticated", side_effect=DesktopLocked()),
+    ):
+        response = DesktopMiddleware(lambda _: pytest.fail("Locked media reached the filesystem"))(request)
+    assert response.status_code == 423

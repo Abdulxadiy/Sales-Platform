@@ -126,7 +126,8 @@ The Windows desktop source is in `desktop/ilbi`. It bundles the React UI,
 Python/Django and PostgreSQL; customers do not install Docker, Python, Node or
 Redis. Each independent store has **one primary computer** with its own database.
 Additional registers use that primary over the local network with a pinned TLS
-certificate and a private pairing file. Internet can be unavailable; the primary
+certificate and a unique register key delivered through an owner-approved one-use
+code. Initial pairing requires internet; daily LAN operation does not. The primary
 computer and the local network must remain available to the other registers.
 Closing ILBI on the primary stops that store's local service.
 
@@ -169,31 +170,41 @@ Initial setup:
 2. Install the Windows x64 package and choose **Ishni boshlash** on the primary.
    The official HTTPS server is already selected. Sign in online as the store owner, select the
    store and open **Online rejim → Sinxronlash markazi** to download its database
-   and set a local password of at least eight characters. Offline enrollment is
-   optional: online accounts can read and write directly to the cloud without it.
-   Owners with multiple stores can select the store inside the setup dialog.
-3. Each cashier signs in online once and uses **Hisobni kassaga ulash** to set
-   their own local password. Later they use **Offline kassaga kirish** with their
-   own login/password. The server checks that cashier's permissions again on
-   replay. The local database contains owner-level store data, so provision the
-   primary only on a trusted store computer and Windows account.
-4. For another register, export **ILBI → Boshqa kassani ulash** on the primary,
-   install ILBI on the register and import the `.ilbi` pairing file. Keep this
-   file private. Allow inbound TCP 49243 on the primary for the store's private
-   LAN only; reserve its private IP in the router. Import a replacement pairing
-   file if the primary IP changes. Each register still uses its own cashier login.
-5. Offline authorization lasts seven days after a successful online renewal.
-   While connected, the primary refreshes it periodically. After expiry the
-   owner signs in online again and links the account to renew it. Pending work
-   stays on disk. Cloud permission changes may reject older queued commands;
-   they are retained for review rather than silently discarded.
+   through **Internetsiz ishlashni yoqish**. Offline enrollment is optional.
+   No separate offline password is created: online password plus OTP first proves
+   the account, then a device-bound verifier is stored under OS-protected keys.
+   Multiple stores require an explicit owner store selection.
+3. Each cashier signs in online once with their ordinary account password and OTP.
+   Prepared accounts automatically use the local session through connection changes.
+   Old PIN installations require one online login after upgrading; the database,
+   pending operations and drafts are preserved. No cloud password hashes are copied.
+4. To add another register, open **ILBI → Kassalar va xavfsizlik**, create the
+   three-minute one-use code, enter it on the new PC, compare both fingerprints,
+   and approve as owner. Both PCs require internet for first pairing. The fixed
+   official HTTPS relay stores only an encrypted envelope; X25519/HKDF/AES-GCM
+   provisioning is readable only by the requesting PC. Each register receives a
+   unique revocable LAN key. Single-PC stores have no LAN listener. Afterwards
+   the primary must stay open and both PCs use the same LAN (TCP 49243).
+5. Signed offline grants expire after seven days. Remaining time and early warning
+   appear in Sync Center. While online, security checks refresh permissions/revocation
+   independently of the outbox and renew the lease without waiting for an empty queue.
+   Clock rollback and altered local grants/session records require reauthentication.
+   Expired/revoked sessions preserve pending work for review and reconnection.
 
-**Meni eslab qol** restores both username and password after a successful login
-(including OTP verification). Desktop credentials use Electron OS encryption in
-a separate `login-credentials.vault`; online and offline logins are independent.
-Only the main login window can access them. Unchecking removes that saved login
-without changing device keys or the local store. On the web, supported browsers
-use their own password manager; passwords are never written to browser storage.
+Prepared registers lock on restart and after ten idle minutes by default; the owner
+can select 1–60 minutes or lock immediately. Actual input renews activity, API polling
+and token refresh do not. Wrong-password limits are per user/register. Remembered
+credentials use OS encryption; a locked prepared register restores the username
+only and requires manual password entry. Browser password managers remain unchanged.
+
+The primary automatically keeps seven authenticated AES-256-GCM cold backups while
+open and idle. Database/outbox/media and the primary's account-scoped localStorage /
+IndexedDB drafts are included. Restore authenticates the entire archive before
+extracting, requires owner password plus a native confirmation, saves the current
+state first, and uses a restart recovery journal. Backups are bound to this installation's
+OS-protected key; they do not protect against loss of the disk or OS credential store.
+Live PostgreSQL files have private profile permissions; they are not encrypted by
+the database password. Use OS disk encryption for protection of the live cluster.
 
 Desktop updates are checked at startup and every 15 minutes against the fixed
 official release feed. Both workspaces show an update notice; an unfocused app

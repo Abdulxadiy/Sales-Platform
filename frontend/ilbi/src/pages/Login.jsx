@@ -130,9 +130,9 @@ export default function Login() {
         localStore.setItem('ilbi_remember_me', 'false');
       }
       const res = await loginStep1(username.trim(), password, rememberMe);
-      if (res.demo_login === true && res.access && res.refresh) {
+      if ((res.local_login === true || res.demo_login === true) && res.access && res.refresh) {
         await saveRememberedLogin();
-        toast.success('Sinov akkauntiga kirildi');
+        toast.success(res.local_login ? 'Hisobingizga kirildi' : 'Sinov akkauntiga kirildi');
         navigate('/dashboard');
         return;
       }
@@ -212,8 +212,9 @@ export default function Login() {
         localStore.removeItem('ilbi_remember_login');
         localStore.setItem('ilbi_remember_me', 'false');
       }
-      await loginStep2(username.trim(), loginTicket, otpCode, rememberMe);
+      const result = await loginStep2(username.trim(), loginTicket, otpCode, rememberMe, password);
       await saveRememberedLogin();
+      if (result?.desktopNotice) toast.warning(result.desktopNotice);
       toast.success('Xush kelibsiz!');
       navigate('/dashboard');
     } catch (err) {

@@ -57,7 +57,7 @@ try {
   // Serve the actual first-run HTML and stylesheet with a non-mutating Electron bridge.
   const html = await readFile(new URL('desktop/ilbi/setup.html', root), 'utf8');
   const css = await readFile(new URL('desktop/ilbi/setup.css', root), 'utf8');
-  await browser.call('Page.navigate', { url: origin });
+  await browser.call('Page.navigate', { url: 'about:blank' });
   await wait('document.readyState === "complete"');
   await browser.evaluate(`document.open();document.write(${JSON.stringify(html.replace('<link rel="stylesheet" href="/setup.css">', `<style>${css}</style>`).replace('<script src="/setup.js"></script>', ''))});document.close()`);
   await browser.resize(920, 1000);
@@ -74,12 +74,13 @@ try {
     await browser.call('Page.navigate', { url: origin + '/tests/browser/desktopGuide.html?mode=' + mode });
     if (mode === 'login') {
       await wait('Boolean(document.querySelector(".desktop-access"))');
-      await browser.evaluate(`(() => {const input=document.querySelector('.desktop-access input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'kassir.namuna');input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
-      await capture('03-offline-login.png', '.desktop-access', [
-        { selector: '.desktop-access input[autocomplete="username"]', number: 1, x: .8, y: 0, dx: 0, dy: -35 },
-        { selector: '.desktop-access input[type="password"]', number: 2, x: .8, y: 0, dx: 0, dy: -35 },
-        { selector: '.desktop-access button', number: 3, x: 1, y: .5, dx: 34, dy: 0 },
-      ], 'DesktopAccess.jsx: synthetic enrolled account');
+      await wait('!document.querySelector(".ilbi-intro")');
+      await browser.evaluate('document.querySelector("#login-form").scrollIntoView({block:"center"})');
+      await capture('03-offline-login.png', '#login-form', [
+        { selector: '#documentation-login input[autocomplete="username"]', number: 1, x: .8, y: 0, dx: 0, dy: -30 },
+        { selector: '#documentation-login input[type="password"]', number: 2, x: .8, y: 0, dx: 0, dy: -30 },
+        { selector: '#login-form button[type="submit"]', number: 3, x: 1, y: .5, dx: 34, dy: 0 },
+      ], 'Login.jsx: production shared login form with synthetic account');
       continue;
     }
     await wait('Boolean(document.querySelector(".sync-status")) && !document.querySelector(".sync-status").textContent.includes("holati")');
@@ -88,7 +89,7 @@ try {
     if (mode === 'prepare') {
       await capture('02-prepare.png', '.sync-dialog', [
         { selector: '.sync-heading h2', number: 1, x: 1, y: .4, dx: 44, dy: -25 },
-        { selector: '.sync-setup input', number: 2, x: .8, y: 0, dx: 0, dy: -38 },
+        { selector: '.sync-setup [aria-label="Offline ishlaydigan do‘kon"]', number: 2, x: .8, y: 0, dx: 0, dy: -38 },
         { selector: '.sync-setup button', number: 3, x: 1, y: .5, dx: 35, dy: 0 },
       ], 'SyncCenter.jsx: owner preparing the synthetic store');
     } else if (mode === 'queue' || mode === 'priority') {

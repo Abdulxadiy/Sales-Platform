@@ -162,21 +162,7 @@ export default function Header({
         {!isAdmin && activeTenant && (
           <details className="workspace-dropdown" style={{ position: 'relative' }}>
             <summary
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                borderRadius: 999,
-                padding: '6px 14px',
-                color: '#fff',
-                background: 'var(--primary)',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                listStyle: 'none',
-                boxShadow: 'var(--shadow-sm)',
-              }}
+              className="header-create-button"
               title="Yangi amal yoki topshiriq biriktirish"
             >
               <Plus size={15} />

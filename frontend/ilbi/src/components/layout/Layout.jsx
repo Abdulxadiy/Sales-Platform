@@ -360,16 +360,18 @@ function LayoutContent({ children }) {
         />
       )}
 
-      {/* Floating Collapsible Sidebar (Active in both Classic and Fast desktops) */}
-      <Sidebar
-        onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
-        onOpenReminders={() => { setInitiallyCreatingReminder(false); setRemindersModalOpen(true); }}
-        unreadCount={unreadCount}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        mobileOpen={mobileMenuOpen}
-        onCloseMobile={() => setMobileMenuOpen(false)}
-      />
+      {/* Floating Collapsible Sidebar (Active only in Classic desktop) */}
+      {mode !== 'fast' && (
+        <Sidebar
+          onOpenNotifications={() => isAdmin ? navigate('/support') : setNotifModalOpen(true)}
+          onOpenReminders={() => { setInitiallyCreatingReminder(false); setRemindersModalOpen(true); }}
+          unreadCount={unreadCount}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          mobileOpen={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Main Content Area */}
       <div className="main-content">

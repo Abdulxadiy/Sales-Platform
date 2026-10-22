@@ -8,6 +8,13 @@ from pathlib import Path, PurePosixPath
 ROOTS = {"postgres", "media", "cloud.credentials"}
 
 
+def private_directory(path, **kwargs):
+    # Windows inherits the app profile's explicit user SID ACL. Python's 0700
+    # creates a protected OWNER RIGHTS ACL which can resolve to Administrators
+    # for an elevated account; PostgreSQL deliberately drops that group.
+    path.mkdir(mode=0o777 if os.name == "nt" else 0o700, **kwargs)
+
+
 def pack(directory):
     root = Path(directory).resolve()
     if (root / "postgres/postmaster.pid").exists():
@@ -28,7 +35,7 @@ def pack(directory):
 
 def unpack(directory):
     root = Path(directory).resolve()
-    root.mkdir(mode=0o700, parents=True, exist_ok=False)
+    private_directory(root, parents=True, exist_ok=False)
     with tarfile.open(fileobj=sys.stdin.buffer, mode="r|") as archive:
         for item in archive:
             name = PurePosixPath(item.name)
@@ -45,9 +52,9 @@ def unpack(directory):
             if not destination.resolve().is_relative_to(root) or any(":" in part for part in name.parts):
                 raise ValueError("Backup path escaped the store directory")
             if item.isdir():
-                destination.mkdir(mode=0o700, parents=True, exist_ok=True)
+                private_directory(destination, parents=True, exist_ok=True)
             else:
-                destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                private_directory(destination.parent, parents=True, exist_ok=True)
                 with (
                     destination.open("xb") as output,
                     archive.extractfile(item) as source,

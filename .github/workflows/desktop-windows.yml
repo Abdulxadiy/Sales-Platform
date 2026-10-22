@@ -23,6 +23,12 @@ jobs:
         run: npm ci --prefix desktop/ilbi
       - name: Verify desktop shell
         run: npm test --prefix desktop/ilbi
+      - name: Verify encrypted recovery permissions before packaging
+        shell: pwsh
+        run: |
+          $env:ILBI_DESKTOP_TEST_RESOURCES = (Resolve-Path 'desktop/ilbi/resources').Path
+          node --test desktop/ilbi/tests/backups.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Encrypted backup recovery permissions failed' }
       - name: Build Windows installer
         run: npm run dist:win --prefix desktop/ilbi
       - name: Install the built package and verify its bundled service
@@ -55,7 +61,11 @@ jobs:
               }
             } finally { $bitmap.Dispose(); $icon.Dispose() }
             $env:ILBI_DESKTOP_TEST_RESOURCES = Join-Path $destination 'resources'
-            node --test desktop/ilbi/tests/windows-host.test.cjs desktop/ilbi/tests/offline-security-native.test.cjs desktop/ilbi/tests/backups.test.cjs
+            node --test desktop/ilbi/tests/backups.test.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Installed backup recovery failed' }
+            node --test desktop/ilbi/tests/windows-host.test.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Installed service startup failed' }
+            node --test desktop/ilbi/tests/offline-security-native.test.cjs
             if ($LASTEXITCODE -ne 0) { throw 'Installed service startup failed' }
             $env:ILBI_DESKTOP_INSTALLED_EXE = Join-Path $destination 'ILBI.exe'
             node --test desktop/ilbi/tests/windows-ui.test.cjs

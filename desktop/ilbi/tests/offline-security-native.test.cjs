@@ -28,7 +28,7 @@ test('installed native account unlock, durable locks and encrypted PostgreSQL re
   async function api(path,token,body){const response=await fetch(`http://127.0.0.1:${host.port}${path}`,{method:body===undefined?'GET':'POST',headers:{'X-ILBI-Desktop-Key':bridgeKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:response.status,data:await response.json()};}
   async function python(code){const port=(await readFile(join(directory,'postgres/postmaster.pid'),'utf8')).split('\n')[3];return execFileSync(executable,['-c',`import os,sys;sys.path.insert(0,${JSON.stringify(application)});os.environ['DJANGO_SETTINGS_MODULE']='config.settings_desktop';import django;django.setup();\n`+code],{env:{...process.env,ILBI_DESKTOP_DATA:directory,ILBI_DESKTOP_SECRET:secrets.djangoSecret,ILBI_DESKTOP_VAULT_KEY:secrets.vaultKey,ILBI_DESKTOP_BRIDGE_KEY:bridgeKey,ILBI_DESKTOP_DB_PASSWORD:secrets.databasePassword,ILBI_DESKTOP_DB_PORT:port},encoding:'utf8'}).trim();}
   try{
-    await protectProfile(directory);await launch();
+    await protectProfile(directory);await launch();console.log('Native security QA: private store started.');
     await python(`from django.contrib.auth import get_user_model
 from apps.tenants.models import Tenant
 from apps.accounts.models import Employee
@@ -60,10 +60,10 @@ LocalOperation.objects.create(user_id=u.pk,tenant_id=t.pk,title='Native unsent s
     await mkdir(join(directory,'media'),{recursive:true});await writeFile(join(directory,'media/native-image'),'synthetic-original-image');
     const backup=new Backups({directory,key:secrets.vaultKey,python:executable,helper:join(resources,'backend/backup_store.py'),
       quiesce:async()=>{if(host){await host.stop();host=null;}},resume:async()=>{if(!host)await launch();},getDrafts:async()=>drafts,setDrafts:async value=>{drafts=value;}});
-    const id=await backup.create();
+    const id=await backup.create();console.log('Native security QA: consistent encrypted backup created and store resumed.');
     await python("from apps.desktop_sync.models import LocalOperation;LocalOperation.objects.all().delete()");
     await writeFile(join(directory,'media/native-image'),'later-image');drafts={local:{},files:[]};
-    await backup.restore(id);
+    await backup.restore(id);console.log('Native security QA: encrypted backup restored and store resumed.');
     assert.equal((await api('/desktop/queue/',token)).data.operations.length,1);
     assert.equal(await readFile(join(directory,'media/native-image'),'utf8'),'synthetic-original-image');assert.equal(drafts.local['ilbi_account_draft:1:1:pos_cart'],'kept-cart');
     await api('/desktop/register-start/',null,{});assert.equal((await api('/desktop/queue/',token)).status,423);

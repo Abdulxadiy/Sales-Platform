@@ -1,9 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {mkdtemp,mkdir,writeFile,readFile,rm,readdir}=require('node:fs/promises');
 const {join,resolve}=require('node:path'),{tmpdir}=require('node:os');
-const {Backups,recoverRestore}=require('../backups.cjs');
+const {Backups,recoverRestore,protectProfile}=require('../backups.cjs');
 test('authenticated backup restores stopped database, media, queue and drafts; tampering never touches live files',{skip:process.platform==='win32'&&!process.env.ILBI_DESKTOP_TEST_RESOURCES},async t=>{
   const directory=await mkdtemp(join(tmpdir(),'ilbi-backup-'));t.after(()=>rm(directory,{recursive:true,force:true}));
+  await protectProfile(directory);
   await mkdir(join(directory,'postgres/global'),{recursive:true});await mkdir(join(directory,'media'));
   await writeFile(join(directory,'postgres/PG_VERSION'),'16');await writeFile(join(directory,'postgres/global/pg_control'),'synthetic-control');
   await writeFile(join(directory,'postgres/queue'),'original-pending-sale');await writeFile(join(directory,'media/photo'),'original-image');

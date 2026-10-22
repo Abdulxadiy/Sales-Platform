@@ -107,10 +107,6 @@ class Backups{
   async restore(id){return this.run(async()=>{
     this.phase='checking';const staging=join(this.directory,'.restore-'+randomUUID());
     const metadata=await this.extract(id,staging);
-    // Python 3.13 mkdir(0700) on an elevated Windows account can leave files
-    // accessible only through Administrators. PostgreSQL drops that group.
-    // Grant the actual user SID before swapping a restored cluster into place.
-    try{await protectProfile(staging);}catch(error){await rm(staging,{recursive:true,force:true});throw error;}
     let rollback=null,swapped=[];
     try{
       await this.quiesce();rollback=await this.writeBackup();this.phase='restoring';

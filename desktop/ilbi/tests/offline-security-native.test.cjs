@@ -16,7 +16,15 @@ test('installed native account unlock, durable locks and encrypted PostgreSQL re
   const wrapper=`import runpy,requests\ndef offline(*args,**kwargs): raise requests.ConnectionError('Synthetic QA disconnected')\nrequests.sessions.Session.request=offline\nrunpy.run_path(${JSON.stringify(runtime)},run_name='__main__')`;
   const options={resources,dataDir:directory,secrets,bridgeKey,server:OFFICIAL_SERVER,executable,runtimeArguments:['-c',wrapper]};
   let host,drafts={local:{'ilbi_account_draft:1:1:pos_cart':'kept-cart'},files:[]};
-  async function launch(){host=await startHost(options);}
+  let launches=0;
+  async function launch(){
+    launches++;
+    try{host=await startHost(options);}
+    catch(error){
+      const log=await readFile(join(directory,'postgres.log'),'utf8').catch(()=> 'No PostgreSQL log');
+      throw Error(`Native QA start ${launches} failed: ${error.message}\n${log.slice(-6000)}`);
+    }
+  }
   async function api(path,token,body){const response=await fetch(`http://127.0.0.1:${host.port}${path}`,{method:body===undefined?'GET':'POST',headers:{'X-ILBI-Desktop-Key':bridgeKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:response.status,data:await response.json()};}
   async function python(code){const port=(await readFile(join(directory,'postgres/postmaster.pid'),'utf8')).split('\n')[3];return execFileSync(executable,['-c',`import os,sys;sys.path.insert(0,${JSON.stringify(application)});os.environ['DJANGO_SETTINGS_MODULE']='config.settings_desktop';import django;django.setup();\n`+code],{env:{...process.env,ILBI_DESKTOP_DATA:directory,ILBI_DESKTOP_SECRET:secrets.djangoSecret,ILBI_DESKTOP_VAULT_KEY:secrets.vaultKey,ILBI_DESKTOP_BRIDGE_KEY:bridgeKey,ILBI_DESKTOP_DB_PASSWORD:secrets.databasePassword,ILBI_DESKTOP_DB_PORT:port},encoding:'utf8'}).trim();}
   try{

@@ -68,6 +68,7 @@ export default function Reminders({ compact = false, initiallyCreating = false }
     finally { setBusy(false); }
   }
   const current = showCompleted || page > 1 ? (completed?.page === page && completed?.status === showCompleted ? completed : null) : reminders;
+  const rows = current?.results || [];
   if (creating) {
     return (
       <section className={`workspace-card workspace-reminders ${compact ? 'compact' : ''}`} style={{ padding: '4px 0' }}>

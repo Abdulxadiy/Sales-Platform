@@ -49,11 +49,27 @@ function DebtPicker({ onClose }) {
 export default function WorkspaceTools({ tool, onClose, navItems = [], favorites = [], setFavorites }) {
   const navigate = useNavigate();
   const { activeTenant } = useTenant();
-  const titles = { calculator: 'Kalkulyator', favorites: 'Sevimli bo‘limlar', shortcuts: 'Klaviatura yordamchisi', imports: 'XLSX orqali yuklash', reminders: 'Eslatmalar', new_reminder: 'Eslatmalar', debt_payment: 'Qarz to‘lovini qabul qilish' };
-  return <Modal isOpen onClose={onClose} title={titles[tool] || 'Tezkor yordamchilar'} maxWidth={tool.includes('reminder') ? 760 : 520}>
+  const titles = {
+    calculator: 'Kalkulyator',
+    favorites: 'Sevimli bo‘limlar',
+    shortcuts: 'Klaviatura yordamchisi',
+    imports: 'XLSX orqali yuklash',
+    reminders: 'Eslatmalar & Topshiriqlar',
+    new_reminder: 'Yangi topshiriq / Eslatma biriktirish',
+    debt_payment: 'Qarz to‘lovini qabul qilish'
+  };
+  const isReminder = tool?.includes('reminder');
+  return <Modal
+    isOpen
+    onClose={onClose}
+    title={titles[tool] || 'Tezkor yordamchilar'}
+    maxWidth={isReminder ? (tool === 'new_reminder' ? 560 : 760) : 520}
+    overflow={isReminder ? 'visible' : 'auto'}
+    minHeight={tool === 'new_reminder' ? 440 : null}
+  >
     {tool === 'calculator' && <CalculatorPanel />}
     {tool === 'debt_payment' && <DebtPicker onClose={onClose} />}
-    {tool.includes('reminder') && <Reminders initiallyCreating={tool === 'new_reminder'} />}
+    {isReminder && <Reminders initiallyCreating={tool === 'new_reminder'} />}
     {tool === 'shortcuts' && <div className="workspace-shortcuts">
       <p><span>Umumiy qidiruv</span><kbd>Ctrl / ⌘ + K</kbd></p>
       <p><span>Natijani tanlash</span><kbd>↑ / ↓</kbd></p>

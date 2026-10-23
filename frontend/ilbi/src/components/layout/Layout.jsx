@@ -673,6 +673,7 @@ function LayoutContent({ children }) {
           onClose={() => { setRemindersModalOpen(false); setInitiallyCreatingReminder(false); }}
           title="Eslatmalar va Xodimlarga topshiriqlar"
           maxWidth={760}
+          overflow="visible"
         >
           <React.Suspense fallback={<IlbiLoader />}>
             <Reminders initiallyCreating={initiallyCreatingReminder} />

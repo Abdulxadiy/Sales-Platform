@@ -79,19 +79,27 @@ async function releaseStatus(page) {
   return page.evaluate('fetch("/desktop/releases/",{headers:{Authorization:"Bearer disposable-test-token"}}).then(async response=>({status:response.status,...await response.json()}))');
 }
 
-function assertPublished(value) {
+function assertPublicFeed(value) {
   assert.equal(value.status, 200, JSON.stringify(value));
   assert.equal(value.origin, OFFICIAL_SERVER);
   assert.equal(value.release.schema, 1);
-  assert.match(value.release.windows.url, /^\/downloads\//);
-  assert.match(value.release.linux.url, /^\/downloads\//);
+  // A first deployment has a valid empty feed until these native checks pass.
+  // Package publication cannot be a prerequisite for testing that same package.
+  let available = 0;
+  for (const platform of ['windows', 'linux']) {
+    if (value.release[platform]) {
+      assert.match(value.release[platform].url, /^\/downloads\//);
+      available++;
+    }
+  }
+  return available;
 }
 
 test('failed Linux secure storage stays retryable and public downloads still work', {
   skip: !installed || process.platform !== 'linux', timeout: 180000,
 }, async () => {
   await withInstalled(['--password-store=basic'], async ({ setup, waitFor }) => {
-    assertPublished(await releaseStatus(setup));
+    assertPublicFeed(await releaseStatus(setup));
     for (let attempt = 0; attempt < 2; attempt++) {
       await setup.evaluate('document.querySelector("#host>button").click()');
       await waitFor(() => setup.evaluate('document.querySelector("#status").classList.contains("is-error") && !document.querySelector("#host>button").disabled'), 'retryable secure-store error');
@@ -104,7 +112,7 @@ test('failed Linux secure storage stays retryable and public downloads still wor
     await assert.rejects(access(join(process.env.XDG_CONFIG_HOME, 'ILBI/device.vault')));
     const status = await setup.evaluate('fetch("/desktop/status/").then(async response=>({status:response.status,...await response.json()}))');
     assert.equal(status.status, 503); assert.equal(status.code, 'setup_required');
-    assertPublished(await releaseStatus(setup));
+    assertPublicFeed(await releaseStatus(setup));
     await capture(setup, 'setup-secure-store-recovery');
   });
 });
@@ -114,7 +122,7 @@ test('default installed launch opens downloads before setup, recovers a failed r
 }, async () => {
   await withInstalled([], async ({ setup, waitFor, targets, page }) => {
     assert.equal(await setup.evaluate('document.querySelector("#host>button").textContent === "Ishni boshlash" && !document.querySelector("#join-details").open && !document.querySelector("#server-settings") && !document.querySelector("input[name=server]")'), true);
-    assertPublished(await releaseStatus(setup));
+    const available = assertPublicFeed(await releaseStatus(setup));
     await setup.evaluate('window.ilbiDesktop.openGuide()');
     const guide = await page(await waitFor(async () => (await targets()).find(item => item.type === 'page' && item.url.includes('/desktop-guide'))));
     await waitFor(() => guide.evaluate('document.querySelector("h1")?.textContent === "ILBI ilovasini sozlash" && !document.querySelector(".ilbi-loading")'), 'guide content');
@@ -127,7 +135,7 @@ test('default installed launch opens downloads before setup, recovers a failed r
     await waitFor(() => guide.evaluate('Boolean(document.querySelector("dialog[open]"))'), 'enlarged guide image');
     await guide.evaluate('document.querySelector("dialog[open] button[aria-label=Yopish]").click()');
     await guide.evaluate('location.href="/download";true');
-    await waitFor(() => guide.evaluate('document.querySelectorAll(".downloads-button[href]").length >= 2 && !document.querySelector(".ilbi-loading")'), 'public downloads before store setup');
+    await waitFor(() => guide.evaluate(`Boolean(document.querySelector(".downloads-grid")) && document.querySelectorAll(".downloads-button[href]").length === ${available} && !document.querySelector(".ilbi-loading")`), 'public downloads before store setup');
     await capture(guide, 'downloads-before-setup');
     await guide.call('Network.enable');
     await guide.call('Network.setBlockedURLs', { urls: ['*desktop/releases/*'] });
@@ -138,7 +146,7 @@ test('default installed launch opens downloads before setup, recovers a failed r
     await capture(guide, 'downloads-retry');
     await guide.call('Network.setBlockedURLs', { urls: [] });
     await guide.evaluate('document.querySelector(".downloads-notice .retry-button").click()');
-    await waitFor(() => guide.evaluate('document.querySelectorAll(".downloads-button[href]").length >= 2 && !document.querySelector(".downloads-notice")'), 'download retry recovery');
+    await waitFor(() => guide.evaluate(`Boolean(document.querySelector(".downloads-grid")) && document.querySelectorAll(".downloads-button[href]").length === ${available} && !document.querySelector(".downloads-notice") && !document.querySelector(".ilbi-loading")`), 'download retry recovery');
     await setup.evaluate('window.ilbiDesktop.openGuide()');
     await waitFor(() => guide.evaluate('location.pathname === "/desktop-guide" && Boolean(document.querySelector(".desktop-guide-header button"))'), 'return from downloads to illustrated guide');
     await guide.evaluate('setTimeout(()=>document.querySelector(".desktop-guide-header button").click(),50);true');

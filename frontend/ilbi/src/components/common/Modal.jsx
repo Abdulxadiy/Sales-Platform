@@ -1,7 +1,15 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ isOpen, onClose, title, children, maxWidth = 560 }) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = 560,
+  overflow = 'auto',
+  minHeight = null,
+}) {
   const dialogRef = useRef(null);
   const titleId = useId();
 
@@ -76,7 +84,9 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 560
           width: '100%',
           maxWidth: `${maxWidth}px`,
           maxHeight: 'min(calc(100dvh - 24px), 940px)',
-          overflowY: 'auto',
+          minHeight: minHeight ? `${minHeight}px` : undefined,
+          overflow: overflow === 'visible' ? 'visible' : undefined,
+          overflowY: overflow === 'visible' ? 'visible' : 'auto',
           boxSizing: 'border-box',
           padding: 'clamp(16px, 3vw, 24px) clamp(16px, 3vw, 28px)',
           background: 'var(--bg-modal, var(--bg-surface))',

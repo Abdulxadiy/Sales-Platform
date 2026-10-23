@@ -24,6 +24,17 @@ try {
         if(downloadsQA.delay)await new Promise(resolve=>setTimeout(resolve,downloadsQA.delay));
         return new Response(JSON.stringify({schema:1,windows:{version:'1.2.0',url:'/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-Setup-1.2.0-x64.exe',bytes:196124625,channel:'preview',sha256:'a'.repeat(64)},linux:downloadsQA.mode==='legacy'?null:{version:'1.2.0',url:'/downloads/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ILBI-1.2.0-linux-x64.tar.gz',bytes:210000000,channel:'preview',sha256:'b'.repeat(64)},mobile:null}),{status:200,headers:{'Content-Type':'application/json'}});
       }
+      if(sessionStorage.getItem('download-auth')==='true'){
+        if(path==='/api/v1/auth/me/'){
+          return new Response(JSON.stringify({id:1,username:'owner_test',role:'owner',first_name:'Do‘kon',last_name:'Egasi',terms_accepted:true,permissions:['*']}),{status:200,headers:{'Content-Type':'application/json'}});
+        }
+        if(path==='/api/v1/auth/token/refresh/'){
+          const t='fixture.'+btoa(JSON.stringify({user_id:1,exp:Math.floor(Date.now()/1000)+7200,token_type:'access'}))+'.fixture';
+          return new Response(JSON.stringify({access:t,refresh:t}),{status:200,headers:{'Content-Type':'application/json'}});
+        }
+        if(path.startsWith('/api/v1/support/'))return new Response(JSON.stringify({results:[],count:0,unread_total:0}),{status:200,headers:{'Content-Type':'application/json'}});
+        if(path.includes('/notifications/'))return new Response(JSON.stringify({results:[],unread_count:0}),{status:200,headers:{'Content-Type':'application/json'}});
+      }
       if(path.startsWith('/api/'))return new Response('{}',{status:401,headers:{'Content-Type':'application/json'}});
       return originalFetch(input,options);
     };
@@ -78,7 +89,43 @@ try {
   await browser.call('Page.reload');
   await wait('!window.downloadBeforeReload&&Boolean(document.querySelector("[data-platform=linux] button:disabled"))');
   assert.equal(await browser.evaluate('document.querySelectorAll(".downloads-button[href]").length'), 1);
-  console.log(JSON.stringify({ passed: true, scenarios: ['landing download link', 'anonymous download page', 'versioned Windows and Linux links', 'Linux installation guide', 'preview label', 'future mobile slot', 'mobile layout', 'missing release', 'offline and retry', 'retry controls in light/dark desktop/mobile themes', 'disabled retry during request', 'older feed without Linux'], artifacts }));
+
+  // Authenticated in-app scenario: tabs navigation, check for updates, and tab switching
+  await browser.evaluate(`
+    const makeJwt = kind => 'fixture.' + btoa(JSON.stringify({ user_id: 1, exp: Math.floor(Date.now() / 1000) + 7200, token_type: kind })) + '.fixture';
+    const access = makeJwt('access');
+    const refresh = makeJwt('refresh');
+    localStorage.setItem('ilbi_access_token', access);
+    localStorage.setItem('ilbi_refresh_token', refresh);
+    localStorage.setItem('ilbi_user', JSON.stringify({ id: 1, username: 'owner_test', role: 'owner', first_name: 'Do‘kon', last_name: 'Egasi', terms_accepted: true, permissions: ['*'] }));
+    sessionStorage.setItem('download-auth', 'true');
+    sessionStorage.setItem('download-mode', 'published');
+    window.downloadBeforeReload = true;
+  `);
+  await browser.call('Page.reload');
+  await wait('!window.downloadBeforeReload && Boolean(document.querySelector(".downloads-tabs-nav"))');
+  assert.equal(await browser.evaluate('Boolean(document.querySelector("#tab-updates.active"))'), true);
+  assert.equal(await browser.evaluate('Boolean(document.querySelector("#panel-updates"))'), true);
+  assert.equal(await browser.evaluate('Boolean(document.querySelector(".updates-check-btn"))'), true);
+  assert.equal(await browser.evaluate('Boolean(document.querySelector(".updates-switch-btn"))'), true);
+
+  // Switch to downloads tab via switch banner button
+  await browser.evaluate('document.querySelector(".updates-switch-btn").click()');
+  await wait('Boolean(document.querySelector("#panel-downloads"))');
+  assert.equal(await browser.evaluate('Boolean(document.querySelector("#tab-downloads.active"))'), true);
+  assert.equal(await browser.evaluate('Boolean(document.querySelector(".downloads-grid"))'), true);
+
+  // Switch back to updates tab via top tab pill
+  await browser.evaluate('document.querySelector("#tab-updates").click()');
+  await wait('Boolean(document.querySelector("#panel-updates"))');
+  assert.equal(await browser.evaluate('Boolean(document.querySelector("#tab-updates.active"))'), true);
+
+  // Trigger update check
+  await browser.evaluate('document.querySelector(".updates-check-btn").click()');
+  await wait('Boolean(document.querySelector(".updates-status-desc"))');
+
+  console.log(JSON.stringify({ passed: true, scenarios: ['landing download link', 'anonymous download page', 'versioned Windows and Linux links', 'Linux installation guide', 'preview label', 'future mobile slot', 'mobile layout', 'missing release', 'offline and retry', 'retry controls in light/dark desktop/mobile themes', 'disabled retry during request', 'older feed without Linux', 'authenticated in-app update checks', 'authenticated tab switching'], artifacts }));
+
 } catch (error) {
   console.error('Browser errors:', browser?.errors);
   if (browser) console.error(await browser.evaluate('({body:document.body.innerText.slice(0,1500),url:location.href})'));

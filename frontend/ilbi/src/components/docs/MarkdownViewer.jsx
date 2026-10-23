@@ -86,6 +86,38 @@ function scrollToHeading(targetId, rawHref) {
  * Clean, lightweight, dependency-free Markdown renderer with full TOC anchor support.
  * Formatted specifically for the ILBI Obsidian & Gold Design System.
  */
+function InlineDocImage({ src, alt }) {
+  const initialUrl = src.startsWith('../rasmlar/focused/')
+    ? `/api/v1/docs/images/${src.slice('../rasmlar/focused/'.length)}`
+    : src;
+  const [imgUrl, setImgUrl] = React.useState(initialUrl);
+
+  const handleError = () => {
+    const filename = src.startsWith('../rasmlar/focused/')
+      ? src.slice('../rasmlar/focused/'.length)
+      : null;
+    if (filename && !imgUrl.startsWith('https://')) {
+      setImgUrl(`https://new-dev.site/api/v1/docs/images/${filename}`);
+    }
+  };
+
+  return (
+    <img
+      src={imgUrl}
+      alt={alt || 'rasm'}
+      loading="lazy"
+      onError={handleError}
+      style={{
+        maxWidth: '100%',
+        borderRadius: 12,
+        border: '1px solid var(--border-card)',
+        margin: '8px 0',
+        display: 'inline-block',
+      }}
+    />
+  );
+}
+
 /**
  * Parses bold, italic, inline code, and links with interactive smooth scroll for anchors
  */
@@ -103,18 +135,10 @@ function renderInline(text = '') {
     const inlineImgMatch = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
     if (inlineImgMatch) {
       return (
-        <img
+        <InlineDocImage
           key={index}
           src={inlineImgMatch[2]}
           alt={inlineImgMatch[1] || 'rasm'}
-          loading="lazy"
-          style={{
-            maxWidth: '100%',
-            borderRadius: 12,
-            border: '1px solid var(--border-card)',
-            margin: '8px 0',
-            display: 'inline-block',
-          }}
         />
       );
     }

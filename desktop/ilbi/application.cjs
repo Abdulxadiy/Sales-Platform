@@ -218,7 +218,8 @@ function proxy(request, response, target, secure = false, register = 'primary', 
   const loginRequest=path.startsWith('/api/v1/auth/admin-login')||path.startsWith('/api/v1/auth/password-reset')||
     ['/desktop/unlock/','/desktop/session/','/desktop/status/','/desktop/lock/','/desktop/register-start/'].includes(path);
   const publicSupport=!request.headers.authorization&&(path.startsWith('/api/v1/support/guest/')||path==='/api/v1/support/metadata/');
-  if(!fromLAN&&sessionLock?.locked&&!loginRequest&&!publicSupport&&/^\/(api|desktop|media)\//.test(path)){
+  const publicDocs=path.startsWith('/api/v1/docs/');
+  if(!fromLAN&&sessionLock?.locked&&!loginRequest&&!publicSupport&&!publicDocs&&/^\/(api|desktop|media)\//.test(path)){
     response.writeHead(423,{'Content-Type':'application/json'});response.end(JSON.stringify({detail:'Kassa qulflangan. Hisobingiz bilan qayta kiring.',code:'desktop_locked'}));return;
   }
   activeRequests++;

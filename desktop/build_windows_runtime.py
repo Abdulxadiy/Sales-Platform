@@ -72,7 +72,7 @@ def stage_source(backend):
     if docs.exists():
         shutil.rmtree(docs)
     shutil.copytree(
-        ROOT / "docs", docs, ignore=shutil.ignore_patterns("rasmlar", "releases")
+        ROOT / "docs", docs, ignore=shutil.ignore_patterns("releases")
     )
 
 

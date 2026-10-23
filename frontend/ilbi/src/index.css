@@ -1109,18 +1109,18 @@ dialog.custom-dialog label {
   color: var(--text-secondary);
 }
 
-dialog.custom-dialog input,
+dialog.custom-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not([type="file"]):not(.workspace-search-input input),
 dialog.custom-dialog textarea,
 dialog.custom-dialog select {
-  background: var(--bg-input) !important;
-  color: var(--text-primary) !important;
-  border: 1px solid var(--border-card) !important;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-card);
 }
 
-dialog.custom-dialog input:focus,
+dialog.custom-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]):not([type="file"]):not(.workspace-search-input input):focus,
 dialog.custom-dialog textarea:focus,
 dialog.custom-dialog select:focus {
-  border-color: var(--border-focus) !important;
+  border-color: var(--border-focus);
 }
 
 dialog.custom-dialog[open] .dialog-content {

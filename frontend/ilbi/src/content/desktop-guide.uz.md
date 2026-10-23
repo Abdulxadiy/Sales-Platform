@@ -12,7 +12,7 @@ Bitta kompyuterda ishlasangiz, boshqa kassaga ulanish yoki fayl ko‘chirish ker
 
 **Ishni boshlash** tugmasini bosing va kirish oynasi ochilishini kuting. Birinchi tayyorlash odatdagidan uzoqroq davom etishi mumkin.
 
-Server manzili avtomatik tanlanadi va ilova ichida o‘zgartirilmaydi. Login va sinxronlash faqat rasmiy `https://new-dev.site` serveri orqali ishlaydi. Platforma `ilbi.uz`ga ko‘chsa, yangi rasmiy ilovani o‘rnatasiz; manzilni qo‘lda kiritish kerak bo‘lmaydi. “Server manzili rasmiy ILBI manziliga mos emas” xabari chiqsa, rasmiy sahifadan ilovani yangilang yoki yordamga murojaat qiling. Mahalliy baza va `device.vault` faylini o‘chirmang.
+Server manzili avtomatik tanlanadi va ilova ichida o‘zgartirilmaydi. Login va sinxronlash faqat rasmiy `https://ilbi.uz` serveri orqali ishlaydi. Rasmiy manzil `https://ilbi.uz`. Eski versiya ishlatilayotgan bo‘lsa, yangi rasmiy paketni shu saytdan o‘rnating; manzilni qo‘lda kiritish kerak emas. “Server manzili rasmiy ILBI manziliga mos emas” xabari chiqsa, rasmiy sahifadan ilovani yangilang yoki yordamga murojaat qiling. Mahalliy baza va `device.vault` faylini o‘chirmang.
 
 ## 2. Do‘konni offline ishlashga tayyorlash
 

@@ -28,7 +28,7 @@ window.shareQA={exports:[],copied:[],shares:[],linkChecks:[],prints:0,pending:fa
   for(let i=0;i<gray.length;i++)gray[i]=(rgba[i*4]+2*rgba[i*4+1]+rgba[i*4+2])/4;
   return new QRCodeReader().decode(new BinaryBitmap(new HybridBinarizer(new RGBLuminanceSource(gray,canvas.width,canvas.height)))).getText();
  },
- desktop(){window.ilbiDesktop={async saveDocumentPDF(payload){shareQA.exports.push(payload);return {canceled:shareQA.cancelPDF||false};},async receiptShareLinks(tokens){shareQA.linkChecks.push(tokens);if(shareQA.offline)throw Error('offline');return {links:shareQA.pending?[]:tokens.map(token=>'https://new-dev.site/r/'+token),pending:shareQA.pending};}};},
+ desktop(){window.ilbiDesktop={async saveDocumentPDF(payload){shareQA.exports.push(payload);return {canceled:shareQA.cancelPDF||false};},async receiptShareLinks(tokens){shareQA.linkChecks.push(tokens);if(shareQA.offline)throw Error('offline');return {links:shareQA.pending?[]:tokens.map(token=>'https://ilbi.uz/r/'+token),pending:shareQA.pending};}};},
  web(){delete window.ilbiDesktop;}
 };
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{async writeText(value){if(shareQA.failCopy)throw Error('denied');shareQA.copied.push(value);}}});

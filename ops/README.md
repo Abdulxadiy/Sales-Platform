@@ -1,18 +1,25 @@
 # Lightsail serverini boshqarish
 
-2026-10-20 holati: Ubuntu 24.04, 4 GB RAM, 2 GB swap. Ilova `/srv/ilbi`da.
+2026-10-23 holati: Ubuntu 24.04, 4 GB RAM, 2 GB swap. Ilova `/srv/ilbi`da.
 Backend, frontend, PostgreSQL, Redis, Celery worker/beat va Telegram bot ishga tushirilgan.
-Eski baza va media ko‘chirilmagan. Vaqtinchalik production domeni **`new-dev.site`**;
-asosiy `ilbi.uz` keyin ulanadi. Backend va frontend manzili serverdagi `.env.production`ning
-`PUBLIC_HOST` qiymatidan olinadi. Ushbu domen almashinuvi uchun application imagelari qayta yig‘ilmadi.
+Eski baza va media ko‘chirilmagan. Asosiy production domeni **`ilbi.uz`**.
+Backend va frontendning asosiy manzili serverdagi `.env.production`ning `PUBLIC_HOST`
+qiymatidan olinadi. Faqat shu aniq production domeni ruxsat etilgan.
 
-2026-10-20 qayta tekshiruvida `https://new-dev.site/` haqiqiy TLS tekshiruvi bilan HTTP 200 qaytardi.
+2026-10-23 tekshiruvida `https://ilbi.uz/` haqiqiy TLS tekshiruvi bilan HTTP 200 qaytardi.
+Sertifikat faqat asosiy domenni qamrab oladi.
 Frontend ommaviy 80/443 portlarida ishlayapti; backend readiness `ready`.
 
 Boshlang‘ich o‘rnatma `1.0.0` edi. Avtodeploy GHCR’dagi `sha-<commit>` imagelarini ishlatadi;
 oxirgi sog‘lom chiqarishning uchta image manzili `/srv/ilbi/.deployed-images`da saqlanadi.
-Git tag va GitHub Release server yangilanishida avtomatik yaratilmaydi;
-tayyor manba oddiy Git push orqali main’ga yuboriladi, versiya esa alohida boshqariladi.
+2026-10-23 domen o‘tishida backend production sozlamasi va Nginx konfiguratsiyasi
+shu amaldagi GHCR imagelari ustiga kichik mahalliy qatlam qilib qo‘llandi:
+`ilbi-domain-backend:20261023` va `ilbi-domain-frontend:20261023-hardened`.
+Domen o‘tishi uchun `1.3.6` desktop/server chiqarishi tayyorlandi. Keyingi standart CD
+chiqarishi ushbu manba sozlamalarini ham o‘z ichiga olishi kerak.
+Versiya va o‘zbekcha release notes manbada boshqariladi. Main uchun CI Windows/Linux
+paketlarini mahalliy operatsion tizimlarda tekshiradi; CD sog‘lom ilovadan keyin paketlar,
+versiya tagi va GitHub Release’ni nashr qiladi.
 
 ## SSH va holat
 
@@ -78,13 +85,13 @@ Kunlik avtomatik data backup, muntazam tashqi nusxa va xatolik/sertifikat alertl
 
 ## Domen almashtirish va HTTPS
 
-`new-dev.site` hozir ommaviy HTTPS bilan ishlaydi. Quyidagi tartib yangi domenni ulash uchun qo‘llanadi.
+`ilbi.uz` hozir ommaviy HTTPS bilan ishlaydi. Quyidagi tartib yangi domenni ulash uchun qo‘llanadi.
 Yangi sertifikat ommaviy bindingdan oldin yopiq HTTPS ulanishida tekshiriladi.
 
 1. Lightsail **Networking**da Static IPv4 biriktirilganini tekshiring. Hozirgi IP `3.106.193.2`.
    Yangi Static IP boshqacha bo‘lsa, `.env.production`dagi `EXPECTED_PUBLIC_IPV4` va GitHub
    production muhitidagi `DEPLOY_HOST`ni ham yangilang.
-2. `new-dev.site` DNS panelida (joriy nameserverlar Spaceship’da) quyidagi yozuvni yarating:
+2. `ilbi.uz` DNS panelida (Ahost, `rdns1.ahost.uz`, `rdns2.ahost.uz`, `rdns3.ahost.uz`) quyidagi yozuv bo‘lsin:
 
 | Type | Host/Name | Value | TTL |
 | --- | --- | --- | --- |
@@ -97,8 +104,8 @@ Yangi sertifikat ommaviy bindingdan oldin yopiq HTTPS ulanishida tekshiriladi.
 4. DNS tarqalishini serverdagi `dig` bilan tekshiring:
 
 ```bash
-dig +short @1.1.1.1 A new-dev.site
-dig +short @1.1.1.1 AAAA new-dev.site
+dig +short @1.1.1.1 A ilbi.uz
+dig +short @1.1.1.1 AAAA ilbi.uz
 ```
 
 A javobi yakuniy Static IPv4 bo‘lsin. IPv6 frontend hali yoqilmagani uchun AAAA javobi bo‘sh bo‘lishi kerak.
@@ -119,12 +126,61 @@ Let's Encrypt sertifikati olingach, avtomatik yangilanishni tekshiring:
 ```bash
 sudo certbot renew --dry-run
 systemctl status certbot.timer --no-pager
-curl -I https://new-dev.site
+curl -I https://ilbi.uz
 ```
 
-Keyin `ilbi.uz`ga o‘tishda uning A yozuvi serverga yo‘naltiriladi va serverdagi
-`.env.production`da `PUBLIC_HOST=ilbi.uz` belgilanadi. `enable_https.sh` yangi sertifikatni
+`.env.production`da `PUBLIC_HOST=ilbi.uz` belgilangan. `enable_https.sh` yangi sertifikatni
 olib, backend, Celery va frontendning domen sozlamalarini birga yangilaydi.
+Alias ishlatilmaydi; HTTPS va CSRF faqat `ilbi.uz` uchun sozlangan.
+
+### ilbi.uz va Resend uchun o‘tish shartlari
+
+2026-10-23 kuni NS delegatsiyasi hamda A, DKIM, DMARC va Resend CNAME yozuvlari
+ommaviy DNS’da tasdiqlandi. Operator Resend’da domen Verified ekanini bildirdi.
+Resend SMTP orqali `ILBI <noreply@ilbi.uz>`dan bitta haqiqiy sinov xati yuborildi;
+operator xat yetib kelganini tasdiqladi. Shu yuboruvchi backend va Celery uchun saqlandi.
+
+Ahost DNS yozuvlari:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | `@` | `3.106.193.2` |
+| TXT | `resend._domainkey` | Resend bergan to‘liq DKIM qiymati |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` |
+
+`send` va `rsend` CNAME yozuvlari Resend’ning aynan shu domen uchun ko‘rsatgan
+qiymatlarida saqlanadi. Oldindan noma’lum bo‘lgan o‘chirilgan MX/TXT/CNAME yozuvlari
+taxmin bilan tiklanmaydi; pochta qabul qilish ishlatilsa, uning provayderi yozuvlari alohida tekshiriladi.
+
+`ilbi/.env.production`da `DEFAULT_FROM_EMAIL="ILBI <noreply@ilbi.uz>"` belgilangan.
+Mavjud SMTP host `smtp.resend.com`, port `587`, username `resend`, STARTTLS va kalit
+saqlanadi. Email havolalari Compose’dagi `PUBLIC_HOST` orqali hosil bo‘ladi;
+backend bilan birga Celery worker va beat ham qayta yaratilishi kerak.
+
+Desktop va backend rasmiy serveri `https://ilbi.uz` bilan qat’iy belgilangan.
+Oldingi rasmiy versiyaning shifrlangan sozlamasi faqat mahalliy tarzda yangi manzilga
+ko‘chiriladi; eski serverga so‘rov yuborilmaydi va eski manzil tarmoq uchun ruxsat etilmaydi.
+Eski paket o‘rniga yangi `1.3.6` paketini `https://ilbi.uz/download` orqali o‘rnating.
+Qurilma ma’lumotlar papkasi, kalitlari va `device.vault` faylini o‘chirmang.
+
+2026-10-23 qo‘shimcha xavfsizlik tekshiruvi:
+
+- Nginx `.env`, `.git` va boshqa yashirin yo‘llarni, jumladan `/downloads/` ichida ham 404 bilan rad etadi;
+  mavjud sintetik maxfiy fayllar bilan alohida TLS sinovi o‘tdi. Nginx versiyasi javobdan olib tashlandi.
+- Asosiy domen uchun HTTPS, login/download sahifalari, autentifikatsiyasiz API 401,
+  ichki servis API 403 va texnik schema 404 tashqi ulanish orqali tasdiqlandi.
+- Begona Host rad etiladi; begona Origin uchun CORS ruxsati berilmaydi.
+  HTTP faqat doimiy `https://ilbi.uz` manziliga yo‘naltiriladi.
+- Tashqaridan 22/80/443 ochiq; 5432/6379/8000/9000/9001/2375/2376ga ulanish bo‘lmadi.
+  SSH root, password, keyboard-interactive, agent va X11 forwarding o‘chiq.
+- HTTPS/proxy/aktivatsiya va production sozlamalari testlari o‘tdi.
+  Login/API rate-limit, parallel workerlar va soxta headerlar bo‘yicha yana 9 ta test o‘tdi.
+  Backend, desktop va bot uchun locklangan Python dependency auditi hamda frontend production
+  npm auditi ma’lum zaiflik topmadi.
+- Django deployment tekshiruvida ERROR yo‘q. HSTS includeSubDomains va preload barcha
+  subdomenlar uchun alohida qaror talab qilgani sababli yoqilmadi.
+- `certbot renew --cert-name ilbi.uz --dry-run` muvaffaqiyatli o‘tdi;
+  pre/post hook’lar frontendni to‘xtatib, sog‘lom holatda qayta ishga tushirdi. Certbot timer enabled/active.
 
 ## Zaxira va tiklash
 

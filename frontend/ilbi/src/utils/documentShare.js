@@ -1,4 +1,4 @@
-export const PUBLIC_RECEIPT_ORIGIN = 'https://new-dev.site';
+export const PUBLIC_RECEIPT_ORIGIN = 'https://ilbi.uz';
 
 export function receiptShareURL(token, { origin = globalThis.location?.origin, desktop = Boolean(globalThis.window?.ilbiDesktop) } = {}) {
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{40,64}$/.test(token)) return null;

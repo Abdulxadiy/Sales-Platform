@@ -16,7 +16,7 @@ export default function DocImage({ src, caption = '', width, height }) {
       ? src.slice('../rasmlar/focused/'.length)
       : null;
     if (filename && !imgUrl.startsWith('https://')) {
-      setImgUrl(`https://new-dev.site/api/v1/docs/images/${filename}`);
+      setImgUrl(`https://ilbi.uz/api/v1/docs/images/${filename}`);
     }
   };
 

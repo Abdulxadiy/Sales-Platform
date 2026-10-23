@@ -2,21 +2,30 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { join } = require('node:path');
 const { tmpdir } = require('node:os');
-const { OFFICIAL_SERVER, validateServer, validatePairing, safePath, equalKey, startHost } = require('../runtime.cjs');
+const { OFFICIAL_SERVER, validateServer, migrateStoredServer, validatePairing, safePath, equalKey, startHost } = require('../runtime.cjs');
 
 test('cloud destinations are restricted to the official release origin', () => {
   assert.equal(validateServer(OFFICIAL_SERVER), OFFICIAL_SERVER);
   assert.equal(validateServer(OFFICIAL_SERVER + '/'), OFFICIAL_SERVER);
-  for (const value of [undefined, null, {}, 'https://ilbi.uz', 'https://evil.example',
-    'http://127.0.0.1:8000', 'http://new-dev.site', 'https://new-dev.site.evil.example',
-    'https://user:secret@new-dev.site', 'https://new-dev.site@evil.example',
-    'https://new-dev.site:8443', 'https://new-dev.site./', 'https://new-dev.site/path',
-    'https://new-dev.site/?server=evil', 'https://new-dev.site/#evil', 'file:///etc/passwd']) {
+  for (const value of [undefined, null, {}, 'https://retired.example', 'https://evil.example',
+    'http://127.0.0.1:8000', 'http://ilbi.uz', 'https://ilbi.uz.evil.example',
+    'https://user:secret@ilbi.uz', 'https://ilbi.uz@evil.example',
+    'https://ilbi.uz:8443', 'https://ilbi.uz./', 'https://ilbi.uz/path',
+    'https://ilbi.uz/?server=evil', 'https://ilbi.uz/#evil', 'file:///etc/passwd']) {
     assert.throws(() => validateServer(value));
   }
 });
 test('a changed persisted server is refused before creating a database or starting a process', async () => {
   await assert.rejects(startHost({ server: 'https://evil.example' }), /rasmiy ILBI/);
+});
+test('the previous encrypted setting migrates locally but cannot be a request destination', () => {
+  for (const previous of ['https://new-dev.site', 'https://new-dev.site/']) {
+    assert.equal(migrateStoredServer(previous), OFFICIAL_SERVER);
+    assert.throws(() => validateServer(previous));
+  }
+  for (const altered of ['https://new-dev.site.evil.example', 'https://evil.example']) {
+    assert.throws(() => migrateStoredServer(altered));
+  }
 });
 test('the sandboxed setup bridge does not forward a renderer-supplied server', () => {
   const vm = require('node:vm');

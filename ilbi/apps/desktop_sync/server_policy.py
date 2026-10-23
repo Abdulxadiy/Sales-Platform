@@ -4,7 +4,14 @@ Keep OFFICIAL_SERVER aligned with desktop/ilbi/runtime.cjs. A domain migration
 requires a reviewed application release, never a UI field or environment override.
 """
 
-OFFICIAL_SERVER = "https://new-dev.site"
+OFFICIAL_SERVER = "https://ilbi.uz"
+
+
+def migrate_stored_server(value):
+    """Translate the previous encrypted setting locally; never send requests there."""
+    if value in ("https://new-dev.site", "https://new-dev.site/"):
+        return OFFICIAL_SERVER
+    return server_url(value)
 
 
 def server_url(value):

@@ -5,12 +5,17 @@ const { join, resolve, sep } = require('node:path');
 const net = require('node:net');
 
 // Change together with the backend server policy when publishing a domain migration.
-const OFFICIAL_SERVER = 'https://new-dev.site';
+const OFFICIAL_SERVER = 'https://ilbi.uz';
 function validateServer(value) {
   if (value !== OFFICIAL_SERVER && value !== OFFICIAL_SERVER + '/') {
     throw Error('Server manzili rasmiy ILBI manziliga mos emas. Ilovani rasmiy saytdan yangilang yoki yordam xizmatiga murojaat qiling. Ma’lumotlar papkasini o‘chirmang.');
   }
   return OFFICIAL_SERVER;
+}
+// This is an offline upgrade of authenticated, encrypted settings, never a network allowlist.
+function migrateStoredServer(value) {
+  if (value === 'https://new-dev.site' || value === 'https://new-dev.site/') return OFFICIAL_SERVER;
+  return validateServer(value);
 }
 function privateHost(host) {
   return host === 'localhost' || host === '127.0.0.1' || /^10\.\d+\.\d+\.\d+$/.test(host) || /^192\.168\.\d+\.\d+$/.test(host) || /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host);
@@ -102,4 +107,4 @@ async function startHost({ resources, dataDir, secrets, bridgeKey, server, execu
     throw error;
   }
 }
-module.exports = { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, freePort, command, startHost };
+module.exports = { OFFICIAL_SERVER, validateServer, migrateStoredServer, validatePairing, privateHost, safePath, equalKey, freePort, command, startHost };

@@ -150,8 +150,11 @@ class ProductionHttpsFixture:
         (web / "assets").mkdir(parents=True)
         (web / "index.html").write_text("isolated frontend fixture")
         (web / "assets" / "fixture.js").write_text("/* isolated asset */")
+        (web / ".env").write_text("SYNTHETIC_PRIVATE_CONFIGURATION=must-not-be-served")
+        (web / "assets" / ".env").write_text("SYNTHETIC_PRIVATE_CONFIGURATION=must-not-be-served")
         downloads = folder / "downloads"
         downloads.mkdir()
+        (downloads / ".env").write_text("SYNTHETIC_PRIVATE_CONFIGURATION=must-not-be-served")
         (downloads / "releases.json").write_text('{"schema":1,"windows":{"version":"1.2.0"}}')
         (downloads / "ILBI-Setup-1.2.0-x64.exe").write_bytes(b"MZ" + b"isolated download fixture" * 100)
         tag = uuid.uuid4().hex[:12]
@@ -373,6 +376,15 @@ class ProductionHttpsTests(ProductionHttpsFixture, unittest.TestCase):
                 connection.getresponse()
         finally:
             connection.close()
+
+    def test_hidden_configuration_files_are_not_served(self):
+        for path in ("/.env", "/.env.production", "/.git/config", "/assets/.env", "/downloads/.env", "/api/v1/.env"):
+            with self.subTest(path=path):
+                status, headers, body = self.https(path)
+                self.assertEqual(status, 404)
+                self.assertNotIn(b"SYNTHETIC_PRIVATE_CONFIGURATION", body)
+                self.assertNotIn(b"isolated frontend fixture", body)
+                self.assertEqual(headers["Server"], "nginx")
 
     def test_unknown_tls_host_is_rejected(self):
         with socket.create_connection(("127.0.0.1", self.https_port), timeout=5) as raw:

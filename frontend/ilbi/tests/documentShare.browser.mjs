@@ -36,13 +36,13 @@ try {
     const target = join(qaDirectory,filename);
     execFileSync('pdftoppm',['-scale-to','1600','-png','-singlefile',target,target]);
     const dataURL='data:image/png;base64,'+(await readFile(target+'.png')).toString('base64');
-    assert.equal(await browser.evaluate(`shareQA.decodeQR(${JSON.stringify(dataURL)})`),'https://new-dev.site/r/'+'A'.repeat(43));
+    assert.equal(await browser.evaluate(`shareQA.decodeQR(${JSON.stringify(dataURL)})`),'https://ilbi.uz/r/'+'A'.repeat(43));
   };
   const click = text => browser.evaluate(`(()=>{const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);const button=[...(dialog||document).querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(text)});if(!button)throw Error('Button not found: '+${JSON.stringify(text)});button.click();})()`);
   const close = () => browser.evaluate(`document.querySelectorAll('dialog[open]')[document.querySelectorAll('dialog[open]').length-1].dispatchEvent(new Event('cancel',{cancelable:true}))`);
   const openReceipt = () => browser.evaluate(`document.querySelector('#qa-receipt-actions button').click()`);
   await wait(`Boolean(window.shareQA)&&Boolean(document.querySelector('#share-qa-receipt img[src^="data:image/png"]'))`);
-  await openReceipt(); await wait(`document.querySelector('dialog[open] textarea')?.value.startsWith('https://new-dev.site/r/')`);
+  await openReceipt(); await wait(`document.querySelector('dialog[open] textarea')?.value.startsWith('https://ilbi.uz/r/')`);
   await click('Havolani nusxalash'); await wait('shareQA.copied.length===1');
   assert.equal((await browser.evaluate('shareQA.copied[0]')).includes('127.0.0.1'), false);
   await click('PDF faylini saqlash'); await wait('shareQA.exports.length===1');

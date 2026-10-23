@@ -14,7 +14,7 @@ const { Backups, protectProfile, recoverRestore } = require('./backups.cjs');
 const { captureDrafts, restoreDrafts } = require('./draft-backup.cjs');
 const { networkInterfaces } = require('node:os');
 const { randomBytes, createHash } = require('node:crypto');
-const { OFFICIAL_SERVER, validateServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
+const { OFFICIAL_SERVER, validateServer, migrateStoredServer, validatePairing, privateHost, safePath, equalKey, startHost } = require('./runtime.cjs');
 const { configureSecretStore, serveReleases } = require('./services.cjs');
 const { saveDocumentPDF, receiptShareLinks } = require('./document-sharing.cjs');
 configureSecretStore(app);
@@ -283,6 +283,14 @@ else {
       await sessionLock.initialize();
       try { ({ configuration, secrets } = JSON.parse(safeStorage.decryptString(await readFile(vaultPath)))); }
       catch (error) { if (error.code !== 'ENOENT') throw Error('Qurilma sozlamalarini ochib bo‘lmadi. device.vault faylini o‘chirmang; tizim hisobingiz va maxfiy ma’lumotlar omborini tekshiring.'); }
+      if (configuration?.mode === 'host') {
+        const server = migrateStoredServer(configuration.server);
+        if (server !== configuration.server) {
+          const nextConfiguration = { ...configuration, server };
+          await saveVault(nextConfiguration, secrets);
+          configuration = nextConfiguration;
+        }
+      }
       if (configuration) await launchRuntime();
       let current;
       try { current = require('./build-info.json'); } catch { current = { version: app.getVersion(), sourceCommit: null, buildTimestamp: 0 }; }

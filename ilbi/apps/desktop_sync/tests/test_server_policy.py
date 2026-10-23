@@ -13,7 +13,7 @@ from django.test import RequestFactory, override_settings
 from apps.desktop_sync.desktop_api import endpoint
 from apps.desktop_sync.middleware import DesktopMiddleware
 from apps.desktop_sync.server_policy import OFFICIAL_SERVER, server_url
-from apps.desktop_sync.transport import cloud_request
+from apps.desktop_sync.transport import Vault, cloud_request
 
 
 @pytest.mark.parametrize(
@@ -21,18 +21,18 @@ from apps.desktop_sync.transport import cloud_request
     [
         None,
         {},
-        "https://ilbi.uz",
+        "https://retired.example",
         "https://evil.example",
         "http://127.0.0.1:8000",
-        "http://new-dev.site",
-        "https://new-dev.site.evil.example",
-        "https://new-dev.site@evil.example",
-        "https://user:password@new-dev.site",
-        "https://new-dev.site:8443",
-        "https://new-dev.site./",
-        "https://new-dev.site/path",
-        "https://new-dev.site/?server=evil",
-        "https://new-dev.site/#evil",
+        "http://ilbi.uz",
+        "https://ilbi.uz.evil.example",
+        "https://ilbi.uz@evil.example",
+        "https://user:password@ilbi.uz",
+        "https://ilbi.uz:8443",
+        "https://ilbi.uz./",
+        "https://ilbi.uz/path",
+        "https://ilbi.uz/?server=evil",
+        "https://ilbi.uz/#evil",
     ],
 )
 def test_unapproved_destinations_are_rejected(value):
@@ -44,6 +44,27 @@ def test_official_origin_matches_electron_policy():
     assert server_url(OFFICIAL_SERVER + "/") == OFFICIAL_SERVER
     source = Path(__file__).resolve().parents[4] / "desktop/ilbi/runtime.cjs"
     assert f"const OFFICIAL_SERVER = '{OFFICIAL_SERVER}';" in source.read_text()
+
+
+def test_previous_encrypted_vault_migrates_without_losing_credentials(tmp_path, monkeypatch):
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setenv("ILBI_DESKTOP_VAULT_KEY", Fernet.generate_key().decode())
+    stored = {
+        "server": "https://new-dev.site", "primary_user": 1,
+        "access": "private-access", "refresh": "private-refresh", "grant_key": "private-grant",
+        "actors": {"1": {"server": "https://new-dev.site", "access": "actor-access"}},
+    }
+    with override_settings(DESKTOP_DATA_DIR=str(tmp_path)):
+        vault = Vault()
+        vault.write(stored)
+        updated = vault.read()
+        assert updated == {**stored, "server": OFFICIAL_SERVER,
+                           "actors": {"1": {"server": OFFICIAL_SERVER, "access": "actor-access"}}}
+        assert vault.read() == updated
+        assert (vault.path.stat().st_mode & 0o777) == 0o600
+    with pytest.raises(ValueError):
+        server_url("https://new-dev.site")
 
 
 @override_settings(DESKTOP_SERVER="https://evil.example")

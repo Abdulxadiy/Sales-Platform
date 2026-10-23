@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .local import activity
-from .server_policy import server_url  # noqa: F401 -- retained for existing transport imports
+from .server_policy import migrate_stored_server, server_url  # noqa: F401 -- retained for existing transport imports
 
 
 class Vault:
@@ -23,7 +23,18 @@ class Vault:
 
     def read(self):
         with self.lock:
-            return json.loads(self.cipher.decrypt(self.path.read_bytes())) if self.path.exists() else {}
+            if not self.path.exists():
+                return {}
+            stored = json.loads(self.cipher.decrypt(self.path.read_bytes()))
+            if stored.get("server"):
+                server = migrate_stored_server(stored["server"])
+                if server != stored["server"]:
+                    stored["server"] = server
+                    for actor in stored.get("actors", {}).values():
+                        if "server" in actor:
+                            actor["server"] = migrate_stored_server(actor["server"])
+                    self.write(stored)
+            return stored
 
     def write(self, value):
         with self.lock:

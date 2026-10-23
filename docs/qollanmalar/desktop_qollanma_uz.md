@@ -1,6 +1,6 @@
 # ILBI Windows va Linux ilovasini sozlash
 
-To‘liq rasmli qo‘llanma: **https://new-dev.site/desktop-guide**.
+To‘liq rasmli qo‘llanma: **https://ilbi.uz/desktop-guide**.
 
 Ilovada **ILBI → Ilovani sozlash (rasmli qo‘llanma)** orqali oching. Matn va raqamlangan strelkali rasmlar paketga birga kiradi, internet talab qilinmaydi.
 

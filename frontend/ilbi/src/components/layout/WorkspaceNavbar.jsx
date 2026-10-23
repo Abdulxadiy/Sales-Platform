@@ -4,7 +4,7 @@ import {
   Search, Plus, ChevronDown, Star, SlidersHorizontal, Calculator, Maximize, Minimize,
   Sun, Moon, Bell, BellRing, Keyboard, LogOut, User, ShoppingCart, PackagePlus,
   Package, CreditCard, FileSpreadsheet, UserPlus, Download, Headphones,
-  Store, Users, ShieldCheck, Sliders, History, BookOpen, Layers
+  Store, Users, ShieldCheck, Sliders, History, BookOpen, Layers, Settings
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTenant } from '../../context/TenantContext';
@@ -380,74 +380,69 @@ export default function WorkspaceNavbar({ statusControl, unreadCount, notificati
         <div className="workspace-nav-links">
           {primaryTabs.map(item => link(item))}
 
+          {!isAdmin && (
+            <NavLink
+              to="/docs"
+              onClick={closeMenus}
+              className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}
+              title="Qo‘llanma & Hujjatlar"
+            >
+              <BookOpen size={16} />
+              <span>Qo‘llanma</span>
+            </NavLink>
+          )}
+        </div>
+
+        {/* Right side navigation actions (outside scrollable links to prevent dropdown clipping) */}
+        <div className="workspace-nav-right-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           {managementItems.length > 0 && (
             <details className={`workspace-dropdown workspace-nav-dropdown ${isManagementActive ? 'active' : ''}`} name="workspace-menu">
-              <summary style={isManagementActive ? { color: 'var(--text-primary)', background: 'var(--bg-chip)', fontWeight: 700 } : undefined}>
-                <Sliders size={15} />
-                <span>Boshqaruv & Tizim</span>
+              <summary
+                className="workspace-nav-settings-trigger"
+                style={isManagementActive ? { color: 'var(--text-primary)', background: 'var(--bg-chip)', fontWeight: 700 } : undefined}
+                title="Boshqaruv va sozlamalar"
+              >
+                <Settings size={15} />
+                <span>Sozlamalar</span>
                 <ChevronDown size={13} />
               </summary>
-              <div className="workspace-dropdown-panel">
+              <div className="workspace-dropdown-panel workspace-nav-settings-panel" style={{ right: 0, minWidth: 220 }}>
                 {managementItems.map(item => link(item))}
               </div>
             </details>
           )}
 
-          {!isAdmin && (
-            <>
-              <NavLink
-                to="/docs"
-                onClick={closeMenus}
-                className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}
-                title="Qo‘llanma & Hujjatlar"
-              >
-                <BookOpen size={16} />
-                <span>Qo‘llanma</span>
-              </NavLink>
-
-              <NavLink
-                to="/download"
-                onClick={closeMenus}
-                className={({ isActive }) => `workspace-nav-link ${isActive ? 'active' : ''}`}
-                title="ILBI Desktop ilovasini yuklab olish"
-              >
-                <Download size={16} />
-                <span>Yuklab olish</span>
-              </NavLink>
-            </>
+          {/* Quick Favorites Pill on the right */}
+          {favoritePaths.length > 0 && (
+            <details className="workspace-dropdown workspace-nav-favorites" name="workspace-menu">
+              <summary className="workspace-nav-favorites-trigger" title="Sevimli va tezkor bo‘limlar">
+                <Star size={13} />
+                <span>Sevimlilar ({favoritePaths.length})</span>
+                <ChevronDown size={11} />
+              </summary>
+              <div className="workspace-dropdown-panel workspace-favorites-panel">
+                <strong>Tezkor Sevimlilar</strong>
+                {favoritePaths.map(path => link(navItems.find(item => item.to === path)))}
+                {recentPaths.length > 0 && (
+                  <>
+                    <div className="workspace-menu-divider" />
+                    <strong style={{ fontSize: 11, color: 'var(--text-muted)' }}>Oxirgi:</strong>
+                    {recentPaths.map(path => link(navItems.find(item => item.to === path)))}
+                  </>
+                )}
+                <div className="workspace-menu-divider" />
+                <button
+                  type="button"
+                  onClick={() => openTool('favorites')}
+                  style={{ color: 'var(--primary)', fontWeight: 600 }}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>Moslashtirish</span>
+                </button>
+              </div>
+            </details>
           )}
         </div>
-
-        {/* Quick Favorites Pill on the right */}
-        {favoritePaths.length > 0 && (
-          <details className="workspace-dropdown workspace-nav-favorites" name="workspace-menu">
-            <summary className="workspace-nav-favorites-trigger" title="Sevimli va tezkor bo‘limlar">
-              <Star size={13} />
-              <span>Sevimlilar ({favoritePaths.length})</span>
-              <ChevronDown size={11} />
-            </summary>
-            <div className="workspace-dropdown-panel workspace-favorites-panel">
-              <strong>Tezkor Sevimlilar</strong>
-              {favoritePaths.map(path => link(navItems.find(item => item.to === path)))}
-              {recentPaths.length > 0 && (
-                <>
-                  <div className="workspace-menu-divider" />
-                  <strong style={{ fontSize: 11, color: 'var(--text-muted)' }}>Oxirgi:</strong>
-                  {recentPaths.map(path => link(navItems.find(item => item.to === path)))}
-                </>
-              )}
-              <div className="workspace-menu-divider" />
-              <button
-                type="button"
-                onClick={() => openTool('favorites')}
-                style={{ color: 'var(--primary)', fontWeight: 600 }}
-              >
-                <SlidersHorizontal size={14} />
-                <span>Moslashtirish</span>
-              </button>
-            </div>
-          </details>
-        )}
       </nav>
 
       <Suspense fallback={null}>

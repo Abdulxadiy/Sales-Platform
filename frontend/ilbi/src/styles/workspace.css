@@ -75,6 +75,9 @@
 .workspace-nav-link.active { color: var(--text-primary); background: var(--bg-chip); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent-emerald); }
 .workspace-nav-dropdown summary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; list-style: none; }
 .workspace-nav-dropdown summary:hover, .workspace-nav-dropdown[open] > summary { color: var(--text-primary); background: var(--bg-chip); }
+.workspace-nav-settings-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--bg-chip); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; flex-shrink: 0; list-style: none; }
+.workspace-nav-settings-trigger:hover, .workspace-dropdown[open] > .workspace-nav-settings-trigger { color: var(--text-primary); border-color: var(--border-hover); background: var(--bg-chip-hover); }
+.workspace-nav-settings-panel { width: 220px; }
 .workspace-nav-favorites-trigger { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--bg-chip); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s ease; flex-shrink: 0; list-style: none; }
 .workspace-nav-favorites-trigger:hover, .workspace-dropdown[open] > .workspace-nav-favorites-trigger { color: var(--text-primary); border-color: var(--border-hover); }
 .workspace-favorites-panel { width: 220px; }

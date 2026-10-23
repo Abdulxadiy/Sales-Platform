@@ -51,7 +51,7 @@ try {
   await browser.evaluate('window.keptDraft=document.querySelector("input[aria-label=\\\"Sinov qoralamasi\\\"]");keptDraft.value="Saqlangan qoralama"');
   await browser.evaluate('document.querySelector("button[aria-label=\\\"Ish stolini almashtirish\\\"]").click()');
   await wait('Boolean(document.querySelector(".workspace-navbar .sync-status"))');
-  assert.equal(await browser.evaluate('Boolean(document.querySelector(".workspace-nav-row a[href=\\\"/download\\\"]"))'), true);
+  assert.equal(await browser.evaluate('Boolean(document.querySelector(".workspace-navbar a[href=\\\"/download\\\"]"))'), true);
   assert.equal(await browser.evaluate('keptDraft===document.querySelector("input[aria-label=\\\"Sinov qoralamasi\\\"]")&&keptDraft.value==="Saqlangan qoralama"'), true);
   await browser.evaluate('document.querySelector(".sync-status").click()');
   await wait('Boolean(document.querySelector("dialog[open] .sync-row"))');

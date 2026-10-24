@@ -30,7 +30,7 @@ jobs:
         with: { node-version: 22 }
       - name: Audit locked production dependencies
         run: |
-          uv export --project ilbi --frozen --no-dev --group desktop --no-hashes --no-emit-project --format requirements-txt --output-file /tmp/backend-requirements.txt
+          uv export --project backend --frozen --no-dev --group desktop --no-hashes --no-emit-project --format requirements-txt --output-file /tmp/backend-requirements.txt
           uv export --project telegram_bot_sms --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt --output-file /tmp/bot-requirements.txt
           uvx --from pip-audit==2.10.1 pip-audit --no-deps --disable-pip -r /tmp/backend-requirements.txt
           uvx --from pip-audit==2.10.1 pip-audit --no-deps --disable-pip -r /tmp/bot-requirements.txt
@@ -74,7 +74,7 @@ jobs:
       redis:
         image: redis:7-alpine
         ports: ["6380:6379"]
-    defaults: { run: { working-directory: ilbi } }
+    defaults: { run: { working-directory: backend } }
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

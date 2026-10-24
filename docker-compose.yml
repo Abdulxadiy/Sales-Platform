@@ -82,11 +82,11 @@ services:
   # -------------------------------------------------------------------
   ilbi:
     build:
-      context: ./ilbi
+      context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - ./ilbi/.env
+      - ./backend/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -99,7 +99,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./ilbi:/app
+      - ./backend:/app
       - ./docs:/app/docs
       - ./docs:/docs
       - ilbi_venv:/app/.venv
@@ -118,12 +118,12 @@ services:
   # -------------------------------------------------------------------
   celery_worker:
     build:
-      context: ./ilbi
+      context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
     command: celery -A config worker -l info
     env_file:
-      - ./ilbi/.env
+      - ./backend/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -138,7 +138,7 @@ services:
       ilbi:
         condition: service_started
     volumes:
-      - ./ilbi:/app
+      - ./backend:/app
       - ilbi_venv:/app/.venv
     dns:
       - 8.8.8.8
@@ -151,12 +151,12 @@ services:
   # -------------------------------------------------------------------
   celery_beat:
     build:
-      context: ./ilbi
+      context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
     command: celery -A config beat -l info
     env_file:
-      - ./ilbi/.env
+      - ./backend/.env
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -171,7 +171,7 @@ services:
       ilbi:
         condition: service_started
     volumes:
-      - ./ilbi:/app
+      - ./backend:/app
       - ilbi_venv:/app/.venv
     dns:
       - 8.8.8.8
@@ -211,7 +211,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - static_data:/var/www/static:ro
-      - ./ilbi/media:/var/www/media:ro
+      - ./backend/media:/var/www/media:ro
     depends_on:
       - ilbi
     networks:

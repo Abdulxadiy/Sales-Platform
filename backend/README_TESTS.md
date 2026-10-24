@@ -7,8 +7,8 @@ Yangilangan: **2026-10-16**. Testlar PostgreSQL va Redis’ning alohida servisla
 Repo ildizidan:
 
 ```bash
-docker compose -f ilbi/docker-compose.test.yml up -d
-cd ilbi
+docker compose -f backend/docker-compose.test.yml up -d
+cd backend
 uv sync --group dev
 ```
 
@@ -133,7 +133,7 @@ npm test
 
 The live browser suite needs a separate PostgreSQL database named **`ilbi_workspace_qa`**. Never point it at an application database. Create a local settings module outside the repository that imports `config.settings_test`, sets `DATABASES['default']` to this QA database, and uses locmem caches. Keep the existing test database separate. `tests/seed_workspace_browser.py` checks the exact database name before creating its synthetic shops/accounts, products, stock, sales and reminders. Each seed uses unique account/shop names. It writes short-lived synthetic session tokens to `/tmp/ilbi-workspace-seed.json` with owner-only file access.
 
-From `ilbi/`, with the QA settings module available on `PYTHONPATH`:
+From `backend/`, with the QA settings module available on `PYTHONPATH`:
 
 ```bash
 DJANGO_SETTINGS_MODULE=workspace_qa_settings uv run python tests/seed_workspace_browser.py
@@ -190,7 +190,7 @@ Brauzer tekshiruvida akkauntlar va tashrif buyuruvchilar uchun alohida context i
 ## Servislarni to‘xtatish
 
 ```bash
-docker compose -f ilbi/docker-compose.test.yml stop
+docker compose -f backend/docker-compose.test.yml stop
 ```
 
 Test servislaridagi ma’lumot vaqtinchalik. Uni haqiqiy mijoz ma’lumotlari yoki yagona zaxira nusxa uchun ishlatmang. Testlar soni va natijasini har bir o‘zgarishda haqiqiy ishga tushirish natijasi bilan qayd eting.

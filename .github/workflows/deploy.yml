@@ -84,7 +84,7 @@ jobs:
           echo "tag=sha-$RELEASE_SHA" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         with:
-          context: ./ilbi
+          context: ./backend
           target: production
           platforms: linux/amd64
           push: true

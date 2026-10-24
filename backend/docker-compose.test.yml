@@ -9,6 +9,9 @@
 #   uv run pytest
 #   docker compose -f docker-compose.test.yml down -v   # -v also drops the volumes
 
+# Keep the existing isolated QA stack stable when this directory is renamed.
+name: ilbi
+
 services:
   # A throwaway Postgres, completely separate from your dev/production
   # database. config/settings_test.py points DATABASES at this container

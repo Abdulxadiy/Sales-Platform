@@ -39,7 +39,10 @@ try {
     assert.equal(await browser.evaluate(`shareQA.decodeQR(${JSON.stringify(dataURL)})`),'https://ilbi.uz/r/'+'A'.repeat(43));
   };
   const click = text => browser.evaluate(`(()=>{const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);const button=[...(dialog||document).querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(text)});if(!button)throw Error('Button not found: '+${JSON.stringify(text)});button.click();})()`);
-  const close = () => browser.evaluate(`document.querySelectorAll('dialog[open]')[document.querySelectorAll('dialog[open]').length-1].dispatchEvent(new Event('cancel',{cancelable:true}))`);
+  const close = async () => {
+    const count = await browser.evaluate(`(()=>{const dialogs=document.querySelectorAll('dialog[open]');const count=dialogs.length;dialogs[count-1].dispatchEvent(new Event('cancel',{cancelable:true}));return count;})()`);
+    await wait(`document.querySelectorAll('dialog[open]').length < ${count}`);
+  };
   const openReceipt = () => browser.evaluate(`document.querySelector('#qa-receipt-actions button').click()`);
   await wait(`Boolean(window.shareQA)&&Boolean(document.querySelector('#share-qa-receipt img[src^="data:image/png"]'))`);
   await openReceipt(); await wait(`document.querySelector('dialog[open] textarea')?.value.startsWith('https://ilbi.uz/r/')`);
@@ -99,7 +102,7 @@ try {
   if(process.env.ILBI_DOCUMENT_QA_DIR){await mkdir(process.env.ILBI_DOCUMENT_QA_DIR,{recursive:true});await writeFile(`${process.env.ILBI_DOCUMENT_QA_DIR}/documents.json`,JSON.stringify([receipt,await browser.evaluate('shareQA.exports[1]'),invoice,report]));}
   await browser.evaluate('shareQA.web();shareQA.failCopy=false;shareQA.setPublicView(true)');
   await wait(`Boolean(document.querySelector('#public-receipt-document'))`);await click('Ulashish');await click('Havolani nusxalash');
-  await wait('shareQA.copied.length===2');assert.match(await browser.evaluate('shareQA.copied[1]'),/^https:\/\/new-dev\.site\/r\//);
+  await wait('shareQA.copied.length===2');assert.match(await browser.evaluate('shareQA.copied[1]'),/^https:\/\/ilbi\.uz\/r\//);
   await close();await click('PDF yuklab olish');
   assert.match(await downloadedPDF(receipt.filename,'web-public-receipt.pdf'),/Pages:\s+1/);
   assert.deepEqual(browser.errors,[]);

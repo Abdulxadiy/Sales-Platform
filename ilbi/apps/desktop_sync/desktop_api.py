@@ -19,6 +19,10 @@ def local_tokens(user, device, register="primary"):
     token["token_version"] = user.token_version
     actor = get_state("actors", {}).get(str(user.pk), {})
     if actor.get("credential_mode") == "account":
+        from .security import assert_mfa
+
+        proof = assert_mfa(user, device, actor, register)
+        token["desktop_mfa_expires"] = proof["expires"]
         token["desktop_register"] = register
         token["desktop_session"] = actor.get("sessions", {}).get(register, {}).get("id", "")
     return {"access": str(token.access_token), "refresh": str(token)}

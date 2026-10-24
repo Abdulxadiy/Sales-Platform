@@ -36,8 +36,9 @@ export default function DesktopSecurityPanel({visible}){
   if(!visible||!session?.lease_until)return null;
   return <section className="desktop-security" aria-label="Kassalar va xavfsizlik">
     <h3><ShieldCheck size={19}/>Kassalar va xavfsizlik</h3>
-    {session&&<p className={remaining<24?'sync-lease-warning':''}>Internetsiz ishlash ruxsati: {remaining>=24?`${Math.floor(remaining/24)} kun ${remaining%24} soat`:`${remaining} soat`}. Internet borida avtomatik yangilanadi.{remaining<24&&' Muddat tugashidan oldin internetga ulaning. Yuborilmagan ishlar saqlanadi.'}</p>}
-    <button className="btn btn-secondary" disabled={busy} onClick={()=>run(()=>native.lockSession(getAccessToken()))}><Lock size={16}/>Kassani qulflash</button>
+    {session&&<p className={remaining<24?'sync-lease-warning':''}>Qurilma ruxsati: {remaining>=24?`${Math.floor(remaining/24)} kun ${remaining%24} soat`:`${remaining} soat`}. Internet borida avtomatik yangilanadi.{remaining<24&&' Muddat tugashidan oldin internetga ulaning. Yuborilmagan ishlar saqlanadi.'}</p>}
+    {session?.mfa_expires_at&&<p>2FA tasdig‘i {new Date(session.mfa_expires_at*1000).toLocaleString('uz-UZ')} gacha amal qiladi. 24 soat tugagach internet va Telegram kodi kerak. Oddiy parol bilan kirish bu muddatni uzaytirmaydi.</p>}
+    <button className="btn btn-secondary" disabled={busy} onClick={()=>run(()=>native.lockSession(getAccessToken(),'explicit'))}><Lock size={16}/>Kassani qulflash</button>
     {error&&<p role="alert" className="sync-notice">{error}</p>}
     {session?.owner&&primary&&<>
       <details><summary>Avtomatik qulflash</summary><p>Kompyuter ishlatilmasa {session.idle_minutes} daqiqadan so‘ng qulflanadi. Qayta kirishda odatiy parol so‘raladi; qoralamalar qoladi.</p>

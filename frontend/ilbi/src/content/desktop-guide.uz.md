@@ -33,23 +33,25 @@ Har bir kassir ham o‘z odatiy login, parol va tasdiqlash kodi bilan internet o
 
 ## 3. Internet bo‘lmaganda kirish
 
-Tayyorlangan hisobda internet borida ham, yo‘g‘ida ham bitta kirish oynasi ishlaydi. Internet uzilib yoki qaytganda qayta login qilish kerak emas. Birinchi online kirishda Telegram tasdiqlash kodi so‘raladi.
+Tayyorlangan hisobda internet borida ham, yo‘g‘ida ham bitta kirish oynasi ishlaydi. Internet uzilib yoki qaytganda qayta login qilish kerak emas. Telegram tasdiqlash kodi shu qurilma va hisob uchun **24 soatda bir marta** so‘raladi. Shu muddat ichida qayta kirishda odatiy login va parol yetarli. Parol bilan kirish yoki avtomatik sinxronlash 24 soatlik muddatni uzaytirmaydi.
 
 ![Yagona kirish oynasi: 1 — shaxsiy login, 2 — odatiy hisob paroli, 3 — kirish tugmasi.](desktop-guide/03-offline-login.png)
 
 1. ILBI’ni oching. Odatdagi kirish oynasi chiqadi.
 2. O‘z **login**ingizni va odatiy hisob **parol**ingizni kiriting.
-3. **Davom etish** tugmasini bosing. Tayyorlangan hisob internet bo‘lmaganda ham ochiladi.
+3. **Davom etish** tugmasini bosing. Tayyorlangan hisobning 24 soatlik 2FA tasdig‘i hali amal qilsa, internet bo‘lmaganda ham ochiladi.
 
-**Meni eslab qol** login va parolni tizimning himoyalangan omborida saqlaydi. Offline tayyorlangan kassa qulflanganda yoki ilova qayta ochilganda, login saqlanadi, parolni o‘zingiz qayta kiritasiz. Saqlangan parol qulfni ochib bermaydi. Belgini olib tashlasangiz, eslab qolingan ma’lumot o‘chiriladi.
+**Meni eslab qol** login va parolni tizimning himoyalangan omborida saqlaydi. Ilovani odatdagidek qayta ochganingizda login va parol joyiga qaytadi. Harakatsizlik sababli avtomatik chiqilganda yoki **Kassani qulflash** bosilganda esa login eslanadi, parolni o‘zingiz qayta kiritasiz; saqlangan parol o‘chmaydi. Belgini olib tashlasangiz, eslab qolingan ma’lumot o‘chiriladi.
 
-**Kassalar va xavfsizlik → Kassani qulflash** orqali joyingizdan ketishda kassani qulflang. Ishlatilmasa, odatda **10 daqiqada** avtomatik qulflanadi; egasi 1–60 daqiqa tanlaydi. Qoralamalar qoladi. Ko‘p noto‘g‘ri urinishdan keyin faqat o‘sha hisobga vaqtincha cheklov qo‘yiladi.
+**Kassalar va xavfsizlik → Kassani qulflash** orqali joyingizdan ketishda kassani qulflang. Ishlatilmasa, odatda **10 daqiqada** avtomatik qulflanadi; egasi 1–60 daqiqa tanlaydi. Klaviatura, sichqoncha, aylantirish yoki sensor orqali ishlash vaqt hisobini yangilaydi. Serverni tekshirish va token yangilanishi faollik hisoblanmaydi. Qoralamalar qoladi. Ko‘p noto‘g‘ri urinishdan keyin faqat o‘sha hisobga vaqtincha cheklov qo‘yiladi.
 
 Klassik va Tezkor ish stoli shu ilovaning ichida ham bor. Tashqi ko‘rinishni almashtirish qayta sozlashni talab qilmaydi. Odatdagi savdo ekranlarini o‘rganish uchun web qo‘llanmasidan foydalanishingiz mumkin.
 
 Internet yo‘q paytda bajarilgan ishlar avval shu do‘kon kompyuterida saqlanadi. Webdagi boshqa qurilmalar ularni **serverga yuborilgandan keyin** ko‘radi. Faqat yuklangan ma’lumotlar va rasmlar ochiladi; Telegram, to‘lov xizmatlari va do‘konlararo tasdiqlar uchun internet kerak.
 
-Offline ruxsat oxirgi muvaffaqiyatli yangilanishdan keyin **7 kun** amal qiladi. Qolgan vaqt **Sinxronlash markazi → Kassalar va xavfsizlik**da ko‘rinadi; 24 soatdan kam qolsa ogohlantiradi. Internet borida, navbat bo‘shamaganida ham, ruxsat avtomatik yangilanadi. Muddati tugasa, egasi internet orqali qayta kiradi. Server bekor qilgan ruxsat tekshirilgach to‘xtatiladi. Yuborilmagan ishlar o‘chirilmaydi. Kompyuter vaqtini orqaga o‘zgartirish aniqlansa, internet orqali qayta tasdiqlash talab qilinadi.
+**24 soatlik 2FA tasdig‘i tugagach internet va yangi Telegram kodi kerak.** Shu vaqtda internetsiz qayta kirib bo‘lmaydi. Mahalliy baza, yuborilmagan ishlar va qoralamalar o‘chmaydi.
+
+Qurilmaning sinxronlash ruxsati oxirgi muvaffaqiyatli yangilanishdan keyin **7 kun** amal qiladi. Bu 24 soatlik kirish tasdig‘idan alohida: qurilma ruxsatining yangilanishi 2FA muddatini uzaytirmaydi. Qolgan vaqt **Sinxronlash markazi → Kassalar va xavfsizlik**da ko‘rinadi; 24 soatdan kam qolsa ogohlantiradi. Internet borida, navbat bo‘shamaganida ham, ruxsat avtomatik yangilanadi. Muddati tugasa, egasi internet orqali qayta kiradi. Server bekor qilgan ruxsat tekshirilgach to‘xtatiladi. Yuborilmagan ishlar o‘chirilmaydi. Kompyuter vaqtini orqaga o‘zgartirish aniqlansa, internet orqali qayta tasdiqlash talab qilinadi.
 
 ## 4. Ishlar serverga qanday yuboriladi?
 

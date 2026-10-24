@@ -1,18 +1,18 @@
 // Synthetic responses only: this fixture never calls a real API or sends an OTP.
-export function installAuthFixture({ saved = true, profileFailure = false, guestHistory = false, role = 'platform_admin', desktop = false } = {}) {
+export function installAuthFixture({ saved = true, profileFailure = false, guestHistory = false, role = 'platform_admin', desktop = false, dailyMfa = false } = {}) {
   const tenants = role === 'owner' ? [{ id: 7, name: 'Birinchi do‘kon', is_owner: true, permissions: ['*'] }, { id: 8, name: 'Ikkinchi do‘kon', is_owner: true, permissions: ['*'] }] : [];
   const user = { id: 41, username: 'session_test', first_name: 'Sessiya', last_name: 'Sinov', role, terms_accepted: true, tenants, permissions: ['*'], phone_number: '+998900000041' };
   const jwt = (id, kind) => `fixture.${btoa(JSON.stringify({ user_id: id, exp: Date.now() / 1000 + 3600, token_type: kind }))}.fixture`;
   const tokens = { access: jwt(user.id, 'access'), refresh: jwt(user.id, 'refresh') };
   const conversation = { id: 'private-41', subject: 'Shaxsiy sinov suhbati', name: 'Sinov', status: 'active', operator_id: user.id, unread_count: 0 };
   const message = { id: 101, text: 'PRIVATE_HISTORY_SENTINEL', sender: 'visitor', author_name: 'Sinov', created_at: '2026-10-16T07:00:00Z' };
-  window.authQA = { requests: [], user, tokens, profileFailure, holdProfile: false, pendingProfiles: [], holdList: false, pendingLists: [] };
+  window.authQA = { requests: [], user, tokens, profileFailure, dailyMfa, idle:false, holdProfile: false, pendingProfiles: [], holdList: false, pendingLists: [] };
   if (desktop) {
     // In-memory bridge double only. Native acceptance verifies the real encrypted file.
     const vault = new Map();
     authQA.credentialSaves = 0;
     window.ilbiDesktop = {
-      version:'qa', getSavedLogin:async kind=>vault.get(kind)||null,
+      version:'qa', getSavedLogin:async kind=>{const saved=vault.get(kind);return saved&&authQA.idle?{username:saved.username,password:'',requiresPassword:true}:saved||null;},
       saveLogin:async (kind,value)=>{ vault.set(kind,value); authQA.credentialSaves++; },
       forgetLogin:async kind=>vault.delete(kind),
     };
@@ -39,7 +39,7 @@ export function installAuthFixture({ saved = true, profileFailure = false, guest
       return json(authQA.user);
     }
     if (path === '/api/v1/auth/token/refresh/') return json(authQA.tokens);
-    if (path === '/api/v1/auth/admin-login/') return json({ login_ticket: 'synthetic-ticket', telegram_linked: true, phone_hint: '+998 ** *** ** 41' });
+    if (path === '/api/v1/auth/admin-login/') return authQA.dailyMfa?json({...authQA.tokens,password_login:true}):json({ login_ticket: 'synthetic-ticket', telegram_linked: true, phone_hint: '+998 ** *** ** 41' });
     if (path === '/api/v1/auth/admin-login/send-otp/') return json({ otp_sent: true });
     if (path === '/api/v1/auth/admin-login/verify-otp/') return body?.verification_code === '123456' ? json(authQA.tokens) : json({ detail: 'Invalid OTP' }, 401);
     if (path === '/api/v1/tenants/current/') return json({ id: 7, usd_rate: '12800', receipt_settings: { tax_regime: 'aos', vat_enabled: false, vat_rate: '0', vat_price_mode: 'included' } });

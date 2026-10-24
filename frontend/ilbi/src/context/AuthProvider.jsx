@@ -142,7 +142,13 @@ export function AuthProvider({ children }) {
         return {...local,local_login:true};
       }
       const response = await authApi.adminLogin(username, password);
-      if (response.demo_login === true && response.access && response.refresh) completeLogin(username, response, remember);
+      if(generation!==getAuthenticationGeneration())throw Error('Kirish bekor qilindi. Qayta urinib ko‘ring.');
+      if ((response.demo_login === true || response.password_login === true) && response.access && response.refresh) {
+        const prepared=await prepareDesktopAccount(username,password,response);
+        if(generation!==getAuthenticationGeneration())throw Error('Kirish bekor qilindi. Qayta urinib ko‘ring.');
+        completeLogin(username,prepared,remember);
+        return prepared;
+      }
       return response;
     } finally { setBusy(false); }
   };
@@ -152,6 +158,7 @@ export function AuthProvider({ children }) {
     const generation=getAuthenticationGeneration();
     try {
       const cloud = await authApi.verifyOtp(loginTicket, code);
+      if(generation!==getAuthenticationGeneration())throw Error('Kirish bekor qilindi. Qayta urinib ko‘ring.');
       const response = await prepareDesktopAccount(username, password, cloud);
       if(generation!==getAuthenticationGeneration())throw Error('Kirish bekor qilindi. Qayta urinib ko‘ring.');
       return {...completeLogin(username,response,remember),desktopNotice:response.desktopNotice};

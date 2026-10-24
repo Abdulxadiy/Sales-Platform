@@ -14,6 +14,9 @@ class RevocableTokenRefreshSerializer(TokenRefreshSerializer):
         user = get_user_model().objects.filter(pk=token.get("user_id"), is_active=True).first()
         if user is None or DemoAccessService.is_blocked(user) or not has_current_token_version(token, user):
             raise InvalidToken("Sessiya bekor qilingan. Qaytadan kiring.")
+        from apps.accounts.services.daily_mfa import verified_at
+
+        verified_at(token)
         if token.get("desktop_cloud_device"):
             from apps.desktop_sync.device_credentials import trusted_device_valid
 

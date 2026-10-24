@@ -13,7 +13,7 @@ from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from .cloud import apply_operation, device_for, device_uuid
-from .grants import check_credential_ticket, credential_ticket, issue_grant, public_key
+from .grants import check_credential_ticket, credential_ticket, issue_grant, issue_mfa_proof, public_key
 from .models import SyncActor, SyncDevice
 from .protocol import PROTOCOL
 from .revisions import revision_for
@@ -37,6 +37,13 @@ class CredentialVerifyView(APIView):
         password = request.data.get("password", "")
         if not isinstance(password, str) or len(password) > 4096 or not request.user.check_password(password):
             raise ValidationError("Hisob paroli tasdiqlanmadi.")
+        from apps.accounts.services.daily_mfa import verified_at
+
+        verified = verified_at(request.auth, required=True)
+        device_id = device_uuid(request.data.get("device_id"))
+        register = request.data.get("register_id", "primary")
+        if not isinstance(register, str) or not register or len(register) > 80:
+            raise ValidationError("Kassa identifikatori noto‘g‘ri.")
         return Response(
             {
                 "user_id": request.user.pk,
@@ -46,6 +53,7 @@ class CredentialVerifyView(APIView):
                 ],
                 "credential_ticket": credential_ticket(request.user),
                 "grant_key": public_key(),
+                "mfa_proof": issue_mfa_proof(request.user, device_id, register, verified),
             }
         )
 

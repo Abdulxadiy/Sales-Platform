@@ -22,6 +22,10 @@ class CustomJWTAuthentication(JWTAuthentication):
                 code="token_revoked",
             )
 
+        from .services.daily_mfa import verified_at
+
+        verified_at(validated_token)
+
         if validated_token.get("desktop_cloud_device"):
             from apps.desktop_sync.device_credentials import trusted_device_valid
 

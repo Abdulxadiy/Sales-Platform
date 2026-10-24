@@ -233,9 +233,11 @@ function proxy(request, response, target, secure = false, register = 'primary', 
   delete headers['x-ilbi-update-key'];
   delete headers.connection;
   forwardRequest(request, response, { ...target, path: request.url, method: request.method, headers,
-    timeout: 65000, ...(secure ? { ca: configuration.pairing.certificate, checkServerIdentity: () => undefined, rejectUnauthorized: true } : {}) }, secure, status => {
+    timeout: 65000, ...(secure ? { ca: configuration.pairing.certificate, checkServerIdentity: () => undefined, rejectUnauthorized: true } : {}) }, secure, (status,upstreamHeaders) => {
       activeRequests--;
-      if(!fromLAN&&status===200&&sessionLock?.generation===lockGeneration&&['/desktop/unlock/','/desktop/session/','/api/v1/auth/admin-login/verify-otp/'].includes(path))void sessionLock.unlock().catch(()=>{});
+      if(!fromLAN&&status===200&&sessionLock?.generation===lockGeneration&&(
+        ['/desktop/unlock/','/desktop/session/'].includes(path)||path.startsWith('/api/v1/auth/admin-login')&&upstreamHeaders?.['x-ilbi-account-verified']==='1'
+      ))void sessionLock.unlock().catch(()=>{});
     });
 }
 async function launchRuntime() {
@@ -425,25 +427,19 @@ else {
       };
       ipcMain.handle('ilbi:login-read', async (event, kind) => {
         loginSender(event);
-        if (sessionLock.locked) {const saved=await savedLogins.get(kind);return saved?{username:saved.username,password:''}:null;}
-        try {
-          const response = await fetch(origin + '/desktop/status/', {signal:AbortSignal.timeout(3000)});
-          if (!response.ok) return null;
-          if((await response.json()).unlock_required){const saved=await savedLogins.get(kind);return saved?{username:saved.username,password:''}:null;}
-        } catch { return null; }
-        return savedLogins.get(kind);
+        return savedLogins.forLogin(kind, sessionLock);
       });
       ipcMain.handle('ilbi:login-save', (event, kind, value) => { loginSender(event); return savedLogins.save(kind, value); });
       ipcMain.handle('ilbi:login-forget', (event, kind) => { loginSender(event); return savedLogins.forget(kind); });
-      ipcMain.handle('ilbi:session-lock', async (event, token) => {
+      ipcMain.handle('ilbi:session-lock', async (event, token, reason) => {
         validSender(event);
         if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame) throw Error('So‘rov manbasi tasdiqlanmadi.');
         if (typeof token !== 'string' || token.length > 8192) return false;
-        return sessionLock.lock(token);
+        return sessionLock.lock(token,reason==='explicit'?'explicit':'manual');
       });
       ipcMain.handle('ilbi:session-activate',(event,token)=>{mainSender(event);return sessionLock.activate(token);});
       ipcMain.handle('ilbi:session-activity',event=>{mainSender(event);sessionLock.touch();return true;});
-      ipcMain.handle('ilbi:session-state',event=>{mainSender(event);return {locked:sessionLock.locked};});
+      ipcMain.handle('ilbi:session-state',event=>{mainSender(event);return {locked:sessionLock.locked,reason:sessionLock.reason};});
       ipcMain.handle('ilbi:session-timeout',async(event,token,minutes)=>{
         mainSender(event);await localRequest('/desktop/owner-authorize/',token,{});
         if(!Number.isInteger(minutes)||minutes<1||minutes>60)throw Error('Qulflash vaqti 1–60 daqiqa bo‘lsin.');

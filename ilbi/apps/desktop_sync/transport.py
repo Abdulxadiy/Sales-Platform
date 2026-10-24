@@ -65,6 +65,20 @@ class Vault:
             current["security_denied"] = bool(denied)
             self.write(current)
 
+    def mfa_cookies(self, register):
+        return self.read().get("mfa_cookies", {}).get(register, {})
+
+    def remember_mfa_cookies(self, register, cookies):
+        from apps.accounts.services.daily_mfa import COOKIE_PREFIX
+
+        values = {cookie.name: cookie.value for cookie in cookies if cookie.name.startswith(COOKIE_PREFIX)}
+        if not values:
+            return
+        with self.lock:
+            current = self.read()
+            current.setdefault("mfa_cookies", {}).setdefault(register, {}).update(values)
+            self.write(current)
+
 
 class UploadBody:
     def __init__(self, data):

@@ -60,6 +60,7 @@ export async function rememberLogin(kind, username, password) {
   if (window.ilbiDesktop) {
     if (!window.ilbiDesktop.saveLogin) throw Error('Login va parolni eslab qolish uchun ILBI ilovasini yangilang.');
     await window.ilbiDesktop.saveLogin(kind, { username: username.trim(), password });
+    localStore.removeItem(passKey(kind));
   } else if (kind === 'online' && window.PasswordCredential && navigator.credentials?.store) {
     try {
       await navigator.credentials.store(new window.PasswordCredential({ id: username.trim(), password }));

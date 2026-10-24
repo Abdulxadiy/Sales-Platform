@@ -19,6 +19,10 @@ class LoginCredentials {
     return JSON.parse(this.safeStorage.decryptString(encrypted));
   }
   async get(kind) { this.kind(kind); await this.pending; return (await this.read())[kind] || null; }
+  async forLogin(kind, {locked, reason}) {
+    const saved = await this.get(kind);
+    return saved && locked && ['idle','explicit'].includes(reason) ? {username:saved.username,password:'',requiresPassword:true} : saved;
+  }
   change(action) {
     const next = this.pending.catch(() => {}).then(action);
     this.pending = next.catch(() => {}); return next;

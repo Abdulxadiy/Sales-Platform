@@ -1,6 +1,6 @@
 # ILBI Platform
 
-Current platform release: [v1.3.6](docs/releases/v1.3.6.md).
+Current platform release: [v1.4.0](docs/releases/v1.4.0.md).
 
 Push ready changes to main with Git or IDE Source Control. Passing CI automatically builds the Windows and Linux packages and deploys the platform and downloads to production; saving a local file does not push it. Details: [CI and automatic deployment](automation/README.md).
 
@@ -175,7 +175,7 @@ Initial setup:
    the account, then a device-bound verifier is stored under OS-protected keys.
    Multiple stores require an explicit owner store selection.
 3. Each cashier signs in online once with their ordinary account password and OTP.
-   Prepared accounts automatically use the local session through connection changes.
+   Prepared accounts automatically use the local session through connection changes while their register-bound 24-hour second-factor proof is valid. At that fixed deadline, online Telegram verification is required; background synchronization never extends it.
    Old PIN installations require one online login after upgrading; the database,
    pending operations and drafts are preserved. No cloud password hashes are copied.
 4. To add another register, open **ILBI → Kassalar va xavfsizlik**, create the
@@ -196,13 +196,13 @@ as a keyed digest on the server. They renew synchronization after a multi-day
 outage within the seven-day lease, including when the ordinary one-day web refresh
 token has expired. Resulting access and refresh tokens are bound to the device;
 device revocation, owner password changes and staff dismissal invalidate them.
-The normal web session lifetime is unchanged. These credentials never reach the renderer.
+Interactive sessions additionally require the fixed 24-hour second-factor proof; background renewal does not extend it. These credentials never reach the renderer.
 
 Prepared registers lock on restart and after ten idle minutes by default; the owner
 can select 1–60 minutes or lock immediately. Actual input renews activity, API polling
 and token refresh do not. Wrong-password limits are per user/register. Remembered
-credentials use OS encryption; a locked prepared register restores the username
-only and requires manual password entry. Browser password managers remain unchanged.
+credentials use OS encryption; the register restores the username
+and password on ordinary login. An inactivity lock requires manual password entry while preserving the encrypted remembered password. Browser password managers remain unchanged.
 
 The primary automatically keeps seven authenticated AES-256-GCM cold backups while
 open and idle. Database/outbox/media and the primary's account-scoped localStorage /

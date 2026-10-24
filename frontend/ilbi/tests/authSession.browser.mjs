@@ -121,6 +121,28 @@ try {
   console.log('PASS verified login remembers both fields; opt-out deletes native saved credentials without plaintext browser storage');
   await release(remembered);
 
+  const daily = await open('/login', {saved:false,desktop:true,dailyMfa:true});
+  await wait(daily,'Boolean(document.querySelector("#username"))&&!document.querySelector(".ilbi-intro[open]")');
+  await fill(daily,'#username','session_test');await fill(daily,'#password','synthetic-password');
+  await daily.evaluate('document.querySelector("#login-form").requestSubmit()');
+  await wait(daily,'Boolean(document.querySelector(".sidebar"))');
+  assert.equal(await daily.evaluate('authQA.requests.some(row=>/send-otp|verify-otp/.test(row.path))'),false);
+  await daily.evaluate('authQA.idle=true;window.dispatchEvent(new Event("auth:logout"))');
+  await wait(daily,'location.pathname==="/login"&&document.querySelector("#username")?.value==="session_test"&&document.body.innerText.includes("Saqlangan parolingiz o‘chirilmagan")');
+  assert.equal(await daily.evaluate('document.querySelector("#password").value'), '');
+  await fill(daily,'#password','synthetic-password');
+  await daily.evaluate('document.querySelector("#login-form").requestSubmit()');
+  await wait(daily,'Boolean(document.querySelector(".sidebar"))');
+  assert.equal(await daily.evaluate('authQA.requests.some(row=>/send-otp|verify-otp/.test(row.path))'),false);
+  await daily.evaluate('authQA.dailyMfa=false;window.dispatchEvent(new Event("auth:logout"))');
+  await wait(daily,'location.pathname==="/login"&&Boolean(document.querySelector("#password"))');
+  await fill(daily,'#password','synthetic-password');
+  await daily.evaluate('document.querySelector("#login-form").requestSubmit()');
+  await wait(daily,'Boolean(document.querySelector("#otp-code"))');
+  assert.equal(await daily.evaluate('Boolean(localStorage.getItem("ilbi_access_token")||sessionStorage.getItem("ilbi_access_token"))'),false);
+  console.log('PASS daily desktop password login skips repeated OTP; idle requires typing; expired second factor returns to OTP');
+  await release(daily);
+
   const draft = await open('/pos', { role: 'owner' });
   await wait(draft, 'Boolean(document.querySelector(".glass-card.interactive"))');
   await draft.evaluate('document.querySelector(".glass-card.interactive").click()');

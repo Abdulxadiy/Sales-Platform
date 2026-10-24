@@ -22,6 +22,7 @@ from .security import (
     activate_actor,
     apply_policy,
     assert_session,
+    assert_mfa,
     audit,
     lock,
     lock_register,
@@ -60,10 +61,14 @@ def prepare_account(request, data):
     password = data.get("password", "")
     if not isinstance(password, str) or not password or len(password) > 4096:
         raise ValueError("Odatiy hisob parolingizni kiriting.")
+    device = get_state("device")
+    installation = device["device_id"] if device else get_state("installation_id") or str(uuid4())
+    if not device:
+        set_state("installation_id", installation)
     response = requests.post(
         server + "/api/v1/sync/credentials/",
         headers=cloud_headers(request),
-        json={"password": password},
+        json={"password": password, "device_id": installation, "register_id": register_id(request)},
         timeout=(5, 20),
         allow_redirects=False,
     )
@@ -71,7 +76,7 @@ def prepare_account(request, data):
         raise ValueError("Hisob paroli tasdiqlanmadi. Internet orqali qayta kiring.")
     proof = response.json()
     remember_pending(
-        proof["user_id"], proof["username"], password, proof["credential_ticket"], proof.get("aliases", [])
+        proof["user_id"], proof["username"], password, proof["credential_ticket"], proof.get("aliases", []), proof.get("mfa_proof")
     )
     Vault().put_grant_key(proof["grant_key"])
     return proof
@@ -106,7 +111,16 @@ def save_actor(result, pending, access, refresh, register):
             actor["sessions"][key] = session
         except DesktopLocked:
             continue
+    from .security import verify_actor_mac
+
+    try:
+        verify_actor_mac(previous)
+        actor["mfa_proofs"] = dict(previous.get("mfa_proofs", {}))
+    except (DesktopLocked, KeyError):
+        actor["mfa_proofs"] = {}
+    actor["mfa_proofs"][register] = pending.get("mfa_proof")
     accept_server_time(claims["issued"])
+    assert_mfa(user, device, seal_actor(actor), register)
     actor = seal_actor(activate_actor(user, actor, register))
     actors = get_state("actors", {})
     actors[str(user.pk)] = actor
@@ -254,6 +268,7 @@ def endpoint(request, path, data, device):
         actor = verify_password(username, password, register)
         user = get_user_model().objects.get(pk=actor["user_id"], is_active=True)
         verified_actor(user, device, actor)
+        assert_mfa(user, device, actor, register)
         actors = get_state("actors", {})
         actors[str(user.pk)] = activate_actor(user, actor, register)
         set_state("actors", actors)
@@ -323,10 +338,12 @@ def endpoint(request, path, data, device):
             except DesktopLocked:
                 locked = True
             grant = verified_actor(user, device, actor)
+            mfa = assert_mfa(user, device, actor, register)
             return JsonResponse(
                 {
                     "locked": locked,
                     "lease_until": grant["expires"],
+                    "mfa_expires_at": mfa["expires"],
                     "idle_minutes": get_state("idle_minutes", 10),
                     "owner": grant["policy"]["owner"],
                 }

@@ -26,7 +26,7 @@ class DesktopJWTAuthentication(CustomJWTAuthentication):
         actors = get_state("actors", {})
         if str(user.pk) not in actors:
             raise AuthenticationFailed("Bu hisob qurilmaga ulanmagan.")
-        from .security import DesktopLocked, assert_session, verified_actor, verify_session
+        from .security import DesktopLocked, assert_mfa, assert_session, verified_actor, verify_session
         from .transport import Vault
 
         if get_state("security_denied", False) or Vault().read().get("security_denied", False):
@@ -38,6 +38,7 @@ class DesktopJWTAuthentication(CustomJWTAuthentication):
         register = getattr(self, "register", "primary")
         if validated_token.get("desktop_register") != register:
             raise DesktopLocked("Sessiya boshqa kassaga tegishli.")
+        assert_mfa(user, device, actor, register)
         verify_session(user.pk, register, actor.get("sessions", {}).get(register, {}))
         if validated_token.get("desktop_session") != actor.get("sessions", {}).get(register, {}).get("id"):
             raise DesktopLocked("Eski sessiya tugagan. Hisobingizga qayta kiring.")

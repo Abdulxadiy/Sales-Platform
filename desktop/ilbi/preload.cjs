@@ -7,7 +7,7 @@ async function invoke(channel, ...args) {
   }
 }
 contextBridge.exposeInMainWorld('ilbiDesktop', Object.freeze({
-  version: '1.3.6',
+  version: '1.4.0',
   setup: () => invoke('ilbi:setup'),
   join: code => invoke('ilbi:join',code),
   getJoinState:()=>invoke('ilbi:join-state'),
@@ -31,7 +31,7 @@ contextBridge.exposeInMainWorld('ilbiDesktop', Object.freeze({
   getSavedLogin: kind => invoke('ilbi:login-read', kind),
   saveLogin: (kind, value) => invoke('ilbi:login-save', kind, value),
   forgetLogin: kind => invoke('ilbi:login-forget', kind),
-  lockSession: token => invoke('ilbi:session-lock', token),
+  lockSession: (token,reason) => invoke('ilbi:session-lock', token, reason),
   activateSession:token=>invoke('ilbi:session-activate',token),
   noteActivity:()=>invoke('ilbi:session-activity'),
   getSessionLock:()=>invoke('ilbi:session-state'),

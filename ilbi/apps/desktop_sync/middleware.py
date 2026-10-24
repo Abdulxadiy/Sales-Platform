@@ -15,7 +15,7 @@ from .desktop_api import authenticated, endpoint
 from .files import decode_body, encode_request
 from .local import aliases_for, enqueue, get_state, runtime_lock
 from .protocol import allowed, preconditions, record_changes, title_for
-from .transport import cloud_request, server_url
+from .transport import Vault, cloud_request, server_url
 
 
 class DesktopMiddleware:
@@ -233,7 +233,11 @@ class DesktopMiddleware:
                     headers=headers,
                     timeout=(5, 30),
                     allow_redirects=False,
+                    **({"cookies": Vault().mfa_cookies(
+                        request.headers.get("X-ILBI-Register-ID", "primary"))} if path.startswith("auth/admin-login") else {}),
                 )
+                if path.startswith("auth/admin-login") and remote.ok:
+                    Vault().remember_mfa_cookies(request.headers.get("X-ILBI-Register-ID", "primary"), getattr(remote, "cookies", ()))
             response = HttpResponse(
                 remote.content,
                 status=remote.status_code,
@@ -249,6 +253,13 @@ class DesktopMiddleware:
             ):
                 if name in remote.headers:
                     response[name] = remote.headers[name]
+            if path.startswith("auth/admin-login") and remote.ok:
+                try:
+                    login = remote.json()
+                    if isinstance(login, dict) and login.get("access") and login.get("refresh"):
+                        response["X-ILBI-Account-Verified"] = "1"
+                except ValueError:
+                    pass
             return response
         except ValueError as error:
             return JsonResponse({"detail": str(error)}, status=503)

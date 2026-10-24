@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
-def issue_tokens(user):
+def issue_tokens(user, *, mfa_verified_at=None):
     """
     Generate JWT access and refresh tokens with custom claims for the user.
 
@@ -23,6 +23,11 @@ def issue_tokens(user):
     # Attach custom claims to refresh token
     refresh["role"] = user.role
     refresh["token_version"] = getattr(user, "token_version", 1)
+    if mfa_verified_at is not None:
+        from apps.accounts.services.daily_mfa import WINDOW
+
+        refresh["mfa_verified_at"] = mfa_verified_at
+        refresh["mfa_expires_at"] = mfa_verified_at + WINDOW
 
     # Attach custom claims to access token
     access = refresh.access_token

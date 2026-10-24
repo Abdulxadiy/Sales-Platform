@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import uuid4
 from unittest.mock import Mock, patch
 
 import pytest
@@ -21,8 +22,8 @@ def trusted(owner, tenant):
     owner.set_password("synthetic-verified-account-password")
     owner.save()
     client = APIClient()
-    client.force_authenticate(owner)
-    proof = client.post("/api/v1/sync/credentials/", {"password": "synthetic-verified-account-password"}).data
+    client.force_authenticate(owner, token={"mfa_verified_at": int(timezone.now().timestamp()), "mfa_expires_at": int(timezone.now().timestamp()) + 86400})
+    proof = client.post("/api/v1/sync/credentials/", {"password": "synthetic-verified-account-password", "device_id": str(uuid4())}).data
     enrolled = client.post(
         "/api/v1/sync/devices/",
         {
@@ -74,7 +75,7 @@ def test_device_credential_is_bound_to_actor_and_replaced_on_online_reconfirmati
     public = APIClient()
     wrong = {**enrolled["cloud_credential"], "user_id": staff.pk}
     assert public.post("/api/v1/sync/session/", wrong, format="json").status_code == 403
-    proof = client.post("/api/v1/sync/credentials/", {"password": "synthetic-verified-account-password"}).data
+    proof = client.post("/api/v1/sync/credentials/", {"password": "synthetic-verified-account-password", "device_id": str(uuid4())}).data
     linked = client.post(
         "/api/v1/sync/actors/",
         {
@@ -140,8 +141,8 @@ def test_fired_cashier_cannot_renew_a_trusted_device_session(staff, tenant, trus
     staff.set_password("synthetic-cashier-password")
     staff.save()
     client = APIClient()
-    client.force_authenticate(staff)
-    proof = client.post("/api/v1/sync/credentials/", {"password": "synthetic-cashier-password"}).data
+    client.force_authenticate(staff, token={"mfa_verified_at": int(timezone.now().timestamp()), "mfa_expires_at": int(timezone.now().timestamp()) + 86400})
+    proof = client.post("/api/v1/sync/credentials/", {"password": "synthetic-cashier-password", "device_id": str(uuid4())}).data
     grant = client.post(
         "/api/v1/sync/actors/",
         {

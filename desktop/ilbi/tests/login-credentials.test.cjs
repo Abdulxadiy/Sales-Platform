@@ -40,6 +40,17 @@ test('no plaintext fallback is possible when the OS vault is unavailable or basi
     await assert.rejects(stat(store.path));
   }
 });
+test('ordinary locked login restores both fields; idle login requires typing without deleting remembered password', async t => {
+  const { store } = await fixture(t);
+  const saved={username:'synthetic-owner',password:'synthetic-remembered-password'};
+  await store.save('online',saved);
+  assert.deepEqual(await store.forLogin('online',{locked:true,reason:'manual'}),saved);
+  assert.deepEqual(await store.forLogin('online',{locked:true,reason:'mfa_expired'}),saved);
+  assert.deepEqual(await store.forLogin('online',{locked:true,reason:'idle'}),{username:saved.username,password:'',requiresPassword:true});
+  assert.deepEqual(await store.forLogin('online',{locked:true,reason:'explicit'}),{username:saved.username,password:'',requiresPassword:true});
+  assert.deepEqual(await store.get('online'),saved);
+  assert.deepEqual(await store.forLogin('online',{locked:false,reason:null}),saved);
+});
 test('forgetting during a pending save wins and later saves recover from an earlier failure', async t => {
   const { store, safeStorage } = await fixture(t);
   const login = { username: 'synthetic-user', password: 'synthetic-password' };

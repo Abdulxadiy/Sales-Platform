@@ -36,7 +36,7 @@ from apps.desktop_sync.models import SyncDevice,LocalOperation
 from apps.desktop_sync.local import set_state
 from apps.desktop_sync.security import remember_pending,pending_for
 from apps.desktop_sync.account_access import save_actor
-from apps.desktop_sync.grants import issue_grant,public_key
+from apps.desktop_sync.grants import issue_grant,issue_mfa_proof,public_key
 from django.test import override_settings
 from django.utils import timezone
 from datetime import timedelta
@@ -45,8 +45,8 @@ t=Tenant.objects.create(owner=u,name='Synthetic native QA',public_code='NATIVE-Q
 Employee.objects.create(user=u,tenant=t,is_owner=True)
 d=SyncDevice.objects.create(user_id=u.pk,tenant_id=t.pk,token_version=u.token_version,name='QA',lease_until=timezone.now()+timedelta(days=7))
 set_state('device',{'device_id':str(d.pk),'tenant_id':t.pk,'user_id':u.pk,'lease_until':d.lease_until.isoformat()})
-remember_pending(u.pk,u.username,'synthetic-ordinary-account-password','synthetic-proof')
 with override_settings(DESKTOP_MODE=False):
+ remember_pending(u.pk,u.username,'synthetic-ordinary-account-password','synthetic-proof',mfa_proof=issue_mfa_proof(u,d.pk,'primary',int(timezone.now().timestamp())))
  result={'user_id':u.pk,'actor_ticket':'synthetic-ticket','offline_grant':issue_grant(d,u),'grant_key':public_key(),'lease_until':d.lease_until.isoformat()}
 save_actor(result,pending_for(u.pk),'Bearer synthetic-access','synthetic-refresh','primary')
 LocalOperation.objects.create(user_id=u.pk,tenant_id=t.pk,title='Native unsent sale',payload={})
@@ -66,6 +66,37 @@ LocalOperation.objects.create(user_id=u.pk,tenant_id=t.pk,title='Native unsent s
     await backup.restore(id);console.log('Native security QA: encrypted backup restored and store resumed.');
     assert.equal((await api('/desktop/queue/',token)).data.operations.length,1);
     assert.equal(await readFile(join(directory,'media/native-image'),'utf8'),'synthetic-original-image');assert.equal(drafts.local['ilbi_account_draft:1:1:pos_cart'],'kept-cart');
+    await python(`from django.contrib.auth import get_user_model
+from apps.desktop_sync.local import get_state,set_state
+from apps.desktop_sync.grants import issue_mfa_proof
+from apps.desktop_sync.security import seal_actor
+from django.test import override_settings
+from django.utils import timezone
+u=get_user_model().objects.get(username='native-owner')
+actors=get_state('actors')
+with override_settings(DESKTOP_MODE=False):
+ actors[str(u.pk)]['mfa_proofs']['primary']=issue_mfa_proof(u,get_state('device')['device_id'],'primary',int(timezone.now().timestamp())-86400)
+actors[str(u.pk)]=seal_actor(actors[str(u.pk)])
+set_state('actors',actors)
+`);
+    result=await api('/desktop/unlock/',null,{username:'native-owner',password:'synthetic-ordinary-account-password'});
+    assert.equal(result.status,423);assert.match(result.data.detail,/24 soat/);
+    await python(`from django.contrib.auth import get_user_model
+from apps.desktop_sync.local import get_state,set_state
+from apps.desktop_sync.grants import issue_mfa_proof
+from apps.desktop_sync.security import seal_actor
+from apps.desktop_sync.models import LocalOperation
+from django.test import override_settings
+from django.utils import timezone
+u=get_user_model().objects.get(username='native-owner')
+assert LocalOperation.objects.filter(title='Native unsent sale').count()==1
+actors=get_state('actors')
+with override_settings(DESKTOP_MODE=False):
+ actors[str(u.pk)]['mfa_proofs']['primary']=issue_mfa_proof(u,get_state('device')['device_id'],'primary',int(timezone.now().timestamp()))
+actors[str(u.pk)]=seal_actor(actors[str(u.pk)])
+set_state('actors',actors)
+`);
+    console.log('Native security QA: daily MFA expiry blocks password-only entry and preserves outbox.');
     await api('/desktop/register-start/',null,{});assert.equal((await api('/desktop/queue/',token)).status,423);
     result=await api('/desktop/unlock/',null,{username:'native-owner',password:'synthetic-ordinary-account-password'});assert.equal(result.status,200);
     assert.equal((await api('/desktop/queue/',result.data.access)).data.operations.length,1);

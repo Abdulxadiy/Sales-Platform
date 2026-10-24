@@ -32,6 +32,7 @@ export default function Login() {
     return localStore.getItem('ilbi_remember_login') || '';
   });
   const [password, setPassword] = useState(() => {
+    if (window.ilbiDesktop) return '';
     const saved = localStore.getItem('ilbi_remember_pass_vault');
     if (!saved) return '';
     try {
@@ -48,6 +49,7 @@ export default function Login() {
   });
   const [loginTicket, setLoginTicket] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [requiresPassword, setRequiresPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [phoneHint, setPhoneHint] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -62,6 +64,7 @@ export default function Login() {
     readRememberedLogin('online', controller.signal).then(value => {
       if (!controller.signal.aborted && credentialEdits.current === edits && value) {
         setUsername(value.username); setPassword(value.password);
+        setRequiresPassword(Boolean(value.requiresPassword));
       }
     }).catch(() => {});
     return () => controller.abort();
@@ -140,9 +143,9 @@ export default function Login() {
         void forgetRememberedLogin('online').catch(() => {});
       }
       const res = await loginStep1(username.trim(), password, rememberMe);
-      if ((res.local_login === true || res.demo_login === true) && res.access && res.refresh) {
+      if ((res.local_login === true || res.demo_login === true || res.password_login === true) && res.access && res.refresh) {
         await saveRememberedLogin();
-        toast.success(res.local_login ? 'Hisobingizga kirildi' : 'Sinov akkauntiga kirildi');
+        toast.success(res.demo_login ? 'Sinov akkauntiga kirildi' : 'Hisobingizga kirildi');
         navigate('/dashboard');
         return;
       }
@@ -596,6 +599,8 @@ export default function Login() {
               <span>{loading || submittingStep1 ? 'Tekshirilmoqda...' : 'Davom etish'}</span>
               {loading || submittingStep1 ? <IlbiLoader size={24} inline decorative /> : <ArrowRight size={18} />}
             </button>
+            {requiresPassword && <p role="status" style={{fontSize:13,color:'var(--text-secondary)',lineHeight:1.6,margin:0}}>Hisob xavfsizlik uchun qulflandi. Saqlangan parolingiz o‘chirilmagan; uni qayta kiriting.</p>}
+            <p style={{fontSize:12,color:'var(--text-secondary)',lineHeight:1.6,margin:0}}>Telegram tasdig‘i shu qurilmada 24 soat amal qiladi. Shu vaqt ichida qayta kirish uchun login va parol yetarli.</p>
           </form>
         ) : step === 2 ? (
           <TelegramConnectionGate

@@ -60,13 +60,25 @@ def issue_grant(device, user):
     return encode(body) + "." + encode(private_key().sign(body))
 
 
+def issue_mfa_proof(user, device_id, register, verified):
+    from apps.accounts.services.daily_mfa import WINDOW
+
+    payload = {"version": 1, "kind": "daily_mfa", "device": str(device_id), "user": user.pk,
+               "register": register, "token_version": user.token_version, "verified_at": verified,
+               "expires": verified + WINDOW}
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return encode(body) + "." + encode(private_key().sign(body))
+
+
 def verify_grant(value, key):
     try:
+        if not isinstance(value, str) or not isinstance(key, str):
+            raise ValueError
         body, signature = value.split(".")
         body = decode(body)
         Ed25519PublicKey.from_public_bytes(decode(key)).verify(decode(signature), body)
         result = json.loads(body)
-        if result.get("version") != 1 or type(result.get("expires")) is not int:
+        if not isinstance(result, dict) or result.get("version") != 1 or type(result.get("expires")) is not int:
             raise ValueError
         return result
     except (ValueError, TypeError, KeyError, InvalidSignature) as exc:

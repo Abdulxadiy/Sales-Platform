@@ -13,7 +13,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from apps.desktop_sync.account_access import save_actor
 from apps.desktop_sync.authentication import DesktopJWTAuthentication
 from apps.desktop_sync.desktop_api import endpoint
-from apps.desktop_sync.grants import credential_ticket, issue_grant, public_key, verify_grant
+from apps.desktop_sync.grants import credential_ticket, issue_grant, issue_mfa_proof, public_key, verify_grant
 from apps.desktop_sync.local import get_state, set_state
 from apps.desktop_sync.models import SyncDevice
 from apps.desktop_sync.security import DesktopLocked, lock, password_value, pending_accounts, remember_pending
@@ -21,6 +21,64 @@ from apps.desktop_sync.server_policy import OFFICIAL_SERVER
 
 pytestmark = pytest.mark.django_db
 PASSWORD = "synthetic-normal-account-password"
+
+
+def test_daily_proof_expiry_and_cross_register_replay_cannot_unlock(owner, secured, monkeypatch):
+    from apps.desktop_sync import security
+
+    device, _ = secured
+    actor = get_state("actors")[str(owner.pk)]
+    proof = security.assert_mfa(owner, get_state("device"), actor, "primary")
+    monkeypatch.setattr(security, "trusted_now", lambda: proof["expires"] - .001)
+    assert security.assert_mfa(owner, get_state("device"), actor, "primary")["expires"] == proof["expires"]
+    with pytest.raises(DesktopLocked):
+        security.assert_mfa(owner, get_state("device"), actor, "another-register")
+    monkeypatch.setattr(security, "trusted_now", lambda: proof["expires"])
+    response = endpoint(RequestFactory().post("/desktop/unlock/", {"username": owner.username, "password": PASSWORD}, content_type="application/json"), "unlock/")
+    assert response.status_code == 423
+    assert "24 soat" in json.loads(response.content)["detail"]
+    assert get_state("actors")[str(owner.pk)]["mfa_proofs"]["primary"] == actor["mfa_proofs"]["primary"]
+
+
+def test_local_signature_cannot_extend_cloud_second_factor(owner, secured):
+    from apps.desktop_sync.security import assert_mfa, seal_actor
+
+    actor = get_state("actors")[str(owner.pk)]
+    actor["mfa_proofs"]["primary"] += "tampered"
+    actor = seal_actor(actor)  # Knowing the local MAC key cannot forge the server signature.
+    with pytest.raises(DesktopLocked):
+        assert_mfa(owner, get_state("device"), actor, "primary")
+
+
+def test_native_daily_cookie_stays_encrypted_and_separate_for_each_register(owner, secured, monkeypatch):
+    import requests
+
+    from apps.desktop_sync.middleware import DesktopMiddleware
+    from apps.desktop_sync.transport import Vault
+
+    remote = requests.Response()
+    remote.status_code = 200
+    remote._content = b'{"access":"synthetic-cloud-access","refresh":"synthetic-cloud-refresh"}'
+    remote.cookies.set("ilbi_mfa_1", "synthetic-private-second-factor")
+    calls = []
+
+    def send(*args, **kwargs):
+        calls.append(kwargs)
+        return remote
+
+    monkeypatch.setattr(requests, "request", send)
+    middleware = DesktopMiddleware(lambda request: None)
+    request = RequestFactory().post("/api/v1/auth/admin-login/verify-otp/", {}, content_type="application/json", HTTP_X_ILBI_REGISTER_ID="register-one")
+    response = middleware.proxy(request, "auth/admin-login/verify-otp/")
+    assert response["X-ILBI-Account-Verified"] == "1" and "Set-Cookie" not in response
+    assert b"synthetic-private-second-factor" not in Vault().path.read_bytes()
+    middleware.proxy(request, "auth/admin-login/")
+    assert calls[-1]["cookies"] == {"ilbi_mfa_1": "synthetic-private-second-factor"}
+    request = RequestFactory().post("/api/v1/auth/admin-login/", {}, content_type="application/json", HTTP_X_ILBI_REGISTER_ID="register-two")
+    middleware.proxy(request, "auth/admin-login/")
+    assert calls[-1]["cookies"] == {}
+    remote._content = b'{"login_ticket":"only-a-password-proof"}'
+    assert "X-ILBI-Account-Verified" not in middleware.proxy(request, "auth/admin-login/")
 
 
 @pytest.fixture
@@ -48,7 +106,7 @@ def secured(owner, tenant, tmp_path, monkeypatch):
                 "lease_until": device.lease_until.isoformat(),
             },
         )
-        remember_pending(owner.pk, owner.username, PASSWORD, credential_ticket(owner))
+        remember_pending(owner.pk, owner.username, PASSWORD, credential_ticket(owner), mfa_proof=issue_mfa_proof(owner, device.pk, "primary", int(timezone.now().timestamp())))
         pending = pending_accounts[owner.pk]
         result = {
             "user_id": owner.pk,
@@ -66,9 +124,9 @@ def test_cloud_requires_verified_password_before_new_account_enrollment(owner, t
     owner.set_password(PASSWORD)
     owner.save()
     client = APIClient()
-    client.force_authenticate(owner)
+    client.force_authenticate(owner, token={"mfa_verified_at": int(timezone.now().timestamp()), "mfa_expires_at": int(timezone.now().timestamp()) + 86400})
     assert client.post("/api/v1/sync/credentials/", {"password": "wrong"}).status_code == 400
-    proof = client.post("/api/v1/sync/credentials/", {"password": PASSWORD}).data
+    proof = client.post("/api/v1/sync/credentials/", {"password": PASSWORD, "device_id": str(uuid4())}).data
     bad = client.post(
         "/api/v1/sync/devices/",
         {"protocol": 1, "tenant_id": tenant.pk, "credential_mode": "account", "credential_ticket": "invalid"},
@@ -116,7 +174,7 @@ def test_account_password_unlocks_and_old_or_other_register_tokens_cannot(owner,
 def test_idle_lock_is_enforced_by_backend_and_polling_does_not_renew_it(owner, secured):
     _, tokens = secured
     actors = get_state("actors")
-    actors[str(owner.pk)]["sessions"]["primary"]["activity"] -= 601
+    actors[str(owner.pk)]["sessions"]["primary"]["activity"] -= 611
     from apps.desktop_sync.security import seal_session
 
     actors[str(owner.pk)]["sessions"]["primary"] = seal_session(
@@ -221,6 +279,7 @@ def test_security_renewal_does_not_wait_for_pending_work(owner, secured, monkeyp
     from apps.desktop_sync.models import LocalOperation
 
     device, _ = secured
+    daily_proof = get_state("actors")[str(owner.pk)]["mfa_proofs"]["primary"]
     old = get_state("device")["lease_until"]
     device.lease_until = timezone.now() + timedelta(days=8)
     payload = {
@@ -242,6 +301,7 @@ def test_security_renewal_does_not_wait_for_pending_work(owner, secured, monkeyp
     worker.sync_once()
     assert get_state("device")["lease_until"] > old
     operation.refresh_from_db()
+    assert get_state("actors")[str(owner.pk)]["mfa_proofs"]["primary"] == daily_proof
     assert (
         operation.status == "waiting"
         and get_state("actors")[str(owner.pk)]["offline_grant"] == payload["offline_grants"][str(owner.pk)]

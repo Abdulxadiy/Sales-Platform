@@ -62,6 +62,8 @@ def seal_actor(actor):
     value = {key: actor[key] for key in ("user_id", "username", "password_hash", "offline_grant")}
     value["aliases"] = actor.get("aliases", [])
     value["actor_ticket"] = actor.get("actor_ticket", "")
+    if "mfa_proofs" in actor:
+        value["mfa_proofs"] = actor["mfa_proofs"]
     actor["credential_mac"] = mac(value)
     return actor
 
@@ -93,6 +95,23 @@ def verify_actor_mac(actor):
         raise DesktopLocked("Mahalliy kirish ma’lumotlari tasdiqlanmadi. Internet orqali qayta kiring.")
 
 
+def assert_mfa(user, device, actor, register):
+    from apps.accounts.services.daily_mfa import WINDOW
+
+    verify_actor_mac(actor)
+    try:
+        proof = verify_grant(actor.get("mfa_proofs", {}).get(register, ""), Vault().read()["grant_key"])
+        if (proof.get("kind") != "daily_mfa" or proof.get("device") != device["device_id"]
+                or proof.get("user") != user.pk or proof.get("register") != register
+                or proof.get("token_version") != user.token_version
+                or type(proof.get("verified_at")) is not int or proof["expires"] != proof["verified_at"] + WINDOW
+                or not proof["verified_at"] <= trusted_now() < proof["expires"]):
+            raise ValueError
+        return proof
+    except (ValueError, TypeError, KeyError) as exc:
+        raise DesktopLocked("24 soatlik 2FA tasdig‘i kerak. Internetga ulanib, Telegram kodi bilan qayta kiring.") from exc
+
+
 def accept_server_time(issued):
     global clock_anchor
     now = max(float(issued), timezone.now().timestamp())
@@ -120,7 +139,7 @@ def trusted_now():
     return current
 
 
-def remember_pending(user_id, username, password, ticket, aliases=None):
+def remember_pending(user_id, username, password, ticket, aliases=None, mfa_proof=None):
     pending_accounts[user_id] = {
         "user_id": user_id,
         "username": username,
@@ -128,6 +147,7 @@ def remember_pending(user_id, username, password, ticket, aliases=None):
         "password_hash": make_password(password_value(user_id, password)),
         "credential_ticket": ticket,
         "until": time.monotonic() + 570,
+        "mfa_proof": mfa_proof,
     }
 
 
@@ -162,7 +182,9 @@ def verify_session(user_id, register, session):
 def assert_session(user, actor, register, token):
     session = actor.get("sessions", {}).get(register, {})
     verify_session(user.pk, register, session)
-    timeout = get_state("idle_minutes", 10) * 60
+    # The native register locks exactly on its timer. Allow its bounded activity
+    # delivery interval here so a recent input cannot race the polling request.
+    timeout = get_state("idle_minutes", 10) * 60 + 10
     if session.get("locked", True) or token.get("desktop_session") != session.get("id"):
         raise DesktopLocked()
     if timezone.now().timestamp() - session.get("activity", 0) >= timeout:

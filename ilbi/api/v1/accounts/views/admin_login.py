@@ -13,6 +13,7 @@ from apps.accounts.services.demo_access_service import DemoAccessService
 from apps.accounts.services.phone_utils import mask_phone_number
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -116,6 +117,13 @@ class AdminLoginView(APIView):
             login_throttle.register_success(username)
             return Response({**issue_tokens(user), "demo_login": True}, status=status.HTTP_200_OK)
 
+        from apps.accounts.services.daily_mfa import browser_verified_at
+
+        verified = browser_verified_at(request, user)
+        if verified is not None and get_current_telegram_contact(user.phone_number) is not None:
+            login_throttle.register_success(username)
+            return Response({**issue_tokens(user, mfa_verified_at=verified), "password_login": True}, status=status.HTTP_200_OK)
+
         return Response(
             {
                 "detail": "Parol tasdiqlandi. Telegram botga ulanishni tekshiring.",
@@ -213,4 +221,7 @@ class AdminLoginVerifyOTPView(APIView):
             return _bad_ticket()
         password_reset_service.complete_pending_invitations(user.id)
         login_throttle.register_success(username)
-        return Response(issue_tokens(user), status=status.HTTP_200_OK)
+        from apps.accounts.services.daily_mfa import remember_browser
+
+        verified = int(timezone.now().timestamp())
+        return remember_browser(Response(issue_tokens(user, mfa_verified_at=verified), status=status.HTTP_200_OK), user, verified)

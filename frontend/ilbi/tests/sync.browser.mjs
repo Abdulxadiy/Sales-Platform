@@ -15,7 +15,13 @@ try {
   const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
   browser = await launchBrowser({ width: 1280, height: 900, disableBackForwardCache: true });
   const wait = async expression => {
-    for (let i = 0; i < 160; i++) { if (await browser.evaluate(expression)) return; await delay(40); }
+    for (let i = 0; i < 160; i++) {
+      try { if (await browser.evaluate(expression)) return; }
+      catch (error) {
+        if (!/Inspected target navigated or closed|Execution context was destroyed|Cannot find (?:default execution context|context with specified id)/.test(error.message)) throw error;
+      }
+      await delay(40);
+    }
     throw Error('Timed out: ' + expression);
   };
   await browser.call('Page.navigate', { url: origin + '/tests/browser/sync.html' });
@@ -129,7 +135,7 @@ try {
   console.log(JSON.stringify({ passed: true, scenarios: ['priority animation', 'active operation preserved', 'next arrows', 'real progress', 'server confirmation', 'mobile', 'reduced motion', 'keyboard focus', 'classic and fast workspace sync', 'draft preserved on workspace switch', 'workspace preference survives reload'], artifacts }));
 } catch (error) {
   console.error('Browser errors:', browser?.errors);
-  if (browser) console.error(await browser.evaluate('({body:document.body.innerText.slice(0,1500),url:location.href})'));
+  if (browser) console.error(await browser.evaluate('({body:document.body.innerText.slice(0,1500),url:location.href})').catch(failure=>({diagnostic:failure.message})));
   throw error;
 } finally {
   await browser?.close();

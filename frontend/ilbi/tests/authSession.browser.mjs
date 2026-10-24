@@ -13,7 +13,13 @@ try {
   await server.listen();
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
   async function wait(browser, expression) {
-    for (let i = 0; i < 200; i++) { if (await browser.evaluate(expression)) return; await delay(40); }
+    for (let i = 0; i < 200; i++) {
+      try { if (await browser.evaluate(expression)) return; }
+      catch (error) {
+        if (!/Inspected target navigated or closed|Execution context was destroyed|Cannot find (?:default execution context|context with specified id)/.test(error.message)) throw error;
+      }
+      await delay(40);
+    }
     throw Error('Timeout: ' + expression + '\n' + browser.errors.join('\n'));
   }
   async function open(path, options = {}) {

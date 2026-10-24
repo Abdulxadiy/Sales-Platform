@@ -34,7 +34,9 @@ cd /srv/ilbi
 ./ops/compose.sh logs --tail 100 ilbi
 ```
 
-Maxfiy fayllar: `.env.production`, `ilbi/.env.production`, `telegram_bot_sms/.env.production`.
+Backend papkasi ko‘chirilgan ushbu versiyani productionga chiqarishdan oldin serverdagi eski `/srv/ilbi/ilbi/.env.production` faylini `/srv/ilbi/backend/.env.production` manziliga ko‘chiring; katalog va faylning yopiq ruxsatlarini saqlang. Yangi manzilda fayl allaqachon mavjud bo‘lsa, ustidan yozishdan oldin operator sozlamalarini tekshiring. Bu bir martalik yo‘l o‘zgarishi; Compose servis nomlari va ma’lumotlar volume’lari saqlanadi.
+
+Maxfiy fayllar: `.env.production`, `backend/.env.production`, `telegram_bot_sms/.env.production`.
 Ularning mazmunini Git, issue yoki chatga yubormang. Parollar yangi yaratilgan;
 mavjud Telegram bot va SMTP ulanishi saqlangan.
 
@@ -152,7 +154,7 @@ Ahost DNS yozuvlari:
 qiymatlarida saqlanadi. Oldindan noma’lum bo‘lgan o‘chirilgan MX/TXT/CNAME yozuvlari
 taxmin bilan tiklanmaydi; pochta qabul qilish ishlatilsa, uning provayderi yozuvlari alohida tekshiriladi.
 
-`ilbi/.env.production`da `DEFAULT_FROM_EMAIL="ILBI <noreply@ilbi.uz>"` belgilangan.
+`backend/.env.production`da `DEFAULT_FROM_EMAIL="ILBI <noreply@ilbi.uz>"` belgilangan.
 Mavjud SMTP host `smtp.resend.com`, port `587`, username `resend`, STARTTLS va kalit
 saqlanadi. Email havolalari Compose’dagi `PUBLIC_HOST` orqali hosil bo‘ladi;
 backend bilan birga Celery worker va beat ham qayta yaratilishi kerak.
